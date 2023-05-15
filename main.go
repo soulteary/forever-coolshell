@@ -1,30 +1,56 @@
 package main
 
 import (
+	"embed"
 	"fmt"
+	"io/fs"
 	"log"
 	"net/http"
 	"os"
 	"strconv"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 )
+
+//go:embed all:assets
+var Assets embed.FS
+
+//go:embed all:content/haoel
+var Author embed.FS
+
+//go:embed all:content/articles
+var Articles embed.FS
+
+//go:embed all:content/list
+var List embed.FS
+
+//go:embed all:uploads
+var Uploads embed.FS
 
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.Default()
+	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusFound, "/page/1.html")
 	})
-	r.GET("/haoel", func(c *gin.Context) {
-		c.Redirect(http.StatusFound, "/articles/author/haoel/")
-	})
 
-	r.Static("/articles", "./content/articles")
-	r.Static("/page", "./content/list")
-	r.Static("/assets", "./assets")
-	r.Static("/uploads", "./uploads")
+	assets, _ := fs.Sub(Assets, "assets")
+	r.StaticFS("/assets", http.FS(assets))
+
+	author, _ := fs.Sub(Author, "content/haoel")
+	r.StaticFS("/haoel", http.FS(author))
+
+	articles, _ := fs.Sub(Articles, "content/articles")
+	r.StaticFS("/articles", http.FS(articles))
+
+	page, _ := fs.Sub(List, "content/list")
+	r.StaticFS("/page", http.FS(page))
+
+	uploads, _ := fs.Sub(Uploads, "uploads")
+	r.StaticFS("/uploads", http.FS(uploads))
 
 	log.Println("[酷壳 Cool Shell Forever 电子存档]")
 	log.Println()
