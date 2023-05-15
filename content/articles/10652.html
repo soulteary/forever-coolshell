@@ -1,0 +1,920 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>程序的本质复杂性和元语言抽象 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10652 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10652" class="post-content post-10652 post type-post status-publish format-standard hentry category-proglanguage">
+<header class="entry-header">
+<span class="screen-reader-text">程序的本质复杂性和元语言抽象</span>
+<h1 class="entry-title">程序的本质复杂性和元语言抽象</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10652.html" title="08:00" rel="bookmark"><time class="entry-date" datetime="2013-10-31T08:00:09+08:00" pubdate="">2013年10月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10652.html#comments" class="comments-link">97 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 47,481 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 <a href="http://weibo.com/weidagang" target="_blank">@文艺复兴记</a>（todd） 投递此文）</strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%BB%84%E4%BB%B6%E5%A4%8D%E7%94%A8%E6%8A%80%E6%9C%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7" title="组件复用技术的局限性">组件复用技术的局限性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%A4%8D%E6%9D%82%E6%80%A7" title="程序的本质复杂性">程序的本质复杂性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%85%83%E8%AF%AD%E8%A8%80%E6%8A%BD%E8%B1%A1" title="元语言抽象">元语言抽象</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%BB%84%E4%BB%B6%E5%A4%8D%E7%94%A8%E6%8A%80%E6%9C%AF%E7%9A%84%E5%B1%80%E9%99%90%E6%80%A7"></span>组件复用技术的局限性<span class="ez-toc-section-end"></span></h4>
+<p>常听到有人讲“我写代码很讲究，一直严格遵循<a href="https://en.wikipedia.org/wiki/Don&#39;t_repeat_yourself">DRY原则</a>，把重复使用的功能都封装成可复用的组件，使得代码简短优雅，同时也易于理解和维护”。显然，DRY原则和组件复用技术是最常见的改善代码质量的方法，不过，在我看来以这类方法为指导，能帮助我们写出“不错的程序”，但还不足以帮助我们写出简短、优雅、易理解、易维护的“好程序”。对于熟悉Martin Fowler《重构》和GoF《设计模式》的程序员，我常常提出这样一个问题帮助他们进一步加深对程序的理解：</p>
+<blockquote><p>如果目标是代码“简短、优雅、易理解、易维护”，组件复用技术是最好的方法吗？这种方法有没有根本性的局限？</p></blockquote>
+<p>虽然基于函数、类等形式的组件复用技术从一定程度上消除了冗余，提升了代码的抽象层次，但是这种技术却有着本质的局限性，其根源在于 <strong>每种组件形式都代表了特定的抽象维度，组件复用只能在其维度上进行抽象层次的提升</strong>。比如，我们可以把常用的HashMap等功能封装为类库，但是不管怎么封装复用类永远是类，封装虽然提升了代码的抽象层次，但是它永远不会变成Lambda，而实际问题所代表的抽象维度往往与之并不匹配。</p>
+<p>以常见的二进制消息的解析为例，组件复用技术所能做到的只是把读取字节，检查约束，计算CRC等功能封装成函数，这是远远不够的。比如，下面的表格定义了二进制消息X的格式：</p>
+<p><span id="more-10652"></span></p>
+<pre>Message X:
+--------------------------------------------------------
+| ID |  Name           | Type    | Size | Constraints  |
+--------------------------------------------------------
+| 1  | message type    | int     | 1    | = 0x01       |
+--------------------------------------------------------
+| 2  | payload size    | int     | 2    | &gt; 0          |
+--------------------------------------------------------
+| 3  | payload         | bytes   | &lt;2&gt;  |              |
+--------------------------------------------------------
+| 4  | CRC             | int     | 4    |              |
+--------------------------------------------------------</pre>
+<p>它的解析函数大概是这个样子：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">bool parse_message_x(char* data, int32 size, MessageX&amp; x) {
+    char *ptr = data;
+    if (ptr + sizeof(int8) &lt;= data + size) {
+        x.message_type = read_int8(ptr);
+        if (0x01 != x.message_type) return false;
+        ptr += sizeof(int8);
+    } else {
+        return false;
+    }
+    if (ptr + sizeof(int16) &lt;= data + size) {
+        x.payload_size = read_int16(ptr);
+        ptr += sizeof(int16);
+    } else {
+        return false;
+    }
+    if (ptr + x.payload_size &lt;= data + size) {
+        x.payload = new int8[x.payload_size];
+        read(ptr, x.payload, x.payload_size);
+        ptr += x.payload_size;
+    } else {
+        return false;
+    }
+    if (ptr + sizeof(int32) &lt;= data + size) {
+        x.crc = read_int32(ptr);
+        ptr += sizeof(int32);
+    } else {
+        delete x.payload;
+        return false;
+    }
+    if (crc(data, sizeof(int8) + sizeof(int16) + x.payload_size) != x.crc) {
+        delete x.payload;
+        return false;
+    }
+    return true;
+}
+</pre>
+<p>很明显，虽然消息X的定义非常简单，但是它的解析函数却显得很繁琐，需要小心翼翼地处理很多细节。在处理其他消息Y时，虽然虽然Y和X很相似，但是却不得不再次在解析过程中处理这些细节，就是组件复用方法的局限性，它只能帮我们按照函数或者类的语义把功能封装成可复用的组件，但是消息的结构特征既不是函数也不是类，这就是抽象维度的失配。</p>
+<h4><span class="ez-toc-section" id="%E7%A8%8B%E5%BA%8F%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%A4%8D%E6%9D%82%E6%80%A7"></span><a href="http://www.cnblogs.com/weidagang2046/p/the-nature-of-meta.html#-2" name="-2"></a>程序的本质复杂性<span class="ez-toc-section-end"></span></h4>
+<p>上面分析了组件复用技术有着根本性的局限性，现在我们要进一步思考：</p>
+<blockquote><p>如果目标还是代码“简短、优雅、易理解、易维护”，那么代码优化是否有一个理论极限？这个极限是由什么决定的？普通代码比起最优代码多出来的“冗余部分”到底干了些什么事情？</p></blockquote>
+<p>回答这个问题要从程序的本质说起。Pascal语言之父Niklaus Wirth在70年代提出：Program = Data Structure + Algorithm，随后逻辑学家和计算机科学家R Kowalski进一步提出：Algorithm = Logic + Control。谁更深刻更有启发性？当然是后者！而且我认为数据结构和算法都属于控制策略，综合二位的观点，加上我自己的理解，程序的本质是：Program = Logic + Control。换句话说，程序包含了逻辑和控制两个维度。</p>
+<p>逻辑就是问题的定义，比如，对于排序问题来讲，逻辑就是“什么叫做有序，什么叫大于，什么叫小于，什么叫相等”？控制就是如何合理地安排时间和空间资源去实现逻辑。逻辑是程序的灵魂，它定义了程序的本质；控制是为逻辑服务的，是非本质的，可以变化的，如同排序有几十种不同的方法，时间空间效率各不相同，可以根据需要采用不同的实现。</p>
+<p>程序的复杂性包含了本质复杂性和非本质复杂性两个方面。套用这里的术语， <strong>程序的本质复杂性就是逻辑，非本质复杂性就是控制</strong>。逻辑决定了代码复杂性的下限，也就是说不管怎么做代码优化，Office程序永远比Notepad程序复杂，这是因为前者的逻辑就更为复杂。如果要代码简洁优雅，任何语言和技术所能做的只是尽量接近这个本质复杂性，而不可能超越这个理论下限。</p>
+<p>理解”程序的本质复杂性是由逻辑决定的”从理论上为我们指明了代码优化的方向：让逻辑和控制这两个维度保持正交关系。来看Java的Collections.sort方法的例子：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">interface Comparator&lt;T&gt; {
+    int compare(T o1, T o2);
+}
+public static &lt;T&gt; void sort(List&lt;T&gt; list, Comparator&lt;? super T&gt; comparator)
+</pre>
+<p>使用者只关心逻辑部份，即提供一个Comparator对象表明序在类型T上的定义；控制的部分完全交给方法实现者，可以有多种不同的实现，这就是逻辑和控制解耦。同时，我们也可以断定，这个设计已经达到了代码优化的理论极限，不会有本质上比它更简洁的设计（忽略相同语义的语法差异），为什么？因为逻辑决定了它的本质复杂度，Comparator和Collections.sort的定义完全是逻辑的体现，不包含任何非本质的控制部分。</p>
+<p>另外需要强调的是，上面讲的“控制是非本质复杂性”并不是说控制不重要，控制往往直接决定了程序的性能，当我们因为性能等原因必须采用某种控制的时候，实际上被固化的控制策略也是一种逻辑。比如，当你的需求是“从进程虚拟地址ptr1拷贝1024个字节到地址ptr2“，那么它就是问题的定义，它就是逻辑，这时，提供进程虚拟地址直接访问语义的底层语言就与之完全匹配，反而是更高层次的语言对这个需求无能为力。</p>
+<p>介绍了逻辑和控制的关系，可能很多朋友已经开始意识到了上面二进制文件解析实现的问题在哪里，其实这也是 <strong>绝大多数程序不够简洁优雅的根本原因：逻辑与控制耦合</strong>。上面那个消息定义表格就是不包含控制的纯逻辑，我相信即使不是程序员也能读懂它；而相应的代码把逻辑和控制搅在一起之后就不那么容易读懂了。</p>
+<p>熟悉OOP和GoF设计模式的朋友可能会把“逻辑与控制解耦”与经常听说的“接口和实现解耦”联系在一起，他们是不是一回事呢？其实，把这里所说的逻辑和OOP中的接口划等号是似是而非的， 而GoF设计模式最大的问题就在于有意无意地让人们以为“what就是interface, interface就是what”，很多朋友一想到要表达what，要抽象，马上写个接口出来，这就是潜移默化的惯性思维，自己根本意识不到问题在哪里。其实，接口和前面提到的组件复用技术一样，同样受限于特定的抽象维度，它不是表达逻辑的通用方法，比如，我们无法把二进制文件格式特征用接口来表示。</p>
+<p>另外，我们熟悉的许多GoF模式以“逻辑与控制解耦”的观点来看，都不是最优的。比如，很多时候Observer模式都是典型的以控制代逻辑，来看一个例子：</p>
+<blockquote><p>对于某网页的超链接，要求其颜色随着状态不同而变化，点击之前的颜色是#FF0000，点击后颜色变成#00FF00。</p></blockquote>
+<p>基于Observer模式的实现是这样的：</p>
+<p>[javascript]<br/>
+$(a).css(‘color’, ‘#FF0000’);</p>
+<p>$(a).click(function() {<br/>
+$(this).css(‘color’, ‘#00FF00’);<br/>
+});<br/>
+[/javascript]</p>
+<p>而基于纯CSS的实现是这样的：</p>
+<pre data-enlighter-language="css" class="EnlighterJSRAW">a:link {color: #FF0000}
+a:visited {color: #00FF00}
+</pre>
+<p>通过对比，您看出二者的差别了吗？显然，Observer模式包含了非本质的控制，而CSS是只包含逻辑。理论上讲，CSS能做的事情，JavaScript都能通过控制做到，那么为什么浏览器的设计者要引入CSS呢，这对我们有何启发呢？</p>
+<h4><span class="ez-toc-section" id="%E5%85%83%E8%AF%AD%E8%A8%80%E6%8A%BD%E8%B1%A1"></span><a href="http://www.cnblogs.com/weidagang2046/p/the-nature-of-meta.html#-3" name="-3"></a>元语言抽象<span class="ez-toc-section-end"></span></h4>
+<p>好的，我们继续思考下面这个问题：</p>
+<blockquote><p>
+逻辑决定了程序的本质复杂性，但接口不是表达逻辑的通用方式，那么是否存在表达逻辑的通用方式呢？</p></blockquote>
+<p>答案是：有！这就是元(Meta)，包括元语言(Meta Language)和元数据(Meta Data)两个方面。元并不神秘，我们通常所说的配置就是元，元语言就是配置的语法和语义，元数据就是具体的配置，它们之间的关系就是C语言和C程序之间的关系；但是，同时元又非常神奇，因为元既是数据也是代码，在表达逻辑和语义方面具有无与伦比的灵活性。至此，我们终于找到了让代码变得简洁、优雅、易理解、易维护的终极方法，这就是： <strong>通过元语言抽象让逻辑和控制彻底解耦</strong>！</p>
+<p>比如，对于二进制消息解析，经典的做法是类似Google的<a href="https://code.google.com/p/protobuf/">Protocol Buffers</a>，把消息结构特征抽象出来，定义消息描述元语言，再通过元数据描述消息结构。下面是Protocol Buffers元数据的例子，这个元数据是纯逻辑的表达，它的复杂度体现的是消息结构的本质复杂度，而如何序列化和解析这些控制相关的部分被Protocol Buffers编译器隐藏起来了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">message Person {
+  required int32 id = 1;
+  required string name = 2;
+  optional string email = 3;
+}
+</pre>
+<p>元语言解决了逻辑表达问题，但是最终要与控制相结合成为具体实现，这就是元语言到目标语言的映射问题。通常有这两种方法：</p>
+<p>1) 元编程(Meta Programming)，开发从元语言到目标语言的编译器，将元数据编译为目标程序代码；</p>
+<p>2) 元驱动编程(Meta Driven Programming)，直接在目标语言中实现元语言的解释器。</p>
+<p>这两种方法各有优势，元编程由于有静态编译阶段，一般产生的目标程序代码性能更好，但是这种方式混合了两个层次的代码，增加了代码配置管理的难度，一般还需要同时配备Build脚本把整个代码生成自动集成到Build过程中，此外，和IDE的集成也是问题；元驱动编程则相反，没有静态编译过程，元语言代码是动态解析的，所以性能上有损失，但是更加灵活，开发和代码配置管理的难度也更小。除非是性能要求非常高的场合，我推荐的是元驱动编程，因为它更轻量，更易于与目标语言结合。</p>
+<p>下面是用元驱动编程解决二进制消息解析问题的例子，meta_message_x是元数据，parse_message是解释器：</p>
+<p>[javascript]<br/>
+var meta_message_x = {<br/>
+id: ‘x’,<br/>
+fields: [<br/>
+{ name: ‘message_type’, type: int8, value: 0x01 },<br/>
+{ name: ‘payload_size’, type: int16 },<br/>
+{ name: ‘payload’, type: bytes, size: ‘$payload_size’ },<br/>
+{ name: ‘crc’, type: crc32, source: [‘message_type’, ‘payload_size’, ‘payload’] }<br/>
+]<br/>
+}</p>
+<p>var message_x = parse_message(meta_message_x, data, size);<br/>
+[/javascript]</p>
+<p>这段代码我用的是JavaScript语法，因为对于支持Literal的类似JSON对象表示的语言中，实现元驱动编程最为简单。如果是Java或C++语言，语法上稍微繁琐一点，不过本质上是一样的，或者引入JSON配置文件，然后解析配置，或者定义MessageConfig类，直接把这个类对象作为配置信息。</p>
+<p>二进制文件解析问题是一个经典问题，有Protocol Buffers、Android AIDL等大量的实例，所以很多人能想到引入消息定义元语言，但是如果我们把问题稍微变换，能想到采用这种方法的人就不多了。来看下面这个问题：</p>
+<blockquote><p>某网站有新用户注册、用户信息更新，和个性设置等Web表单。出于性能和用户体验的考虑，在用户点击提交表单时，会先进行浏览器端的验证，比如：name字段至少3个字符，password字段至少8个字符，并且和repeat password要一致，email要符合邮箱格式；通过浏览器端验证以后才通过HTTP请求提交到服务器。</p></blockquote>
+<p>普通的实现是这个样子的：</p>
+<p>[javascript]<br/>
+function check_form_x() {<br/>
+var name = $(‘#name’).val();<br/>
+if (null == name || name.length &lt;= 3) {<br/>
+return { status : 1, message: ‘Invalid name’ };<br/>
+}</p>
+<p> var password = $(‘#password’).val();<br/>
+if (null == password || password.length &lt;= 8) {<br/>
+return { status : 2, message: ‘Invalid password’ };<br/>
+}</p>
+<p> var repeat_password = $(‘#repeat_password’).val();<br/>
+if (repeat_password != password.length) {<br/>
+return { status : 3, message: ‘Password and repeat password mismatch’ };<br/>
+}</p>
+<p> var email = $(‘#email’).val();<br/>
+if (check_email_format(email)) {<br/>
+return { status : 4, message: ‘Invalid email’ };<br/>
+}</p>
+<p> …</p>
+<p> return { status : 0, message: ‘OK’ };</p>
+<p>}<br/>
+[/javascript]</p>
+<p>上面的实现就是按照组建复用的思想封装了一下检测email格式之类的通用函数，这和刚才的二进制消息解析非常相似，没法在不同的表单之间进行大规模复用，很多细节都必须被重复编写。下面是用元语言抽象改进后的做法：</p>
+<p>[javascript]<br/>
+var meta_create_user = {<br/>
+form_id : ‘create_user’,<br/>
+fields : [<br/>
+{ id : ‘name’, type : ‘text’, min_length : 3 },<br/>
+{ id : ‘password’, type : ‘password’, min_length : 8 },<br/>
+{ id : ‘repeat-password’, type : ‘password’, min_length : 8 },<br/>
+{ id : ’email’, type : ’email’ }<br/>
+]<br/>
+};</p>
+<p>var r = check_form(meta_create_user);<br/>
+[/javascript]</p>
+<p>通过定义表单属性元语言，整个逻辑顿时清晰了，细节的处理只需要在check_form中编写一次，完全实现了“简短、优雅、易理解、以维护”的目标。其实，不仅Web表单验证可以通过元语言描述，整个Web页面从布局到功能全部都可以通过一个元对象描述，完全将逻辑和控制解耦。此外，我编写的用于解析命令行参数的<a href="https://github.com/weidagang/line-parser-js">lineparser.js</a>库也是基于元语言的，有兴趣的朋友可以参考并对比它和其他命令行解析库的设计差异。</p>
+<p>最后，我们再来从代码长度的角度来分析一下元驱动编程和普通方法之间的差异。假设一个功能在系统中出现了n次，对于普通方法来讲，由于逻辑和控制的耦合，它的代码量是n * (L + C)，而元驱动编程只需要实现一次控制，代码长度是C + n * L，其中L表示逻辑相关的代码量，C表示控制相关的代码量。通常情况下L部分都是一些配置，不容易引入bug，复杂的主要是C的部分，普通方法中C被重复了n次，引入bug的可能性大大增加，同时修改一个bug也可能要改n个地方。所以，对于重复出现的功能，元驱动编程大大减少了代码量，减小了引入bug的可能，并且提高了可维护性。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span><a href="http://www.cnblogs.com/weidagang2046/p/the-nature-of-meta.html#-4" name="-4"></a>总结<span class="ez-toc-section-end"></span></h4>
+<p>《人月神话》的作者Fred Brooks曾在80年代阐述了它对于软件复杂性的看法，即著名的<a href="https://en.wikipedia.org/wiki/No_Silver_Bullet">No Silver Bullet</a>。他认为不存在一种技术能使得软件开发在生产力、可靠性、简洁性方面提高一个数量级。我不清楚Brooks这一论断详细的背景，但是就个人的开发经验而言，元驱动编程和普通编程方法相比在生产力、可靠性和简洁性方面的确是数量级的提升,在我看来它就是软件开发的银弹！</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10652-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>程序的本质复杂性和元语言抽象</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-880658" class="comment even thread-even depth-1">
+<article id="div-comment-880658" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1645da8dd1f88133b2d4496f3c9fc5cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1645da8dd1f88133b2d4496f3c9fc5cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">厌恶带路党</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-880658"><time datetime="2013-11-04T18:52:28+08:00">2013年11月04日 18:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>傻逼，一天到晚吹嘘国外，你以为中国成了伊拉克你就有前途了？傻逼一个</p>
+</div>
+ </article>
+</li>
+<li id="comment-882456" class="comment byuser comment-author-todd bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-882456" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/weidagang2046/" class="url" rel="ugc external nofollow">Todd</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-882456"><time datetime="2013-11-05T09:34:19+08:00">2013年11月05日 09:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-880476" rel="nofollow">@Allen </a><br/>
+二者有区别又有联系，我认为最本质的区别在于声明式编程只强调“基于what编程”，而MDP强调“what和how解耦，但是还能自己控制how”。</p>
+</div>
+ </article>
+</li>
+<li id="comment-882853" class="comment even thread-even depth-1">
+<article id="div-comment-882853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e5c46201224479cb0147bcb3e05fdaa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e5c46201224479cb0147bcb3e05fdaa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gooooloo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-882853"><time datetime="2013-11-05T11:59:55+08:00">2013年11月05日 11:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>observer 的例子并不好，那个场景显然更适合状态模式（也正好吻合所谓”基于纯CSS的实现”）。用不合适的模式来说明“我们熟悉的许多GoF模式以\“逻辑与控制解耦\”的观点来看，都不是最优的”并不具有说服力。不过对于作者本质复杂性的观点还是很赞同的。赞。</p>
+</div>
+ </article>
+</li>
+<li id="comment-882993" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-882993" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/290e878c36bdb0b755e27ced4b94c7e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/290e878c36bdb0b755e27ced4b94c7e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">owen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-882993"><time datetime="2013-11-05T12:45:37+08:00">2013年11月05日 12:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>能否把 parse_message(meta_message_x, data, size) 和 check_form(meta_create_user) 的实现写完后发出来看看？<br/>
+我不认为你把两个实现都写完后看上去会比原来的更简洁</p>
+</div>
+ </article>
+</li>
+<li id="comment-883222" class="comment even thread-even depth-1">
+<article id="div-comment-883222" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-883222"><time datetime="2013-11-05T14:02:16+08:00">2013年11月05日 14:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-882993"><p>
+<strong><a href="#comment-882993" rel="nofollow">owen </a> :</strong>能否把 parse_message(meta_message_x, data, size) 和 check_form(meta_create_user) 的实现写完后发出来看看？我不认为你把两个实现都写完后看上去会比原来的更简洁</p></blockquote>
+<p>的确，复杂度、功能点是客观存在的，只会转移不会消失。<br/>
+抽象、归纳、合并，只是避免了重复的那部分。而且存在一个风险：如果需求变得那些重复的部分有相当的不同时，原来的（成功地进行了抽象、归纳、合并的）框架，需要较大的改动。</p>
+</div>
+ </article>
+</li>
+<li id="comment-886738" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-886738" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d7b3f89716a395d44721d8d49729a27?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d7b3f89716a395d44721d8d49729a27?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fanhe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-886738"><time datetime="2013-11-06T11:49:31+08:00">2013年11月06日 11:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-883222" rel="nofollow">@haitao </a><br/>
+同意这个同学的观点，无法预测的需求变化可以把任何设计都干掉</p>
+</div>
+ </article>
+</li>
+<li id="comment-888460" class="comment even thread-even depth-1">
+<article id="div-comment-888460" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a933647463239ed2a4d47c56c121fbb8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a933647463239ed2a4d47c56c121fbb8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/zagfai" class="url" rel="ugc external nofollow">Zagfai</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-888460"><time datetime="2013-11-06T20:24:34+08:00">2013年11月06日 20:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-883222" rel="nofollow">@haitao </a> </p>
+<p>在进行一系列的抽象实践以后我有开始有点赞同这个观点</p>
+</div>
+ </article>
+</li>
+<li id="comment-897680" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-897680" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31f3384c362cc96d205c2a2627840a0f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31f3384c362cc96d205c2a2627840a0f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">周大仙人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-897680"><time datetime="2013-11-08T14:39:02+08:00">2013年11月08日 14:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-865910" rel="nofollow">@felix021 </a><br/>
+这是成长的，解析逻辑一变，本来就应该影响所有的配置，如果你觉得你的配置不应该变，那说明你不应该用这个去解析。</p>
+</div>
+ </article>
+</li>
+<li id="comment-897706" class="comment even thread-even depth-1">
+<article id="div-comment-897706" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31f3384c362cc96d205c2a2627840a0f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31f3384c362cc96d205c2a2627840a0f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">周大仙人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-897706"><time datetime="2013-11-08T14:47:30+08:00">2013年11月08日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-869634" rel="nofollow">@shuiren </a><br/>
+赞同，其实元数据编程，我们一直都在用。不就是定义一个数据结构，然后把相关字段的判断条件封装起来，然后写个方法，传入该数据结构，里面用遍历各个条件操作就行了。把这个当成银弹，个人觉得有点过了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-897935" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-897935" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4ce6a256621443d532f909d7e6658d7b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4ce6a256621443d532f909d7e6658d7b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-897935"><time datetime="2013-11-08T15:48:38+08:00">2013年11月08日 15:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只看了上半部分。Algorithm = logic + control 长见识了。原文已下载，一会拜读下。<br/>
+有个疑问：<br/>
+事是人做的，程是农编的。</p>
+<p>遇到问题先定义logic。在时空中没有两个完全相同的人：不同的人，相同的人不同的时间、阶段，对logic认识和定义是否会有所差别？如何判断当前的定义就是最本质的定义？</p>
+<p>再者，从解决问题的现实角度上讲，问题的解决是需要“工具”的。手边能获得或使用的“工具”是有限制的，“工具”可以有区别，但是无法突破使用“工具”的范筹。</p>
+<p>个人支持No Sliver Bullet的论断。我相信楼主的初心是好的，但是到了现实中，我们往往只能：<br/>
+极尽人事，各安天命<br/>
+这不正是做人的乐趣的吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-902820" class="comment even thread-even depth-1">
+<article id="div-comment-902820" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/07c75bc435383db68a7c5b3bc9634a04?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/07c75bc435383db68a7c5b3bc9634a04?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lgf2002</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-902820"><time datetime="2013-11-09T12:17:41+08:00">2013年11月09日 12:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人浅见，函数check_form_x() 的实现方式并不好，随着软件越来越复杂，肯定会出现重复代码，这是一定的。此函数，并没有完全遵守知识的单点性原则，一个函数做了三四件事情，直接实现了。什么是单一职责，只要被调用的函数是处于同一抽象层次，也满足单一职责原则，但是，此函数，并不满足，它包含了好几个知识点。所以，不用元数据，大多数情况下，我们可以将你所说的代码量 n * (L + C)改写<br/>
+元数据虽然在有些时候带来方便，比如值经常变化的，写成配置文件、利用配置文件信息，灵活变动软件所需的组件模块，以及还有像ASN.1协议的asn、CORBA的idl等，就算是将定义解析为编译器，或者其它什么解释器能识别的语言，这都需要做额外的工作，最起码需要对元数据进行解析。转化后的东西，还是要做大量的工作去实现细节。这样做，同普通方式相比，效率肯定是提高了许多，但是数量级上的改变，我想肯定是达不到的，况且，这还取决于普通编程方式有多大程度满足了最优，也不是所有的地方都能用元数据表示。</p>
+</div>
+ </article>
+</li>
+<li id="comment-905475" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-905475" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b88c3f2c14ff798ede69894d619ee9c5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b88c3f2c14ff798ede69894d619ee9c5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.900te.com" class="url" rel="ugc external nofollow">九百特</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-905475"><time datetime="2013-11-09T22:54:33+08:00">2013年11月09日 22:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>人生本来就是抽象的！</p>
+</div>
+ </article>
+</li>
+<li id="comment-909336" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=6" class="url" rel="ugc external nofollow">程序的本质复杂性和元语言抽象 | multiprocess</a> </div>
+</li>
+<li id="comment-909523" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=134" class="url" rel="ugc external nofollow">面试题：火车运煤问题 | multiprocess</a> </div>
+</li>
+<li id="comment-913671" class="comment even thread-even depth-1">
+<article id="div-comment-913671" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cb7d708553d18477b8451f25797a891?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cb7d708553d18477b8451f25797a891?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.qqjianli.com" class="url" rel="ugc external nofollow">敲墙简历</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-913671"><time datetime="2013-11-11T13:35:03+08:00">2013年11月11日 13:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>– –</p>
+</div>
+ </article>
+</li>
+<li id="comment-919356" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-919356" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7e674d4fdba7e027b60cbb7f415f8521?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7e674d4fdba7e027b60cbb7f415f8521?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">霹靂小金剛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-919356"><time datetime="2013-11-12T15:52:21+08:00">2013年11月12日 15:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>除了第一個例子外，其餘的都沒有給出parse的實現，meta programming最大的工作量包含兩個方面：define and parse，define很容易解釋，問題是parse的工作量往往很大，如何平衡靈活性與需求也是更值得討論的地方…</p>
+</div>
+ </article>
+</li>
+<li id="comment-919749" class="comment even thread-even depth-1">
+<article id="div-comment-919749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/167e1082a6a3c329a3f617f180bd4520?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/167e1082a6a3c329a3f617f180bd4520?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fish</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-919749"><time datetime="2013-11-12T17:45:03+08:00">2013年11月12日 17:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-883222"><p>
+<strong><a href="#comment-883222" rel="nofollow">haitao</a> :</strong></p>
+<blockquote cite="#commentbody-882993"><p>
+<strong><a href="#comment-882993" rel="nofollow">owen </a> :</strong>能否把 parse_message(meta_message_x, data, size) 和 check_form(meta_create_user) 的实现写完后发出来看看？我不认为你把两个实现都写完后看上去会比原来的更简洁</p></blockquote>
+<p>的确，复杂度、功能点是客观存在的，只会转移不会消失。<br/>
+抽象、归纳、合并，只是避免了重复的那部分。而且存在一个风险：如果需求变得那些重复的部分有相当的不同时，原来的（成功地进行了抽象、归纳、合并的）框架，需要较大的改动。
+</p></blockquote>
+<p>赞同这个观点，使用数据表示逻辑只是更直观而已，将实现这个逻辑的复杂控制转移了而已。再美丽优雅的设计，下面都是一堆肮脏的实现。</p>
+</div>
+ </article>
+</li>
+<li id="comment-928163" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-928163" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bbef5eb7b94fb197f883589f97e34147?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bbef5eb7b94fb197f883589f97e34147?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">三断笛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-928163"><time datetime="2013-11-14T07:38:30+08:00">2013年11月14日 07:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>嗯,配置式编程必然是未来的方向.<br/>
+现在一扎堆地搞面向对象,设计模式啥的,都远不如配置式编程来的爽快.</p>
+</div>
+ </article>
+</li>
+<li id="comment-929050" class="comment even thread-even depth-1">
+<article id="div-comment-929050" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6455a1f8818065490a5941aeaa2d9f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6455a1f8818065490a5941aeaa2d9f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">silas.xie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-929050"><time datetime="2013-11-14T11:46:33+08:00">2013年11月14日 11:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看到那个公式，我就兴奋</p>
+</div>
+ </article>
+</li>
+<li id="comment-929097" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-929097" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6455a1f8818065490a5941aeaa2d9f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6455a1f8818065490a5941aeaa2d9f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">silas.xie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-929097"><time datetime="2013-11-14T11:58:12+08:00">2013年11月14日 11:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-873385" rel="nofollow">@真话传达着 </a><br/>
+代码其实是可以修改自己的行为方法，所以，我想那种状态，在后面是会改变的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-929858" class="comment even thread-even depth-1">
+<article id="div-comment-929858" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/55c7be2c9c81fe0064e354f2a5b58e60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/55c7be2c9c81fe0064e354f2a5b58e60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">五棵松</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-929858"><time datetime="2013-11-14T16:15:36+08:00">2013年11月14日 16:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>抽象的极致就是开发一门新语言, 那么多的脚本语言就是例子</p>
+</div>
+ </article>
+</li>
+<li id="comment-941565" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-941565" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8107cfefeeb689b9039dc6658d7427f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8107cfefeeb689b9039dc6658d7427f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">delight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-941565"><time datetime="2013-11-16T21:15:50+08:00">2013年11月16日 21:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>显然，没有银弹。<br/>
+元数据在《程序员修炼之道》里面也提到过，并不是什么新想法。<br/>
+在可以预测需求，或者系统资源不足的情况下（嵌入式），没必要进行这种抽象。</p>
+</div>
+ </article>
+</li>
+<li id="comment-941901" class="comment byuser comment-author-todd bypostauthor even thread-even depth-1">
+<article id="div-comment-941901" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/weidagang2046/" class="url" rel="ugc external nofollow">Todd</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-941901"><time datetime="2013-11-16T23:02:41+08:00">2013年11月16日 23:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-941565" rel="nofollow">@delight </a><br/>
+“可以预测需求…没必要进行这种抽象”，think it again :)</p>
+</div>
+ </article>
+</li>
+<li id="comment-954114" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-954114" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bd7da5407378e43661743972d557afa7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bd7da5407378e43661743972d557afa7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">agileluo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-954114"><time datetime="2013-11-20T07:56:13+08:00">2013年11月20日 07:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主的见解和Martin flower在《Domain-Specific Languages》提到api的设计一致啊，都是牛人，其实在我们大部分编程人员的职业生涯中，一至都从事着类似元编程的行为，设计易用的api(DSL的一个方面，元编程是另一种实现) ，目标是实现“简短、优雅、易理解、易维护”的代码</p>
+</div>
+ </article>
+</li>
+<li id="comment-972204" class="comment even thread-even depth-1">
+<article id="div-comment-972204" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/677edb1dad1370668dd046a1491baeca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/677edb1dad1370668dd046a1491baeca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://my.oschina.net/enyo/blog" class="url" rel="ugc external nofollow">enyo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-972204"><time datetime="2013-11-23T22:02:44+08:00">2013年11月23日 22:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-919749" rel="nofollow">@fish </a><br/>
+所言甚是，牛粪生鲜花</p>
+</div>
+ </article>
+</li>
+<li id="comment-972247" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-972247" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ced5329e792efc875c6c20eebfba5ae5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ced5329e792efc875c6c20eebfba5ae5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">TestOfLive</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-972247"><time datetime="2013-11-23T22:16:04+08:00">2013年11月23日 22:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-919749"><p>
+<strong><a href="#comment-919749" rel="nofollow">fish</a> :</strong></p>
+<blockquote cite="#commentbody-883222"><p>
+<strong><a href="#comment-883222" rel="nofollow">haitao</a> :</strong></p>
+<blockquote cite="#commentbody-882993"><p>
+<strong><a href="#comment-882993" rel="nofollow">owen </a> :</strong>能否把 parse_message(meta_message_x, data, size) 和 check_form(meta_create_user) 的实现写完后发出来看看？我不认为你把两个实现都写完后看上去会比原来的更简洁</p></blockquote>
+<p>的确，复杂度、功能点是客观存在的，只会转移不会消失。<br/>
+抽象、归纳、合并，只是避免了重复的那部分。而且存在一个风险：如果需求变得那些重复的部分有相当的不同时，原来的（成功地进行了抽象、归纳、合并的）框架，需要较大的改动。
+</p></blockquote>
+<p>赞同这个观点，使用数据表示逻辑只是更直观而已，将实现这个逻辑的复杂控制转移了而已。再美丽优雅的设计，下面都是一堆肮脏的实现。
+</p></blockquote>
+<p>当复用的时候才是关键， 即使check_form(meta_create_user) 的实现非常繁琐，但是可以只需一次编码。作者的观点至少在这个例子里面体现的淋漓尽致。</p>
+</div>
+ </article>
+</li>
+<li id="comment-979783" class="comment even thread-even depth-1">
+<article id="div-comment-979783" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84fd0a4ec9e04a98e48a0364565f091e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84fd0a4ec9e04a98e48a0364565f091e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sjinny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-979783"><time datetime="2013-11-25T17:39:05+08:00">2013年11月25日 17:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一开始消息解析那个例子，其实那个地方是有组件复用的用武之地的。因为不同消息的解析中，对相同类型或结构的解析过程是相同的，所以往往会把这些相同的过程抽出来实现为单独的函数。C++里一般会把数据抽象为一个字节流，加上操作符重载。另外对于一些标准的容器也会提供支持，比如std::vector。这样一个消息的解析函数里只需要写明数据的解析顺序以及对应的变量，可能还有些条件解析。这一步之后消息解析的函数已经很简洁了，如果想进一步简化，要么用python之类的动态语言，要么就要做代码生成器了（貌似protobuf是这样）。</p>
+</div>
+ </article>
+</li>
+<li id="comment-995453" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-995453" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9be942e1bb28e6a6e86d9017d8ba674d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9be942e1bb28e6a6e86d9017d8ba674d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pccat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-995453"><time datetime="2013-11-28T21:59:38+08:00">2013年11月28日 21:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>编程本质上是一个构造的过程,除非脱离构造(非形式化)描述what,否则描述或编码what的过程，同时也是how的过程。与编码的how并无二致，只是使用的语言不同。<br/>
+当元语言表达能力不强时，不能期望所有的逻辑都在what中书写，这一部分只能以非形式化的方式描述，而留在how中编码体现。<br/>
+元语言并不比普通编码语言具有天生的简洁性，过于强调有时是否会适得其反？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1015821" class="comment even thread-even depth-1">
+<article id="div-comment-1015821" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/800a517521d12c536a35d026da79a4e5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/800a517521d12c536a35d026da79a4e5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">daleydeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1015821"><time datetime="2013-12-02T23:45:03+08:00">2013年12月02日 23:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>异曲同工，我认为需求而非设计催生的非冗余代码才是银弹。将本质复杂性尽可能的体现在struct中，而非函数中。因为人对复杂struct的理解要比复杂函数的理解快速容易轻松的多。<br/>
+这样每个函数即可只做简单的逻辑，并把结果保存在struct相应的成员中。</p>
+<p>参见kernel的设计</p>
+</div>
+ </article>
+</li>
+<li id="comment-1041592" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1041592" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87dc9bfab1c07862f7e7386923b0462a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87dc9bfab1c07862f7e7386923b0462a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">下雨在家</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1041592"><time datetime="2013-12-08T00:06:55+08:00">2013年12月08日 00:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>UNIX编程艺术中把这种方法叫数据驱动编程。Martin Flower 叫它 DSL（当然DSL比数据驱动更灵活些）。 我叫它参数化。规格接口化，实现参数化，这也算是基本的设计原则。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1055357" class="comment even thread-even depth-1">
+<article id="div-comment-1055357" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a60864b179205a2e8f1682ae67e64587?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a60864b179205a2e8f1682ae67e64587?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">随便看看</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1055357"><time datetime="2013-12-11T13:47:37+08:00">2013年12月11日 13:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Quote from article:<br/>
+—————————————————————————————————————————<br/>
+回答这个问题要从程序的本质说起。Pascal语言之父Niklaus Wirth在70年代提出：Program = Data Structure + Algorithm，随后逻辑学家和计算机科学家R Kowalski进一步提出：Algorithm = Logic + Control。谁更深刻更有启发性？当然是后者！而且我认为数据结构和算法都属于控制策略，综合二位的观点，加上我自己的理解，程序的本质是：Program = Logic + Control。换句话说，程序包含了逻辑和控制两个维度。<br/>
+—————————————————————————————————————————–<br/>
+看到这里我很崩溃，学而不思则殆，但是思考方式有问题，还要殆啊。多读这段话两遍试试。<br/>
+前面的例子代码也很糟糕，每一个if都包含重复代码。不是不能抽象，是没有做抽象，先把面向对象搞明白，再去搞清楚DSL和声明式编程的区别，元驱动编程请用lisp。思路要清晰，不然看再多的书也没用。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1098684" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1098684" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04637b376a1a4f462b3d56c73a107b71?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04637b376a1a4f462b3d56c73a107b71?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zwm512327</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1098684"><time datetime="2013-12-24T08:26:24+08:00">2013年12月24日 08:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太有启发性了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1112215" class="comment even thread-even depth-1">
+<article id="div-comment-1112215" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f71fcedf7d87766b529d47dd2ff7d5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f71fcedf7d87766b529d47dd2ff7d5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1112215"><time datetime="2013-12-27T13:52:58+08:00">2013年12月27日 13:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看得真心累，非要把自己的想法和大牛的Algorithm=Logic +Control一一对应起来，其实完全没有必要<br/>
+你的“逻辑”，实质上是指常说的“业务逻辑”，一个程序的复杂度下限，当然等价于它的业务逻辑；所谓meta，从你所表述的内容看，其实业界也早有更加清晰的说明：领域编程语言（DSL，Domain Specific Language）。如果DSL能够逐步做好，比如金融领域，实现绝大多数的借贷底层逻辑，业务逻辑当然也能简化，所以这个复杂度下限，也不是一成不变的。<br/>
+本质上而言，为了业务目标做什么事情，和怎么实现这些中间步骤，确实是可以分层，可以简化。但这跟当时的技术水平有很大关系，完全就不是一个一成不变的过程，几年前写代码的时候层次定在某个地方是合理的，过了几年基础技术发展了，层次肯定也会变化。<br/>
+从这篇文章中能学到的是如何在“当前”技术水平下，经验还不算丰富的人，尝试做到相对较好的分层，过几年看，代码还是要升级改写的，没有银弹，没有一劳永逸。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1132361" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1132361" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/677edb1dad1370668dd046a1491baeca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/677edb1dad1370668dd046a1491baeca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://my.oschina.net/enyo/blog" class="url" rel="ugc external nofollow">enyo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1132361"><time datetime="2014-01-02T12:02:35+08:00">2014年01月02日 12:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-905475" rel="nofollow">@九百特 </a><br/>
+不用这么抽象吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1138696" class="comment even thread-even depth-1">
+<article id="div-comment-1138696" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cef724b9246526d34e572d2b621d602b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cef724b9246526d34e572d2b621d602b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.daojidao.com" class="url" rel="ugc external nofollow">古城痴人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1138696"><time datetime="2014-01-04T00:31:33+08:00">2014年01月04日 00:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-886738" rel="nofollow">@fanhe </a><br/>
+确实，变化会出现在任何一个你想不到的地方，变得让你措手不及，之前的所有设计，在这个变化面前显得弱不禁风，有一阵儿，我已经对设计失望了，为了应对莫测的变化，只能从最简单的做起，一个函数只做一个功能，一个类只做一类功能等等，如果妄想一个大而全的抽象？必死，没有悬念。我也理解了为什么Spring中的接口都这么小，因为变化能在瞬间击毁看起来很美好的大一点儿的抽象。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1141501" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1141501" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8ba655ea16a7fe3f21a29396ca52ec3e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8ba655ea16a7fe3f21a29396ca52ec3e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">totin_c</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1141501"><time datetime="2014-01-04T18:05:30+08:00">2014年01月04日 18:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人认为编程好不好，就是看你的程序能不能应对需求的变化，抽象，接口编程, 各种设计模式，DRY原则，表格式驱动等等，都是为了应对变化，将可能变化的东西集中到一个地方。能否编得好程，这就取决你对变化的预测，如果你对变化估计错了，不变化的地方，你用了一些模式，一些架构，去做，就会过度设计，就相当于敌人不会从这个方向进攻，你却布了大量的兵力。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1166486" class="comment even thread-even depth-1">
+<article id="div-comment-1166486" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://WWW.OMG.COM" class="url" rel="ugc external nofollow">OMG</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1166486"><time datetime="2014-01-11T12:32:57+08:00">2014年01月11日 12:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>读了，“上面那个消息定义表格就是不包含控制的纯逻辑，我相信即使不是程序员也能读懂它；而相应的代码把逻辑和控制搅在一起之后就不那么容易读懂了“和哪个验证表单的例子后，觉得自己知道的原来这么少啊，其实可以这么实现啊，以前就看过codeinteger框架中就有一个验证表单，还觉得他不好用呢？原来人家果断就是这么一种元编程的实现版，有眼不识泰山</p>
+</div>
+ </article>
+</li>
+<li id="comment-1206099" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1206099" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f65e9ecdddd3967681ca1e810751950f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f65e9ecdddd3967681ca1e810751950f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">burningstyle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1206099"><time datetime="2014-01-20T15:02:49+08:00">2014年01月20日 15:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-972247" rel="nofollow">@TestOfLive </a><br/>
+我同意……，只用写个解析的代码，配置参数可以随时变化，如果将配置参数单独放入一个文件，也便于实现持久化</p>
+</div>
+ </article>
+</li>
+<li id="comment-1233433" class="comment even thread-even depth-1">
+<article id="div-comment-1233433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/47d5e47271b65109e8d22abc8ca61ab2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/47d5e47271b65109e8d22abc8ca61ab2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://my.oschina.net/clarkhill" class="url" rel="ugc external nofollow">Gavin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1233433"><time datetime="2014-01-28T15:09:11+08:00">2014年01月28日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-897935" rel="nofollow">@dk </a><br/>
+赞同。实现一种语言，与实现一种业务系统在本质上可能是十分相似的。但是精通业务的人不懂编程，精通编程的人不懂业务。所以一个业务系统总是由很多的人一起分工合作才能够完成的。所以差不多，能工作就是我们的标准。圣经中通天塔的故事告诉我们，其实工程本身的成败很大程度上根本就不是技术问题。精通技术的人才多的超出你的想象，但是把这些资源整合在一起，并让他们很好的工作并不容易。所以完美的合作比完美的程序可能更重要一些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1268156" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1268156" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/903571e2b403a6300e9239a210320cee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/903571e2b403a6300e9239a210320cee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dingjianghao.com" class="url" rel="ugc external nofollow">jack</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1268156"><time datetime="2014-02-12T13:04:21+08:00">2014年02月12日 13:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞同。元编程的确大大提高了复用性。举个例子，我们在hibernate之类的ORM工具配置一个字段是否可以为空，类型等。同理，我联想到更多，比如既然我们知道了字段的元数据，不但可以用于持久化，也可以用于展示层，自动生成界面组件，表单验证等。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1358400" class="comment even thread-even depth-1">
+<article id="div-comment-1358400" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/acfe7fc1ec28d4ceaaf92b32b9851507?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/acfe7fc1ec28d4ceaaf92b32b9851507?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">魔芋红茶</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1358400"><time datetime="2014-03-11T10:03:47+08:00">2014年03月11日 10:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-882993" rel="nofollow">@owen </a><br/>
+重点不在于复杂度会不会出现, 而在于将Logic用元语言的方式从复杂控制中拆分出来, 变成一个更接近自然语言, 简洁的东西, 而这个是本质化的东西, 是我们求解的目标问题的出发点 也往往是会出现变化的东西, 而对这个元的解析就属于控制, 其复杂度取决于元定义也就是问题本身的复杂度. 这篇文章的重点在剥离问题本质上, 而非复杂度是否从根本上消除, 至少在编程上没有可能用1+1=2来实现航天飞机发射… 建议你仔细看完全文 , 末尾部分的复杂度分析L+n*C很精彩, 且有现实意义</p>
+</div>
+ </article>
+</li>
+<li id="comment-1365355" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1365355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/18fd2401e2a99eb1b8ad6f4c062b0215?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/18fd2401e2a99eb1b8ad6f4c062b0215?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HJC</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1365355"><time datetime="2014-03-12T22:37:17+08:00">2014年03月12日 22:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章很有启发性，我之前也想到过类似的问题。不过没有这篇文章说得那样清晰完整。<br/>
+类似方法，我一直称为数据驱动，而非博主所说的元语言抽象。博主所说的逻辑+控制，我称呼为数据+解释。多少有点区别，但我感觉它们本质上是同一种东西。<br/>
+程序，通常分为代码+数据。最开始学编程的时候，我一直将代码和数据看成是两个完全不同的东西，后来我才发觉它们是可以统一起来的。某个角度看，是数据的东西，可以被当成代码；反之亦然。代码和数据只是信息的不同描述。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1472668" class="comment even thread-even depth-1">
+<article id="div-comment-1472668" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c658e2b1cd28d79640d1ff40a42f1f3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c658e2b1cd28d79640d1ff40a42f1f3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/liigo" class="url" rel="ugc external nofollow">Liigo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1472668"><time datetime="2014-05-30T11:45:03+08:00">2014年05月30日 11:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老套的参数化、配置化，并不是什么新东西，老老实实的总结一些也挺好的，关键是作者非要套上自创的所谓新概念、炒作概念，有装逼的意味。事实上文中的概念不清晰、错乱，前面已有网友指出了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1495224" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1495224" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e89c94a4233c86a345a26d3e881bc325?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e89c94a4233c86a345a26d3e881bc325?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">凹凹凸</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1495224"><time datetime="2014-07-14T22:12:37+08:00">2014年07月14日 22:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-863911" rel="nofollow">@banpros </a><br/>
+确实 更多的时候需要根据实际情况权衡</p>
+</div>
+ </article>
+</li>
+<li id="comment-1566966" class="comment even thread-even depth-1">
+<article id="div-comment-1566966" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/66495955ff2a02db6fa6acff1156561d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/66495955ff2a02db6fa6acff1156561d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ownone</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1566966"><time datetime="2014-10-09T18:22:14+08:00">2014年10月09日 18:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耐着心思看完了，觉得比较失望。<br/>
+觉得作者在鼓吹元编程而对 逻辑+控制进行牵强的附会。<br/>
+作者在元编程的例子，在我看来，对于各项问题表述的提取-&gt;进行分解粒度-&gt;重组解决各项问题。<br/>
+是对问题的分解，上升到元编程有点过。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1607838" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1607838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7cc2cff5e96bc8065f9e9a9cf4bb631c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7cc2cff5e96bc8065f9e9a9cf4bb631c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mmmmm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1607838"><time datetime="2014-11-18T20:44:02+08:00">2014年11月18日 20:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于静态规则的数据表示比较简单，对于动态规则就弱了啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1639595" class="comment even thread-even depth-1">
+<article id="div-comment-1639595" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/32d13e5f2486bb72ea598c8a7c820630?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/32d13e5f2486bb72ea598c8a7c820630?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lili</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10652.html/comment-page-2#comment-1639595"><time datetime="2015-01-03T16:47:07+08:00">2015年01月03日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个帖子是我看到的作者所有帖子中对程序本质最深刻思辨.<br/>
+非常赞同. 所有这又说明了为什么再有了这么多的语言以后,新的语言还是不停地产生.</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10652.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10652.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">10652</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

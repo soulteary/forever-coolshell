@@ -1,0 +1,701 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何测试洗牌程序 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8593 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8593" class="post-content post-8593 post type-post status-publish format-standard hentry category-misc category-proglanguage tag-algorithm tag-test tag-unit-test">
+<header class="entry-header">
+<span class="screen-reader-text">如何测试洗牌程序</span>
+<h1 class="entry-title">如何测试洗牌程序</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8593.html" title="08:22" rel="bookmark"><time class="entry-date" datetime="2012-11-20T08:22:07+08:00" pubdate="">2012年11月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8593.html#comments" class="comments-link">142 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 92,187 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>我希望本文有助于你了解测试软件是一件很重要也是一件不简单的事。</p>
+<p>我们有一个程序，叫ShuffleArray()，是用来洗牌的，我见过N多千变万化的ShuffleArray()，但是似乎从来没人去想过怎么去测试这个算法。所以，我在面试中我经常会问应聘者如何测试ShuffleArray()，没想到这个问题居然难倒了很多有多年编程经验的人。对于这类的问题，其实，测试程序可能比算法更难写，代码更多。而这个问题正好可以加强一下我在《<a title="我们需要专职的QA吗？" href="/articles/6994.html" target="_blank">我们需要专职的QA吗？</a>》中我所推崇的——开发人员更适合做测试的观点。</p>
+<p>我们先来看几个算法（<strong>第一个用递归二分随机抽牌，第二个比较偷机取巧，第三个比较通俗易懂</strong>）</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%80%92%E5%BD%92%E4%BA%8C%E5%88%86%E9%9A%8F%E6%9C%BA%E6%8A%BD%E7%89%8C" title="递归二分随机抽牌">递归二分随机抽牌</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%BF%AB%E6%8E%92Hack%E6%B3%95" title="快排Hack法">快排Hack法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%A4%A7%E5%A4%9A%E6%95%B0%E4%BA%BA%E7%9A%84%E5%AE%9E%E7%8E%B0" title="大多数人的实现">大多数人的实现</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%A6%82%E4%BD%95%E6%B5%8B%E8%AF%95" title="如何测试">如何测试</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%AD%A3%E7%A1%AE%E7%9A%84%E7%AE%97%E6%B3%95" title="正确的算法">正确的算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%A6%82%E4%BD%95%E5%86%99%E6%B5%8B%E8%AF%95%E6%A1%88%E4%BE%8B" title="如何写测试案例">如何写测试案例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%B3%A8%E6%84%8F" title="注意">注意</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E9%99%84%E5%BD%95" title="附录">附录</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%80%92%E5%BD%92%E4%BA%8C%E5%88%86%E9%9A%8F%E6%9C%BA%E6%8A%BD%E7%89%8C"></span>递归二分随机抽牌<span class="ez-toc-section-end"></span></h4>
+<p>有一次是有一个朋友做了一个网页版的扑克游戏，他用到的算法就是想模拟平时我们玩牌时用手洗牌的方式，是用递归+二分法，我说这个程序恐怕不对吧。他觉得挺对的，说测试了没有问题。他的程序大致如下（原来的是用Javascript写的，我在这里凭记忆用C复现一下）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//递归二分方法
+const size_t MAXLEN = 10;
+const char TestArr[MAXLEN] = {&#39;A&#39;,&#39;B&#39;,&#39;C&#39;,&#39;D&#39;,&#39;E&#39;,&#39;F&#39;,&#39;G&#39;,&#39;H&#39;,&#39;I&#39;,&#39;J&#39;};
+
+static char RecurArr[MAXLEN]={0};
+static int cnt = 0;
+void ShuffleArray_Recursive_Tmp(char* arr, int len)
+{
+    if(cnt &gt; MAXLEN || len &lt;=0){
+        return;
+    }
+
+    int pos = rand() % len;
+    RecurArr[cnt++] = arr[pos];
+    if (len==1) return;
+    ShuffleArray_Recursive_Tmp(arr, pos);
+    ShuffleArray_Recursive_Tmp(arr+pos+1, len-pos-1);
+}
+
+void ShuffleArray_Recursive(char* arr, int len)
+{
+    memset(RecurArr, 0, sizeof(RecurArr));
+    cnt=0;
+    ShuffleArray_Recursive_Tmp(arr, len);
+    memcpy(arr, RecurArr, len);
+}
+
+void main()
+{
+    char temp[MAXLEN]={0};
+    for(int i=0; i&lt;5; i++) {
+        strncpy(temp, TestArr, MAXLEN);
+        ShuffleArray_Recursive((char*)temp, MAXLEN);
+    }
+}
+</pre>
+<p><span id="more-8593"></span></p>
+<p>随便测试几次，还真像那么回事：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">第一次：D C A B H E G F I J
+第二次：A G D B C E F J H I
+第三次：A B H F C E D G I J
+第四次：J I F B A D C E H G
+第五次：F B A D C E H G I J</pre>
+<h4><span class="ez-toc-section" id="%E5%BF%AB%E6%8E%92Hack%E6%B3%95"></span>快排Hack法<span class="ez-toc-section-end"></span></h4>
+<p>让我们再看一个hack 快排的洗牌程序（只看算法，省去别的代码）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int compare( const void *a, const void *b )
+{
+    return rand()%3-1;
+}
+
+void ShuffleArray_Sort(char* arr, int len)
+{
+    qsort( (void *)arr, (size_t)len, sizeof(char), compare );
+}
+</pre>
+<p>运行个几次，感觉得还像那么回事：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">第一次：H C D J F E A G B I
+第二次：B F J D C E I H G A
+第三次：C G D E J F B I A H
+第四次：H C B J D F G E I A
+第五次：D B C F E A I H G J</pre>
+<p>看不出有什么破绽。</p>
+<h4><span class="ez-toc-section" id="%E5%A4%A7%E5%A4%9A%E6%95%B0%E4%BA%BA%E7%9A%84%E5%AE%9E%E7%8E%B0"></span>大多数人的实现<span class="ez-toc-section-end"></span></h4>
+<p>下面这个算法是大多数人的实现，就是for循环一次，然后随机交换两个数</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void ShuffleArray_General(char* arr, int len)
+{
+    const int suff_time = len;
+    for(int idx=0; idx&lt;suff_time; idx++) {
+        int i = rand() % len;
+        int j = rand() % len;
+        char temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}</pre>
+<p>跑起来也还不错，洗得挺好的。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">第一次：G F C D A J B I H E
+第二次：D G J F E I A H C B
+第三次：C J E F A D G B H I
+第四次：H D C F A E B J I G
+第五次：E A J F B I H G D C</pre>
+<p>但是上述三个算法哪个的效果更好？好像都是对的。<strong>一般的QA或是程序员很有可能就这样把这个功能Pass了</strong>。但是事情并没有那么简单……</p>
+<h4><span class="ez-toc-section" id="%E5%A6%82%E4%BD%95%E6%B5%8B%E8%AF%95"></span>如何测试<span class="ez-toc-section-end"></span></h4>
+<p>在做测试之前，我们还需要了解一下一个基本知识——<strong>PC机上是做不出真随机数的，只能做出伪随机数。真随机数需要硬件支持</strong>。但是不是这样我们就无法测试了呢，不是的。我们依然可以测试。</p>
+<p>我们知道，洗牌洗得好不好，主要是看是不是够随机。那么如何测试随机性呢？</p>
+<p>试想，我们有个随机函数rand()返回1到10中的一个数，如果够随机的话，每个数返回的概率都应该是一样的，也就是说每个数都应该有10分之1的概率会被返回。</p>
+<p>一到概率问题，我们只有一个方法来做测试，那就是用统计的方式。也就是说，你调用rand()函数100次，其中，每个数出现的次数大约都在10次左右。（注意：我用了左右，这说明概率并不是很准确的）不应该有一个数出现了15次以上，另一个在5次以下，要是这样的话，这个函数就是错的。</p>
+<p>举一反三，测试洗牌程序也一样，需要通过概率的方式来做统计，是不是每张牌出现在第一个位置的次数都是差不多的。</p>
+<p>于是，这样一来上面的程序就可以很容易做测试了。</p>
+<p>下面是测试结果（<strong>测试样本1000次——列是每个位置出现的次数，行是各个字符的统计</strong>，出现概率应该是1/10，也就是100次）：</p>
+<p><strong>递归随机抽牌的方法</strong></p>
+<p>很明显，这个洗牌程序太有问题。算法是错的！</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">     1    2    3    4    5    6    7    8    9    10
+----------------------------------------------------
+A | 101  283  317  208   65   23    3    0    0    0
+B | 101  191  273  239  127   54   12    2    1    0
+C | 103  167  141  204  229  115   32    7    2    0
+D | 103  103   87  128  242  195  112   26    3    1
+E | 104   83   62   67  116  222  228   93   22    3
+F |  91   58   34   60   69  141  234  241   65    7
+G |  93   43   35   19   44  102  174  274  185   31
+H |  94   28   27   27   46   68   94  173  310  133
+I | 119   27   11   30   28   49   64   96  262  314
+J |  91   17   13   18   34   31   47   88  150  511</pre>
+<p><strong>快排Hack法</strong></p>
+<p>看看对角线（从左上到右下）上的数据，很离谱！所以，这个算法也是错的。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">      1    2    3    4    5    6    7    8    9    10
+-----------------------------------------------------
+A |   74  108  123  102   93  198   40   37   52  173
+B |  261  170  114   70   49   28   37   76  116   79
+C |  112  164  168  117   71   37   62   96  116   57
+D |   93   91  119  221  103   66   91   98   78   40
+E |   62   60   82   90  290  112   95   98   71   40
+F |   46   60   63   76   81  318   56   42   70  188
+G |   72   57   68   77   83   39  400  105   55   44
+H |   99   79   70   73   87   34  124  317   78   39
+I |  127  112  102   90   81   24   57   83  248   76
+J |   54   99   91   84   62  144   38   48  116  264</pre>
+<p><strong>大多数人的算法</strong></p>
+<p>我们再来看看大多数人的算法。还是对角线上的数据有问题，所以，还是错的。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">      1    2    3    4    5    6    7    8    9    10
+-----------------------------------------------------
+A |  178   98   92   82  101   85   79  105   87   93
+B |   88  205   90   94   77   84   93   86  106   77
+C |   93   99  185   96   83   87   98   88   82   89
+D |  105   85   89  190   92   94  105   73   80   87
+E |   97   74   85   88  204   91   80   90  100   91
+F |   85   84   90   91   96  178   90   91  105   90
+G |   81   84   84  104  102  105  197   75   79   89
+H |   84   99  107   86   82   78   92  205   79   88
+I |  102   72   88   94   87  103   94   92  187   81
+J |   87  100   90   75   76   95   72   95   95  215</pre>
+<h4><span class="ez-toc-section" id="%E6%AD%A3%E7%A1%AE%E7%9A%84%E7%AE%97%E6%B3%95"></span>正确的算法<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们来看看性能高且正确的算法—— <a href="https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle" target="_blank">Fisher_Yates算法</a></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void ShuffleArray_Fisher_Yates(char* arr, int len)
+{
+    int i = len, j;
+    char temp;
+
+    if ( i == 0 ) return;
+    while ( --i ) {
+        j = rand() % (i+1);
+        temp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = temp;
+    }
+}</pre>
+<p>这个算法不难理解，看看测试效果（效果明显比前面的要好）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">      1    2    3    4    5    6    7    8    9    10
+-----------------------------------------------------
+A |  107   98   83  115   89  103  105   99   94  107
+B |   91  106   90  102   88  100  102   97  112  112
+C |  100  107   99  108  101   99   86   99  101  100
+D |   96   85  108  101  117  103  102   96  108   84
+E |  106   89  102   86   88  107  114  109  100   99
+F |  109   96   87   94   98  102  109  101   92  102
+G |   94   95  119  110   97  112   89  101   89   94
+H |   93  102  102  103  100   89  107  105  101   98
+I |   99  110  111  101  102   79  103   89  104  102
+J |  105  112   99   99  108  106   95   95   99   82</pre>
+<p>但是我们可以看到还是不完美。因为我们使用的rand()是伪随机数，不过已经很不错的。最大的误差在20%左右。</p>
+<p>我们再来看看洗牌100万次的统计值，你会看到误差在6%以内了。这个对于伪随机数生成的程序已经很不错了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">      1       2     3       4      5      6      7      8     9      10
+-------------------------------------------------------------------------
+A | 100095  99939 100451  99647  99321 100189 100284  99565 100525  99984
+B |  99659 100394  99699 100436  99989 100401  99502 100125 100082  99713
+C |  99938  99978 100384 100413 100045  99866  99945 100025  99388 100018
+D |  99972  99954  99751 100112 100503  99461  99932  99881 100223 100211
+E | 100041 100086  99966  99441 100401  99958  99997 100159  99884 100067
+F | 100491 100294 100164 100321  99902  99819  99449 100130  99623  99807
+G |  99822  99636  99924 100172  99738 100567 100427  99871 100125  99718
+H |  99445 100328  99720  99922 100075  99804 100127  99851 100526 100202
+I | 100269 100001  99542  99835 100070  99894 100229 100181  99718 100261
+J | 100268  99390 100399  99701  99956 100041 100108 100212  99906 100019</pre>
+<h4><span class="ez-toc-section" id="%E5%A6%82%E4%BD%95%E5%86%99%E6%B5%8B%E8%AF%95%E6%A1%88%E4%BE%8B"></span>如何写测试案例<span class="ez-toc-section-end"></span></h4>
+<p>测试程序其实很容易写了。就是，设置一个样本大小，做一下统计，然后计算一下误差值是否在可以容忍的范围内。比如：</p>
+<ul>
+<li>样本：100万次</li>
+<li>最大误差：10%以内</li>
+<li>平均误差：5%以内 （或者：90%以上的误差要小于5%）</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E6%B3%A8%E6%84%8F"></span>注意<span class="ez-toc-section-end"></span></h4>
+<p>其实，以上的测试只是测试了牌在各个位置的概率。这个还不足够好。因为还可能会现在有Patten的情况。如：每次洗牌出来的都是一个循环顺序数组。这完全可以满足我上面的测试条件。但是那明显是错的。<strong>所以，还需要统计每种排列的出现的次数</strong>，看看是不是均匀。但是，<strong>如果这些排列又是以某种规律出现的呢</strong>？看来，这没完没了了。</p>
+<p>测试的确是一个很重要，并不简单的事情。谢谢所有参与讨论的人。</p>
+<h4><span class="ez-toc-section" id="%E9%99%84%E5%BD%95"></span>附录<span class="ez-toc-section-end"></span></h4>
+<p>之前忘贴了一个模拟我们玩牌洗牌的算法，现补充如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void ShuffleArray_Manual(char* arr, int len)
+{
+    int mid = len / 2;
+
+    for (int n=0; n&lt;5; n++){
+
+        //两手洗牌
+        for (int i=1; i&lt;mid; i+=2){
+            char tmp = arr[i];
+            arr[i] = arr[mid+i];
+            arr[mid+i] = tmp;
+        }
+
+        //随机切牌
+        char *buf = (char*)malloc(sizeof(char)*len);
+
+        for(int j=0; j&lt;5; j++) {
+            int start= rand() % (len-1) + 1;
+            int numCards= rand()% (len/2) + 1;
+
+            if (start + numCards &gt; len ){
+                numCards = len - start;
+            }
+
+            memset(buf, 0, len);
+            strncpy(buf, arr, start);
+            strncpy(arr, arr+start, numCards);
+            strncpy(arr+numCards, buf, start);
+        }
+        free(buf);
+
+    }
+}</pre>
+<p>我们来看看测试结果：（10万次）效果更好一些，误差在2%以内了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">      1       2     3       4      5      6      7      8     9      10
+-------------------------------------------------------------------------
+A |  10002   9998   9924  10006  10048  10200   9939   9812  10080   9991
+B |   9939   9962  10118  10007   9974  10037  10149  10052   9761  10001
+C |  10054  10100  10050   9961   9856   9996   9853  10016   9928  10186
+D |   9851   9939   9852  10076  10208  10003   9974  10052   9992  10053
+E |  10009   9915  10050  10037   9923  10094  10078  10059   9880   9955
+F |  10151  10115  10113   9919   9844   9896   9891   9904  10225   9942
+G |  10001  10116  10097  10030  10061   9993   9891   9922   9889  10000
+H |  10075  10033   9866   9857  10170   9854  10062  10078  10056   9949
+I |  10045   9864   9879  10066   9930   9919  10085  10104  10095  10013
+J |   9873   9958  10051  10041   9986  10008  10078  10001  10094   9910</pre>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8593-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">test</a>, <a href="javascript:void(0)" rel="tag">Unit Test</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何测试洗牌程序</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-297594" class="comment even thread-even depth-1">
+<article id="div-comment-297594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d689cc92d5465a967f844446767f4c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d689cc92d5465a967f844446767f4c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">remagon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-297594"><time datetime="2013-02-25T16:06:15+08:00">2013年02月25日 16:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-220091" rel="nofollow">@Daniel </a><br/>
+交换只是手段，Fisher_Yates其实就是从一堆里随机拿出一个放在最后一位，然后从剩下的里面再随机拿出一个放在倒数第二位。。。很简单的想法</p>
+</div>
+ </article>
+</li>
+<li id="comment-316742" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-316742" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bd4c93ea4ed6ca51b837337dc21c18aa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bd4c93ea4ed6ca51b837337dc21c18aa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">KylinHuang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-316742"><time datetime="2013-03-25T17:46:41+08:00">2013年03月25日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这两手洗牌错了吧。。。如果是我理解的那种两手洗牌的话。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-320745" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://buptly.eicp.net/?p=244" class="url" rel="ugc external nofollow">洗牌算法 | 做自己</a> </div>
+</li>
+<li id="comment-323458" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-323458" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0b33f7d3079a406e2f4f0840c2d1f41?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0b33f7d3079a406e2f4f0840c2d1f41?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">uuu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-323458"><time datetime="2013-04-09T21:28:10+08:00">2013年04月09日 21:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>随便问一下，是否知道这么一个随机数网站：http://www.random.org/</p>
+</div>
+ </article>
+</li>
+<li id="comment-325510" class="comment even thread-even depth-1">
+<article id="div-comment-325510" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bd78e2c484f6d8c7b81f628632e8beef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bd78e2c484f6d8c7b81f628632e8beef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.aijvukfqgzky.org" class="url" rel="ugc external nofollow">adfyodhqkmwz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-325510"><time datetime="2013-04-13T10:24:26+08:00">2013年04月13日 10:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ablyhscaqkoi</p>
+</div>
+ </article>
+</li>
+<li id="comment-325513" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-325513" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b97b067c4d99e3e999b6c29d2c000f77?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b97b067c4d99e3e999b6c29d2c000f77?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ohwtddaicqeo.org" class="url" rel="ugc external nofollow">cmnqnxqhlmfq</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-325513"><time datetime="2013-04-13T10:28:19+08:00">2013年04月13日 10:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>nupakkabeqyx</p>
+</div>
+ </article>
+</li>
+<li id="comment-345203" class="comment even thread-even depth-1">
+<article id="div-comment-345203" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccaf786e1944fc522a017c722cb7e80b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccaf786e1944fc522a017c722cb7e80b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JunkFood</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-345203"><time datetime="2013-04-25T17:34:42+08:00">2013年04月25日 17:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不得不吐槽一下这些验证只是必要条件。<br/>
+也就是说，如果元素1, 2, …, n中任意一个元素在位置p_i（1 &lt;= i &lt;= n）出现的概率是1/n<br/>
+也不能说明这就是良好的随机置换（random permutation）生成算法<br/>
+良好的随机置换算法应该保证，对于n!个置换中的任意一个，在一次生成应该有1/(n!)的概率获得。<br/>
+前者只是后者的必要条件而已。</p>
+</div>
+ </article>
+</li>
+<li id="comment-374108" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/873.html" class="url" rel="ugc external nofollow">Web工程师的工具箱 | 午后小憩</a> </div>
+</li>
+<li id="comment-376389" class="comment even thread-even depth-1">
+<article id="div-comment-376389" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/Jack47" class="url" rel="ugc external nofollow">Jack47</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-376389"><time datetime="2013-05-02T21:51:35+08:00">2013年05月02日 21:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-220091" rel="nofollow">@Daniel </a><br/>
+n个元素，它的排列方式有n!种。Fisher_Yates就是在模拟其中的某个排列。<br/>
+最后一个位置上，可以从n个数中随机选择一个，倒数第二个位置上，可以从剩下的n-1个数中随机选择一个，依次类推了。<br/>
+<a href="https://zh.wikipedia.org/wiki/%E6%B0%B4%E5%A1%98%E6%8A%BD%E6%A8%A3" rel="nofollow ugc">http://zh.wikipedia.org/wiki/%E6%B0%B4%E5%A1%98%E6%8A%BD%E6%A8%A3</a><br/>
+水塘抽樣 问题，里面有证明 每个元素被选取的概率是相同的</p>
+</div>
+ </article>
+</li>
+<li id="comment-411241" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-411241" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af7143c903db8b213f5a2f8555f06372?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af7143c903db8b213f5a2f8555f06372?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sohigh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-411241"><time datetime="2013-05-12T20:39:45+08:00">2013年05月12日 20:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>全文除了这句话以外都很好。“你调用rand()函数100次，其中，每个数出现的次数大约都在10次左右。（注意：我用了左右，这说明概率并不是很准确的）不应该有一个数出现了15次以上，另一个在5次以下，要是这样的话，这个函数就是错的。”———————–100次的样本空间出现15%这样的概率，不能说明函数有错。严格来说，就算样本空间是100W次都不能这样讲。这需要严格的数学证明的。<br/>
+所以说，一般人不要自己脑袋乱想个算法就拿来用，因为根本没经过严格的数学证明很难保证正确性的，最好能套用经典算法（都经过严格的数学证明），实在不行就改进经典算法来达到自己的目的。如果非要自己来创新算法，最好用数学证明一下，如果数学能力不够，就写case来尽量保证正确性</p>
+</div>
+ </article>
+</li>
+<li id="comment-411252" class="comment even thread-even depth-1">
+<article id="div-comment-411252" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af7143c903db8b213f5a2f8555f06372?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af7143c903db8b213f5a2f8555f06372?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sohigh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-411252"><time datetime="2013-05-12T20:43:16+08:00">2013年05月12日 20:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>而且即便是fisher-yates算法，有些情况他也是永远不会出现的。只能做到尽量模拟随机。</p>
+</div>
+ </article>
+</li>
+<li id="comment-519117" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-519117" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5933139d225c56bb755509c84b981b45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5933139d225c56bb755509c84b981b45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sprinfall</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-519117"><time datetime="2013-06-03T11:25:29+08:00">2013年06月03日 11:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我来说个Knuth的洗牌算法，源于TAOCP第三卷的习题。<br/>
+第一步：为每张牌生成一个随机数<br/>
+第二步：按这个随机数进行排序<br/>
+个人觉得是最简单的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-595765" class="comment even thread-even depth-1">
+<article id="div-comment-595765" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a6f3a36f0687c2ebd43560d6524da7a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a6f3a36f0687c2ebd43560d6524da7a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eycia</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-595765"><time datetime="2013-07-16T17:04:03+08:00">2013年07月16日 17:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>直接模拟抽牌不就好了</p>
+</div>
+ </article>
+</li>
+<li id="comment-615120" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-615120" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a01f7049829c42fcdb55b859746711a8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a01f7049829c42fcdb55b859746711a8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://bqzhao.cnblogs.com" class="url" rel="ugc external nofollow">bqzhao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-615120"><time datetime="2013-07-27T18:43:01+08:00">2013年07月27日 18:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个洗牌程序的功能是，对于长度为n的两两不同的数组，输出的任何一个排列的概率相等，也就是1/n!。可以验证，Fisher-Yates算法是可以保证这一点的。<br/>
+最后一个洗牌程序包括两个部分：第一部分“两手洗牌”，实际上是个确定变换，也就是说，输入序列就能直接决定这一步的输出，因此本身不带来随机性。第二部分“随机切牌”，是先随机从牌序列中切下一个部分（可能是全部），然后在这个切下的部分中随机切成两个部分，交换这两个部分的位置。通过5次随机切牌不可能达到相应的随机性。因此这个洗牌算法洗出的结果并不是“最大熵”的。<br/>
+那为何测试算法得到的结果看上去还不错呢？实际上该测试算法是有问题的，因为每张牌在每个位置上概率均等，并不能证明洗牌的结果是“最大熵”的，因为这里没考虑每张牌出现位置的“相关性”。<br/>
+另外，也能构造有问题的洗牌算法，满足测试程序的要求：<br/>
+比如将n张牌构成的序列随机切成两个部分（其中第一个部分的长度允许为0），然后交换这两个部分的位置。从测试结果来看，肯定能得到每张牌在每个位置上出现的概率均等的结果。</p>
+</div>
+ </article>
+</li>
+<li id="comment-709052" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhanghaohao.cn/archives/308" class="url" rel="ugc external nofollow">二叉树迭代器算法 | 张浩浩博客</a> </div>
+</li>
+<li id="comment-910370" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-910370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e75cfca52f2206d2b0a31ba8b7da3228?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e75cfca52f2206d2b0a31ba8b7da3228?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Hali</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-910370"><time datetime="2013-11-10T19:52:56+08:00">2013年11月10日 19:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这位大哥说的很对<a href="#comment-615120" rel="nofollow">@bqzhao </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-919368" class="comment even thread-even depth-1">
+<article id="div-comment-919368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8353539ff7c732d04a6fcd3c0495eac0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8353539ff7c732d04a6fcd3c0495eac0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dingli</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-919368"><time datetime="2013-11-12T15:56:19+08:00">2013年11月12日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Chi-square</p>
+</div>
+ </article>
+</li>
+<li id="comment-1013693" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1013693" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gcd0318.wordpress.com" class="url" rel="ugc external nofollow">gcd0318</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1013693"><time datetime="2013-12-02T14:42:46+08:00">2013年12月02日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>rand_select(l):<br/>
+0, if l is empty， then end<br/>
+1, r = rand(len(l))<br/>
+2, o = l[r]<br/>
+3, l.remove(o)<br/>
+4, output(o)<br/>
+5, goto 0<br/>
+省事归省事，不过……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1013702" class="comment even thread-even depth-1">
+<article id="div-comment-1013702" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gcd0318.wordpress.com" class="url" rel="ugc external nofollow">gcd0318</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1013702"><time datetime="2013-12-02T14:44:23+08:00">2013年12月02日 14:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-615120" rel="nofollow">@bqzhao </a><br/>
+so, what if:<br/>
+1, p = permute(l)<br/>
+2, r = rand(p)<br/>
+3, output p[r]</p>
+</div>
+ </article>
+</li>
+<li id="comment-1013714" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1013714" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gcd0318.wordpress.com" class="url" rel="ugc external nofollow">gcd0318</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1013714"><time datetime="2013-12-02T14:47:55+08:00">2013年12月02日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-411241" rel="nofollow">@sohigh </a><br/>
+做个假设检验？但也只能证明，有多少概率会是错的，或者会是不错的，也不足以说明就是对的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1142675" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.calmyoudown.com/?p=1136" class="url" rel="ugc external nofollow">Web工程师的工具箱 | Deep Ocean, Wide Sky</a> </div>
+</li>
+<li id="comment-1472633" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1472633" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6bfda01a0f3e142b4679777eb062c69c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6bfda01a0f3e142b4679777eb062c69c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ksir</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1472633"><time datetime="2014-05-30T10:54:26+08:00">2014年05月30日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我测试了文章最后给出的 双手洗牌+切牌 算法，误差率确实可以达到比较低的数值，但是我用该算法去洗一副完整的52张扑克，将每一次的结果都记录到文本，之后分析10w、100w手牌的重复率。发现重复率竟然惊人的高，差不多有千分之一的概率，这说明这种算法有很大缺陷。<br/>
+随后我又用Fisher_Yates算法重复上述实验，发现在1000w手牌中也不会出现重复的情况。该算法也是Python random.shullfe()所采用的算法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1486138" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cricode.com/2515.html" class="url" rel="ugc external nofollow">20.2 写一个随机洗牌函数 | 快课网</a> </div>
+</li>
+<li id="comment-1492655" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tmalltesting.com/archives/2031" class="url" rel="ugc external nofollow">小探BI算法测试思路 | 天猫测试</a> </div>
+</li>
+<li id="comment-1520265" class="comment even thread-even depth-1">
+<article id="div-comment-1520265" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5c0927b9d4090988607db8663788f69?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5c0927b9d4090988607db8663788f69?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bhxk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1520265"><time datetime="2014-08-27T09:38:37+08:00">2014年08月27日 09:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>貌似是Fisher-Yates中的Pencil-Paper Method<a href="#comment-1013693" rel="nofollow">@gcd0318 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1524935" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gshangpin.com/segment/?p=11065" class="url" rel="ugc external nofollow">想了解微博的抽奖系统算法 | segment-解决方案</a> </div>
+</li>
+<li id="comment-1748256" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.code123.cc/964.html" class="url" rel="ugc external nofollow">20.2 写一个随机洗牌函数 - code123</a> </div>
+</li>
+<li id="comment-1802389" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itdadao.com/article/79912/" class="url" rel="ugc external nofollow">写一个随机洗牌函数——概率题-IT大道</a> </div>
+</li>
+<li id="comment-1822443" class="comment even thread-even depth-1">
+<article id="div-comment-1822443" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04cc4ec3f28ae5c907088d3c783878b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04cc4ec3f28ae5c907088d3c783878b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://codefalling.com" class="url" rel="ugc external nofollow">codefalling</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1822443"><time datetime="2016-04-29T09:37:08+08:00">2016年04月29日 09:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>但是在单元测试里写个需要运行20万次的测试案例是不是不太好。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1855413" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hao.jser.com/archive/11075/" class="url" rel="ugc external nofollow">也谈前端面试常见问题之『数组乱序』 — 好JSER</a> </div>
+</li>
+<li id="comment-1855978" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1129" class="url" rel="ugc external nofollow">性能测试应该怎么做？ | 星达红</a> </div>
+</li>
+<li id="comment-1913555" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.freemetech.com/2017/03/19/%e6%b4%97%e7%89%8c%e7%a8%8b%e5%ba%8f%e5%8f%8a%e6%b5%8b%e8%af%95/" class="url" rel="ugc external nofollow">洗牌程序及测试 – 朱明华的博客</a> </div>
+</li>
+<li id="comment-1913895" class="comment even thread-even depth-1">
+<article id="div-comment-1913895" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/41dc87fd222b77329e40d6e81b23687a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/41dc87fd222b77329e40d6e81b23687a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">董哒哒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8593.html/comment-page-3#comment-1913895"><time datetime="2017-04-22T16:57:17+08:00">2017年04月22日 16:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想问一下这个测试程序是怎么写的？循环 1000 次调用 shuffle 函数吗？如果是取系统时间作为种子，那么很有可能两次调用 shuffle 时取到的系统时间是一样的，这样产生的随机数序列也是一样的。有没有可能是因为这个原因导致了统计结果不均匀呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915577" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://collects.delphiqin.me/2012/11/28/%e5%a6%82%e4%bd%95%e6%b5%8b%e8%af%95%e6%b4%97%e7%89%8c%e7%a8%8b%e5%ba%8f/" class="url" rel="ugc external nofollow">如何测试洗牌程序 | Share</a> </div>
+</li>
+<li id="comment-1921316" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1249" class="url" rel="ugc external nofollow">如何测试洗牌程序 – 趣学</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8593.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8593.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/8593.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">8593</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

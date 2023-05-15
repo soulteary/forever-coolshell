@@ -1,0 +1,341 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>由苹果的低级Bug想到的 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11112 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11112" class="post-content post-11112 post type-post status-publish format-standard hentry category-cplusplus category-itnews category-process tag-apple tag-bug tag-c tag-goto">
+<header class="entry-header">
+<span class="screen-reader-text">由苹果的低级Bug想到的</span>
+<h1 class="entry-title">由苹果的低级Bug想到的</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11112.html" title="08:12" rel="bookmark"><time class="entry-date" datetime="2014-02-24T08:12:11+08:00" pubdate="">2014年02月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11112.html#comments" class="comments-link">116 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 111,172 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-11123" src="/uploads/2014/02/apple_goto_fail.png" alt="" width="260" height="158" srcset=""/> 2014年2月22日，在这个“这么二”的日子里，苹果公司推送了 iOS 7.0.6（版本号11B651）修复了 SSL 连接验证的一个 bug。官方网页在这里：<a href="http://support.apple.com/kb/HT6147" target="_blank">http://support.apple.com/kb/HT6147</a>，网页中如下描述：</p>
+<blockquote><p><strong>Impact</strong>: An attacker with a privileged network position may capture or modify data in sessions protected by SSL/TLS</p>
+<p><strong>Description</strong>: Secure Transport failed to validate the authenticity of the connection. This issue was addressed by restoring missing validation steps.</p></blockquote>
+<p>也就是说，这个bug会引起中间人攻击，bug的描述中说，这个问题是因为miss了对连接认证的合法性检查的步骤。</p>
+<p>这里多说一句，<strong>一旦网上发生任何的和SSL/TL相关的bug或安全问题，不管是做为用户，还是做为程序员的你，你一定要高度重视起来</strong>。因为这个网络通信的加密协议被广泛的应用在很多很多最最需要安全的地方，如果SSL/TLS有问题的话，意味着这个世界的计算机安全体系的崩溃。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Bug%E7%9A%84%E4%BB%A3%E7%A0%81%E5%8E%9F%E5%9B%A0" title="Bug的代码原因">Bug的代码原因</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83" title="一些思考">一些思考</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#0%EF%BC%89%E5%85%B3%E4%BA%8E%E7%BC%96%E8%AF%91%E6%8A%A5%E8%AD%A6" title="0）关于编译报警">0）关于编译报警</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#1%EF%BC%89%E5%85%B3%E4%BA%8ECode_Merge_%E5%92%8C_Code_Review" title="1）关于Code Merge 和 Code Review">1）关于Code Merge 和 Code Review</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#2%EF%BC%89%E5%85%B3%E4%BA%8E%E6%B5%8B%E8%AF%95" title="2）关于测试">2）关于测试</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#3%EF%BC%89%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E9%A3%8E%E6%A0%BC" title="3）关于编码风格">3）关于编码风格</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#4%EF%BC%89%E5%85%B3%E4%BA%8Egoto%E8%AF%AD%E5%8F%A5" title="4）关于goto语句">4）关于goto语句</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Bug%E7%9A%84%E4%BB%A3%E7%A0%81%E5%8E%9F%E5%9B%A0"></span>Bug的代码原因<span class="ez-toc-section-end"></span></h4>
+<p>Adam Langley的《<a href="https://www.imperialviolet.org/2014/02/22/applebug.html">Apple’s SSL/TLS bug</a> 》的博文暴出了这个bug的细节。（在苹果的开源网站上，通过查看苹果的和SSL/TLS有关的代码变更，我们可以在文件<a href="http://opensource.apple.com/source/Security/Security-55471/libsecurity_ssl/lib/sslKeyExchange.c" target="_blank">sslKeyExchange.c</a>中找到下面的代码）</p>
+<p><span id="more-11112"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="12">static OSStatus
+SSLVerifySignedServerKeyExchange(SSLContext *ctx, bool isRsa, SSLBuffer signedParams,
+                                 uint8_t *signature, UInt16 signatureLen)
+{
+	OSStatus        err;
+	...
+
+	if ((err = SSLHashSHA1.update(&amp;hashCtx, &amp;serverRandom)) != 0)
+		goto fail;
+	if ((err = SSLHashSHA1.update(&amp;hashCtx, &amp;signedParams)) != 0)
+		goto fail;
+		goto fail;
+	if ((err = SSLHashSHA1.final(&amp;hashCtx, &amp;hashOut)) != 0)
+		goto fail;
+	err = sslRawVerify(ctx,
+                       ctx-&gt;peerPubKey,
+                       dataToSign,				/* plaintext */
+                       dataToSignLen,			/* plaintext length */
+                       signature,
+                       signatureLen);
+	if(err) {
+		sslErrorLog(&#34;SSLDecodeSignedServerKeyExchange: sslRawVerify &#34;
+                    &#34;returned %d\n&#34;, (int)err);
+		goto fail;
+	}
+
+fail:
+    SSLFreeBuffer(&amp;signedHashes);
+    SSLFreeBuffer(&amp;hashCtx);
+    return err;
+}</pre>
+<p>注意，我高亮的地方，也就是那里有两个goto fail; 因为if语句没有加大括号，所以，只有第一个goto是属于if的，而第二个goto则是永远都会被执行到的（注：这里不是Python是C语言，缩进不代表这个语句属于同一个语句块）。也就是说，就算是前面的if检查都失败了（err  == 0），也会goto fail。我们可以看到fail标签中释放完内存后就会return err;</p>
+<p>你想一下，<strong>这段程序在SSLHashSHA1.update()  返回成功，也就是返回0 的时候会发生什么样的事？是的，真正干活的 sslRawVerify()被bypass了。而且这个函数SSLVerifySignedServerKeyExchange() 还返回了0，也就是成功了！</strong>尼玛！你可能想到酷壳网上之前《<a title="一个空格引发的惨剧" href="/articles/4875.html" target="_blank">一个空格引发的惨剧</a>》的文章。都是低级bug。</p>
+<p>这个低级bug在这个周末在网上被炒翻了天，你可以<strong><a href="https://twitter.com/search?q=%23gotofail" target="_blank">上Twiter上看看#gotofail的标签的盛况</a></strong>。<strong>Goto Fail必然会成为历史上的一个经典事件</strong>。</p>
+<p>如果你喜欢XKCD，你一定会想到这个漫画：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" src="https://sslimgs.xkcd.com/comics/goto.png" alt="" width="740" height="201"/></p>
+<p><span style="line-height: 1.5em;"><strong>注意</strong>：这个bug不会影响TLS 1.2版本，因为1.2版本不会用这个函数，走的是另一套机制。但是别忘了client端是可以选择版本的。</span></p>
+<p>如果你想测试一下你的浏览器是否会有问题，<strong>你可以上一下当天就上线的<a href="https://gotofail.com/" target="_blank"> https://gotofail.com</a> 网站</strong></p>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E4%BA%9B%E6%80%9D%E8%80%83"></span>一些思考<span class="ez-toc-section-end"></span></h4>
+<p>下面是我对这个问题的一些思考。</p>
+<h5><span class="ez-toc-section" id="0%EF%BC%89%E5%85%B3%E4%BA%8E%E7%BC%96%E8%AF%91%E6%8A%A5%E8%AD%A6"></span>0）关于编译报警<span class="ez-toc-section-end"></span></h5>
+<p>有人在说苹果的这个代码中的goto语句会产生死代码——dead code，也就是永远都不会执行到的代码，C/C++的编程器是会报警的。但，实际上，dead code在默认上的不会报警的。即使你加上-Wall，GCC 4.8.2 或 Clang 3.3 都不会报警，包括Visual Studio 2012在默认的报警级别也不会（默认是/W3级，需要上升到/W4级以上，但是升级到/W4上，你的工程可能会有N多的Warning，你不一定能看得过来）。gcc和Clang有一个参数叫：-Wunreachable-code，是可以对这种情况报警的，但即没有被包括在-Wall里。原因是，这个参数有很多的问题，因为编译器的优化代码的行为，这个参数并不能对每种情况都准确地报告。另请注意，GCC的新版本中剔除了这个参数。当然，其它一些静态的代码检查工具也可以检查这个低级的问题。</p>
+<p>另外，是不是用IDE的代码自动化格式工具也可以帮上一点忙呢？至少可以把那个缩进变成让人一看就觉得有问题。</p>
+<h5><span class="ez-toc-section" id="1%EF%BC%89%E5%85%B3%E4%BA%8ECode_Merge_%E5%92%8C_Code_Review"></span>1）关于Code Merge 和 Code Review<span class="ez-toc-section-end"></span></h5>
+<p>你可以通过这里的代码比较看到这个bug的diff，也可以到<a href="https://gist.github.com/alexyakoubian/9151610/revisions" target="_blank">这里看看</a>（631行）。</p>
+<blockquote style="font-size: 11px;"><p>diff -urN &lt;(curl -s http://opensource.apple.com/source/Security/Security-55179.13/libsecurity_ssl/lib/sslKeyExchange.c\?txt) \ &lt;(curl -s http://opensource.apple.com/source/Security/Security-55471/libsecurity_ssl/lib/sslKeyExchange.c\?txt) \</p></blockquote>
+<p>通过code diff你可以看到，<strong>苹果公司是在重构代码——为很多函数去掉了ctx的参数</strong>。</p>
+<p>所以，我们可以猜测，两个goto fail语句，可能是因为对code在不同branch上做merge发生的。版本工具merge代码的时候，经常性的会出现这样的问题。如果代码的diff很多，这个问题会很容易就没有注意到。就算有code review，这个有问题的代码也很难被找出来的。<strong>如果你来review下面的diff，你会注意到这个错误吗？</strong></p>
+<p><img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2014/02/gotofail.jpg" alt="" width="560" height="275" srcset=""/></p>
+<p>也就是说，在重构分支上的代码是对的，但是在分支merge的时候，被merge工具搞乱了。所以说，<strong>我们在做code merge的时候，一定要小心小心再小心，不能完全相信merge工具</strong>。</p>
+<h5><span class="ez-toc-section" id="2%EF%BC%89%E5%85%B3%E4%BA%8E%E6%B5%8B%E8%AF%95"></span>2）关于测试<span class="ez-toc-section-end"></span></h5>
+<p>很明显，这个bug很难被code review发现。对于重构代码和代码merge里众多的diff，是很难被review的。</p>
+<p>当然，“事后诸葛亮”的人们总是很容易地说这个问题可以被测试发现，但是实际情况是这样的吗？</p>
+<p>这个问题也很难被功能测试发现，因为这个函数在是在网络握手里很深的地方，功能 测试不一定能覆盖得那么深，你要写这样的case，必需对TLS的协议栈非常熟悉，熟悉到对他所有的参数都很熟悉，并能写出针对每一个参数以及这些参数的组合做一堆test case，这个事情也是一件很复杂的事。要写出所有的case本身就是一件很难很难的事情。关于这个叫SSLVerifySignedServerKeyExchange()函数的细节，你可以看看相关的<a href="https://tools.ietf.org/html/rfc5246#section-7.4.3">ServerKeyExchange</a> RFC文档。</p>
+<p>如果只看这个问题的话，你会说对这个函数做的 Unit Test 可以发现这个问题，是的。但是，别忘了SSL/TLS这么多年了，这些基础函数都应该是很稳定的了， 在事前，我们可能不会想到要去为这些稳定了多少年的函数写几个Unit Test。</p>
+<p><strong>只要有足够多的时间，我们是可以对所有的功能点，所有的函数都做UT，也可以去追求做代码覆盖和分支覆盖一样。但有一点我们却永远无法做到，那就是——穷举所有的负面案例</strong>。所以，对于测试来说，我们不能走极端，需要更聪明的测试。就像我在《<a title="我们需要专职的QA吗？" href="/articles/6994.html" target="_blank">我们需要专职的QA</a>》文章里的说过的——<strong>测试比coding难度大多了，测试这个工作只有高级的开发人员才做得好。我从来不相信不写代码的人能做好测试。</strong></p>
+<p>这里，<strong>我并不是说通过测试来发现这个问题的可能性不大，我想说的是，测试很重要，单测更重要。但是，我们无法面面俱到</strong>。在我们没有关注到的地方，总会发生愚蠢的错误。</p>
+<p>P.S.，在各大网站对这个事的讨论中，我们可以看到OS X下的curl命令居然可以接受一个没有验证过的IP地址的https的请求，虽然现在还没有人知道这事的原因，但是，这可能是没有在测试中查到的一个原因。</p>
+<h5><span class="ez-toc-section" id="3%EF%BC%89%E5%85%B3%E4%BA%8E%E7%BC%96%E7%A0%81%E9%A3%8E%E6%A0%BC"></span>3）关于编码风格<span class="ez-toc-section-end"></span></h5>
+<p><span style="line-height: 1.5em;">对于程序员来说，在C语言中，省掉语句大括号是一件非常不明智 的事情。如我们强制使用语句块括号，那么，这两个goto fail都会在一个if的语句块里，而且也容易维护并且易读。（另外，通过这个bug，我们可以感受到，像Python那样，用缩进来表示语句块，的确是挺好的一件事）</span></p>
+<p>也有人说，如果你硬要用只有单条语句，且不用语句块括号，那么，这就是一条语句，应该放在同一行上。如下所示：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">if  (check_something)   do_something(); </code></p>
+<p>但是这样一来，你在单步调试代码的时候，就有点不爽了，当你step over的时候，你完全不知道if的条件是真还是假。所以，还是分多行，加上大括号会好一些。</p>
+<p>相似的问题，我很十多年前也犯过，而且那次我出的问题也比较大，导致了用户的数据出错。那次就是维护别人的代码，别人的代码就是没有if的语句块括号，就像苹果的代码那样。<span style="line-height: 1.5em;">我想在return z之前调用一个函数，结果就杯具了：</span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="6">if ( ...... )
+    return x;
+if ( ...... )
+    return y;
+if ( ...... )
+    foo();
+    return z;</pre>
+<p>这个错误一不小心就犯了，因为人的大脑会相当然地认为缩进的都是一个语句块里的。但是如果原来的代码都加上了大括号，然后把缩进做正常，那么对后面维护的人会是一个非常好的事情。就不会犯我这个低级错误了。就像下面的代码一样，虽然写起来有点罗嗦，但利人利己。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if ( ...... ){
+    return x;
+}
+if ( ...... ){
+    return y;
+}
+if ( ...... ){
+    return z;
+}</pre>
+<p>与此类似的代码风格还有如下，你觉得哪个更容易阅读呢？</p>
+<ul>
+<li>if (!p)    和  if (p == NULL)</li>
+</ul>
+<ul>
+<li>if (p)    和  if (p != NULL)</li>
+</ul>
+<ul>
+<li>if (!bflag)  和 if  (bflag == false)</li>
+</ul>
+<ul>
+<li>if ( CheckSomthing() )  和 if ( CheckSomething() == true )</li>
+</ul>
+<p>另外还有很多人在switch 语句里用case来做if，也就是说case后面没有break。就像<a href="https://en.wikipedia.org/wiki/Duff&#39;s_device" target="_blank">Duff’s Device</a>一样，再配以goto，代码就写得相当精彩了（这里<a href="https://github.com/agentzh/luajit2/blob/master/src/host/buildvm.c#L395" target="_blank">有个例子</a>）</p>
+<p><span style="line-height: 1.5em;">所以说，代码不是炫酷的地方是给别人读的。</span></p>
+<p>另外，我在想，为什么苹果的这段代码不写成下面这样的形式？你看，下面这种情况不也很干净吗？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if (  ((err = ReadyHash(&amp;SSLHashSHA1, &amp;hashCtx)) != 0 )
+       || ((err = SSLHashSHA1.update(&amp;hashCtx, &amp;clientRandom)) != 0)
+       || ((err = SSLHashSHA1.update(&amp;hashCtx, &amp;serverRandom) != 0)
+       || ((err = SSLHashSHA1.update(&amp;hashCtx, &amp;signedParams) != 0)
+       || ((err = SSLHashSHA1.final(&amp;hashCtx, &amp;hashOut)) != 0)) {
+
+     goto fail;
+}
+</pre>
+<p>其实，还可以做一些代码上的优化，比如，把fail标签里的那些东西写成一个宏，这样就可以去掉goto语句了。</p>
+<h5><span class="ez-toc-section" id="4%EF%BC%89%E5%85%B3%E4%BA%8Egoto%E8%AF%AD%E5%8F%A5"></span>4）关于goto语句<span class="ez-toc-section-end"></span></h5>
+<p>关于goto语句，1968年，<a href="https://en.wikipedia.org/wiki/Edsger_Dijkstra">Edsger Dijkstra</a> 投了一篇文章到Communications of the ACM。原本的标题是《A Case Against the Goto Statement》。CACM编辑<a href="https://en.wikipedia.org/wiki/Niklaus_Wirth">Niklaus Wirth</a>灵感来了，把标题改为我们熟知的 《<a href="http://www.u.arizona.edu/~rubinson/copyright_violations/Go_To_Considered_Harmful.html" target="_blank">Go To Statement Considered Harmful</a>》Dijkstra写的内容也是其一贯的犀利语气，文中说：“几年前我就观察到，一个程序员的品质是其程序中goto语句的密度成反比的”，他还说，“后来我发现了为什么goto语句的使用有这么严重的后果，并相信所有高级语言都应该把goto废除掉。”  （<strong>花絮</strong>：因为，这篇文章的出现，计算学界开始用’ <a href="https://en.wikipedia.org/wiki/Considered_harmful">X considered harmful</a> ‘当文章标题的风潮，直到<a href="http://meyerweb.com/eric/comment/chech.html">有人终于受不了</a>为止）</p>
+<p>为什么goto语句不好呢？Dijkstra说，一个变量代表什么意义要看其上下文。一个程序用N<code></code>记录房间里的人数，在大部分时候，N<code></code>代表的是“目前房间里的人”。但在观察到又有一个人进房间后、把N<code></code>递增的指令前的这段程序区块中，N<code></code>的值代表的是“目前房间里的人数加一”。因此，要正确诠释程序的状态，必须知道程序执行的历史，或着说，知道现在“算到哪”了。</p>
+<p>怎么谈“算到哪了”？如果是一直线执行下来的程序，我们只要指到那条语句，说“就是这里”，就可以了。如果是有循环程序，我们可能得说：“现在在循环的这个地方，循环已经执行了第<code>i</code>次”。如果是在函数中，我们可能得说：“现在执行到函数<code>p</code>的这一点；<code>p</code>刚刚被<code>q调用</code>，调用点在一个循环中，这个循环已经执行了<code>i</code>次”。</p>
+<p>如果有goto<code>语句了</code>呢？那就麻烦了。因为电脑在执行某个指令前，可能是从程序中许许多多goto<code></code>其中之一跳过来的。要谈某变量的性质也几乎变得不可能了。这就是为什么goto语句问题。</p>
+<p>Dijkstra的这篇文章对后面很多程序员有非常深的影响，包括我在内，都觉得Goto语句能不用就不用，虽然，我在十年前的《<a href="http://blog.csdn.net/haoel/article/month/2003/05" target="_blank">编程修养</a>》（这篇文章已经严重过时，某些条目已经漏洞百出）中的<a href="http://blog.csdn.net/haoel/article/details/2876" target="_blank">第23条</a>也说过，我只认为在goto语句只有一种情况可以使用，就是苹果这个bug里的用法。但是我也同意Dijkstra，goto语句能不用就不用了。就苹果的这个问题而言，在更为高级的C++中，<a href="https://en.wikipedia.org/wiki/Resource_Acquisition_Is_Initialization" target="_blank">使用RAII技术</a>，这样的goto语句已经没有什么存在的意义了。</p>
+<p>Dijkstra这篇文章后来成为结构化程式论战最有名的文章之一。长达19年之后，Frank Rubin投了一篇文章到CACM,标题为《<a href="http://www.ecn.purdue.edu/ParaMount/papers/rubin87goto.pdf">‘ <code></code>Go To Considered Harmful’ Considered Harmful</a> 》Rubin说，「虽然Dijkstra的说法既太学术又缺乏说服力」，却似乎烙到每个程序员的心里了。这样，当有人说“用goto语句来解这题可能会比较好”会被严重鄙视。于是Rubin出了一道这样的题：令<code>X</code>为<code>N * N</code>的整数阵列。如果<code>X</code>的第<code>i</code>行全都是零，请输出<code>i</code>。如果不只一行，输出最小的<code>i</code> .</p>
+<p>Rubin找了一些惯用goto和不用goto的程序员来解题，发现用goto的程序又快又清楚。而不用goto通常花了更多的时间，写出很复杂的解答。你觉得呢？ 另外，你会怎么写这题的程序呢？</p>
+<p>（<strong>花絮</strong>：以后几个月的CACM热闹死了。编辑收到许多回应，两个月后刊出了其中五篇。文章也包括了《<a href="http://www.ecn.purdue.edu/ParaMount/papers/acm_may87.pdf">“‘GOTO Considered Harmful’ Considered Harmful” Considered Harmful?</a> 》）</p>
+<p><strong>对于我而言，goto语句的弊远远大于利，在99%的情况下，我是站在反goto这边的</strong>。Java和Python就没有提供Goto语句，原因就是因为goto语句很容易被滥用！</p>
+<p><strong>更新：2014年3月5日</strong> – RedHat 近日也发现个GnuTLS安全问题，与苹果的类似：无法正确检验特定的伪造SSL证书，这个总是会将伪造证书识别为有效证书。虽然Redhat的代码为if加上了花括号，但还是因为没有控制好goto，造成了bug。所以说啊，goto语句的坑是很多。</p>
+<ul>
+<li>BUG页面：<a href="https://bugzilla.redhat.com/show_bug.cgi?id=1069865" target="_blank">https://bugzilla.redhat.com/show_bug.cgi?id=1069865</a></li>
+</ul>
+<ul>
+<li>相关的Diff: <a href="https://bugzilla.redhat.com/attachment.cgi?id=867911&amp;action=diff" target="_blank">https://bugzilla.redhat.com/attachment.cgi?id=867911&amp;action=diff</a></li>
+</ul>
+<p>goto语句在写代码的时候也许你会很爽，但是在维护的时候，绝对是一堆坑！redhat的这个patch为原来本来只有一个label的goto又加了另一个label，现在两个label交差goto，继续挖坑……</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>你看，我们不能完全消灭问题，但是，我们可以用下面几个手段来减少问题：</p>
+<p style="padding-left: 30px;">1）<strong>尽量在编译上发生错误，而不是在运行时</strong>。</p>
+<p style="padding-left: 30px;">2）<strong>代码是让人读的，顺便让机器运行</strong>。不要怕麻烦，好的代码风格，易读的代码会减少很多问题。</p>
+<p style="padding-left: 30px;">3）<strong>Code Review是一件很严肃的事情</strong>，但 Code Reivew的前提条件是代码的可读性一定要很好。</p>
+<p style="padding-left: 30px;">4）<strong>测试是一件很重要也是很难的事情，尤其是开发人员要非常重视</strong>。</p>
+<p style="padding-left: 30px;">5）<strong>不要走飞线，用飞线来解决问题是可耻的！</strong>所以，用goto语句来组织代码的时代过去了，你可以有很多种方式不用goto也可以把代码组织得很好。</p>
+<p>最后，我在淘宝过去的一年里，经历过一些P1/P2故障，尤其是去年的8-9月份故障频发的月份，我发现其中有70%的P1/P2故障，就是因为没有code review，没有做好测试，大量地用飞线来解决问题，归根结底就是只重业务结果，对技术没有应有的严谨的态度和敬畏之心。</p>
+<p><span style="color: #cc0000;"><strong>正如苹果的这个“goto fail”事件所暗喻的，如果你对技术没有应有的严谨和敬畏之心，你一定会——</strong></span></p>
+<p style="text-align: center; font-size: 36px; color: #cc0000; font-family: Georgia,;"><strong>Go To Fail !!!</strong></p>
+<p>在这里唠叨这么多，与大家共勉！</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11112-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">业界新闻</a>, <a href="javascript:void(0)" rel="category tag">流程方法</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Apple</a>, <a href="javascript:void(0)" rel="tag">bug</a>, <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">goto</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>由苹果的低级Bug想到的</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1573577" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1573577" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/783585be6716ddbd234074e6e81f0c94?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/783585be6716ddbd234074e6e81f0c94?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">围观</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11112.html/comment-page-3#comment-1573577"><time datetime="2014-10-16T16:08:12+08:00">2014年10月16日 16:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您的最后一句写的好！不过对您总结的第三条，有点意外。。。嘿嘿（大神您发现问题了么？，没发现？再瞅瞅。。。）</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2004361" class="comment odd alt depth-2">
+<article id="div-comment-2004361" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a427221501751fba957545f2b576a392?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a427221501751fba957545f2b576a392?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Amos Chen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11112.html/comment-page-3#comment-2004361"><time datetime="2019-07-01T10:46:49+08:00">2019年07月01日 10:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>单词错了</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1692940" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.shenqilou.net/%e7%94%b1%e8%8b%b9%e6%9e%9c%e7%9a%84%e4%bd%8e%e7%ba%a7bug%e6%83%b3%e5%88%b0%e7%9a%84-%e9%85%b7-%e5%a3%b3-coolshell-cn/" class="url" rel="ugc external nofollow">由苹果的低级Bug想到的 | 酷 壳 – CoolShell.cn | 2015.春</a> </div>
+</li>
+<li id="comment-1700920" class="comment byuser comment-author-jkand1 odd alt thread-even depth-1">
+<article id="div-comment-1700920" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11112.html/comment-page-3#comment-1700920"><time datetime="2015-05-04T15:31:25+08:00">2015年05月04日 15:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>共勉了，go to fail~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1802840" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1802840" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nswcfd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11112.html/comment-page-3#comment-1802840"><time datetime="2015-12-29T16:12:38+08:00">2015年12月29日 16:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哎，深受linux kernel风格熏陶，单行if就是不习惯加花括号，也因此犯过无数低级的错误（多数是在变更中引入的）。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1803412" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1803412" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40dad100c16b7e4105267f7f8350e958?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40dad100c16b7e4105267f7f8350e958?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://argcv.com" class="url" rel="ugc external nofollow">yu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11112.html/comment-page-3#comment-1803412"><time datetime="2016-01-01T19:33:09+08:00">2016年01月01日 19:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1573577"><p>
+<strong><a href="#comment-1573577" rel="nofollow">围观</a> :</strong><br/>
+您的最后一句写的好！不过对您总结的第三条，有点意外。。。嘿嘿（大神您发现问题了么？，没发现？再瞅瞅。。。）
+</p></blockquote>
+<p>阁下还认为 “测试就是测试人员的事情” 么? 这显然是耗子叔叔一直强烈否定的事情.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1912026" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/01/29/cpp-%e7%bc%96%e7%a0%81%e9%a3%8e%e6%a0%bc%e6%8c%87%e5%8d%97/" class="url" rel="ugc external nofollow">Cpp 编码风格指南 - 莹莹之色</a> </div>
+</li>
+<li id="comment-1921850" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://techieliang.com/2017/12/626/" class="url" rel="ugc external nofollow">Google C++编程风格-Techie亮博客</a> </div>
+</li>
+<li id="comment-1923427" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yhzq-blog.cc/%e4%bd%9c%e6%ad%bb%e5%8f%98%e7%a0%81%e9%a3%8e/" class="url" rel="ugc external nofollow">作死变码风 | 远航休息栈</a> </div>
+</li>
+<li id="comment-2187483" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21140.html" class="url" rel="ugc">Go 编程模式：错误处理 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2307399" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1258680" class="url" rel="ugc external nofollow">软件项目为何会失败？ - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11112.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11112.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/11112.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">11112</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,543 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>理解Javascript的闭包 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6731 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6731" class="post-content post-6731 post type-post status-publish format-standard hentry category-webdev category-proglanguage tag-ecmascript tag-javascript tag-oop">
+<header class="entry-header">
+<span class="screen-reader-text">理解Javascript的闭包</span>
+<h1 class="entry-title">理解Javascript的闭包</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6731.html" title="08:30" rel="bookmark"><time class="entry-date" datetime="2012-03-07T08:30:43+08:00" pubdate="">2012年03月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6731.html#comments" class="comments-link">91 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 78,523 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>【<span style="color: #cc0000">感谢 Neo 投递本文 – 微博帐号：<a title="_锟_" href="http://weibo.com/gandalfthegrey" target="_blank">_锟_</a> </span>】</p>
+<p><strong>前言：还是一篇入门文章。</strong>Javascript中有几个非常重要的语言特性——对象、原型继承、闭包。其中闭包对于那些使用传统静态语言C/C++的程序员来说是一个新的语言特性。本文将以例子入手来介绍Javascript闭包的语言特性，并结合一点ECMAScript语言规范来使读者可以更深入的理解闭包。</p>
+<p>注：<strong>本文是入门文章，例子素材整理于网络<strong>，如果你是高手，欢迎针对文章提出技术性建议和意见。本文讨论的是Javascript，不想做语言对比，如果您对Javascript天生不适，请自行绕道。</strong></strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E9%97%AD%E5%8C%85" title="什么是闭包">什么是闭包</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#ECMAScript%E9%97%AD%E5%8C%85%E6%A8%A1%E5%9E%8B" title="ECMAScript闭包模型">ECMAScript闭包模型</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E9%97%AD%E5%8C%85%E7%9A%84%E6%A0%B7%E5%88%97" title="闭包的样列">闭包的样列</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E9%97%AD%E5%8C%85%E7%9A%84%E5%BA%94%E7%94%A8" title="闭包的应用">闭包的应用</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BB%80%E4%B9%88%E6%98%AF%E9%97%AD%E5%8C%85"></span><strong><span style="color: #008000">什么是闭包</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>闭包是什么?闭包是Closure，这是静态语言所不具有的一个新特性。但是闭包也不是什么复杂到不可理解的东西，简而言之，闭包就是：<strong></strong></p>
+<ul>
+<li><strong>闭包就是函数的局部变量集合，只是这些局部变量在函数返回后会继续存在。</strong></li>
+<li><strong>闭包就是就是函数的“堆栈”在函数返回后并不释放，我们也可以理解为这些函数堆栈并不在栈上分配而是在堆上分配</strong></li>
+<li><strong>当在一个函数内定义另外一个函数就会产生闭包</strong></li>
+</ul>
+<p>上面的第二定义是第一个补充说明，抽取第一个定义的主谓宾——闭包是<strong>函数的‘局部变量’集合</strong>。只是这个局部变量是可以在函数返回后被访问。（这个不是官方定义，但是这个定义应该更有利于你理解闭包）</p>
+<p>做为局部变量都可以被函数内的代码访问，这个和静态语言是没有差别。闭包的差别在于局部变变量可以在函数执行结束后仍然被函数外的代码访问。这意味着函数必须返回一个指向闭包的“引用”，或将这个”引用”赋值给某个外部变量，才能保证闭包中局部变量被外部代码访问。当然包含这个引用的实体应该是一个对象，因为在Javascript中除了基本类型剩下的就都是对象了。可惜的是，ECMAScript并没有提供相关的成员和方法来访问闭包中的局部变量。但是在ECMAScript中，函数对象中定义的<strong>内部函数(inner function)</strong>是可以直接访问外部函数的局部变量，通过这种机制，我们就可以以如下的方式完成对闭包的访问了。</p>
+<p><span id="more-6731"></span></p>
+<p>[javascript]<br/>
+function greeting(name) {<br/>
+var text = ‘Hello ‘ + name; // local variable<br/>
+// 每次调用时，产生闭包，并返回内部函数对象给调用者<br/>
+return function() { alert(text); }<br/>
+}<br/>
+var sayHello=greeting(&#34;Closure&#34;);<br/>
+sayHello() // 通过闭包访问到了局部变量text<br/>
+[/javascript]</p>
+<p>上述代码的执行结果是：Hello Closure，因为sayHello()函数在greeting函数执行完毕后，仍然可以访问到了定义在其之内的局部变量text。</p>
+<p>好了，这个就是传说中闭包的效果，闭包在Javascript中有多种应用场景和模式，比如Singleton，Power Constructor等这些Javascript模式都离不开对闭包的使用。</p>
+<h4><span class="ez-toc-section" id="ECMAScript%E9%97%AD%E5%8C%85%E6%A8%A1%E5%9E%8B"></span><strong><span style="color: #008000">ECMAScript闭包模型</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>ECMAScript到底是如何实现闭包的呢？想深入了解的亲们可以获取<a href="http://www.ecma-international.org/publications/files/ECMA-ST/Ecma-262.pdf">ECMAScript 规范</a>进行研究，我这里也只做一个简单的讲解，内容也是来自于网络。</p>
+<p>在ECMAscript的脚本的函数运行时，每个函数关联都有一个执行上下文场景(Execution Context) ，这个执行上下文场景中包含三个部分</p>
+<ul>
+<li>文法环境（The LexicalEnvironment）</li>
+<li>变量环境（The VariableEnvironment）</li>
+<li>this绑定</li>
+</ul>
+<p>其中第三点this绑定与闭包无关，不在本文中讨论。文法环境中用于解析函数执行过程使用到的变量标识符。我们可以将文法环境想象成一个对象，该对象包含了两个重要组件，环境记录(Enviroment Recode)，和外部引用(指针)。环境记录包含包含了函数内部声明的局部变量和参数变量，外部引用指向了外部函数对象的上下文执行场景。全局的上下文场景中此引用值为NULL。这样的数据结构就构成了一个单向的链表，每个引用都指向外层的上下文场景。</p>
+<p>例如上面我们例子的闭包模型应该是这样，sayHello函数在最下层，上层是函数greeting，最外层是全局场景。如下图：<br/>
+<img decoding="async" class="aligncenter size-full wp-image-6741" src="/uploads/2012/03/closure.png" alt="" width="658" height="478" srcset="" sizes="(max-width: 658px) 100vw, 658px"/><br/>
+因此当sayHello被调用的时候，sayHello会通过上下文场景找到局部变量text的值，因此在屏幕的对话框中显示出”Hello Closure”<br/>
+变量环境(The VariableEnvironment)和文法环境的作用基本相似，具体的区别请参看ECMAScript的规范文档。</p>
+<h4><span class="ez-toc-section" id="%E9%97%AD%E5%8C%85%E7%9A%84%E6%A0%B7%E5%88%97"></span><strong><span style="color: #008000">闭包的样列</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>前面的我大致了解了Javascript闭包是什么，闭包在Javascript是怎么实现的。下面我们通过针对一些例子来帮助大家更加深入的理解闭包，下面共有5个样例，例子来自于<a href="http://blog.morrisjohns.com/javascript_closures_for_dummies.html">JavaScript Closures For Dummies(</a><a href="http://web.archive.org/web/20080209105120/http://blog.morrisjohns.com/javascript_closures_for_dummies">镜像</a><a href="http://blog.morrisjohns.com/javascript_closures_for_dummies.html">)</a>。<br/>
+<strong>例子1:闭包中局部变量是引用而非拷贝</strong></p>
+<p>[javascript]<br/>
+function say667() {<br/>
+// Local variable that ends up within closure<br/>
+var num = 666;<br/>
+var sayAlert = function() { alert(num); }<br/>
+num++;<br/>
+return sayAlert;<br/>
+}</p>
+<p>var sayAlert = say667();<br/>
+sayAlert()<br/>
+[/javascript]</p>
+<p>因此执行结果应该弹出的667而非666。</p>
+<p><strong>例子2：多个函数绑定同一个闭包，因为他们定义在同一个函数内。</strong></p>
+<p>[javascript]<br/>
+function setupSomeGlobals() {<br/>
+// Local variable that ends up within closure<br/>
+var num = 666;<br/>
+// Store some references to functions as global variables<br/>
+gAlertNumber = function() { alert(num); }<br/>
+gIncreaseNumber = function() { num++; }<br/>
+gSetNumber = function(x) { num = x; }<br/>
+}<br/>
+setupSomeGlobals(); // 为三个全局变量赋值<br/>
+gAlertNumber(); //666<br/>
+gIncreaseNumber();<br/>
+gAlertNumber(); // 667<br/>
+gSetNumber(12);//<br/>
+gAlertNumber();//12<br/>
+[/javascript]</p>
+<p><strong>例子3：当在一个循环中赋值函数时，这些函数将绑定同样的闭包</strong></p>
+<p>[javascript]<br/>
+function buildList(list) {<br/>
+var result = [];<br/>
+for (var i = 0; i &lt; list.length; i++) {<br/>
+var item = ‘item’ + list[i];<br/>
+result.push( function() {alert(item + ‘ ‘ + list[i])} );<br/>
+}<br/>
+return result;<br/>
+}</p>
+<p>function testList() {<br/>
+var fnlist = buildList([1,2,3]);<br/>
+// using j only to help prevent confusion – could use i<br/>
+for (var j = 0; j &lt; fnlist.length; j++) {<br/>
+fnlist[j]();<br/>
+}<br/>
+}<br/>
+[/javascript]</p>
+<p>testList的执行结果是弹出item3 undefined窗口三次，因为这三个函数绑定了同一个闭包，而且item的值为最后计算的结果，但是当i跳出循环时i值为4，所以list[4]的结果为undefined.</p>
+<p><strong>例子4：外部函数所有局部变量都在闭包内，即使这个变量声明在内部函数定义之后。</strong></p>
+<p>[javascript]<br/>
+function sayAlice() {<br/>
+var sayAlert = function() { alert(alice); }<br/>
+// Local variable that ends up within closure<br/>
+var alice = ‘Hello Alice’;<br/>
+return sayAlert;<br/>
+}<br/>
+var helloAlice=sayAlice();<br/>
+helloAlice();<br/>
+[/javascript]</p>
+<p>执行结果是弹出”Hello Alice”的窗口。即使局部变量声明在函数sayAlert之后，局部变量仍然可以被访问到。</p>
+<p><strong>例子5：每次函数调用的时候创建一个新的闭包</strong></p>
+<p>[javascript]<br/>
+function newClosure(someNum, someRef) {<br/>
+// Local variables that end up within closure<br/>
+var num = someNum;<br/>
+var anArray = [1,2,3];<br/>
+var ref = someRef;<br/>
+return function(x) {<br/>
+num += x;<br/>
+anArray.push(num);<br/>
+alert(‘num: ‘ + num +<br/>
+‘\nanArray ‘ + anArray.toString() +<br/>
+‘\nref.someVar ‘ + ref.someVar);<br/>
+}<br/>
+}<br/>
+closure1=newClosure(40,{someVar:’closure 1′});<br/>
+closure2=newClosure(1000,{someVar:’closure 2′});</p>
+<p>closure1(5); // num:45 anArray[1,2,3,45] ref:’someVar closure1′<br/>
+closure2(-10);// num:990 anArray[1,2,3,990] ref:’someVar closure2’<br/>
+[/javascript]</p>
+<h4><span class="ez-toc-section" id="%E9%97%AD%E5%8C%85%E7%9A%84%E5%BA%94%E7%94%A8"></span><strong><span style="color: #008000">闭包的应用</span></strong><span class="ez-toc-section-end"></span></h4>
+<p><strong>Singleton 单件：</strong></p>
+<p>[javascript]<br/>
+var singleton = function () {<br/>
+var privateVariable;<br/>
+function privateFunction(x) {<br/>
+…privateVariable…<br/>
+}</p>
+<p> return {<br/>
+firstMethod: function (a, b) {<br/>
+…privateVariable…<br/>
+},<br/>
+secondMethod: function (c) {<br/>
+…privateFunction()…<br/>
+}<br/>
+};<br/>
+}();<br/>
+[/javascript]</p>
+<p>这个单件通过闭包来实现。通过闭包完成了私有的成员和方法的封装。匿名主函数返回一个对象。对象包含了两个方法，方法1可以方法私有变量，方法2访问内部私有函数。需要注意的地方是匿名主函数结束的地方的&#39;()’，如果没有这个&#39;()’就不能产生单件。因为匿名函数只能返回了唯一的对象，而且不能被其他地方调用。这个就是利用闭包产生单件的方法。</p>
+<h2><strong><span style="color: #008000">参考：</span></strong></h2>
+<p><a href="http://blog.morrisjohns.com/javascript_closures_for_dummies.html">JavaScript Closures For Dummies(</a><a href="http://web.archive.org/web/20080209105120/http://blog.morrisjohns.com/javascript_closures_for_dummies">镜像</a><a href="http://blog.morrisjohns.com/javascript_closures_for_dummies.html">)</a> 可惜都被墙了。<br/>
+<a href="http://yuiblog.com/blog/2006/11/27/video-crockford-advjs/">Advance Javascript</a> （Douglas Crockford 大神的视频，一定要看啊）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6731-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ECMAScript</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">OOP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>理解Javascript的闭包</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-407732" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e7%90%86%e8%a7%a3-javascript-%e7%9a%84%e9%97%ad%e5%8c%85" class="url" rel="ugc external nofollow">理解 Javascript 的闭包 - javascript - 开发者问答</a> </div>
+</li>
+<li id="comment-499932" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qsing-wu.com/frond-endinterview/" class="url" rel="ugc external nofollow">前端的几个面试问题 | 悟云淡风清</a> </div>
+</li>
+<li id="comment-510059" class="comment even thread-even depth-1">
+<article id="div-comment-510059" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6f818b24f57bd104856de23359a6eb1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6f818b24f57bd104856de23359a6eb1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">new</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-510059"><time datetime="2013-05-29T10:28:39+08:00">2013年05月29日 10:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-143292" rel="nofollow">@lltg </a><br/>
+结果会发现把所有人都状态都加到了最后一个人身上……</p>
+<p>我写了个测试，不用回调不会发生你说的这种情况。我的测试代码</p>
+<p>l = document.getElementById(“xx”).rows; </p>
+<p> for (i = 0; i &lt; l.length; i++) {<br/>
+l[i].cells[0].innerHTML += getState(l[i].cells[0].getAttribute(&#39;uid&#39;));<br/>
+}</p>
+<p> function getState(uid) {<br/>
+return &#34;status: &#34; + uid + uid;<br/>
+}</p>
+<p>显示结果：<br/>
+status: 11<br/>
+status: 22<br/>
+status: 33<br/>
+status: 44<br/>
+status: 55</p>
+<p>不知道是不是我理解的不对，请指正</p>
+</div>
+ </article>
+</li>
+<li id="comment-555841" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/javascript%e9%97%ad%e5%8c%85-3" class="url" rel="ugc external nofollow">JavaScript闭包 - 编程语言综合 - 开发者第1355110个问答</a> </div>
+</li>
+<li id="comment-607344" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xenojoshua.com/2012/12/javascript-closure/" class="url" rel="ugc external nofollow">JavaScript闭包 » Xeno Joshua | Xeno Joshua</a> </div>
+</li>
+<li id="comment-707285" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1908" class="url" rel="ugc external nofollow">Technology of Heartbeat #14 | Steve Guan</a> </div>
+</li>
+<li id="comment-879452" class="comment even thread-even depth-1">
+<article id="div-comment-879452" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c62b55f17c19deb9c7fe54a2476fdb8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c62b55f17c19deb9c7fe54a2476fdb8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kabaskimy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-879452"><time datetime="2013-11-04T10:45:10+08:00">2013年11月04日 10:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的不错，但是有几个槽点..<br/>
+1、第三个例子中的i应该是3，是从0，1，2，3这样变化来的<br/>
+2、第四个例子其实用javascript的变量声明提前就可以解释了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1026977" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://php86.com/2012/23702.html" class="url" rel="ugc external nofollow">理解Javascript的闭包 - php教程网 - php学习教程分享，为php初学者、php爱好者提供优质的php教程。</a> </div>
+</li>
+<li id="comment-1048787" class="comment even thread-even depth-1">
+<article id="div-comment-1048787" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab6e7e8e044916a3dbf932fb3804eae6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab6e7e8e044916a3dbf932fb3804eae6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.whospm.com" class="url" rel="ugc external nofollow">whospm</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1048787"><time datetime="2013-12-09T22:14:52+08:00">2013年12月09日 22:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>例子3：当在一个循环中赋值函数时，这些函数将绑定同样的闭包。这个解析应该是错的。<br/>
+function testSame() {<br/>
+var fnlist = buildList([1,2,3]);<br/>
+alert(fnlist[0] == fnlist[1]); // 这里会打印 false， 而不是true<br/>
+}</p>
+<p>正确的解释应该是, for循环中的 var item 并没有被重新定义，只是被重新赋值了而已，故循环里面的3个闭包中item的值是一致的。在闭包中打印 Math.random() 即可证明。</p>
+<p>function buildList(list) {<br/>
+var result = [];<br/>
+for (var i = 0; i &lt; list.length; i++) {<br/>
+result.push( function() {alert(Math.random())} );<br/>
+}<br/>
+return result;<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-1097458" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1097458" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/945b09c768b4081c12f809146c71b850?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/945b09c768b4081c12f809146c71b850?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tony</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1097458"><time datetime="2013-12-24T01:59:34+08:00">2013年12月24日 01:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>理解了闭包模型就很容易理解这几个例子了 单件例子是否可以这样理解<br/>
+var singleton =( function(){ ……;} ) ( ); ?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1123606" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://malagis.com/google-maps%ef%bc%88js%ef%bc%89%e5%bc%80%e5%8f%91%e5%85%a5%e9%97%a89%ef%bc%9a%e4%ba%8b%e4%bb%b6%e7%9b%91%e5%90%ac%e4%b8%ad%e4%bd%bf%e7%94%a8%e9%97%ad%e5%8c%85.html" class="url" rel="ugc external nofollow">Google Maps（JS）开发入门(9)：事件监听中使用闭包 | 麻辣GIS</a> </div>
+</li>
+<li id="comment-1149632" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://tech-easyonline.rhcloud.com/?p=28" class="url" rel="ugc external nofollow">Javascript 闭包 | Technology</a> </div>
+</li>
+<li id="comment-1291503" class="comment even thread-even depth-1">
+<article id="div-comment-1291503" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fd4d3111a4266d2ba172182125bebf0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fd4d3111a4266d2ba172182125bebf0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yuefeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1291503"><time datetime="2014-02-20T00:16:41+08:00">2014年02月20日 00:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-148641" rel="nofollow">@Kder </a><br/>
+是的，就是3，但list[3]=undefined。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1291505" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1291505" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fd4d3111a4266d2ba172182125bebf0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fd4d3111a4266d2ba172182125bebf0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yuefeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1291505"><time datetime="2014-02-20T00:20:17+08:00">2014年02月20日 00:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢分享！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1367766" class="comment even thread-even depth-1">
+<article id="div-comment-1367766" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f026d46cdf885cc34d0854a150d2e04e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f026d46cdf885cc34d0854a150d2e04e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">caoshuai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1367766"><time datetime="2014-03-13T10:36:33+08:00">2014年03月13日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老师您好，问您一个菜鸟的问题， 对于您第一个例子sayHello(), 并无法弹出Hello Closure,</p>
+</div>
+ </article>
+</li>
+<li id="comment-1407014" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1407014" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b4b68f6f79c213fdad5dd9b4f040d9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b4b68f6f79c213fdad5dd9b4f040d9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xwqfudimo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1407014"><time datetime="2014-03-28T17:06:23+08:00">2014年03月28日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-145623" rel="nofollow">@dodo </a><br/>
+照你这个比喻，go语言闭包内的变量不是静态变量，因为不同的闭包实例互不影响。不知道javascript闭包是不是这样…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1480770" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://larance.sinaapp.com/?p=189" class="url" rel="ugc external nofollow">larance &#39;s blog » JavaScript闭包和this绑定</a> </div>
+</li>
+<li id="comment-1486359" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.web8899.com/web_develop/javascript/485.html" class="url" rel="ugc external nofollow">JavaScript闭包和this绑定 | WEB终结者</a> </div>
+</li>
+<li id="comment-1560198" class="comment even thread-even depth-1">
+<article id="div-comment-1560198" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a05a633bf5137f982e9443cffcda2133?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a05a633bf5137f982e9443cffcda2133?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zqhong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1560198"><time datetime="2014-10-01T20:02:29+08:00">2014年10月01日 20:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>&gt; 这个单件通过闭包来实现。通过闭包完成了私有的成员和方法的封装。匿名主函数返回一个对象。对象包含了两个方法，方法1可以方法私有变量，方法2访问内部私有函数。需要注意的地方是匿名主函数结束的地方的’()’，如果没有这个’()’就不能产生单件。因为匿名函数只能返回了唯一的对象，而且不能被其他地方调用。这个就是利用闭包产生单件的方法。</p>
+<p>最后一段有一个地方写错了. “方法1可以方法私有变量” 是否是 “方法1可以访问私有变量”?</p>
+<p>—————————————–</p>
+<p>不知道评论支持markdown不..</p>
+</div>
+ </article>
+</li>
+<li id="comment-1567678" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ym910.com/wp/?p=19402" class="url" rel="ugc external nofollow">JavaScript闭包（一）——实现 | 易鸣</a> </div>
+</li>
+<li id="comment-1568465" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ym910.com/wp/?p=19532" class="url" rel="ugc external nofollow">JavaScript闭包（二）——作用 | 易鸣</a> </div>
+</li>
+<li id="comment-1588719" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.noblog.cn/8902.html" class="url" rel="ugc external nofollow">理解Javascript的闭包 - Noblog其他 | Noblog</a> </div>
+</li>
+<li id="comment-1614485" class="comment even thread-even depth-1">
+<article id="div-comment-1614485" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0d26bd1606526029fbc7fb181195f73?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0d26bd1606526029fbc7fb181195f73?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">codezyc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1614485"><time datetime="2014-11-26T16:47:20+08:00">2014年11月26日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实dom元素的事件绑定，例如a.onclick=function(){…}是不是也是闭包？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1667631" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://neverendingsecurity.wordpress.com/2015/02/26/notesindex-index-of-notes/" class="url" rel="ugc external nofollow">NotesIndex: Index of Notes | Never Ending Security</a> </div>
+</li>
+<li id="comment-1681612" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hao.jser.com/archive/4310/" class="url" rel="ugc external nofollow">JavaScript闭包和this绑定 — 好JSER</a> </div>
+</li>
+<li id="comment-1683412" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.outflush.com/2015/03/simple-introduction-of-closure/" class="url" rel="ugc external nofollow">浅解闭包概念 | Out.flush()</a> </div>
+</li>
+<li id="comment-1683498" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.programerhome.com/?p=3775" class="url" rel="ugc external nofollow">浅解闭包概念 | 程序员之家</a> </div>
+</li>
+<li id="comment-1726253" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1726253" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4ca689c36abfdeab84ee14b2ddabbea6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4ca689c36abfdeab84ee14b2ddabbea6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">农民</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1726253"><time datetime="2015-06-24T11:09:36+08:00">2015年06月24日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-143547" rel="nofollow">@Kder </a><br/>
+我也认为这个地方错误了，index 确实3不是4 这个数组最大索引是2 所以undefined</p>
+</div>
+ </article>
+</li>
+<li id="comment-1732107" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hao.jser.com/archive/8035/" class="url" rel="ugc external nofollow">闭包 — 好JSER</a> </div>
+</li>
+<li id="comment-1757484" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wusay.org/archives/112" class="url" rel="ugc external nofollow">Node.js初哥(一) | WuSay</a> </div>
+</li>
+<li id="comment-1817821" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dear-shen.com/?p=1010" class="url" rel="ugc external nofollow">python中闭包示例 |</a> </div>
+</li>
+<li id="comment-1820760" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.damntime.com/javascript/168.html" class="url" rel="ugc external nofollow">函数表达式和函数声明 – 代码本</a> </div>
+</li>
+<li id="comment-1860310" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://dear-shen.com/?p=1010" class="url" rel="ugc external nofollow">python中闭包示例 |</a> </div>
+</li>
+<li id="comment-1863236" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1863236" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/72a15cf865922c36a5cdf699f3bdc153?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/72a15cf865922c36a5cdf699f3bdc153?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">levy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6731.html/comment-page-2#comment-1863236"><time datetime="2016-07-31T20:18:05+08:00">2016年07月31日 20:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-879452" rel="nofollow">@kabaskimy </a><br/>
+赞同。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913339" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.addsd.com/101886/" class="url" rel="ugc external nofollow">理解javascript 闭包概念优缺点及应用 – 阿斯达</a> </div>
+</li>
+<li id="comment-1913612" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/03/27/%e5%9f%9f%e5%90%8d%e6%9b%b4%e6%8d%a2%e9%80%9a%e7%9f%a5/" class="url" rel="ugc external nofollow">域名更换通知 - 莹莹之色</a> </div>
+</li>
+<li id="comment-1913953" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/05/02/fedora25%e6%89%b9%e9%87%8f%e8%bd%ac%e6%8d%a2nef%e4%b8%bajpg/" class="url" rel="ugc external nofollow">Fedora25批量转换NEF为JPG - 莹莹之色</a> </div>
+</li>
+<li id="comment-2292419" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1024667" class="url" rel="ugc external nofollow">理解 Javascript 的闭包 （例子举得很好） - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6731.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6731.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">6731</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

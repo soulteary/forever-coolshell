@@ -1,0 +1,720 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>K Nearest Neighbor 算法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8052 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8052" class="post-content post-8052 post type-post status-publish format-standard hentry category-misc category-progdesign tag-algorithm tag-data-mining tag-knn tag-max-heap">
+<header class="entry-header">
+<span class="screen-reader-text">K Nearest Neighbor 算法</span>
+<h1 class="entry-title">K Nearest Neighbor 算法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8052.html" title="08:15" rel="bookmark"><time class="entry-date" datetime="2012-08-17T08:15:30+08:00" pubdate="">2012年08月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8052.html#comments" class="comments-link">51 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 67,079 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>K Nearest Neighbor算法又叫KNN算法，这个算法是机器学习里面一个比较经典的算法， 总体来说KNN算法是相对比较容易理解的算法。其中的K表示最接近自己的K个数据样本。KNN算法和<a title="K-Means 算法" href="/articles/7779.html" target="_blank">K-Means算法</a>不同的是，K-Means算法用来聚类，用来判断哪些东西是一个比较相近的类型，而KNN算法是用来做归类的，也就是说，有一个样本空间里的样本分成很几个类型，然后，给定一个待分类的数据，通过计算接近自己最近的K个样本来判断这个待分类数据属于哪个分类。<strong>你可以简单的理解为由那离自己最近的K个点来投票决定待分类数据归为哪一类</strong>。</p>
+<p style="text-align: left;">Wikipedia上的<a href="https://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm" target="_blank">KNN词条</a>中有一个比较经典的图如下：</p>
+<p style="text-align: center;"><img decoding="async" class="size-full wp-image-8053 aligncenter" title="KNN Classification" src="/uploads/2012/08/220px-KnnClassification.svg_.png" alt="" width="220" height="199" srcset=""/></p>
+<p style="text-align: left;">从上图中我们可以看到，图中的有两个类型的样本数据，一类是蓝色的正方形，另一类是红色的三角形。而那个绿色的圆形是我们待分类的数据。</p>
+<ul>
+<li>如果K=3，那么离绿色点最近的有2个红色三角形和1个蓝色的正方形，这3个点投票，于是绿色的这个待分类点属于红色的三角形。</li>
+</ul>
+<ul>
+<li>如果K=5，那么离绿色点最近的有2个红色三角形和3个蓝色的正方形，这5个点投票，于是绿色的这个待分类点属于蓝色的正方形。</li>
+</ul>
+<p>我们可以看到，机器学习的本质——<strong>是基于一种数据统计的方法</strong>！那么，这个算法有什么用呢？我们来看几个示例。</p>
+<p><span id="more-8052"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BA%A7%E5%93%81%E8%B4%A8%E9%87%8F%E5%88%A4%E6%96%AD" title="产品质量判断">产品质量判断</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E9%A2%84%E6%B5%8B" title="预测">预测</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%8F%92%E5%80%BC%EF%BC%8C%E5%B9%B3%E6%BB%91%E6%9B%B2%E7%BA%BF" title="插值，平滑曲线">插值，平滑曲线</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%90%8E%E8%AE%B0" title="后记">后记</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BA%A7%E5%93%81%E8%B4%A8%E9%87%8F%E5%88%A4%E6%96%AD"></span>产品质量判断<span class="ez-toc-section-end"></span></h4>
+<p>假设我们需要判断纸巾的品质好坏，纸巾的品质好坏可以抽像出两个向量，一个是“酸腐蚀的时间”，一个是“能承受的压强”。如果我们的样本空间如下：（所谓样本空间，又叫Training Data，也就是用于机器学习的数据）</p>
+<table style="margin: auto;" border="1" cellspacing="3" cellpadding="3">
+<tbody>
+<tr>
+<td valign="top" width="33%">
+<p align="center"><strong>向量X1</strong></p>
+<p align="center"><strong>耐酸时间（秒）</strong></p>
+</td>
+<td valign="top" width="33%">
+<p align="center"><strong>向量X2</strong></p>
+<p align="center"><strong>圧强(公斤/平方米)</strong></p>
+</td>
+<td valign="top" width="33%">
+<p align="center"><strong>品质Y</strong></p>
+</td>
+</tr>
+<tr>
+<td valign="top" width="33%">
+<p align="center">7</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">7</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">坏</p>
+</td>
+</tr>
+<tr>
+<td valign="top" width="33%">
+<p align="center">7</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">4</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">坏</p>
+</td>
+</tr>
+<tr>
+<td valign="top" width="33%">
+<p align="center">3</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">4</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">好</p>
+</td>
+</tr>
+<tr>
+<td valign="top" width="33%">
+<p align="center">1</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">4</p>
+</td>
+<td valign="top" width="33%">
+<p align="center">好</p>
+</td>
+</tr>
+</tbody>
+</table>
+<p>那么，如果 X1 = 3 和 X2 = 7， 这个毛巾的品质是什么呢？这里就可以用到KNN算法来判断了。</p>
+<p>假设K=3，K应该是一个奇数，这样可以保证不会有平票，下面是我们计算（3，7）到所有点的距离。（关于那些距离公式，可以参看<a title="K-Means 算法" href="/articles/7779.html" target="_blank">K-Means算法中的距离公式</a>）</p>
+<table style="margin: auto;" border="1" cellspacing="3" cellpadding="3">
+<tbody>
+<tr>
+<td valign="top" width="25%">
+<p align="center"><strong>向量X1</strong></p>
+<p align="center"><strong>耐酸时间（秒）</strong></p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong>向量X2</strong></p>
+<p align="center"><strong>圧强(公斤/平方米)</strong></p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong>计算到 (3, 7)的距离</strong></p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong>向量Y</strong></p>
+</td>
+</tr>
+<tr>
+<td valign="top" width="25%">
+<p align="center">7</p>
+</td>
+<td valign="top" width="25%">
+<p align="center">7</p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong><img decoding="async" loading="lazy" src="/uploads/2012/08/KNN_Numerical-example_clip_image004.gif" alt="" width="144" height="24" srcset=""/></strong></p>
+</td>
+<td style="text-align: center;" valign="top" width="25%"> 坏</td>
+</tr>
+<tr>
+<td valign="top" width="25%">
+<p align="center">7</p>
+</td>
+<td valign="top" width="25%">
+<p align="center">4</p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong><img decoding="async" loading="lazy" src="/uploads/2012/08/KNN_Numerical-example_clip_image006.gif" alt="" width="145" height="24" srcset=""/></strong></p>
+</td>
+<td style="text-align: center;" valign="top" width="25%"> N/A</td>
+</tr>
+<tr>
+<td valign="top" width="25%">
+<p align="center">3</p>
+</td>
+<td valign="top" width="25%">
+<p align="center">4</p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong><img decoding="async" loading="lazy" src="/uploads/2012/08/KNN_Numerical-example_clip_image008.gif" alt="" width="136" height="24" srcset=""/></strong></p>
+</td>
+<td style="text-align: center;" valign="top" width="25%"> 好</td>
+</tr>
+<tr>
+<td valign="top" width="25%">
+<p align="center">1</p>
+</td>
+<td valign="top" width="25%">
+<p align="center">4</p>
+</td>
+<td valign="top" width="25%">
+<p align="center"><strong><img decoding="async" loading="lazy" src="/uploads/2012/08/KNN_Numerical-example_clip_image010.gif" alt="" width="140" height="24" srcset=""/></strong></p>
+</td>
+<td style="text-align: center;" valign="top" width="25%"> 好</td>
+</tr>
+</tbody>
+</table>
+<p>所以，最后的投票，好的有2票，坏的有1票，最终需要测试的（3，7）是合格品。（当然，你还可以使用权重——可以把距离值做为权重，越近的权重越大，这样可能会更准确一些）</p>
+<p><strong>注：<a href="http://people.revoledu.com/kardi/tutorial/KNN/KNN_Numerical-example.html" target="_blank">示例来自这里</a>，<a href="https://coolshell.cn/wp-content/uploads/2012/08/K-NearestNeighbors.xls">K-NearestNeighbors Excel表格下载</a></strong></p>
+<h4><span class="ez-toc-section" id="%E9%A2%84%E6%B5%8B"></span>预测<span class="ez-toc-section-end"></span></h4>
+<p>假设我们有下面一组数据，假设X是流逝的秒数，Y值是随时间变换的一个数值（你可以想像是股票值）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" title="KNN_TimeSeries_clip_image004" src="/uploads/2012/08/KNN_TimeSeries_clip_image004.jpg" alt="" width="191" height="187" srcset=""/></p>
+<p>那么，当时间是6.5秒的时候，Y值会是多少呢？我们可以用KNN算法来预测之。</p>
+<p>这里，让我们假设K=2，于是我们可以计算所有X点到6.5的距离，如：X=5.1，距离是 | 6.5 – 5.1 | = 1.4， X = 1.2 那么距离是 | 6.5 – 1.2 | = 5.3 。于是我们得到下面的表：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" title="KNN_TimeSeries_clip_image006" src="/uploads/2012/08/KNN_TimeSeries_clip_image006.jpg" alt="" width="312" height="120" srcset=""/></p>
+<p>注意，上图中因为K=2，所以得到X=4 和 X =5.1的点最近，得到的Y的值分别为27和8，在这种情况下，我们可以简单的使用平均值来计算：<img decoding="async" loading="lazy" title="KNN_TimeSeries_clip_image008" src="/uploads/2012/08/KNN_TimeSeries_clip_image008.gif" alt="" width="87" height="41" srcset=""/></p>
+<p>于是，最终预测的数值为：17.5</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8072" title="KNN_TimeSeries_clip_image010" src="/uploads/2012/08/KNN_TimeSeries_clip_image010.jpg" alt="" width="402" height="305" srcset="" sizes="(max-width: 402px) 100vw, 402px"/></p>
+<p><strong>注：<a href="http://people.revoledu.com/kardi/tutorial/KNN/KNN_TimeSeries.htm" target="_blank">示例来自这里</a>，<a href="https://coolshell.cn/wp-content/uploads/2012/08/KNN_TimeSeries.xls">KNN_TimeSeries Excel表格下载</a></strong></p>
+<h4><span class="ez-toc-section" id="%E6%8F%92%E5%80%BC%EF%BC%8C%E5%B9%B3%E6%BB%91%E6%9B%B2%E7%BA%BF"></span>插值，平滑曲线<span class="ez-toc-section-end"></span></h4>
+<p>KNN算法还可以用来做平滑曲线用，这个用法比较另类。假如我们的样本数据如下（和上面的一样）：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" title="KNN_TimeSeries_clip_image012" src="/uploads/2012/08/KNN_TimeSeries_clip_image012.jpg" alt="" width="335" height="35" srcset=""/></p>
+<p>要平滑这些点，我们需要在其中插入一些值，比如我们用步长为0.1开始插值，从0到6开始，计算到所有X点的距离（绝对值），下图给出了从0到0.5 的数据：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8074" title="KNN_TimeSeries_clip_image014" src="/uploads/2012/08/KNN_TimeSeries_clip_image014.jpg" alt="" width="334" height="152" srcset="" sizes="(max-width: 334px) 100vw, 334px"/></p>
+<p>下图给出了从2.5到3.5插入的11个值，然后计算他们到各个X的距离，假值K=4，那么我们就用最近4个X的Y值，然后求平均值，得到下面的表：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" title="KNN_TimeSeries_clip_image016" src="/uploads/2012/08/KNN_TimeSeries_clip_image016.jpg" alt="" width="576" height="206" srcset=""/></p>
+<p>于是可以从0.0, 0.1, 0.2, 0.3 …. 1.1, 1.2, 1.3…..3.1, 3.2…..5.8, 5.9, 6.0 一个大表，跟据K的取值不同，得到下面的图：</p>
+<table style="border: 0px; margin: auto;">
+<tbody>
+<tr>
+<td><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8080" title="KNN_TimeSeries_clip_image026" src="/uploads/2012/08/KNN_TimeSeries_clip_image026.jpg" alt="" width="262" height="246" srcset=""/></td>
+<td><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8079" title="KNN_TimeSeries_clip_image024" src="/uploads/2012/08/KNN_TimeSeries_clip_image024.jpg" alt="" width="270" height="249" srcset=""/></td>
+</tr>
+<tr>
+<td><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8078" title="KNN_TimeSeries_clip_image022" src="/uploads/2012/08/KNN_TimeSeries_clip_image022.jpg" alt="" width="262" height="244" srcset=""/></td>
+<td><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8077" title="KNN_TimeSeries_clip_image020" src="/uploads/2012/08/KNN_TimeSeries_clip_image020.jpg" alt="" width="251" height="234" srcset=""/></td>
+</tr>
+<tr>
+<td><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8076" title="KNN_TimeSeries_clip_image018" src="/uploads/2012/08/KNN_TimeSeries_clip_image018.jpg" alt="" width="246" height="228" srcset=""/></td>
+</tr>
+</tbody>
+</table>
+<p><strong>注：<a href="http://people.revoledu.com/kardi/tutorial/KNN/KNN_TimeSeries.htm" target="_blank">示例来自这里</a>，<a href="https://coolshell.cn/wp-content/uploads/2012/08/KNN_Smoothing.xls">KNN_Smoothing Excel表格下载</a></strong></p>
+<h4><span class="ez-toc-section" id="%E5%90%8E%E8%AE%B0"></span>后记<span class="ez-toc-section-end"></span></h4>
+<p>最后，我想再多说两个事，</p>
+<p>1） 一个是机器学习，算法基本上都比较简单，最难的是数学建模，把那些业务中的特性抽象成向量的过程，另一个是选取适合模型的数据样本。这两个事都不是简单的事。算法反而是比较简单的事。</p>
+<p>2）对于KNN算法中找到离自己最近的K个点，是一个很经典的算法面试题，需要使用到的数据结构是“<a href="https://en.wikipedia.org/wiki/Binary_heap" target="_blank">最大堆——Max Heap</a>”，一种二叉树。你可以看看相关的算法。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8052-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">Data Mining</a>, <a href="javascript:void(0)" rel="tag">KNN</a>, <a href="javascript:void(0)" rel="tag">Max Heap</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>K Nearest Neighbor 算法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-201692" class="comment even thread-even depth-1">
+<article id="div-comment-201692" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201692"><time datetime="2012-08-17T08:26:19+08:00">2012年08月17日 08:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>抢沙发，算法其实相当有趣</p>
+</div>
+ </article>
+</li>
+<li id="comment-201693" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201693" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6c04bc27ce7e8406eeeefad0a1bfbb9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6c04bc27ce7e8406eeeefad0a1bfbb9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cs.pitt.edu/~ztliu" class="url" rel="ugc external nofollow">Zitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201693"><time datetime="2012-08-17T08:43:53+08:00">2012年08月17日 08:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>机器学习的本质——是基于一种数据统计的方法！</p>
+<p>Basically, this sentence is quite inaccurate. Or I even can say, it is wrong. (from working desktop, no chinese input…)</p>
+</div>
+ </article>
+</li>
+<li id="comment-201698" class="comment even thread-even depth-1">
+<article id="div-comment-201698" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92e595b9ce2a557cf42038d76c56ea52?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92e595b9ce2a557cf42038d76c56ea52?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">书童</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201698"><time datetime="2012-08-17T09:17:37+08:00">2012年08月17日 09:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问股票预测哪里为什么K=2呢？ 根据是什么？ 在实际应用中如何得出这个值呢？我想肯定不是固定值啊，另外后面为什么只取了前两个最近的点（Y的值分别为27和8的哪两个点），为什么不是3个4个呢？这个和k=2 有关系？</p>
+</div>
+ </article>
+</li>
+<li id="comment-201700" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201700" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0cfd1ef8d2107c41ad2c9f7ff39181b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0cfd1ef8d2107c41ad2c9f7ff39181b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Solon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201700"><time datetime="2012-08-17T09:27:40+08:00">2012年08月17日 09:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>人工智能和数据挖掘，很火的两个方向~<br/>
+大根堆加KNN算法，很有意思。<br/>
+万变不离其宗，数学确实是基础，建模。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201702" class="comment even thread-even depth-1">
+<article id="div-comment-201702" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e7b02575ed58c597ed1322d6052a947?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e7b02575ed58c597ed1322d6052a947?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Chinese_xu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201702"><time datetime="2012-08-17T09:42:01+08:00">2012年08月17日 09:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实如果仅仅是物理距离上的最近K个求解,用传统的KNN算法或者树来解决都有点太麻烦了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-201703" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201703" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9249f81e9bee9f274714757d1b4389d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9249f81e9bee9f274714757d1b4389d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://bearzx.com" class="url" rel="ugc external nofollow">bearzx</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201703"><time datetime="2012-08-17T09:44:28+08:00">2012年08月17日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实有些机器学习算法还真不怎么简单= =比如HMM相关的算法</p>
+</div>
+ </article>
+</li>
+<li id="comment-201713" class="comment even thread-even depth-1">
+<article id="div-comment-201713" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5731e20d4466400e8d583b1934272556?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5731e20d4466400e8d583b1934272556?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://limbo-nova.com/" class="url" rel="ugc external nofollow">Tony</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201713"><time datetime="2012-08-17T10:24:40+08:00">2012年08月17日 10:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受教了。有个题外问题：为什么数据里，耐酸时间长，受压大却是差品质的毛巾？</p>
+</div>
+ </article>
+</li>
+<li id="comment-201719" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201719" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fb90216b8cd392e42673880584ab32e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fb90216b8cd392e42673880584ab32e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">harry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201719"><time datetime="2012-08-17T11:00:01+08:00">2012年08月17日 11:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真心感谢陈皓，我在这里学到了很多东西</p>
+</div>
+ </article>
+</li>
+<li id="comment-201726" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.donews.com/chenhaochenhao/archive/2012/08/17/4.aspx" class="url" rel="ugc external nofollow">K Nearest Neighbor 算法 - 陈皓的DoNews博客 - Just another weblog</a> </div>
+</li>
+<li id="comment-201727" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201727" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e584744a32553bf905fe82e3d362ab6d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e584744a32553bf905fe82e3d362ab6d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">evan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201727"><time datetime="2012-08-17T11:33:42+08:00">2012年08月17日 11:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-201703"><p>
+<strong><a href="#comment-201703" rel="nofollow">bearzx</a> :</strong><br/>
+其实有些机器学习算法还真不怎么简单= =比如HMM相关的算法
+</p></blockquote>
+<p>同意，还有各种核方法、流形学习什么的，如果要做机器学习研究，往往需要掌握统计学、矩阵理论、最优化方法、随机过程、拓扑学其中的几种……</p>
+</div>
+ </article>
+</li>
+<li id="comment-201734" class="comment even thread-even depth-1">
+<article id="div-comment-201734" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4ce6a256621443d532f909d7e6658d7b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4ce6a256621443d532f909d7e6658d7b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201734"><time datetime="2012-08-17T13:30:33+08:00">2012年08月17日 13:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-201713" rel="nofollow">@Tony </a><br/>
+评价一个事物好坏，首先要明确我们能用它来干什么，需要干什么。然后根据我们“认为”的这个事物的需要满足能力，来判断它的好坏。毛巾是用来擦我们身体部位的，那么这里我们的需要就是：能完成擦这个需要，并且使我们的”部位“感觉很舒服的东西，并且舒服的需要占据了很大的比重。结论就出来了，在一般的材料中，越硬，越不易磨损的东西，擦起来身体为很不舒服。所以。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201740" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201740" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5731e20d4466400e8d583b1934272556?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5731e20d4466400e8d583b1934272556?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://limbo-nova.com/" class="url" rel="ugc external nofollow">Tony</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201740"><time datetime="2012-08-17T13:49:28+08:00">2012年08月17日 13:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-201734" rel="nofollow">@dk </a><br/>
+啊，多谢指点，我死脑筋了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201745" class="comment even thread-even depth-1">
+<article id="div-comment-201745" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/30cdbed3778483f2e090fcff238f5080?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/30cdbed3778483f2e090fcff238f5080?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zssure</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201745"><time datetime="2012-08-17T14:33:38+08:00">2012年08月17日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>讲解的很详细，最近在研究脑肿瘤分割的算法，很受用，一直关注酷壳</p>
+</div>
+ </article>
+</li>
+<li id="comment-201771" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201771" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5a357558cabca9148f376f490b932903?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5a357558cabca9148f376f490b932903?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ricepig</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201771"><time datetime="2012-08-17T23:59:44+08:00">2012年08月17日 23:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实从地理和空间科学的角度，KNN的较为经典方法是基于空间分割（空间索引）的算法，比如成熟的ANN算法</p>
+</div>
+ </article>
+</li>
+<li id="comment-201803" class="comment even thread-even depth-1">
+<article id="div-comment-201803" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/183834401387b06b8aff24f88dcd6cbd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/183834401387b06b8aff24f88dcd6cbd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ro</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201803"><time datetime="2012-08-18T22:06:19+08:00">2012年08月18日 22:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-201693" rel="nofollow">@Zitao </a><br/>
+你的意思是站在概念性的角度，一定要用performance, task, training这样严格的定义？</p>
+</div>
+ </article>
+</li>
+<li id="comment-201883" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201883" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/def0d12ec57602972973b948870ee1d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/def0d12ec57602972973b948870ee1d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201883"><time datetime="2012-08-20T20:14:23+08:00">2012年08月20日 20:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不好意思，下面的图就真的理解不了怎么画出来。请原谅菜鸟，求解答。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201971" class="comment even thread-even depth-1">
+<article id="div-comment-201971" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5792b0c9531f876aa0574146f71e10a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5792b0c9531f876aa0574146f71e10a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">noname</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-201971"><time datetime="2012-08-22T12:47:47+08:00">2012年08月22日 12:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-201713" rel="nofollow">@Tony </a><br/>
+硬吧。。纤维的和棉的比就是压强大和更耐酸</p>
+</div>
+ </article>
+</li>
+<li id="comment-202098" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202098" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/563d50c2fb7fc4411ded6f48855ad0b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/563d50c2fb7fc4411ded6f48855ad0b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ccpt.cc" class="url" rel="ugc external nofollow">CPT</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-202098"><time datetime="2012-08-26T16:03:45+08:00">2012年08月26日 16:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>算法菜鸟表示懂算法的都是大神</p>
+</div>
+ </article>
+</li>
+<li id="comment-202366" class="comment even thread-even depth-1">
+<article id="div-comment-202366" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/50a85c0613d266f8591eb2fc15ec3326?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/50a85c0613d266f8591eb2fc15ec3326?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jax</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-202366"><time datetime="2012-09-05T09:30:28+08:00">2012年09月05日 09:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@陈皓 K的取值是怎么考量的呢？通篇貌似没提到哦</p>
+</div>
+ </article>
+</li>
+<li id="comment-202473" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202473" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9ab815be3eb23fe0998e6a20e70e7033?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9ab815be3eb23fe0998e6a20e70e7033?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-202473"><time datetime="2012-09-07T22:21:34+08:00">2012年09月07日 22:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果要做分類的話可以參考svm這個方法<br/>
+這個方法非常神奇…<br/>
+<a href="https://en.wikipedia.org/wiki/Support_vector_machine" rel="nofollow ugc">http://en.wikipedia.org/wiki/Support_vector_machine</a><br/>
+程式的話在http://www.csie.ntu.edu.tw/~cjlin/libsvm/也有很多版本</p>
+</div>
+ </article>
+</li>
+<li id="comment-203075" class="comment even thread-even depth-1 parent">
+<article id="div-comment-203075" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3d45840da1a1dfeae3338e52ff6270b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3d45840da1a1dfeae3338e52ff6270b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pengwang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-203075"><time datetime="2012-09-24T11:27:02+08:00">2012年09月24日 11:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个kmean算法就敢说Machine learning简单，实在是让人觉得坐井观天，NN,DNN,HMM, CRF, BOOST, GMM, SVM每一个都需要极强的数学功底，纯engneer加以运用不过是车床工人罢了</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1916116" class="comment odd alt depth-2">
+<article id="div-comment-1916116" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65d9a18d1f091c2e4ee87d664f0ee840?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65d9a18d1f091c2e4ee87d664f0ee840?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zzblack</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-1916116"><time datetime="2017-08-11T11:09:38+08:00">2017年08月11日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>先把engineer打对。。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-219518" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/how-to-test-the-shuffling-process.html" class="url" rel="ugc external nofollow">Definite Digest » 如何测试洗牌程序</a> </div>
+</li>
+<li id="comment-219751" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.chemosolv.com/blog/matchcoder/knn-usager-within-opencv/" class="url" rel="ugc external nofollow">使用OpenCV库里的kNN进行2维样本集的分类 | matchcoder</a> </div>
+</li>
+<li id="comment-297638" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yanjiuyanjiu.com/archives/4478" class="url" rel="ugc external nofollow">研究研究 » KNN和K-Means的区别</a> </div>
+</li>
+<li id="comment-310466" class="comment odd alt thread-even depth-1">
+<article id="div-comment-310466" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3d32d9129f2e6959b5c3cc148f3595b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3d32d9129f2e6959b5c3cc148f3595b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jimmy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-310466"><time datetime="2013-03-15T00:31:49+08:00">2013年03月15日 00:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常同意，搞过学术的都知道这东西需要多少数学功底，当然了，什么都不懂也可以直接用，而且理解成简单<a href="#comment-203075" rel="nofollow">@pengwang </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-616415" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.r66r.net/?p=2063" class="url" rel="ugc external nofollow">从K近邻算法、距离度量谈到KD树、SIFT+BBF算法 | r6</a> </div>
+</li>
+<li id="comment-622470" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/10192.html" class="url" rel="ugc">数据的游戏：冰与火 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-622845" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mehmethe.com/archives/245" class="url" rel="ugc external nofollow">数据的游戏：冰与火</a> </div>
+</li>
+<li id="comment-623631" class="comment odd alt thread-even depth-1">
+<article id="div-comment-623631" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/16c7ee0f354ce737e8dc1f4d9b774be1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/16c7ee0f354ce737e8dc1f4d9b774be1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cannon0102</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-623631"><time datetime="2013-07-31T22:02:20+08:00">2013年07月31日 22:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受教了~~~最近在看KNN算法 打算编程实现，看来要把二项堆认真看看~~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-626424" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=13044" class="url" rel="ugc external nofollow">数据的游戏：冰与火</a> </div>
+</li>
+<li id="comment-628319" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://aaa168888.jelastic.dogado.eu/?p=27" class="url" rel="ugc external nofollow">数据的游戏：冰与火 - 您不知道的事</a> </div>
+</li>
+<li id="comment-645096" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.199it.com/archives/139117.html" class="url" rel="ugc external nofollow">数据的游戏：冰与火 互联网TMT数据 | 中文互联网数据研究资讯中心-199IT</a> </div>
+</li>
+<li id="comment-697757" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dyumark.sinaapp.com/archives/22" class="url" rel="ugc external nofollow">数据游戏 | Dyumark</a> </div>
+</li>
+<li id="comment-852518" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=33" class="url" rel="ugc external nofollow">伙伴分配器的一个极简实现 | zengine</a> </div>
+</li>
+<li id="comment-858678" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=49" class="url" rel="ugc external nofollow">二维码的生成细节和原理 | zengine</a> </div>
+</li>
+<li id="comment-1062082" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/128.html" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1217167" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ichang.sinaapp.com/2014/01/23/hadoop-notebook/" class="url" rel="ugc external nofollow">iChang » hadoop笔记本</a> </div>
+</li>
+<li id="comment-1507168" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1002" class="url" rel="ugc external nofollow">【活动】解迷题送礼物 | 星达红</a> </div>
+</li>
+<li id="comment-1745898" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dataminers.cn/%e6%95%b0%e6%8d%ae%e7%9a%84%e6%b8%b8%e6%88%8f%ef%bc%9a%e5%86%b0%e4%b8%8e%e7%81%ab/" class="url" rel="ugc external nofollow">数据的游戏：冰与火 – 数说</a> </div>
+</li>
+<li id="comment-1800026" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xiangxianzhang.com/2015/12/09/%e5%88%a9%e7%94%a8knn%e7%ae%97%e6%b3%95%e8%af%86%e5%88%ab%e6%89%8b%e5%86%99%e5%ad%97%e4%bd%93/" class="url" rel="ugc external nofollow">利用KNN算法识别手写字体 | 逍遥小章</a> </div>
+</li>
+<li id="comment-1810314" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itdadao.com/article/434425/" class="url" rel="ugc external nofollow">Python与机器学习（三）：K-近邻算法 - IT大道</a> </div>
+</li>
+<li id="comment-1876401" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codechangetheworld.com/blog/2016/09/02/%e4%bb%8ek%e8%bf%91%e9%82%bb%e7%ae%97%e6%b3%95%e3%80%81%e8%b7%9d%e7%a6%bb%e5%ba%a6%e9%87%8f%e8%b0%88%e5%88%b0kd%e6%a0%91%e3%80%81siftbbf%e7%ae%97%e6%b" class="url" rel="ugc external nofollow">从K近邻算法、距离度量谈到KD树、SIFT+BBF算法(转) – ReidHolmes</a> </div>
+</li>
+<li id="comment-1892961" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1892961" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f266c54cce74668cba2a34c9f9bac00f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f266c54cce74668cba2a34c9f9bac00f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-1892961"><time datetime="2016-10-20T20:28:48+08:00">2016年10月20日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我记得KNN的高效实现是使用KD-Tree</p>
+</div>
+ </article>
+</li>
+<li id="comment-1903412" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.leesven.com/4968.html" class="url" rel="ugc external nofollow">机器学习之主题词分类【以点评信息为例】 | Running Snail</a> </div>
+</li>
+<li id="comment-1913397" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yizhen-blog.com/knn%e5%ad%a6%e4%b9%a0/" class="url" rel="ugc external nofollow">KNN学习 – Yizhen&#39;s blog</a> </div>
+</li>
+<li id="comment-1915326" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hao.jser.com/archive/17963/" class="url" rel="ugc external nofollow">JavaScript机器学习之KNN算法 | 好JSER好JSER</a> </div>
+</li>
+<li id="comment-1923446" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1923446" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c1934a76b1c30799170c9c20a899740?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c1934a76b1c30799170c9c20a899740?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.503error.com" class="url" rel="ugc external nofollow">xiaoMing</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8052.html#comment-1923446"><time datetime="2018-01-25T10:31:57+08:00">2018年01月25日 10:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1943016" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://photo.itmeseji.com/2018/11/12/javascript%e6%9c%ba%e5%99%a8%e5%ad%a6%e4%b9%a0%e4%b9%8bknn%e7%ae%97%e6%b3%95/" class="url" rel="ugc external nofollow">JavaScript机器学习之KNN算法 – 1</a> </div>
+</li>
+<li id="comment-2291163" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1015639" class="url" rel="ugc external nofollow">从K近邻算法、距离度量谈到KD树、SIFT+BBF算法 - 算法网</a> </div>
+</li>
+<li id="comment-2310837" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1307443" class="url" rel="ugc external nofollow">KNN算法 针对分类和预测详解 - 算法网</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

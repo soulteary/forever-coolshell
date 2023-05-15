@@ -1,0 +1,1254 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go 语言简介（下）— 特性 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8489 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8489" class="post-content post-8489 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-go tag-golang">
+<header class="entry-header">
+<span class="screen-reader-text">Go 语言简介（下）— 特性</span>
+<h1 class="entry-title">Go 语言简介（下）— 特性</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8489.html" title="08:17" rel="bookmark"><time class="entry-date" datetime="2012-11-07T08:17:20+08:00" pubdate="">2012年11月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8489.html#comments" class="comments-link">95 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 100,682 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>希望你看到这篇文章的时候还是在公交车和地铁上正在上下班的时间，我希望我的这篇文章可以让你利用这段时间了解一门语言。当然，希望你不会因为看我的文章而错过站。呵呵。</p>
+<p>如果你还不了解Go语言的语法，还请你移步先看一下上篇——《<strong><a title="Go语言简介（上）：语法" href="/articles/8460.html" target="_blank" rel="noopener noreferrer">Go语言简介（上）：语法</a></strong>》</p>
+<p><img decoding="async" src="/uploads/2012/11/google-go-language.jpg" alt="" title="google-go-language" width="450" height="272" class="aligncenter size-full wp-image-8531" srcset="" sizes="(max-width: 450px) 100vw, 450px"/></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#goroutine" title="goroutine">goroutine</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#goroutine%E7%9A%84%E5%B9%B6%E5%8F%91%E5%AE%89%E5%85%A8%E6%80%A7" title="goroutine的并发安全性">goroutine的并发安全性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C" title="原子操作">原子操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Channel_%E4%BF%A1%E9%81%93" title="Channel 信道">Channel 信道</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%AE%9A%E6%97%B6%E5%99%A8" title="定时器">定时器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Socket%E7%BC%96%E7%A8%8B" title="Socket编程">Socket编程</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8" title="系统调用">系统调用</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4%E8%A1%8C" title="执行命令行">执行命令行</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%8F%82%E6%95%B0" title="命令行参数">命令行参数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84HTTP_Server" title="一个简单的HTTP Server">一个简单的HTTP Server</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="goroutine"></span>goroutine<span class="ez-toc-section-end"></span></h4>
+<p>GoRoutine主要是使用go关键字来调用函数，你还可以使用匿名函数，如下所示：</p>
+<p><span id="more-8489"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="9,11">package main
+import &#34;fmt&#34;
+
+func f(msg string) {
+    fmt.Println(msg)
+}
+
+func main(){
+    go f(&#34;goroutine&#34;)
+
+    go func(msg string) {
+        fmt.Println(msg)
+    }(&#34;going&#34;)
+}</pre>
+<p>我们再来看一个示例，下面的代码中包括很多内容，包括时间处理，随机数处理，还有goroutine的代码。如果你熟悉C语言，你应该会很容易理解下面的代码。</p>
+<p>你可以简单的把go关键字调用的函数想像成pthread_create。下面的代码使用for循环创建了3个线程，每个线程使用一个随机的Sleep时间，然后在routine()函数中会输出一些线程执行的时间信息。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+import &#34;time&#34;
+import &#34;math/rand&#34;
+
+func routine(name string, delay time.Duration) {
+
+    t0 := time.Now()
+    fmt.Println(name, &#34; start at &#34;, t0)
+
+    time.Sleep(delay)
+
+    t1 := time.Now()
+    fmt.Println(name, &#34; end at &#34;, t1)
+
+    fmt.Println(name, &#34; lasted &#34;, t1.Sub(t0))
+}
+
+func main() {
+
+    //生成随机种子
+    rand.Seed(time.Now().Unix())
+
+    var name string
+    for i:=0; i&lt;3; i++{
+        name = fmt.Sprintf(&#34;go_%02d&#34;, i) //生成ID
+        //生成随机等待时间，从0-4秒
+        go routine(name, time.Duration(rand.Intn(5)) * time.Second)
+    }
+
+    //让主进程停住，不然主进程退了，goroutine也就退了
+    var input string
+    fmt.Scanln(&amp;input)
+    fmt.Println(&#34;done&#34;)
+}
+</pre>
+<p>运行的结果可能是：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">go_00  start at  2012-11-04 19:46:35.8974894 +0800 +0800
+go_01  start at  2012-11-04 19:46:35.8974894 +0800 +0800
+go_02  start at  2012-11-04 19:46:35.8974894 +0800 +0800
+go_01  end at  2012-11-04 19:46:36.8975894 +0800 +0800
+go_01  lasted  1.0001s
+go_02  end at  2012-11-04 19:46:38.8987895 +0800 +0800
+go_02  lasted  3.0013001s
+go_00  end at  2012-11-04 19:46:39.8978894 +0800 +0800
+go_00  lasted  4.0004s
+</pre>
+<h4><span class="ez-toc-section" id="goroutine%E7%9A%84%E5%B9%B6%E5%8F%91%E5%AE%89%E5%85%A8%E6%80%A7"></span>goroutine的并发安全性<span class="ez-toc-section-end"></span></h4>
+<p>关于goroutine，我试了一下，无论是Windows还是Linux，基本上来说是用操作系统的线程来实现的。不过，goroutine有个特性，也就是说，<strong>如果一个goroutine没有被阻塞，那么别的goroutine就不会得到执行</strong>。这并不是真正的并发，如果你要真正的并发，你需要在你的main函数的第一行加上下面的这段代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">import &#34;runtime&#34;
+...
+runtime.GOMAXPROCS(4)</pre>
+<p>还是让我们来看一个有并发安全性问题的示例（注意：我使用了C的方式来写这段Go的程序）</p>
+<p>这是一个经常出现在教科书里卖票的例子，我启了5个goroutine来卖票，卖票的函数sell_tickets很简单，就是随机的sleep一下，然后对全局变量total_tickets作减一操作。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+import &#34;time&#34;
+import &#34;math/rand&#34;
+import &#34;runtime&#34;
+
+var total_tickets int32 = 10;
+
+func sell_tickets(i int){
+    for{
+        if total_tickets &gt; 0 { //如果有票就卖
+            time.Sleep( time.Duration(rand.Intn(5)) * time.Millisecond)
+            total_tickets-- //卖一张票
+            fmt.Println(&#34;id:&#34;, i, &#34;  ticket:&#34;, total_tickets)
+        }else{
+            break
+        }
+    }
+}
+
+func main() {
+    runtime.GOMAXPROCS(4) //我的电脑是4核处理器，所以我设置了4
+    rand.Seed(time.Now().Unix()) //生成随机种子
+
+    for i := 0; i &lt; 5; i++ { //并发5个goroutine来卖票
+         go sell_tickets(i)
+    }
+    //等待线程执行完
+    var input string
+    fmt.Scanln(&amp;input)
+    fmt.Println(total_tickets, &#34;done&#34;) //退出时打印还有多少票
+}</pre>
+<p>这个程序毋庸置疑有并发安全性问题，所以执行起来你会看到下面的结果：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">$go run sell_tickets.go
+id: 0   ticket: 9  
+id: 0   ticket: 8  
+id: 4   ticket: 7  
+id: 1   ticket: 6  
+id: 3   ticket: 5  
+id: 0   ticket: 4  
+id: 3   ticket: 3  
+id: 2   ticket: 2  
+id: 0   ticket: 1  
+id: 3   ticket: 0  
+id: 1   ticket: -1  
+id: 4   ticket: -2  
+id: 2   ticket: -3  
+id: 0   ticket: -4  
+-4 done</pre>
+<p>可见，我们需要使用上锁，我们可以使用互斥量来解决这个问题。下面的代码，我只列出了修改过的内容：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="5,9,13,19"> package main
+import &#34;fmt&#34;
+import &#34;time&#34;
+import &#34;math/rand&#34;
+import &#34;sync&#34;
+import &#34;runtime&#34;
+
+var total_tickets int32 = 10;
+var mutex = &amp;sync.Mutex{} //可简写成：var mutex sync.Mutex
+
+func sell_tickets(i int){
+    for total_tickets&gt;0 {
+        mutex.Lock()
+        if total_tickets &gt; 0 {
+            time.Sleep( time.Duration(rand.Intn(5)) * time.Millisecond)
+            total_tickets--
+            fmt.Println(i, total_tickets)
+        }
+        mutex.Unlock()
+    }
+}
+.......
+......
+</pre>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C"></span>原子操作<span class="ez-toc-section-end"></span></h4>
+<p>说到并发就需要说说原子操作，相信大家还记得我写的那篇《<a title="无锁队列的实现" href="/articles/8239.html" target="_blank" rel="noopener noreferrer">无锁队列的实现</a>》一文，里面说到了一些CAS – CompareAndSwap的操作。Go语言也支持。你可以看一下相当的文档</p>
+<p>我在这里就举一个很简单的示例：下面的程序有10个goroutine，每个会对cnt变量累加20次，所以，最后的cnt应该是200。如果没有atomic的原子操作，那么cnt将有可能得到一个小于200的数。</p>
+<p>下面使用了atomic操作，所以是安全的。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="5,13,18">package main
+
+import &#34;fmt&#34;
+import &#34;time&#34;
+import &#34;sync/atomic&#34;
+
+func main() {
+    var cnt uint32 = 0
+    for i := 0; i &lt; 10; i++ {
+        go func() {
+            for i:=0; i&lt;20; i++ {
+                time.Sleep(time.Millisecond)
+                atomic.AddUint32(&amp;cnt, 1)
+            }
+        }()
+    }
+    time.Sleep(time.Second)//等一秒钟等goroutine完成
+    cntFinal := atomic.LoadUint32(&amp;cnt)//取数据
+    fmt.Println(&#34;cnt:&#34;, cntFinal)
+}</pre>
+<p>这样的函数还有很多，参看<a href="https://golang.org/pkg/sync/atomic/" target="_blank" rel="noopener noreferrer">go的atomic包文档</a>（被墙）</p>
+<h4><span class="ez-toc-section" id="Channel_%E4%BF%A1%E9%81%93"></span>Channel 信道<span class="ez-toc-section-end"></span></h4>
+<p>Channal是什么？Channal就是用来通信的，就像Unix下的管道一样，在Go中是这样使用Channel的。</p>
+<p>下面的程序演示了一个goroutine和主程序通信的例程。这个程序足够简单了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="7,10">package main
+
+import &#34;fmt&#34;
+
+func main() {
+    //创建一个string类型的channel
+    channel := make(chan string)
+
+    //创建一个goroutine向channel里发一个字符串
+    go func() { channel &lt;- &#34;hello&#34; }()
+
+    msg := &lt;- channel
+    fmt.Println(msg)
+}[</pre>
+<p><strong>指定channel的buffer</strong></p>
+<p>指定buffer的大小很简单，看下面的程序：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="5">package main
+import &#34;fmt&#34;
+
+func main() {
+    channel := make(chan string, 2)
+
+    go func() {
+        channel &lt;- &#34;hello&#34;
+        channel &lt;- &#34;World&#34;
+    }()
+
+    msg1 := &lt;-channel
+    msg2 := &lt;-channel
+    fmt.Println(msg1, msg2)
+}</pre>
+<p><strong>Channel的阻塞</strong></p>
+<p>注意，channel默认上是阻塞的，也就是说，如果Channel满了，就阻塞写，如果Channel空了，就阻塞读。于是，我们就可以使用这种特性来同步我们的发送和接收端。</p>
+<p>下面这个例程说明了这一点，代码有点乱，不过我觉得不难理解。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+import &#34;time&#34;
+
+func main() {
+
+    channel := make(chan string) //注意: buffer为1
+
+    go func() {
+        channel &lt;- &#34;hello&#34;
+        fmt.Println(&#34;write \&#34;hello\&#34; done!&#34;)
+
+        channel &lt;- &#34;World&#34; //Reader在Sleep，这里在阻塞
+        fmt.Println(&#34;write \&#34;World\&#34; done!&#34;)
+
+        fmt.Println(&#34;Write go sleep...&#34;)
+        time.Sleep(3*time.Second)
+        channel &lt;- &#34;channel&#34;
+        fmt.Println(&#34;write \&#34;channel\&#34; done!&#34;)
+    }()
+
+    time.Sleep(2*time.Second)
+    fmt.Println(&#34;Reader Wake up...&#34;)
+
+    msg := &lt;-channel
+    fmt.Println(&#34;Reader: &#34;, msg)
+
+    msg = &lt;-channel
+    fmt.Println(&#34;Reader: &#34;, msg)
+
+    msg = &lt;-channel //Writer在Sleep，这里在阻塞
+    fmt.Println(&#34;Reader: &#34;, msg)
+}</pre>
+<p>上面的代码输出的结果如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">Reader Wake up...
+Reader:  hello
+write &#34;hello&#34; done!
+write &#34;World&#34; done!
+Write go sleep...
+Reader:  World
+write &#34;channel&#34; done!
+Reader:  channel
+</pre>
+<p><strong>Channel阻塞的这个特性还有一个好处是，可以让我们的goroutine在运行的一开始就阻塞在从某个channel领任务，这样就可以作成一个类似于线程池一样的东西。关于这个程序我就不写了。我相信你可以自己实现的。</strong></p>
+<p><strong>多个Channel的select</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+import &#34;time&#34;
+import &#34;fmt&#34;
+
+func main() {
+    //创建两个channel - c1 c2
+    c1 := make(chan string)
+    c2 := make(chan string)
+
+    //创建两个goruntine来分别向这两个channel发送数据
+    go func() {
+        time.Sleep(time.Second * 1)
+        c1 &lt;- &#34;Hello&#34;
+    }()
+    go func() {
+        time.Sleep(time.Second * 1)
+        c2 &lt;- &#34;World&#34;
+    }()
+
+    //使用select来侦听两个channel
+    for i := 0; i &lt; 2; i++ {
+        select {
+        case msg1 := &lt;-c1:
+            fmt.Println(&#34;received&#34;, msg1)
+        case msg2 := &lt;-c2:
+            fmt.Println(&#34;received&#34;, msg2)
+        }
+    }
+}</pre>
+<p>注意：上面的select是阻塞的，所以，才搞出ugly的for i &lt;2这种东西<strong>。<br/>
+</strong></p>
+<p><strong>Channel select阻塞的Timeout</strong></p>
+<p>解决上述那个for循环的问题，一般有两种方法：一种是阻塞但有timeout，一种是无阻塞。我们来看看如果给select设置上timeout的。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="8">    for {
+        timeout_cnt := 0
+        select {
+        case msg1 := &lt;-c1:
+            fmt.Println(&#34;msg1 received&#34;, msg1)
+        case msg2 := &lt;-c2:
+            fmt.Println(&#34;msg2 received&#34;, msg2)
+        case  &lt;-time.After(time.Second * 30)：
+            fmt.Println(&#34;Time Out&#34;)
+            timout_cnt++
+        }
+        if time_cnt &gt; 3 {
+            break
+        }
+    }
+</pre>
+<p>上面代码中高亮的代码主要是用来让select返回的，注意 case中的time.After事件。</p>
+<p><strong>Channel的无阻塞</strong></p>
+<p>好，我们再来看看无阻塞的channel，其实也很简单，就是在select中加入default，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="8">    for {
+        select {
+        case msg1 := &lt;-c1:
+            fmt.Println(&#34;received&#34;, msg1)
+        case msg2 := &lt;-c2:
+            fmt.Println(&#34;received&#34;, msg2)
+        default: //default会导致无阻塞
+            fmt.Println(&#34;nothing received!&#34;)
+            time.Sleep(time.Second)
+        }
+    }
+</pre>
+<p><strong>Channel的关闭</strong></p>
+<p>关闭Channel可以通知对方内容发送完了，不用再等了。参看下面的例程：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="19,27">package main
+
+import &#34;fmt&#34;
+import &#34;time&#34;
+import &#34;math/rand&#34;
+
+func main() {
+
+    channel := make(chan string)
+    rand.Seed(time.Now().Unix())
+
+    //向channel发送随机个数的message
+    go func () {
+        cnt := rand.Intn(10)
+        fmt.Println(&#34;message cnt :&#34;, cnt)
+        for i:=0; i&lt;cnt; i++{
+            channel &lt;- fmt.Sprintf(&#34;message-%2d&#34;, i)
+        }
+        close(channel) //关闭Channel
+    }()
+
+    var more bool = true
+    var msg string
+    for more {
+        select{
+        //channel会返回两个值，一个是内容，一个是还有没有内容
+        case msg, more = &lt;- channel:
+            if more {
+                fmt.Println(msg)
+            }else{
+                fmt.Println(&#34;channel closed!&#34;)
+            }
+        }
+    }
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%AE%9A%E6%97%B6%E5%99%A8"></span>定时器<span class="ez-toc-section-end"></span></h4>
+<p>Go语言中可以使用time.NewTimer或time.NewTicker来设置一个定时器，这个定时器会绑定在你的当前channel中，通过channel的阻塞通知机器来通知你的程序。</p>
+<p>下面是一个timer的示例。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="9">package main
+
+import &#34;time&#34;
+import &#34;fmt&#34;
+
+func main() {
+    timer := time.NewTimer(2*time.Second)
+
+    &lt;- timer.C
+    fmt.Println(&#34;timer expired!&#34;)
+}</pre>
+<p>上面的例程看起来像一个Sleep，是的，不过Timer是可以Stop的。你需要注意Timer只通知一次。如果你要像C中的Timer能持续通知的话，你需要使用Ticker。下面是Ticker的例程：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="9">package main
+
+import &#34;time&#34;
+import &#34;fmt&#34;
+
+func main() {
+    ticker := time.NewTicker(time.Second)
+
+    for t := range ticker.C {
+        fmt.Println(&#34;Tick at&#34;, t)
+    }
+}</pre>
+<p>上面的这个ticker会让你程序进入死循环，我们应该放其放在一个goroutine中。下面这个程序结合了timer和ticker</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;time&#34;
+import &#34;fmt&#34;
+
+func main() {
+
+    ticker := time.NewTicker(time.Second)
+
+    go func () {
+        for t := range ticker.C {
+            fmt.Println(t)
+        }
+    }()
+
+    //设置一个timer，10钞后停掉ticker
+    timer := time.NewTimer(10*time.Second)
+    &lt;- timer.C
+
+    ticker.Stop()
+    fmt.Println(&#34;timer expired!&#34;)
+}</pre>
+<h4><span class="ez-toc-section" id="Socket%E7%BC%96%E7%A8%8B"></span>Socket编程<span class="ez-toc-section-end"></span></h4>
+<p>下面是我尝试的一个Echo Server的Socket代码，感觉还是挺简单的。</p>
+<p><strong>Server端</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="12,19,24,33,36"> 
+package main
+
+import (
+    &#34;net&#34;
+    &#34;fmt&#34;
+    &#34;io&#34;
+)
+
+const RECV_BUF_LEN = 1024
+
+func main() {
+    listener, err := net.Listen(&#34;tcp&#34;, &#34;0.0.0.0:6666&#34;)//侦听在6666端口
+    if err != nil {
+        panic(&#34;error listening:&#34;+err.Error())
+    }
+    fmt.Println(&#34;Starting the server&#34;)
+
+    for {
+        conn, err := listener.Accept() //接受连接
+        if err != nil {
+            panic(&#34;Error accept:&#34;+err.Error())
+        }
+        fmt.Println(&#34;Accepted the Connection :&#34;, conn.RemoteAddr())
+        go EchoServer(conn)
+    }
+}
+
+func EchoServer(conn net.Conn) {
+    buf := make([]byte, RECV_BUF_LEN)
+    defer conn.Close()
+
+    for {
+        n, err := conn.Read(buf);
+        switch err {
+            case nil:
+                conn.Write( buf[0:n] )
+            case io.EOF:
+                fmt.Printf(&#34;Warning: End of data: %s \n&#34;, err);
+                return
+            default:
+                fmt.Printf(&#34;Error: Reading data : %s \n&#34;, err);
+                return
+        }
+     }
+}
+</pre>
+<p><strong>Client端</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="12,23,31">package main
+
+import (
+    &#34;fmt&#34;
+    &#34;time&#34;
+    &#34;net&#34;
+)
+
+const RECV_BUF_LEN = 1024
+
+func main() {
+    conn,err := net.Dial(&#34;tcp&#34;, &#34;127.0.0.1:6666&#34;)
+    if err != nil {
+        panic(err.Error())
+    }
+    defer conn.Close()
+
+    buf := make([]byte, RECV_BUF_LEN)
+
+    for i := 0; i &lt; 5; i++ {
+        //准备要发送的字符串
+        msg := fmt.Sprintf(&#34;Hello World, %03d&#34;, i)
+        n, err := conn.Write([]byte(msg))
+        if err != nil {
+            println(&#34;Write Buffer Error:&#34;, err.Error())
+            break
+        }
+        fmt.Println(msg)
+
+        //从服务器端收字符串
+        n, err = conn.Read(buf)
+        if err !=nil {
+            println(&#34;Read Buffer Error:&#34;, err.Error())
+            break
+        }
+        fmt.Println(string(buf[0:n]))
+
+        //等一秒钟
+        time.Sleep(time.Second)
+    }
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"></span>系统调用<span class="ez-toc-section-end"></span></h4>
+<p>Go语言那么C，所以，一定会有一些系统调用。Go语言主要是通过两个包完成的。一个是<a href="https://golang.org/pkg/os/" target="_blank" rel="noopener noreferrer">os包</a>，一个是<a href="https://golang.org/pkg/syscall/" target="_blank" rel="noopener noreferrer">syscall包</a>。（注意，链接被墙）</p>
+<p>这两个包里提供都是Unix-Like的系统调用，</p>
+<ul>
+<li>syscall里提供了什么Chroot/Chmod/Chmod/Chdir…，Getenv/Getgid/Getpid/Getgroups/Getpid/Getppid…，还有很多如Inotify/Ptrace/Epoll/Socket/…的系统调用。</li>
+</ul>
+<ul>
+<li>os包里提供的东西不多，主要是一个跨平台的调用。它有三个子包，Exec（运行别的命令）, Signal（捕捉信号）和User（通过uid查name之类的）</li>
+</ul>
+<p>syscall包的东西我不举例了，大家可以看看《Unix高级环境编程》一书。</p>
+<p>os里的取几个例：</p>
+<p><strong>环境变量</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;os&#34;
+import &#34;strings&#34;
+
+
+func main() {
+    os.Setenv(&#34;WEB&#34;, &#34;https://coolshell.cn&#34;) //设置环境变量
+    println(os.Getenv(&#34;WEB&#34;)) //读出来
+
+    for _, env := range os.Environ() { //穷举环境变量
+        e := strings.Split(env, &#34;=&#34;)
+        println(e[0], &#34;=&#34;, e[1])
+    }
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4%E8%A1%8C"></span>执行命令行<span class="ez-toc-section-end"></span></h4>
+<p>下面是一个比较简单的示例</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+import &#34;os/exec&#34;
+import &#34;fmt&#34;
+func main() {
+    cmd := exec.Command(&#34;ping&#34;, &#34;127.0.0.1&#34;)
+    out, err := cmd.Output()
+    if err!=nil {
+        println(&#34;Command Error!&#34;, err.Error())
+        return
+    }
+    fmt.Println(string(out))
+}</pre>
+<p>正规一点的用来处理标准输入和输出的示例如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import (
+    &#34;strings&#34;
+    &#34;bytes&#34;
+    &#34;fmt&#34;
+    &#34;log&#34;
+    &#34;os/exec&#34;
+)
+
+func main() {
+    cmd := exec.Command(&#34;tr&#34;, &#34;a-z&#34;, &#34;A-Z&#34;)
+    cmd.Stdin = strings.NewReader(&#34;some input&#34;)
+    var out bytes.Buffer
+    cmd.Stdout = &amp;out
+    err := cmd.Run()
+    if err != nil {
+        log.Fatal(err)
+    }
+    fmt.Printf(&#34;in all caps: %q\n&#34;, out.String())
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%8F%82%E6%95%B0"></span>命令行参数<span class="ez-toc-section-end"></span></h4>
+<p>Go语言中处理命令行参数很简单：(使用os的Args就可以了)</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="2">func main() {
+    args := os.Args
+    fmt.Println(args) //带执行文件的
+    fmt.Println(args[1:]) //不带执行文件的
+}</pre>
+<p>在Windows下，如果运行结果如下：</p>
+<p><code>C:\Projects\Go&gt;go run args.go aaa bbb ccc ddd<br/>
+[C:\Users\haoel\AppData\Local\Temp\go-build742679827\command-line-arguments_<br/>
+obj\a.out.exe aaa bbb ccc ddd]<br/>
+[aaa bbb ccc ddd]</code></p>
+<p>那么，如果我们要搞出一些像 mysql -uRoot -hLocalhost -pPwd 或是像 cc -O3 -Wall -o a a.c 这样的命令行参数我们怎么办？Go提供了一个package叫flag可以容易地做到这一点</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="13">package main
+import &#34;flag&#34;
+import &#34;fmt&#34;
+
+func main() {
+
+    //第一个参数是“参数名”，第二个是“默认值”，第三个是“说明”。返回的是指针
+    host := flag.String(&#34;host&#34;, &#34;coolshell.cn&#34;, &#34;a host name &#34;)
+    port := flag.Int(&#34;port&#34;, 80, &#34;a port number&#34;)
+    debug := flag.Bool(&#34;d&#34;, false, &#34;enable/disable debug mode&#34;)
+
+    //正式开始Parse命令行参数
+    flag.Parse()
+
+    fmt.Println(&#34;host:&#34;, *host)
+    fmt.Println(&#34;port:&#34;, *port)
+    fmt.Println(&#34;debug:&#34;, *debug)
+}</pre>
+<p>执行起来会是这个样子：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">#如果没有指定参数名，则使用默认值
+$ go run flagtest.go
+host: coolshell.cn
+port: 80
+debug: false
+
+#指定了参数名后的情况
+$ go run flagtest.go -host=localhost -port=22 -d
+host: localhost
+port: 22
+debug: true
+
+#用法出错了（如：使用了不支持的参数，参数没有=）
+$ go build flagtest.go
+$ ./flagtest -debug -host localhost -port=22
+flag provided but not defined: -debug
+Usage of flagtest:
+  -d=false: enable/disable debug mode
+  -host=&#34;coolshell.cn&#34;: a host name
+  -port=80: a port number
+exit status 2
+</pre>
+<p>感觉还是挺不错的吧。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%9A%84HTTP_Server"></span>一个简单的HTTP Server<span class="ez-toc-section-end"></span></h4>
+<p>代码胜过千言万语。呵呵。这个小程序让我又找回以前用C写CGI的时光了。（Go的官方文档是《<strong><a href="https://golang.org/doc/articles/wiki/" target="_blank" rel="noopener noreferrer">Writing Web Applications</a></strong>》）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import (
+    &#34;fmt&#34;
+    &#34;net/http&#34;
+    &#34;io/ioutil&#34;
+    &#34;path/filepath&#34;
+)
+
+const http_root = &#34;/home/haoel/coolshell.cn/&#34;
+
+func main() {
+    http.HandleFunc(&#34;/&#34;, rootHandler)
+    http.HandleFunc(&#34;/view/&#34;, viewHandler)
+    http.HandleFunc(&#34;/html/&#34;, htmlHandler)
+
+    http.ListenAndServe(&#34;:8080&#34;, nil)
+}
+
+//读取一些HTTP的头
+func rootHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, &#34;rootHandler: %s\n&#34;, r.URL.Path)
+    fmt.Fprintf(w, &#34;URL: %s\n&#34;, r.URL)
+    fmt.Fprintf(w, &#34;Method: %s\n&#34;, r.Method)
+    fmt.Fprintf(w, &#34;RequestURI: %s\n&#34;, r.RequestURI )
+    fmt.Fprintf(w, &#34;Proto: %s\n&#34;, r.Proto)
+    fmt.Fprintf(w, &#34;HOST: %s\n&#34;, r.Host) 
+}
+
+//特别的URL处理
+func viewHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Fprintf(w, &#34;viewHandler: %s&#34;, r.URL.Path)
+}
+
+//一个静态网页的服务示例。（在http_root的html目录下）
+func htmlHandler(w http.ResponseWriter, r *http.Request) {
+    fmt.Printf(&#34;htmlHandler: %s\n&#34;, r.URL.Path)
+    
+    filename := http_root + r.URL.Path
+    fileext := filepath.Ext(filename)
+
+    content, err := ioutil.ReadFile(filename)
+    if err != nil {
+        fmt.Printf(&#34;   404 Not Found!\n&#34;)
+        w.WriteHeader(http.StatusNotFound)
+        return
+    }
+    
+    var contype string
+    switch fileext {
+        case &#34;.html&#34;, &#34;htm&#34;:
+            contype = &#34;text/html&#34;
+        case &#34;.css&#34;:
+            contype = &#34;text/css&#34;
+        case &#34;.js&#34;:
+            contype = &#34;application/javascript&#34;
+        case &#34;.png&#34;:
+            contype = &#34;image/png&#34;
+        case &#34;.jpg&#34;, &#34;.jpeg&#34;:
+            contype = &#34;image/jpeg&#34;
+        case &#34;.gif&#34;:
+            contype = &#34;image/gif&#34;
+        default: 
+            contype = &#34;text/plain&#34;
+    }
+    fmt.Printf(&#34;ext %s, ct = %s\n&#34;, fileext, contype)
+    
+    w.Header().Set(&#34;Content-Type&#34;, contype)
+    fmt.Fprintf(w, &#34;%s&#34;, content)
+    
+}</pre>
+<p>Go的功能库有很多，大家自己慢慢看吧。<strong>我再吐个槽——Go的文档真不好读。例子太少了</strong>。</p>
+<p>先说这么多吧。这是我周末两天学Go语言学到的东西，写得太仓促了，而且还有一些东西理解不到位，还大家请指正！</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8489-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go 语言简介（下）— 特性</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-249442" class="comment even thread-even depth-1">
+<article id="div-comment-249442" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e5cc28a6ea42df4c3f584c501b6c238?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e5cc28a6ea42df4c3f584c501b6c238?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">asdfsx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-249442"><time datetime="2012-12-28T10:35:33+08:00">2012年12月28日 10:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉就是缩减版的C，语法什么的做一些修订，指针神马的都包装起来。</p>
+</div>
+ </article>
+</li>
+<li id="comment-249835" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.showyounger.com/show/100399.html" class="url" rel="ugc external nofollow">程序算法与人生选择 | 小样儿(ShowYounger)</a> </div>
+</li>
+<li id="comment-250891" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://argcandargv.com/archives/936" class="url" rel="ugc external nofollow">程序算法与人生选择 | argc &amp;&amp; argv</a> </div>
+</li>
+<li id="comment-251708" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://binary.duapp.com/2012/12/972.html" class="url" rel="ugc external nofollow">程序算法与人生选择 | 蜗牛都知道</a> </div>
+</li>
+<li id="comment-256536" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.j2eecoder.com/jc/?p=21" class="url" rel="ugc external nofollow">开通博客啦 | J2EE开发者</a> </div>
+</li>
+<li id="comment-263372" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-263372" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3305d1fe307b09a216cedc38c366b526?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3305d1fe307b09a216cedc38c366b526?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Kelvin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-263372"><time datetime="2013-01-11T10:39:33+08:00">2013年01月11日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>channel := make(chan string) //注意: buffer为1<br/>
+这不对吧，make(chan string)跟make(chan string, 1)是不同的</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1921601" class="comment even depth-2">
+<article id="div-comment-1921601" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2ad26967d035235cafdba150ee8767ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2ad26967d035235cafdba150ee8767ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://GGGG" class="url" rel="ugc external nofollow">Will</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1921601"><time datetime="2017-12-05T16:50:19+08:00">2017年12月05日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对</p>
+</div>
+ </article>
+</li>
+<li id="comment-2140853" class="comment odd alt depth-2">
+<article id="div-comment-2140853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b1eeba7e3d2e8bc8856fd46e1d9432a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b1eeba7e3d2e8bc8856fd46e1d9432a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">西门吹雪</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-2140853"><time datetime="2020-08-10T09:31:06+08:00">2020年08月10日 09:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://stackoverflow.com/questions/23233381/whats-the-difference-between-c-makechan-int-and-c-makechan-int-1" rel="nofollow ugc">https://stackoverflow.com/questions/23233381/whats-the-difference-between-c-makechan-int-and-c-makechan-int-1</a></p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-287379" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zhongqifu.sinaapp.com/?p=103" class="url" rel="ugc external nofollow">【转】程序算法与人生选择 | 钟启富&#39;s Blog</a> </div>
+</li>
+<li id="comment-292207" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-292207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7490b4e3e9cb85a1f7dc0c8ea01a86e5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7490b4e3e9cb85a1f7dc0c8ea01a86e5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/c9s" class="url" rel="ugc external nofollow">c9s</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-292207"><time datetime="2013-02-15T13:55:56+08:00">2013年02月15日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Go 真的是相當好用阿</p>
+<p>最近寫了一個基於 Mac OS 的 Go 程式語言工具 GoTray, <a href="http://gotray.extremedev.org/index_zh-cn.html" rel="nofollow ugc">http://gotray.extremedev.org/index_zh-cn.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-294548" class="comment even thread-even depth-1">
+<article id="div-comment-294548" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8422669f80a72e962b1631e2e8869c07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8422669f80a72e962b1631e2e8869c07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fastfood.sinaapp.com/" class="url" rel="ugc external nofollow">Xsank</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-294548"><time datetime="2013-02-20T11:24:29+08:00">2013年02月20日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-212189" rel="nofollow">@陈皓 </a><br/>
+但是各种语言有分号的没分号的，有缩进的没缩进的，有括号的没括号的。。。实战起来还是需要点时间啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-323721" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-323721" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf83b06d7393e1ba44385bb5d3e7956c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf83b06d7393e1ba44385bb5d3e7956c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://coolbuy.webnode.jp" class="url" rel="ugc external nofollow">nike 通販</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-323721"><time datetime="2013-04-10T12:13:58+08:00">2013年04月10日 12:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>i am delighted with your impressive words. please keep posting these awesome articles.</p>
+</div>
+ </article>
+</li>
+<li id="comment-334539" class="comment even thread-even depth-1 parent">
+<article id="div-comment-334539" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12734e89aa1c52cc367fded222bb14cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12734e89aa1c52cc367fded222bb14cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">你好爱因斯坦</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-334539"><time datetime="2013-04-21T18:55:57+08:00">2013年04月21日 18:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在“Channel select阻塞的Timeout” 这一部分内容中，第10，12行的timeout_cnt变量名称拼写错误，这一小段程序显然并没有上机调试，有失严谨。再者，这段小程序并没有在timeout3次之后就退出循环体，而是陷入不断输出timeout的循环中，能解释一下吗</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1920789" class="comment odd alt depth-2">
+<article id="div-comment-1920789" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cf0763b2df8acc50211c9cf8b4ffdd7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cf0763b2df8acc50211c9cf8b4ffdd7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jake__X</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1920789"><time datetime="2017-11-14T17:29:47+08:00">2017年11月14日 17:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因为判断条件一直为0,自己调试一遍就知道了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1924951" class="comment even depth-2">
+<article id="div-comment-1924951" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29399fb52fd910019fba9d20ca0bbf5c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29399fb52fd910019fba9d20ca0bbf5c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">洵</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1924951"><time datetime="2018-03-06T15:16:15+08:00">2018年03月06日 15:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>timeout_cnt的声明位置不对</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-534543" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hezonet.sinaapp.com/procedural-algorithms-and-life-choices/" class="url" rel="ugc external nofollow">程序算法与人生选择 – 汇龙</a> </div>
+</li>
+<li id="comment-547729" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.apprk.com/archives/49125" class="url" rel="ugc external nofollow">程序算法与人生选择 | EvilCode 邪恶代码</a> </div>
+</li>
+<li id="comment-625314" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-625314" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6de2c0c31237c22f276f97eb40bf8565?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6de2c0c31237c22f276f97eb40bf8565?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cloudaice.com" class="url" rel="ugc external nofollow">cloudaice</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-625314"><time datetime="2013-08-01T16:05:57+08:00">2013年08月01日 16:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-263372"><p>
+<strong><a href="#comment-263372" rel="nofollow">Kelvin</a> :</strong><br/>
+channel := make(chan string) //注意: buffer为1<br/>
+这不对吧，make(chan string)跟make(chan string, 1)是不同的
+</p></blockquote>
+<p>我也发现了这个问题，根据程序输出结果，很明显阻塞在写channel的语句上，写完之后都没有打印出来，而是等channel被读掉以后再打印出来<a href="#comment-263372" rel="nofollow">@陈皓 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-670952" class="comment even thread-even depth-1">
+<article id="div-comment-670952" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83a251e3a1c42d24554550264e3869e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83a251e3a1c42d24554550264e3869e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fuxji</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-670952"><time datetime="2013-08-18T12:20:28+08:00">2013年08月18日 12:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Channel select 阻塞的timeout的那段代码<br/>
+timeout_cnt := 0变量得移到for 外边吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-766138" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-766138" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3348d4441ffcd6e65e3e97908c298f8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3348d4441ffcd6e65e3e97908c298f8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.wuyao721.com" class="url" rel="ugc external nofollow">吴遥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-766138"><time datetime="2013-09-27T17:45:06+08:00">2013年09月27日 17:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有没有看那本，看的我快吐血了。茫茫多的字，晦涩得很。好想把作者和翻译臭骂一顿。</p>
+</div>
+ </article>
+</li>
+<li id="comment-766139" class="comment even thread-even depth-1">
+<article id="div-comment-766139" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3348d4441ffcd6e65e3e97908c298f8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3348d4441ffcd6e65e3e97908c298f8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.wuyao721.com" class="url" rel="ugc external nofollow">吴遥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-766139"><time datetime="2013-09-27T17:45:58+08:00">2013年09月27日 17:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>《GO语言程序设计》</p>
+</div>
+ </article>
+</li>
+<li id="comment-1018177" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1018177" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a0a23117e26be7a49bdac4f3aae97d4b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a0a23117e26be7a49bdac4f3aae97d4b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">愣愣</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1018177"><time datetime="2013-12-03T10:08:43+08:00">2013年12月03日 10:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>for {<br/>
+timeout_cnt := 0<br/>
+select {<br/>
+case msg1 := &lt;-c1:<br/>
+fmt.Println(&#34;msg1 received&#34;, msg1)<br/>
+case msg2 := &lt;-c2:<br/>
+fmt.Println(&#34;msg2 received&#34;, msg2)<br/>
+case 3 {<br/>
+break<br/>
+}<br/>
+}<br/>
+为什么运行这个停止不了，不是三次的时候就跳出循环了？<br/>
+求解…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1085914" class="comment even thread-even depth-1">
+<article id="div-comment-1085914" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a88093abc58a55695e6fdf80cb203e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a88093abc58a55695e6fdf80cb203e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Devilava</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1085914"><time datetime="2013-12-21T00:13:37+08:00">2013年12月21日 00:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-625314"><p>
+<strong><a href="#comment-625314" rel="nofollow">cloudaice</a> :</strong></p>
+<blockquote cite="#commentbody-263372"><p>
+<strong><a href="#comment-263372" rel="nofollow">Kelvin</a> :</strong><br/>
+channel := make(chan string) //注意: buffer为1<br/>
+这不对吧，make(chan string)跟make(chan string, 1)是不同的
+</p></blockquote>
+<p>我也发现了这个问题，根据程序输出结果，很明显阻塞在写channel的语句上，写完之后都没有打印出来，而是等channel被读掉以后再打印出来<a href="#comment-263372" rel="nofollow">@陈皓 </a>
+</p></blockquote>
+<blockquote><p>A new, initialized channel value can be made using the built-in function make, which takes the channel type and an optional capacity as arguments:</p>
+<p>make(chan int, 100)<br/>
+The capacity, in number of elements, sets the size of the buffer in the channel. <strong>If the capacity is greater than zero, the channel is asynchronous: communication operations succeed without blocking if the buffer is not full (sends) or not empty (receives), and elements are received in the order they are sent. If the capacity is zero or absent, the communication succeeds only when both a sender and receiver are ready.</strong> A nil channel is never ready for communication.</p></blockquote>
+</div>
+ </article>
+</li>
+<li id="comment-1409286" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tuluobo.com/articles/108.html" class="url" rel="ugc external nofollow">5-8年共语言将超越java，成为语言排行榜第一 | 秃萝卜——TuLuobo.com站点</a> </div>
+</li>
+<li id="comment-1410579" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lihongxu.net/?p=56" class="url" rel="ugc external nofollow">程序算法与人生选择 | 李红序</a> </div>
+</li>
+<li id="comment-1493667" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.leoncode.com/archives/152" class="url" rel="ugc external nofollow">Go 语言简介（下）— 特性 | Leon的代码世界</a> </div>
+</li>
+<li id="comment-1605125" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yutuo.net/archives/8ae7f7f6e1a39919.html" class="url" rel="ugc external nofollow">【转】程序算法与人生选择 - 宇托的狗窝</a> </div>
+</li>
+<li id="comment-1638586" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tuluobo.com/2014/02/02/60" class="url" rel="ugc external nofollow">秃萝卜——一名程序猿 » 8-10年Go语言将有望超越java，成为语言排行榜第一</a> </div>
+</li>
+<li id="comment-1678161" class="comment even thread-even depth-1">
+<article id="div-comment-1678161" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba55046fe210127891b0e31051272b4f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba55046fe210127891b0e31051272b4f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">曹超</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1678161"><time datetime="2015-03-21T09:36:37+08:00">2015年03月21日 09:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果一个goroutine没有被阻塞，那么别的goroutine就不会得到执行。”<br/>
+不知道是不是你版本的问题,我的 go1.3.3 darwin/amd64,测试结果证明你这句是不正确的.<br/>
+我的测试代码:<br/>
+func routine(name string) {<br/>
+for {<br/>
+t0 := time.Now()<br/>
+fmt.Println(name, “now:”, t0)<br/>
+}<br/>
+}</p>
+<p>func main() {</p>
+<p> var name string<br/>
+for i := 0; i &lt; 3; i++ {<br/>
+name = fmt.Sprintf(&#34;go %d&#34;, i)<br/>
+go routine(name)<br/>
+}</p>
+<p> var input string<br/>
+fmt.Scanln(&amp;input)<br/>
+fmt.Println(&#34;done\n&#34;)<br/>
+}<br/>
+每个routine都能执行.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1759266" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://doc5188.com/20150917/golang%e7%bc%96%e7%a8%8b%e4%b9%8bpackage-flag-%e8%a7%a3%e6%9e%90%e5%85%a5%e5%8f%82.html" class="url" rel="ugc external nofollow">golang编程之package flag 解析入参 | doc5188</a> </div>
+</li>
+<li id="comment-1788539" class="comment even thread-even depth-1">
+<article id="div-comment-1788539" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27353e8a2e4734f32391c33fb5fce622?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27353e8a2e4734f32391c33fb5fce622?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NiceCp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1788539"><time datetime="2015-11-10T15:20:37+08:00">2015年11月10日 15:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“此处有墙”,莫名的笑点…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1802180" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itdadao.com/article/74263/" class="url" rel="ugc external nofollow">golang编程之获取命令行参数及环境变量-IT大道</a> </div>
+</li>
+<li id="comment-1808508" class="comment even thread-even depth-1">
+<article id="div-comment-1808508" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2012542778ab337087b735617f59b17c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2012542778ab337087b735617f59b17c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://codingforever.com" class="url" rel="ugc external nofollow">zhujiefirst</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1808508"><time datetime="2016-02-04T11:18:07+08:00">2016年02月04日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>for{<br/>
+if total_tickets &gt; 0 { //如果有票就卖<br/>
+time.Sleep( time.Duration(rand.Intn(5)) * time.Millisecond)<br/>
+total_tickets– //卖一张票<br/>
+fmt.Println(“id:”, i, ” ticket:”, total_tickets)<br/>
+}else{<br/>
+break<br/>
+}<br/>
+}</p>
+<p>把time.Sleep( time.Duration(rand.Intn(5)) * time.Millisecond)移到if外。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1816186" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.superman2014.com/2016/03/31/%e6%88%91%e4%b9%9f%e5%bc%80%e5%a7%8b%e5%ad%a6%e4%b9%a0go%e4%ba%86/" class="url" rel="ugc external nofollow">我也开始学习Go了 – 日光溪流</a> </div>
+</li>
+<li id="comment-1821842" class="comment even thread-even depth-1">
+<article id="div-comment-1821842" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3a49e3c0a7189076976a4475d824021?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3a49e3c0a7189076976a4475d824021?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jwjw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1821842"><time datetime="2016-04-28T16:48:47+08:00">2016年04月28日 16:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ping 指令不会停, 加一个 -c 参数吧?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1860133" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1860133" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d393c37532e596cf76d3d24f0b794da4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d393c37532e596cf76d3d24f0b794da4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">naitnix</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1860133"><time datetime="2016-07-21T15:20:44+08:00">2016年07月21日 15:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得使用了runtime.GOMAXPROCS(4) 就应该是并行了，不应该叫并发了，如果是在单核计算机上跑的话，可以叫并发，毕竟那样才是真正的切分时间的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1888393" class="comment even thread-even depth-1">
+<article id="div-comment-1888393" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dcb73bc102fcd9389419b76f2339419d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dcb73bc102fcd9389419b76f2339419d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">herain</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-1888393"><time datetime="2016-09-28T11:55:22+08:00">2016年09月28日 11:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-263372" rel="nofollow">@Kelvin </a><br/>
+同意，我自己测试的时候也发现了，后来看了reference，在没有设置容量的时候channel默认是不缓存的，必须在读写双方同时准备好才能传递数据，也就是这上面对的例子中channel &lt;- &#34;hello&#34;这个地方就直接阻塞了，原文如下：If the capacity is zero or absent, the channel is unbuffered and communication succeeds only when both a sender and receiver are ready.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1942673" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/9944.html" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – 西部IT科技</a> </div>
+</li>
+<li id="comment-2031284" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weixinewm.com/35337.html" class="url" rel="ugc external nofollow">Go语言、Docker 和新技术 - 微信二维码!</a> </div>
+</li>
+<li id="comment-2083410" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yunweipai.com/archives/2629.html" class="url" rel="ugc external nofollow">程序算法与人生选择是何其的相似？ – 运维派</a> </div>
+</li>
+<li id="comment-2360506" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2360506" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/32e7e59ed3cb255d90c362278c5120fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/32e7e59ed3cb255d90c362278c5120fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tenlc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-2360506"><time datetime="2022-01-20T22:02:26+08:00">2022年01月20日 22:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这真的是 周末两天学习的成果吗?<br/>
+佩服了,大佬</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370496" class="comment odd alt depth-2">
+<article id="div-comment-2370496" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/26b9c5d0df59b73690179581563ddcd6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/26b9c5d0df59b73690179581563ddcd6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xuan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8489.html/comment-page-2#comment-2370496"><time datetime="2022-06-06T16:06:45+08:00">2022年06月06日 16:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>12年的哈哈</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8489.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8489.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">8489</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

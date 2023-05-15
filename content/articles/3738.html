@@ -1,0 +1,734 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>打印质数的各种算法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3738 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3738" class="post-content post-3738 post type-post status-publish format-standard hentry category-cplusplus category-funny tag-algorithm tag-c tag-coding tag-puzzle tag-template tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">打印质数的各种算法</span>
+<h1 class="entry-title">打印质数的各种算法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3738.html" title="09:14" rel="bookmark"><time class="entry-date" datetime="2011-02-28T09:14:10+08:00" pubdate="">2011年02月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3738.html#comments" class="comments-link">45 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 41,307 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>打印质数的算法应该是学习计算机编程的一个经典的问题，在这里想给大家展示一些方法，相信这些方法会对你的编程有一定的启发作用。请你注意几点，</p>
+<ul>
+<li>实际应用和教学应用有很大的差别。</li>
+<li>最后的那个使用编译时而不是运行时的方法大家可以重点看看。</li>
+</ul>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E6%95%99%E7%A7%91%E4%B9%A6%E7%9A%84%E7%A4%BA%E4%BE%8B" title="教科书的示例">教科书的示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E8%BE%83%E5%A5%BD%E7%9A%84%E7%AE%97%E6%B3%95" title="较好的算法">较好的算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%AE%9E%E9%99%85%E5%BA%94%E7%94%A8%E7%9A%84%E7%AE%97%E6%B3%95" title="实际应用的算法">实际应用的算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E4%BD%BF%E7%94%A8%E7%BC%96%E8%AF%91%E6%97%B6%E8%80%8C%E4%B8%8D%E6%98%AF%E8%BF%90%E8%A1%8C%E6%97%B6" title="使用编译时而不是运行时">使用编译时而不是运行时</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E6%95%99%E7%A7%91%E4%B9%A6%E7%9A%84%E7%A4%BA%E4%BE%8B"></span>教科书的示例<span class="ez-toc-section-end"></span></h4>
+<p>首先，先给一个教科书的示例。下面这个示例应该是教科书（至少是我上大学时的教科学）中算法复杂度最好的例子了。其想法很简单，先写一个判断是否是质数的函数isPrime()，然后从1到n分别调用isPrime()函数来检查。检查是否是质数的算法是核心，其简单的使用从2到n的开根的数作为除数。这样的算法复杂度几乎是O(n*log(n))，看上去不错，但其实很不经济。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;iostream&gt;
+using namespace std;
+
+bool isPrime(int nr)
+{
+    for (int d = 2; (d * d) &lt; (nr + 1); ++d){
+        if (!(nr % d)){
+            return false;
+        }
+     }
+    return true;
+}
+
+int main (int argc, char * const argv[])
+{
+    for (int i = 0; i &lt; 50; ++i){
+        if (isPrime(i)){
+            cout &lt;&lt; i &lt;&lt; endl;
+        }
+    }
+}
+</pre>
+<h4><span id="more-3738"></span>较好的算法</h4>
+<p>我们知道，我们的算法如果写成线性算法，也就是O(n)，已经算是不错了，但是最好的是O(Log(n))的算法，这是一个对数级的算法，著名的二分取中（Binary Search）正是O(Log(n))的算法。<strong>通常来说，O(Log(n))的算法都是以排除法做为手段的</strong>。所以，找质数的算法完全可以采用排除法的方式。如下所示，这种算法的复杂度是<em>O</em><em>(n(log(logn)))。</em></p>
+<p><strong>示例：打印30以内的质数</strong></p>
+<p>一、初始化如下列表。</p>
+<pre> 2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30</pre>
+<p>二、把第一个数（2）取出来，去掉所有可以被2整除的数。</p>
+<pre> 2  3     5     7     9    11    13    15    17    19    21    23    25    27    29</pre>
+<p>三、取第二个数（3），去掉所有可以被 3整除的数。</p>
+<pre> 2  3     5     7          11    13          17    19          23    25          29</pre>
+<p>四、取第三个数（5），因为4已经被去除了，再去掉所有可以被5整除的数。</p>
+<pre> 2  3     5     7          11    13          17    19          23                29</pre>
+<p>接下来的数是7，但是7的平方是49，其大于了30，所以我们可以停止计算了。剩下的数就是所有的质数了。</p>
+<h4><span class="ez-toc-section" id="%E5%AE%9E%E9%99%85%E5%BA%94%E7%94%A8%E7%9A%84%E7%AE%97%E6%B3%95"></span>实际应用的算法<span class="ez-toc-section-end"></span></h4>
+<p>实际应用中，我们通常不会使用上述的两种算法，因为那是理论学院派的算法。实际中的算法是，我把质数事先就计算好，放在一个文件中，然后在程序启动时（注意是在启动时读这个文件，而不是运行时每调用一次就读一次文件），读取这个文件，然后打印出来就可以了。如果需要查找的化，二分查找或是hash表查找将会获得巨大的性能提升。当然，这样的方法对于空间来说比前面两个都要消耗得大，但是你可以有O(log(n))或是O(1)的时间复杂度。</p>
+<p>所以，我想在这里提醒大家——<strong>实际和理论的的方法很不一样的</strong>，千万不要读书读成书呆子。在游戏编程的世界里，大量的数据都不是运行计算的，而都是写在文件中的。比如，一个火焰效果，一个人物跑动的动作，都是事先写在文件中的。</p>
+<h4><span class="ez-toc-section" id="%E4%BD%BF%E7%94%A8%E7%BC%96%E8%AF%91%E6%97%B6%E8%80%8C%E4%B8%8D%E6%98%AF%E8%BF%90%E8%A1%8C%E6%97%B6"></span>使用编译时而不是运行时<span class="ez-toc-section-end"></span></h4>
+<p>下面这个例子（本例参考于<a href="http://www.intermediaware.com/blog/846/hack-of-the-day-fast-prime-numbers" target="_blank">这里</a>）你需要注意了，这是一个高级用法，使用模式来在编译时计算质数，而不是运行时。这种技术使用了C++编译器对模板的特化时的处理来生成自己相要的结果。这种方法在技术上是相当Cool的，但并不一定实用，这里只是想像大家展示这种用法。这是C++的最骨灰级的用法了。</p>
+<p>请看下面的两个模板类，第一个模板以递归的方式检查是否是质数，第二个方法是递归的退出条件（当N=1时），对于模板的重载，请参看相关的C++书籍。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">template&lt;int N, int D = N - 1&gt;
+struct isPrime {
+    enum {
+        result = (N % D) &amp;&amp; isPrime&lt;N, D-1&gt;::result
+    };
+};
+
+template&lt;int N&gt;
+struct isPrime&lt;N, 1&gt; {
+    enum {
+        result = true
+    };
+};
+</pre>
+<p>于是，通过这个模板，我们可以使用下面的代码来检查是否是质数：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if (isPrime&lt;3&gt;::result)
+    cout &lt;&lt; &#34;Guess what: 3 is a prime!&#34;;
+</pre>
+<p>下一步，我们需要打出一个区间内的质数，所以，我们需要继续设计我们的print模板。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">template&lt;int N, bool ISPRIME&gt;
+struct printIfPrime {
+    static inline void print() {}
+};
+
+template &lt;int N&gt;
+struct printIfPrime&lt;N, true&gt; {
+    static inline void print() {
+        std::cout &lt;&lt; N &lt;&lt; endl;
+    }
+};
+</pre>
+<p>从上面的代码中，我们可以看到，我们的第一个实际是什么也没做，而第二个有输出，注意第二个的模板参数中有一个true，其意味着那个质数的判断。于是我们就可以给出下面的代码来尝试着打印出一段区间内的质数：（<strong>请不要编译！！</strong>因为那会让编译器进入无限循环中，原因是printPrimes会不停地调用自己永不停止）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">template&lt;int N, int MAX&gt;
+struct printPrimes {
+    static inline void print()
+    {
+        printIfPrime&lt;N, isPrime&lt;N&gt;::result&gt;::print();
+        printPrimes&lt;N + 1, MAX&gt;::print();
+    }
+};
+</pre>
+<p>为了避免这个问题，你需要再加一个模板类，如下所示。这样当N变成MAX的时候，递归就结束了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">template&lt;int N&gt;
+struct printPrimes&lt;N, N&gt; {
+    static inline void print() {
+        printIfPrime&lt;N, isPrime&lt;N&gt;::result&gt;::print();
+    }
+};
+</pre>
+<p>最后，让我们来看看最终的调用：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main (int argc, char * const argv[])
+{
+    printPrimes&lt;2, 40&gt;::print();
+    return 0;
+}
+</pre>
+<p>这个方法很NB，但是有两个问题：</p>
+<ul>
+<li>比较耗编译时间。</li>
+<li>不能在运行时输入MAX的值。</li>
+</ul>
+<p>不过，相信这种玩法会启动你很多的编程思路。</p>
+<p>当然，还有以前说过的那个——《<span style="font-weight: bold;"><a title="检查素数的正则表达式" rel="bookmark" href="/articles/2704.html" target="_blank">检查素数的正则表达式</a></span>》</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3738-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">趣味问题</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Puzzle</a>, <a href="javascript:void(0)" rel="tag">Template</a>, <a href="javascript:void(0)" rel="tag">面试</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>打印质数的各种算法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-32944" class="comment even thread-even depth-1">
+<article id="div-comment-32944" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14fab3d0b8a7d6bc710899499ea25170?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14fab3d0b8a7d6bc710899499ea25170?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Nemo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-32944"><time datetime="2011-02-28T10:49:42+08:00">2011年02月28日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还是经典的筛选法高效啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-32953" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32953" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/46918079b795b43d2208c375af175f1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/46918079b795b43d2208c375af175f1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://tinybit-blog.appspot.com" class="url" rel="ugc external nofollow">tinybit</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-32953"><time datetime="2011-02-28T12:12:56+08:00">2011年02月28日 12:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很好的文章，特别是第二个算法，很实际。第三个很Geeker。</p>
+<p>另外，教科书实例中循环 for (int d = 2; (d * d) &lt;= (nr + 1); ++d)<br/>
+似乎循环到 (d * d) &lt;= nr; 就可以结束了，为什麽要到nr + 1呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32980" class="comment even thread-even depth-1">
+<article id="div-comment-32980" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64173e2cbf5f211eb8b20b71e33ed861?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64173e2cbf5f211eb8b20b71e33ed861?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://d.ream.at" class="url" rel="ugc external nofollow">WindyWinter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-32980"><time datetime="2011-02-28T14:50:55+08:00">2011年02月28日 14:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32953" rel="nofollow">@tinybit </a><br/>
+nr=3</p>
+</div>
+ </article>
+</li>
+<li id="comment-32982" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32982" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64173e2cbf5f211eb8b20b71e33ed861?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64173e2cbf5f211eb8b20b71e33ed861?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://d.ream.at" class="url" rel="ugc external nofollow">WindyWinter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-32982"><time datetime="2011-02-28T14:52:23+08:00">2011年02月28日 14:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>存文件和运行时计算是要权衡的，有时候数据大到蛋疼，但生成算法很简单，那即便生成比较费时，也只能认了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32991" class="comment even thread-even depth-1">
+<article id="div-comment-32991" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/46918079b795b43d2208c375af175f1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/46918079b795b43d2208c375af175f1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://tinybit-blog.appspot.com" class="url" rel="ugc external nofollow">tinybit</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-32991"><time datetime="2011-02-28T15:54:51+08:00">2011年02月28日 15:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32980" rel="nofollow">@WindyWinter </a><br/>
+nr=3的时候，也没什么问题啊。<br/>
+如果nr不是质数，必然有两个大于1的正整数（质因数），使得p*q=nr, 进一步得出p和q中必须有一个位于区间[2, 根号(nr)]上，因此只需循环到 (d * d) &lt;= nr 就可以断定是否存在这样的质因数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-33014" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-33014" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f8a7e5102fd67cfec995f7675bb9d901?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f8a7e5102fd67cfec995f7675bb9d901?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">digiter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33014"><time datetime="2011-02-28T18:17:47+08:00">2011年02月28日 18:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一个算法是O(sqrt(n))的吧，怎么会接近O(nlog(n))呢？如果是O(nlog(n))的，那RSA就不安全了</p>
+</div>
+ </article>
+</li>
+<li id="comment-33017" class="comment even thread-even depth-1">
+<article id="div-comment-33017" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f8a7e5102fd67cfec995f7675bb9d901?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f8a7e5102fd67cfec995f7675bb9d901?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">digiter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33017"><time datetime="2011-02-28T18:23:29+08:00">2011年02月28日 18:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-33014" rel="nofollow">@digiter </a><br/>
+给个O(n)筛素数的方法：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">const int size = 1000 * 1000 + 5;
+bool isp[size];
+int prime[size], lp;
+void make() {
+	memset(isp, true, sizeof(isp));
+	isp[0] = isp[1] = false;
+	lp = 0;
+	for (int i = 2; i &lt; size; ++i) {
+		if (isp[i]) {
+			prime[lp++] = i;
+		}
+		for (int j = 0; j &lt; lp &amp;&amp; (long long)i * prime[j] &lt; size; ++j) {
+			isp[i * prime[j]] = false;
+			if (i % prime[j] == 0) {
+				break;
+			}
+		}	
+	}
+}
+</pre>
+</div>
+ </article>
+</li>
+<li id="comment-33038" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-33038" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9642b3bef5d6cdae1eab269b9f47fdea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9642b3bef5d6cdae1eab269b9f47fdea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yegong.net/" class="url" rel="ugc external nofollow">夜弓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33038"><time datetime="2011-02-28T20:41:04+08:00">2011年02月28日 20:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cpp template的方法火星了</p>
+</div>
+ </article>
+</li>
+<li id="comment-33228" class="comment even thread-even depth-1">
+<article id="div-comment-33228" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e283ad9bba4d0ffeb95c0b9be4ae8a64?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e283ad9bba4d0ffeb95c0b9be4ae8a64?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://bigeastable.appspot.com" class="url" rel="ugc external nofollow">bigeast</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33228"><time datetime="2011-03-01T20:45:09+08:00">2011年03月01日 20:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-32953"><p>
+<strong><a href="#comment-32953" rel="nofollow">tinybit</a> :</strong><br/>
+很好的文章，特别是第二个算法，很实际。第三个很Geeker。<br/>
+另外，教科书实例中循环 for (int d = 2; (d * d) &lt;= (nr + 1); ++d)<br/>
+似乎循环到 (d * d) &lt;= nr; 就可以结束了，为什麽要到nr + 1呢？
+</p></blockquote>
+<p>有的版本是先算出sqrt(n),但是这样会有精度损失，为了以防万一会故意另i&lt;sqrt(i+1.0)时循环终止，我想这个+1的风格可能是这样延续下来的。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-33259" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-33259" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c4959551fd966456644d16f468839f6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c4959551fd966456644d16f468839f6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bigarm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33259"><time datetime="2011-03-01T23:53:50+08:00">2011年03月01日 23:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>较好的算法，那一节第二行，有个错误：写成”级数级的算法”了，应该是对数级的算法log(n)</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-33262" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-33262" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33262"><time datetime="2011-03-01T23:59:58+08:00">2011年03月01日 23:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢指正。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-33368" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-33368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5d3c59e2c625d3308b6f1cb40124987?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5d3c59e2c625d3308b6f1cb40124987?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Astrum</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33368"><time datetime="2011-03-02T13:29:18+08:00">2011年03月02日 13:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以，我想在这里提醒大家——实际和理论的的方法很不一样的，千万不要读书读成书呆子。在游戏编程的世界里，大量的数据都不是运行计算的，而都是写在文件中的。比如，一个火焰效果，一个人物跑动的动作，都是事先写在文件中的。<br/>
+————————<br/>
+这一段有点小问题，为了追求真实度，现在的游戏特效也大部分是用gpu实时演算的，像光影，爆炸，碰撞，等等。 纯挑刺纯挑刺~哈哈~</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-33372" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-33372" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33372"><time datetime="2011-03-02T13:53:08+08:00">2011年03月02日 13:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>欢迎挑刺！谢谢啊，这让我也对游戏开发有了很多的了解！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-33710" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-33710" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24dcb43740def38d7235835569f6feb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24dcb43740def38d7235835569f6feb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/sunwaymike" class="url" rel="ugc external nofollow">j</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-33710"><time datetime="2011-03-03T15:55:49+08:00">2011年03月03日 15:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>充电…</p>
+</div>
+ </article>
+</li>
+<li id="comment-37866" class="comment even thread-even depth-1">
+<article id="div-comment-37866" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fa94595f0316fcc915329a4868f00dcc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fa94595f0316fcc915329a4868f00dcc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Michael Genn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-37866"><time datetime="2011-03-21T16:21:07+08:00">2011年03月21日 16:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C++ Template Metaprogramming!!!</p>
+</div>
+ </article>
+</li>
+<li id="comment-39198" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-39198" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/865ea407b372cadea9e4f37e36fa20c8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/865ea407b372cadea9e4f37e36fa20c8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">funny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-39198"><time datetime="2011-03-24T16:10:16+08:00">2011年03月24日 16:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一种方法求单个是否是素数时间复杂度是O(sqrt(n))而0-n是O(n*sqrt(n) 第二种均摊o(n)但是其直接求出0-N所有的素数 但是其最大的问题是需要开辟额外的内存 面对大素数鸭梨很大 另外有2种介于第一种和第二种直接的求素数的方式费马测试 和 米勒测试 比较犀利</p>
+</div>
+ </article>
+</li>
+<li id="comment-39211" class="comment even thread-even depth-1">
+<article id="div-comment-39211" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83794b0ea1170a337e4782048cdaa928?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83794b0ea1170a337e4782048cdaa928?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jerry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-39211"><time datetime="2011-03-24T16:44:05+08:00">2011年03月24日 16:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-33038"><p>
+<strong><a href="#comment-33038" rel="nofollow">夜弓</a> :</strong><br/>
+cpp template的方法火星了
+</p></blockquote>
+<p>顶。现在最骨灰级的用法都在boost和0x里面了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-41779" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-41779" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe0dfaf603b7b9df01b09e9a209f5fa8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe0dfaf603b7b9df01b09e9a209f5fa8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.thcdusman.tk" class="url" rel="ugc external nofollow">T.D.M.</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-41779"><time datetime="2011-04-03T14:33:59+08:00">2011年04月03日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益匪浅！</p>
+</div>
+ </article>
+</li>
+<li id="comment-42497" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://note.btkx.net/?p=611" class="url" rel="ugc external nofollow">一些有意思的文章和资源 | 网摘</a> </div>
+</li>
+<li id="comment-43478" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-43478" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/faf237cf93274774b6f3e29ef339f381?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/faf237cf93274774b6f3e29ef339f381?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">N/A</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-43478"><time datetime="2011-04-10T12:13:36+08:00">2011年04月10日 12:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32953" rel="nofollow">@tinybit </a><br/>
+根据质数的定义，在判断一个数N是否是质数时，我们只要用1至N – 1去除N，看看能否整除即可。但我们有更好的办法。先找一个数M，使M的平方大于N，再用 &lt;= M的质数去除N（N即为被除数），如果都不能整除，则N必然是质数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-50747" class="comment even thread-even depth-1">
+<article id="div-comment-50747" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec7cf9aaf2536dd77c2c6c2df63d0a1f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec7cf9aaf2536dd77c2c6c2df63d0a1f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JinCeon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-50747"><time datetime="2011-05-08T15:58:27+08:00">2011年05月08日 15:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-32953"><p>
+<strong><a href="#comment-32953" rel="nofollow">tinybit</a> :</strong><br/>
+很好的文章，特别是第二个算法，很实际。第三个很Geeker。<br/>
+另外，教科书实例中循环 for (int d = 2; (d * d) &lt;= (nr + 1); ++d)<br/>
+似乎循环到 (d * d) &lt;= nr; 就可以结束了，为什麽要到nr + 1呢？
+</p></blockquote>
+<p><a href="#comment-32953" rel="nofollow">@tinybit </a> &lt;nr+1和&lt;=nr不是一样吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-64528" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://99dzh.com/index.php/2011/07/11/20/" class="url" rel="ugc external nofollow">排序算法 Sleep Sort » 99大杂烩</a> </div>
+</li>
+<li id="comment-76093" class="comment even thread-even depth-1">
+<article id="div-comment-76093" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2bfc906bd5a1794731322f686e8604e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2bfc906bd5a1794731322f686e8604e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">walfud</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-76093"><time datetime="2011-08-22T20:40:45+08:00">2011年08月22日 20:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然 1 既不是质数也不是合数, 但是我还是写错了, 写了printPrime 会由于<br/>
+isPrime 而导致编译死循环( -1 被解释为 unsigned int, 由于各编译器嵌套深度上线不一样, 所以所得的值也不一样), 我尝试在 enum 中加入 ?: 表达式, 未果, 修改方法如下:<br/>
+template<br/>
+struct isPrime<br/>
+{<br/>
+enum {result = 2 &lt; N ?<br/>
+N % D &amp;&amp; isPrime::result : false} ;<br/>
+} ;<br/>
+请问楼主有什么好方法能防止上述情况?</p>
+</div>
+ </article>
+</li>
+<li id="comment-103568" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-103568" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b9f514293f0ad790c07c7fae0ceacf4a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b9f514293f0ad790c07c7fae0ceacf4a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dent</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-103568"><time datetime="2011-11-29T14:16:24+08:00">2011年11月29日 14:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里讨论的是最基本的trial division法，更大的质数用这种方法效率就很低了，看了下wiki上质数的段落，检测大质数的算法真麻烦，需要有很好的数学功底。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195834" class="comment even thread-even depth-1">
+<article id="div-comment-195834" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6733dc14041d33b02a62a12e0d340c5d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6733dc14041d33b02a62a12e0d340c5d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://seeit8.com" class="url" rel="ugc external nofollow">水长东</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-195834"><time datetime="2012-05-30T22:03:35+08:00">2012年05月30日 22:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刷选法肯定快些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-200326" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.xlinblog.sinaapp.com/?p=26" class="url" rel="ugc external nofollow">小小说阅读网 » 代码执行的效率</a> </div>
+</li>
+<li id="comment-200726" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/a-fork-of-the-interview-questions.html" class="url" rel="ugc external nofollow">Definite Digest » 一个fork的面试题</a> </div>
+</li>
+<li id="comment-200901" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=111" class="url" rel="ugc external nofollow">小小说阅读网 » 一个fork的面试题</a> </div>
+</li>
+<li id="comment-201470" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=487" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » 代码执行的效率</a> </div>
+</li>
+<li id="comment-202469" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/lock-free-queue-implementation.html" class="url" rel="ugc external nofollow">Definite Digest » 无锁队列的实现</a> </div>
+</li>
+<li id="comment-203039" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2012/09/%e4%b8%80%e4%b8%aafork%e7%9a%84%e9%9d%a2%e8%af%95%e9%a2%98/" class="url" rel="ugc external nofollow">Google Reader分享 » 一个fork的面试题</a> </div>
+</li>
+<li id="comment-203701" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203701" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da44439dba1f8143aee8a949efce4de1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da44439dba1f8143aee8a949efce4de1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">怪兽</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-203701"><time datetime="2012-10-11T08:55:47+08:00">2012年10月11日 08:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们发现在2，3，5，7这4个数了没有如果一个数是素数肯定是2，3，5，7这几个数组成的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-204119" class="comment even thread-even depth-1">
+<article id="div-comment-204119" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb7e0f0df4677ba151b18d27d8ac2bbe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb7e0f0df4677ba151b18d27d8ac2bbe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ethantsien</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-204119"><time datetime="2012-10-14T05:32:16+08:00">2012年10月14日 05:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一个算法的复杂度应该是logN，而不是N*logN</p>
+</div>
+ </article>
+</li>
+<li id="comment-241389" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog-suuuch.rhcloud.com/2012/11/20/%e5%a6%82%e4%bd%95%e6%b5%8b%e8%af%95%e6%b4%97%e7%89%8c%e7%a8%8b%e5%ba%8f/" class="url" rel="ugc external nofollow">如何测试洗牌程序 | Suuch</a> </div>
+</li>
+<li id="comment-293160" class="comment even thread-even depth-1">
+<article id="div-comment-293160" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/46b961f35957b000d7cc8ecf1aa322db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/46b961f35957b000d7cc8ecf1aa322db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hjj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-293160"><time datetime="2013-02-17T21:37:14+08:00">2013年02月17日 21:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“较好的算法”实际上还有提高空间，可以用一个素数列表保存已筛选出的素数，对后面的每个数n，使用 &lt;= sqrt(n) 的素数筛选，这样算法复杂度不变，空间占用从 O(N) 降到了 O(N/lnN)。</p>
+</div>
+ </article>
+</li>
+<li id="comment-565805" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-565805" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/79a7a7e002ec553f819fb7484b3981c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/79a7a7e002ec553f819fb7484b3981c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wxd356</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-565805"><time datetime="2013-06-23T15:42:28+08:00">2013年06月23日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-33017"><p>
+<strong><a href="#comment-33017" rel="nofollow">digiter</a> :</strong><br/>
+<a href="#comment-33014" rel="nofollow">@digiter </a><br/>
+给个O(n)筛素数的方法：<br/>
+12345678910111213141516171819<code>const</code> <code>int</code> <code>size = 1000 * 1000 + 5;</code><code>bool</code> <code>isp[size];</code><code>int</code> <code>prime[size], lp;</code><code>void</code> <code>make() {</code><code>    </code><code>memset</code><code>(isp, </code><code>true</code><code>, </code><code>sizeof</code><code>(isp));</code><code>    </code><code>isp[0] = isp[1] = </code><code>false</code><code>;</code><code>    </code><code>lp = 0;</code><code>    </code><code>for</code> <code>(</code><code>int</code> <code>i = 2; i &lt; size; ++i) {</code><code>        </code><code>if</code> <code>(isp[i]) {</code><code>            </code><code>prime[lp++] = i;</code><code>        </code><code>}</code><code>        </code><code>for</code> <code>(</code><code>int</code> <code>j = 0; j &lt; lp &amp;&amp; (</code><code>long</code> <code>long</code><code>)i * prime[j] &lt; size; ++j) {</code><code>            </code><code>isp[i * prime[j]] = </code><code>false</code><code>;</code><code>            </code><code>if</code> <code>(i % prime[j] == 0) {</code><code>                </code><code>break</code><code>;</code><code>            </code><code>}</code><code>        </code><code>}   </code><code>    </code><code>}</code><code>}</code>
+</p></blockquote>
+<p>镶嵌for难道不是O(n^2)吗？反正我想不出来怎么可能是O(n)</p>
+</div>
+ </article>
+</li>
+<li id="comment-594806" class="comment even thread-even depth-1">
+<article id="div-comment-594806" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f46142f504c83d8d3c9ed4da499f3e84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f46142f504c83d8d3c9ed4da499f3e84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">受到了风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-594806"><time datetime="2013-07-15T21:24:47+08:00">2013年07月15日 21:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得isPrime中的result按照惯用应该改成value，最后的那个模板特化中的N改成MAX应该更好理解，毕竟编译的递归是在N+1=MAX时停止的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-594811" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-594811" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f46142f504c83d8d3c9ed4da499f3e84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f46142f504c83d8d3c9ed4da499f3e84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">受到了风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-594811"><time datetime="2013-07-15T21:29:39+08:00">2013年07月15日 21:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>而且isPrime没有处理N=1的情况，如果N=1，那么D=0，所以应该再加个模板特化<br/>
+template<br/>
+struct is_prime<br/>
+{<br/>
+enum{value = false};<br/>
+};<br/>
+template<br/>
+struct is_prime<br/>
+{<br/>
+enum{value = false};<br/>
+};</p>
+<p>同理，对于N为负数的情况，也没有做太多处理，所以isPrime的N的类型应该改为size_t</p>
+</div>
+ </article>
+</li>
+<li id="comment-852532" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=27" class="url" rel="ugc external nofollow">7个示例科普CPU Cache | zengine</a> </div>
+</li>
+<li id="comment-852537" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=24" class="url" rel="ugc external nofollow">C语言全局变量那些事儿 | zengine</a> </div>
+</li>
+<li id="comment-914196" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/archives/2272" class="url" rel="ugc external nofollow">C语言全局变量那些事儿Multiprocess | Multiprocess</a> </div>
+</li>
+<li id="comment-965629" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=200" class="url" rel="ugc external nofollow">7个示例科普CPU Cache | 星达红</a> </div>
+</li>
+<li id="comment-965652" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=208" class="url" rel="ugc external nofollow">程序的本质复杂性和元语言抽象 | 星达红</a> </div>
+</li>
+<li id="comment-1490379" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1490379" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49aea0f29239c8d392eb5b68ab65eade?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49aea0f29239c8d392eb5b68ab65eade?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">unknown</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-1490379"><time datetime="2014-07-04T01:06:34+08:00">2014年07月04日 01:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-565805" rel="nofollow">@wxd356 </a><br/>
+注意那个 if (i % prime[j] == 0) 所以每个数只被他最小的质因子筛掉一次</p>
+</div>
+ </article>
+</li>
+<li id="comment-1721939" class="comment even thread-even depth-1">
+<article id="div-comment-1721939" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eebd48df589dc3b2bb4df184d74dd617?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eebd48df589dc3b2bb4df184d74dd617?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">listar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3738.html#comment-1721939"><time datetime="2015-06-14T11:58:43+08:00">2015年06月14日 11:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那个模板的方法，只能在编译时求解有限个数的质数，因为编译器对模板的递归调用是有限制的，比如clang++的，fatal error: recursive template instantiation exceeded maximum depth of 256</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

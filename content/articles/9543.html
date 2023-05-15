@@ -1,0 +1,613 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>“C++的数组不支持多态”？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9543 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9543" class="post-content post-9543 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">“C++的数组不支持多态”？</span>
+<h1 class="entry-title">“C++的数组不支持多态”？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9543.html" title="16:17" rel="bookmark"><time class="entry-date" datetime="2013-04-29T16:17:40+08:00" pubdate="">2013年04月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9543.html#comments" class="comments-link">180 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 90,719 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>先是在微博上看到了个<a href="http://weibo.com/1876004965/zueproucp" target="_blank">微博</a>和云风的评论，然后我回了“楼主对C的内存管理不了解”。</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2013/04/weibo.jpg"><img decoding="async" class="aligncenter size-full wp-image-9544" alt="" src="/uploads/2013/04/weibo.jpg" width="580" height="211" srcset="" sizes="(max-width: 580px) 100vw, 580px"/></a></p>
+<p>后来引发了很多人的讨论，大量的人又借机来黑C++，比如：</p>
+<blockquote><p>//<a href="http://weibo.com/n/Baidu-ThursdayWang">@Baidu-ThursdayWang</a>:这不就c++弱爆了的地方吗，需要记忆太多东西</p>
+<p>//<a href="http://weibo.com/n/%E7%BC%96%E7%A8%8B%E6%B5%AA%E5%AD%90%E5%BC%A0%E5%8F%91%E8%B4%A2">@编程浪子张发财</a>:这个跟C关系真不大。不过我得验证一下，感觉真的不应该是这样的。如果基类的析构这种情况不能 调用，就太弱了。</p>
+<p>//<a href="http://weibo.com/1401324585" target="_blank">@程序元</a>：现在看来，当初由于毅力不够而没有深入纠缠c++语言特性的各种犄角旮旯的坑爹细枝末节，实是幸事。为现在还沉浸于这些诡异特性并乐此不疲的同志们感到忧伤。</p></blockquote>
+<p>然后，也出现了一些乱七八糟的理解：</p>
+<p><span id="more-9543"></span></p>
+<blockquote><p>//<a href="http://weibo.com/n/BA5BO">@BA5BO</a>: 数组是基于拷贝的，而多态是基于指针的，派生类赋值给基类数组只是拷贝复制了一个基类新对象，当然不需要派生类析构函数</p>
+<p>//<a href="http://weibo.com/n/%E7%BC%96%E7%A8%8B%E6%B5%AA%E5%AD%90%E5%BC%A0%E5%8F%91%E8%B4%A2">@编程浪子张发财</a>:我突然理解是怎么回事了，这种情况下数组中各元素都是等长结构体，类型必须一致，的确没法多态。这跟C#和java不同。后两者对于引用类型存放的是对象指针。</p></blockquote>
+<p>等等，看来我必需要写一篇博客以正视听了。</p>
+<p>因为没有看到上下文，我就猜测讨论的可能会是下面这两种情况之一：</p>
+<p style="padding-left: 30px;">1) 一个Base*[]的指针数组中，存放了一堆派生类的指针，这样，你delete [] pBase; 只是把指针数组给删除了，并没有删除指针所指向的对象。这个是最基础的C的问题。你先得for这个指针数组，把数据里的对象都delete掉，然后再删除数组。很明显，这和C++没有什么关系。</p>
+<p style="padding-left: 30px;">2）第二种可能是：Base *pBase = new Derived[n] 这样的情况。这种情况下，delete[] pBase 明显不会调用虚析构函数（当然，这并不一定，我后面会说） ，这就是上面云风回的微博。对此，我觉得如果是这个样子，这个程序员<strong>完全没有搞懂C语言中的指针和数组是怎么一回事</strong>，也没有搞清楚， 什么是对象，什么是对象的指针和引用，这完全就是C语言没有学好。</p>
+<p>后来，在看到了 <a href="http://weibo.com/n/GeniusVczh">@GeniusVczh</a> 的原文 《<a id="viewpost1_TitleUrl" href="http://www.cppblog.com/vczh/archive/2013/04/27/199765.html">如何设计一门语言（一）——什么是坑(a)</a>》最后时，才知道了说的是第二种情况。也就是下面的这个示例（我加了虚的析构函数这样方便编译）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class Base
+{
+  public:
+    virtual ~B(){ cout &lt;&lt;&#34;B::~B()&#34;&lt;&lt;endl; }
+};
+
+class Derived : public Base
+{
+  public:
+    virtual ~D() { cout &lt;&lt;&#34;D::D~()&#34;&lt;&lt;endl; }
+};
+
+Base* pBase = new Derived[10];
+delete[] pBase;</pre>
+<h4>C语言补课</h4>
+<p>我先不说这段C++的程序在什么情况下能正确调用派生类的析构函数，我还是先来说说C语言，这样我在后面说这段代码时你就明白了。</p>
+<p>对于上面的：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">Base* pBase = new Derived[10];</code></p>
+<p>这个语言和下面的有什么不同吗？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Derived d[10];
+
+Base* pBase = d;</pre>
+<p>一个是堆内存动态分配，一个是栈内存静态分配。只是内存的位置和类型不一样，在语法和使用上没有什么不一样的。（如果你把Base 和 Derived想成struct，把new想成malloc() ，你还觉得这和C++有什么关系吗？）</p>
+<p><strong>那么，你觉得pBase这个指针是指向对象的，是对象的引用，还是指向一个数组的，是数组的引用？</strong></p>
+<p>于是乎，你可以想像一下下面的场景：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int *pInt; char* pChar;
+
+pInt = (int*)malloc(10*sizeof(int));
+
+pChar = (char*)pInt;</pre>
+<p><strong>对上面的pInt和pChar指针来说，pInt[3]和pChar[3]所指向的内容是否一样呢？当然不一样，因为int是4个字节，char是1个字节，步长不一样，所以当然不一样。</strong></p>
+<p><strong>那么再回到那个把Derived[]数组的指针转成Base类型的指针pBase，那么pBase[3]是否会指向正确的Derrived[3]呢？</strong></p>
+<p>我们来看个纯C语言的例程，下面有两个结构体，就像继承一样，我还别有用心地加了一个void *vptr，好像虚函数表一样：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">    struct A {
+        void *vptr;
+        int i;
+    };
+
+    struct B{
+        void *vptr;
+        int i;
+        char c;
+        int j;
+    }b[2] ={
+        {(void*)0x01, 100, &#39;a&#39;, -1},
+        {(void*)0x02, 200, &#39;A&#39;, -2}
+    };
+</pre>
+<p>注意：我用的是G++编译的，在64bits平台上编译的，其中的sizeof(void*)的值是8。</p>
+<p>我们看一下栈上内存分配：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">    struct A *pa1 = (struct A*)(b);
+</pre>
+<p>用gdb我们可以看到下面的情况：(pa1[1]的成员的值完全乱掉了)</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="6">(gdb) p b
+$7 = {{vptr = 0x1, i = 100, c = 97 &#39;a&#39;, j = -1}, {vptr = 0x2, i = 200, c = 65 &#39;A&#39;, j = -2}}
+(gdb) p pa1[0]
+$8 = {vptr = 0x1, i = 100}
+(gdb) p pa1[1]
+$9 = {vptr = 0x7fffffffffff, i = 2}
+</pre>
+<p>我们再来看一下堆上的情况：（我们动态了struct B [2]，然后转成struct A *，然后对其成员操作）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">    struct A *pa = (struct A*)malloc(2*sizeof(struct B));
+    struct B *pb = (struct B*)pa；
+
+    pa[0].vptr = (void*) 0x01;
+    pa[1].vptr = (void*) 0x02;
+
+    pa[0].i = 100;
+    pa[1].i = 200;
+</pre>
+<p>用gdb来查看一下变量，我们可以看到下面的情况：（pa没问题，但是pb[1]的内存乱掉了）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="8">(gdb) p pa[0]
+$1 = {vptr = 0x1, i = 100}
+(gdb) p pa[1]
+$2 = {vptr = 0x2, i = 200}
+(gdb) p pb[0]
+$3 = {vptr = 0x1, i = 100, c = 0 &#39;\000&#39;, j = 2}
+(gdb) p pb[1]
+$4 = {vptr = 0xc8, i = 0, c = 0 &#39;\000&#39;, j = 0}
+</pre>
+<p>可见，这完全就是C语言里乱转型造成了内存的混乱，这和C++一点关系都没有。而且，C++的任何一本书都说过，父类对象和子类对象的转型会带来严重的内存问题。</p>
+<p>但是，如果在64bits平台下，如果把我们的structB改一下，改成如下（把struct B中的int j给注释掉）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">    struct A {
+        void *vptr;
+        int i;
+    };
+
+    struct B{
+        void *vptr;
+        int i;
+        char c;
+        //int j; &lt;---注释掉int j
+    }b[2] ={
+        {(void*)0x01, 100, &#39;a&#39;},
+        {(void*)0x02, 200, &#39;A&#39;}
+    };
+</pre>
+<p>你就会发现，上面的内存混乱的问题都没有了，因为struct A和struct B的size是一样的：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) p sizeof(struct A)
+$6 = 16
+(gdb) p sizeof(struct B)
+$7 = 16</pre>
+<p>注：如果不注释int j，那么sizeof(struct B)的值是24。</p>
+<p>这就是C语言中的内存对齐，内存对齐的原因就是为了更快的存取内存（详见《<a title="深入理解C语言" href="/articles/5761.html" target="_blank">深入理解C语言</a>》）</p>
+<p>如果内存对齐了，而且struct A中的成员的顺序在struct B中是一样的而且在最前面话，那么就没有问题。</p>
+<h4>再来看C++的程序</h4>
+<p>如果你看过我5年前写的《<strong><a href="http://blog.csdn.net/haoel/article/details/1948051" target="_blank">C++虚函数表解析</a></strong>》以及《<strong>C++内存对象布局 <a href="http://blog.csdn.net/haoel/article/details/3081328" target="_blank">上篇</a>、<a href="http://blog.csdn.net/haoel/article/details/3081385" target="_blank">下篇</a></strong>》，你就知道C++的标准会把虚函数表的指针放在类实例的最前面，你也就知道为什么我别有用心地在struct A和struct B前加了一个 void *vptr。C++之所以要加在最前面就是为了转型后，不会找不到虚表了。</p>
+<p>好了，到这里，我们再来看C++，看下面的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include
+using namespace std;
+
+class B
+{
+  int b;
+  public:
+    virtual ~B(){ cout &lt;&lt;&#34;B::~B()&#34;&lt;&lt;endl; }
+};
+
+class D: public B
+{
+  int i;
+  public:
+    virtual ~D() { cout &lt;&lt;&#34;D::~D()&#34;&lt;&lt;endl; }
+};
+
+int main(void)
+{
+    cout &lt;&lt; &#34;sizeB:&#34; &lt;&lt; sizeof(B) &lt;&lt; &#34; sizeD:&#34;&lt;&lt; sizeof(D) &lt;&lt;endl;
+    B *pb = new D[2];
+
+    delete [] pb;
+
+    return 0;
+}
+</pre>
+<p><strong>上面的代码可以正确执行，包括调用子类的虚函数！因为内存对齐了</strong>。在我的64bits的CentOS上——sizeof(B):16 ，sizeof(D):16</p>
+<p><strong>但是，如果你在class D中再加一个int成员的问题，这个程序就Segmentation fault了</strong>。因为—— sizeof(B):16 ，sizeof(D):24。pb[1]的虚表找到了一个错误的内存上，内存乱掉了。</p>
+<p>再注：我在Visual Studio 2010上做了一下测试，对于 struct 来说，其表现和gcc的是一样的，但对于class的代码来说，其可以“正确调用到虚函数”无论父类和子类有没有一样的size。</p>
+<p>然而，在C++的标准中，下面这样的用法是undefined! 你可以看看StackOverflow上的相关问题讨论：《<a title="Why is it undefined behavior to delete[] an array of derived objects via a base pointer?" href="http://stackoverflow.com/questions/6171814/why-is-it-undefined-behavior-to-delete-an-array-of-derived-objects-via-a-base" target="_blank">Why is it undefined behavior to delete[] an array of derived objects via a base pointer?</a>》（同样，你也可以看看《More Effective C++》中的条款三）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Base* pBase = new Derived[10];
+
+delete[] pBase;</pre>
+<p>所以，微软C++编程译器define这个事让我非常不解，对微软的C++编译器再度失望，看似默默地把其编译对了很漂亮，实则误导了好多人把这种undefined的东西当成defined来用，还赞扬做得好，真是令人无语。<strong>（</strong><a href="http://weibo.com/2087077260/zup0V7LLM" target="_blank">就像微博上的这个贴一样</a>，说VC多么牛，还说这是OO的特性。我勒个去！<strong>）</strong></p>
+<p style="text-align: center;"><a href="https://coolshell.cn/wp-content/uploads/2013/04/hehe.png"><img decoding="async" loading="lazy" alt="" src="/uploads/2013/04/hehe.png" width="530" height="173" srcset=""/></a></p>
+<p>现在，你终于知道Base* pBase = new Derived[10];这个问题是C语言的转型的问题，你也应该知道用于数组的指针是怎么回事了吧？<strong>这是一个很奇葩的代码！请你不要像那些人一样在微博上和这里的评论里高呼并和我理论到：“微软的C++编译器支持这个事！”。</strong></p>
+<p>最后，我越来越发现，<span style="color: #cc0000; font-size: 14px;"><strong>很多说C++难用的人，其实是不懂C语言</strong></span>。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9543-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>“C++的数组不支持多态”？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-603423" class="comment even thread-even depth-1">
+<article id="div-comment-603423" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aef1aee4e66cf710421d8b78b18f7b4d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aef1aee4e66cf710421d8b78b18f7b4d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Roy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-603423"><time datetime="2013-07-22T17:05:20+08:00">2013年07月22日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-402238"><p>
+<strong><a href="#comment-402238" rel="nofollow">shuiren</a> :</strong><br/>
+1， “很多说C++难用的人，其实是不懂C语言。” 不能支持这个观点更多<br/>
+2， 关于标准的undefined behavior， vc2010的实现无可厚非。 vc的实现和博主期望不一致而已。 既然是 undefined，那他自然可以和博主的实现不一致，反过来说g++对这个未定义的实现和博主的期望一致。其实博主后来的实验例子，也不过是在试图弄清g++的实现方式而已（注意，是g++的实现，不是iso c++的规范）。<br/>
+至于误导问题，c学得不好的人，编译器是应该实现出一个符合多数人直觉的行为，还是给用户一个难查的bug（也可能不表现出bug症状，编译也不会警告或报错——比如博主后面举的不出错的例子），这是个产品设计哲学的问题，不能据此就说ms做的东西坑人。 不懂c是不懂c的人的问题， 不是vc的问题。<br/>
+3， stroustrup 本人也曾表示过， 比可能要求所有的c++编译器实现都和标准完全兼容，更不用说各个编译器的实现彼此之间完全一致了。 vc对这个undefined behavior的实现方式， 可以认为是vc的一个方言， g++也有很多自己的方言，并且这些方言性质的特性， 很多后来都进入了c++标准，这也符合c++标准化过程中的一个原则 standardizing existing standard。 反过来，一些特性由于遭到几乎所有编译器的抵制，也会被标准移除，比如模板关键字export
+</p></blockquote>
+<p>公道，同意！</p>
+</div>
+ </article>
+</li>
+<li id="comment-761872" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-761872" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3f45575e5158465e595a56545652567f58525e5653115c5052">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-761872"><time datetime="2013-09-26T10:13:05+08:00">2013年09月26日 10:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用scala吧，什么java，垃圾</p>
+</div>
+ </article>
+</li>
+<li id="comment-774966" class="comment even thread-even depth-1">
+<article id="div-comment-774966" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e357f7dedbb1d98af1fa7c5764bce42?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e357f7dedbb1d98af1fa7c5764bce42?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">farta</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-774966"><time datetime="2013-09-30T14:11:09+08:00">2013年09月30日 14:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>微软那个编译器的行为倒有他的原因。是有客户（貌似来头还不小）一定要求这种行为。反正这种行为未定义，那我按客户的要求来也不会违反标准。这是纯粹的商业行为。</p>
+</div>
+ </article>
+</li>
+<li id="comment-829987" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yoese.com/?p=1748" class="url" rel="ugc external nofollow">C语言全局变量那些事儿 | 有益</a> </div>
+</li>
+<li id="comment-873160" class="comment even thread-even depth-1">
+<article id="div-comment-873160" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/241497bd578830d5c0ebeee883dfd5ee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/241497bd578830d5c0ebeee883dfd5ee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">youngzii</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-873160"><time datetime="2013-11-02T20:52:13+08:00">2013年11月02日 20:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想向楼主及大家请教一个问题：<br/>
+当D采用虚拟继承的方式继承B时，代码”B *pb=new D[2]; delete [] pb;“出现错误。请高手指点一下，我一直没整明白。</p>
+</div>
+ </article>
+</li>
+<li id="comment-882541" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e8%af%b4c%e5%bf%85%e7%be%9e%e5%88%b0%e5%be%ae%e8%bd%af" class="url" rel="ugc external nofollow">说c++必羞到微软 - 编程语言 - 开发者第2339113个问答</a> </div>
+</li>
+<li id="comment-892291" class="comment even thread-even depth-1">
+<article id="div-comment-892291" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3160c9942c8004a73234c4b419a2a46?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3160c9942c8004a73234c4b419a2a46?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">anmikf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-892291"><time datetime="2013-11-07T14:11:28+08:00">2013年11月07日 14:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里可以这样解释，<br/>
+delete只会根据地址的类型(下面简称type)和内存地址(addr)来进行内存释放，<br/>
+delete是由编译器在编译阶段生成固定汇编代码的，而这种汇编代码的生成是不考虑什么父类、子类，虚函数、虚函数表的。<br/>
+示例代码：</p>
+<p>struct A{<br/>
+int unnamed;<br/>
+A(){printf(__FUNCTION__ “\n”);}<br/>
+~A(){printf(__FUNCTION__ “\n”);}<br/>
+};</p>
+<p>struct B{<br/>
+int unnamed;<br/>
+B(){printf(__FUNCTION__ “\n”);}<br/>
+~B(){printf(__FUNCTION__ “\n”);}<br/>
+};</p>
+<p>struct C{<br/>
+int unnamed;<br/>
+C(){printf(__FUNCTION__ “\n”);}<br/>
+~C(){printf(__FUNCTION__ “\n”);}<br/>
+};<br/>
+// 执行以下代码<br/>
+delete((A*)new A());<br/>
+delete((B*)new A());<br/>
+delete((C*)new A());<br/>
+// 输出<br/>
+A::A<br/>
+A::~A<br/>
+A::A<br/>
+B::~B<br/>
+A::A<br/>
+C::~C<br/>
+///看汇编代码就知道了，编译器直接生成针对于var的type的析构函数，而根本不会考虑var的type的父类、子类、虚函数、虚函数表///<br/>
+delete((B*)new A());<br/>
+00875C9D push 4<br/>
+00875C9F call operator new (4D47FDh)<br/>
+00875CA4 add esp,4<br/>
+00875CA7 mov dword ptr [ebp-140h],eax<br/>
+00875CAD mov dword ptr [ebp-4],1<br/>
+00875CB4 cmp dword ptr [ebp-140h],0<br/>
+00875CBB je XCFight::create+100h (875CD0h)<br/>
+00875CBD mov ecx,dword ptr [ebp-140h]<br/>
+00875CC3 call A::A (4D62CEh)<br/>
+00875CC8 mov dword ptr [ebp-19Ch],eax<br/>
+00875CCE jmp XCFight::create+10Ah (875CDAh)<br/>
+00875CD0 mov dword ptr [ebp-19Ch],0<br/>
+00875CDA mov eax,dword ptr [ebp-19Ch]<br/>
+00875CE0 mov dword ptr [ebp-14Ch],eax<br/>
+00875CE6 mov dword ptr [ebp-4],0FFFFFFFFh<br/>
+00875CED mov ecx,dword ptr [ebp-14Ch]<br/>
+00875CF3 mov dword ptr [ebp-158h],ecx<br/>
+00875CF9 mov edx,dword ptr [ebp-158h]<br/>
+00875CFF mov dword ptr [ebp-164h],edx<br/>
+00875D05 cmp dword ptr [ebp-164h],0<br/>
+00875D0C je XCFight::create+153h (875D23h)<br/>
+00875D0E push 1<br/>
+00875D10 mov ecx,dword ptr [ebp-164h]<br/>
+00875D16 call B::`scalar deleting destructor’ (4D62B5h)<br/>
+00875D1B mov dword ptr [ebp-1A0h],eax<br/>
+00875D21 jmp XCFight::create+15Dh (875D2Dh)<br/>
+00875D23 mov dword ptr [ebp-1A0h],0</p>
+</div>
+ </article>
+</li>
+<li id="comment-989256" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-989256" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9f2bf5802621e83db9334190e7b2b403?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9f2bf5802621e83db9334190e7b2b403?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lulei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-989256"><time datetime="2013-11-27T17:19:54+08:00">2013年11月27日 17:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-375545"><p>
+<strong><a href="#comment-375545" rel="nofollow">viho_he</a> :</strong><br/>
+stack overflow上面说得很清楚了，之所以下面的写法在C++中是“未定义”：<br/>
+Base* pBase = new Derived[10];<br/>
+delete[] pBase<br/>
+是因为这种写法根本就 没有意义<br/>
+没有意义的原因在于：你不能用pBase[0] pBase[1] …… 去访问Derived[10]这个数组中的成员。
+</p></blockquote>
+<p>爬了一会评论看到的最有意义的回答，虽然我并不怀疑作者的水平，但是把这种不被标准支持的写法和所谓”没学好C”联系起来真是有点无聊。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1963724" class="comment even depth-2">
+<article id="div-comment-1963724" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杜鹏程</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1963724"><time datetime="2019-02-13T14:42:58+08:00">2019年02月13日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>顶, Base* pBase = new Derived[10];这种写法就是没有意义,<br/>
+这种写法是c语言和c++的残缺的”oo”的杂交出来的怪胎, c++的Base* pBase = new Derived这种写法”被认为”是oo的,但是仅限于一个pBase对应一个pDerived,而不能加上[],<br/>
+我觉得以上写法的语义非常混乱,这当然是c++的问题,它是一条腿的”oo”,只能单腿跳着走或者贞子似的在地上爬行, vc的设计我觉得可以说是完善了oo(先不说这种oo本身好不好)<br/>
+c++之父说学习c++之前不必学习c语言,因为”c++是一门全新的语言”,—对啊, 如果你不会c语言,就直接学c++,那你就会先入为主的认为c++是一门”优雅”强大”的语言,而看不出c++有丑陋恶心到让人想吐的设计,</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1125777" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1125777" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ccde690c8ab65ca98bcd6573037d765?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ccde690c8ab65ca98bcd6573037d765?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andrew_show</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1125777"><time datetime="2013-12-31T13:54:16+08:00">2013年12月31日 13:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同意lulie的说法，这种写法虽然编译上没问题，实际上是错误的，就如同：</p>
+<p>Base *pBase = new Base[10];<br/>
+delete pBase; // 正确的写法应该是 delete[] pBase;</p>
+<p>类似的写法在编译上都没问题，但是执行的时候的结果可能不确定，像上面的写法在有些平台上会crash，但是在有些平台上就不会，是否crash取决于new/delete的实现方式。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1391440" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1391440" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/36c7efd1af6feb6899c9a4e82878b87d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/36c7efd1af6feb6899c9a4e82878b87d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">freedomgd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1391440"><time datetime="2014-03-18T17:47:06+08:00">2014年03月18日 17:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中提到一句话：“C++的标准会把虚函数表的指针放在类实例的最前面”<br/>
+请教下博主，标准中真的有规定编译器对虚函数的实现方式吗？ 从下面的Wiki页面来看，不但没有这方面的规定，甚至连用不用vtable实现都没有规定。<br/>
+<a href="https://en.wikipedia.org/wiki/Virtual_method_table" rel="nofollow ugc">http://en.wikipedia.org/wiki/Virtual_method_table</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1423260" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1423260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3748617987abf53009d83208eb7c0917?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3748617987abf53009d83208eb7c0917?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">swagle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1423260"><time datetime="2014-04-14T15:55:32+08:00">2014年04月14日 15:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cout &lt;&lt; &#34;虚函数表地址：&#34; &lt;&lt; (int*)(&amp;b) &lt;&lt; endl;<br/>
+刚读了您的《c++虚函数表解析》，发现上面的文字描述错了，(int *)(&amp;b)其实只是虚函数指针的地址。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1475883" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1475883" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0561b1248d041a2fb17bd43cf2da51?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0561b1248d041a2fb17bd43cf2da51?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">雨中的路</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1475883"><time datetime="2014-06-05T18:15:43+08:00">2014年06月05日 18:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对的，如果B,D都定义int变量和一个虚函数的时候，在32位CentOS下也是段错误，因为数据对齐后B,D的sizeof不一样大，就是会报错的。<a href="#comment-368233" rel="nofollow">@icylord </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1498416" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1498416" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/747126ac8a52b53945369b0fce45a0a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/747126ac8a52b53945369b0fce45a0a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ipaomian.info" class="url" rel="ugc external nofollow">ipaomian</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1498416"><time datetime="2014-07-21T14:41:34+08:00">2014年07月21日 14:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用g++编译的确如上述所说的出现一系列情况，但是，用clang编译却出现了奇怪的情况，就是不会调用派生类的析构函数，而且不会sf，gdb调试的时候，执行B *pb = new D[2]时会跳到main函数的结尾处，不知道是这么回事</p>
+</div>
+ </article>
+</li>
+<li id="comment-1515747" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1515747" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0230bde0ec49bc95772c8a43a64bfe01?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0230bde0ec49bc95772c8a43a64bfe01?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.foooooo.com" class="url" rel="ugc external nofollow">MC</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1515747"><time datetime="2014-08-20T14:55:18+08:00">2014年08月20日 14:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>经常出现多义性特性的编程语言浪费多多少GDP</p>
+</div>
+ </article>
+</li>
+<li id="comment-1617787" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1617787" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7a88537b5995be9c343c447518a6d34?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7a88537b5995be9c343c447518a6d34?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/mz24cn" class="url" rel="ugc external nofollow">Mike Zhang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1617787"><time datetime="2014-11-30T17:05:33+08:00">2014年11月30日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章里面链接的文章《C++ 虚函数表解析》还是在您CSDN博客上的，但是文章里的图片都看不到了。您能方便时把这篇文章里的图片都恢复出来吗？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1620185" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1620185" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1620185"><time datetime="2014-12-03T15:42:14+08:00">2014年12月03日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的文章被转了很多了，你google吧。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1758163" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1758163" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cale</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1758163"><time datetime="2015-09-15T01:46:20+08:00">2015年09月15日 01:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>要非常注意内存布局。还要在可移植性多一个心眼，其实挺坑的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1893612" class="comment even thread-even depth-1">
+<article id="div-comment-1893612" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2841f0e5e1484112055bf423c05df26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2841f0e5e1484112055bf423c05df26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">FVS</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1893612"><time datetime="2016-10-25T08:01:01+08:00">2016年10月25日 08:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>搞方言没什么。你为什么不把 VS 编译的东西理解成一门叫 Microsoft C++ 的方言呢？<br/>
+GCC 还在 C++ 里搞了 VLA 呢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914076" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1914076" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0773bc21b8757206eeec8716e64be359?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0773bc21b8757206eeec8716e64be359?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zy0016</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1914076"><time datetime="2017-05-17T16:34:10+08:00">2017年05月17日 16:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这么写的最大问题是代码不可移植！某些编译器编译后可以正常运行，某些编译器编译后就crash，然后你在数十万行代码中去找这个bug？或者对user说，我这里正常运行，你那里crash，这不是我的问题，是你机器的问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1925097" class="comment even thread-even depth-1">
+<article id="div-comment-1925097" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2022c351291f1fcccc9d02837947f95?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2022c351291f1fcccc9d02837947f95?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">顾浩</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9543.html/comment-page-4#comment-1925097"><time datetime="2018-03-08T23:03:32+08:00">2018年03月08日 23:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太强了！当我看到struct A struct B时，我知道我这么多年的C语言学的只是皮毛。。。惭愧。。。向耗子哥学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371076" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/112276" class="url" rel="ugc external nofollow">C++中new和delete的背后 | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371149" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/113017" class="url" rel="ugc external nofollow">C++中new和delete的背后 | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371150" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/130638" class="url" rel="ugc external nofollow">理解数组 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9543.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9543.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/9543.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/9543.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">9543</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

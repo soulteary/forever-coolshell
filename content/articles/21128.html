@@ -1,0 +1,843 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go编程模式：切片，接口，时间和性能 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21128 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21128" class="post-content post-21128 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-go tag-golang series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go编程模式：切片，接口，时间和性能</span>
+<h1 class="entry-title">Go编程模式：切片，接口，时间和性能</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21128.html" title="15:36" rel="bookmark"><time class="entry-date" datetime="2020-12-18T15:36:30+08:00" pubdate="">2020年12月18日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21128.html#comments" class="comments-link">33 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 79,130 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-21234" src="/uploads/2020/12/go.slices-300x169.png" alt="" width="300" height="169" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></p>
+<p>在本篇文章中，我会对Go语言编程模式的一些基本技术和要点，这样可以让你更容易掌握Go语言编程。其中，主要包括，数组切片的一些小坑，还有接口编程，以及时间和程序运行性能相关的话题。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第1 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go编程模式：切片，接口，时间和性能</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-next"><a href="/articles/21140.html" rel="next" title="Go 编程模式：错误处理">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Slice" title="Slice">Slice</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%B7%B1%E5%BA%A6%E6%AF%94%E8%BE%83" title="深度比较">深度比较</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%8E%A5%E5%8F%A3%E7%BC%96%E7%A8%8B" title="接口编程">接口编程</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%8E%A5%E5%8F%A3%E5%AE%8C%E6%95%B4%E6%80%A7%E6%A3%80%E6%9F%A5" title="接口完整性检查">接口完整性检查</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%97%B6%E9%97%B4" title="时间">时间</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA" title="性能提示">性能提示</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3" title="参考文档">参考文档</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Slice"></span>Slice<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们先来讨论一下Slice，中文翻译叫“切片”，这个东西在Go语言中不是数组，而是一个结构体，其定义如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type slice struct {
+    array unsafe.Pointer //指向存放数据的数组指针
+    len   int            //长度有多大
+    cap   int            //容量有多大
+}</pre>
+<p>用图示来看，一个空的slice的表现如下：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-21129 size-medium" src="/uploads/2020/12/slice1-300x190.png" alt="" width="300" height="190" srcset="" sizes="(max-width: 300px) 100vw, 300px"/> 熟悉C/C++的同学一定会知道，在结构体里用数组指针的问题——数据会发生共享！下面我们来看一下slice的一些操作</p>
+<p><span id="more-21128"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">foo = make([]int, 5)
+foo[3] = 42
+foo[4] = 100
+
+bar  := foo[1:4]
+bar[1] = 99</pre>
+<p>对于上面这段代码。</p>
+<ul>
+<li>首先先创建一个foo的slice，其中的长度和容量都是5</li>
+<li>然后开始对foo所指向的数组中的索引为3和4的元素进行赋值</li>
+<li>然后，对foo做切片后赋值给bar，再修改bar[1]</li>
+</ul>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-21130" src="/uploads/2020/12/slice2.png" alt="" width="818" height="362" srcset="" sizes="(max-width: 818px) 100vw, 818px"/></p>
+<p>通过上图我们可以看到，因为foo和bar的内存是共享的，所以，foo和bar的对数组内容的修改都会影响到对方。</p>
+<p>接下来，我们再来看一个数据操作 <code>append()</code> 的示例</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">a := make([]int, 32)
+b := a[1:16]
+a = append(a, 1)
+a[2] = 42</pre>
+<p>上面这段代码中，把 <code>a[1:16]</code> 的切片赋给到了 <code>b</code> ，此时，<code>a</code> 和 <code>b</code> 的内存空间是共享的，然后，对 <code>a</code>做了一个 <code>append()</code>的操作，这个操作会让 <code>a</code> 重新分享内存，导致 <code>a</code> 和 <code>b</code> 不再共享，如下图所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21326" src="/uploads/2020/12/go.slices.append-1024x513.png" alt="" width="640" height="321" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>从上图我们可以看以看到 <code>append()</code>操作让 <code>a</code> 的容量变成了64，而长度是33。这里，需要重点注意一下——<strong><code>append()</code>这个函数在 <code>cap</code> 不够用的时候就会重新分配内存以扩大容量，而如果够用的时候不不会重新分享内存！</strong></p>
+<p>我们再看来看一个例子：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main() {
+    path := []byte(&#34;AAAA/BBBBBBBBB&#34;)
+    sepIndex := bytes.IndexByte(path,&#39;/’)
+
+    dir1 := path[:sepIndex]
+    dir2 := path[sepIndex+1:]
+
+    fmt.Println(&#34;dir1 =&gt;&#34;,string(dir1)) //prints: dir1 =&gt; AAAA
+    fmt.Println(&#34;dir2 =&gt;&#34;,string(dir2)) //prints: dir2 =&gt; BBBBBBBBB
+
+    dir1 = append(dir1,&#34;suffix&#34;...)
+
+    fmt.Println(&#34;dir1 =&gt;&#34;,string(dir1)) //prints: dir1 =&gt; AAAAsuffix
+    fmt.Println(&#34;dir2 =&gt;&#34;,string(dir2)) //prints: dir2 =&gt; uffixBBBB
+}</pre>
+<p>上面这个例子中，<code>dir1</code> 和 <code>dir2</code> 共享内存，虽然 <code>dir1</code> 有一个 <code>append()</code> 操作，但是因为 cap 足够，于是数据扩展到了<code>dir2</code> 的空间。下面是相关的图示（注意上图中 <code>dir1</code> 和 <code>dir2</code> 结构体中的 <code>cap</code> 和 <code>len</code> 的变化）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21328" src="/uploads/2020/12/slice4-1024x740.png" alt="" width="640" height="463" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>如果要解决这个问题，我们只需要修改一行代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">dir1 := path[:sepIndex]
+</pre>
+<p>修改为</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">dir1 := path[:sepIndex:sepIndex]
+</pre>
+<p>新的代码使用了 Full Slice Expression，其最后一个参数叫“Limited Capacity”，于是，后续的 <code>append()</code> 操作将会导致重新分配内存。</p>
+<h4><span class="ez-toc-section" id="%E6%B7%B1%E5%BA%A6%E6%AF%94%E8%BE%83"></span>深度比较<span class="ez-toc-section-end"></span></h4>
+<p>当我们复杂一个对象时，这个对象可以是内建数据类型，数组，结构体，map……我们在复制结构体的时候，当我们需要比较两个结构体中的数据是否相同时，我们需要使用深度比较，而不是只是简单地做浅度比较。这里需要使用到反射 <code>reflect.DeepEqual()</code> ，下面是几个示例</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">import (
+    &#34;fmt&#34;
+    &#34;reflect&#34;
+)
+
+func main() {
+
+    v1 := data{}
+    v2 := data{}
+    fmt.Println(&#34;v1 == v2:&#34;,reflect.DeepEqual(v1,v2))
+    //prints: v1 == v2: true
+
+    m1 := map[string]string{&#34;one&#34;: &#34;a&#34;,&#34;two&#34;: &#34;b&#34;}
+    m2 := map[string]string{&#34;two&#34;: &#34;b&#34;, &#34;one&#34;: &#34;a&#34;}
+    fmt.Println(&#34;m1 == m2:&#34;,reflect.DeepEqual(m1, m2))
+    //prints: m1 == m2: true
+
+    s1 := []int{1, 2, 3}
+    s2 := []int{1, 2, 3}
+    fmt.Println(&#34;s1 == s2:&#34;,reflect.DeepEqual(s1, s2))
+    //prints: s1 == s2: true
+}</pre>
+<h4><span class="ez-toc-section" id="%E6%8E%A5%E5%8F%A3%E7%BC%96%E7%A8%8B"></span>接口编程<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们来看段代码，其中是两个方法，它们都是要输出一个结构体，其中一个使用一个函数，另一个使用一个“成员函数”。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func PrintPerson(p *Person) {
+    fmt.Printf(&#34;Name=%s, Sexual=%s, Age=%d\n&#34;,
+  p.Name, p.Sexual, p.Age)
+}
+
+func (p *Person) Print() {
+    fmt.Printf(&#34;Name=%s, Sexual=%s, Age=%d\n&#34;,
+  p.Name, p.Sexual, p.Age)
+}
+
+func main() {
+    var p = Person{
+        Name: &#34;Hao Chen&#34;,
+        Sexual: &#34;Male&#34;,
+        Age: 44,
+    }
+
+    PrintPerson(&amp;p)
+    p.Print()
+}</pre>
+<p>你更喜欢哪种方式呢？在 Go 语言中，使用“成员函数”的方式叫“Receiver”，这种方式是一种封装，因为 <code>PrintPerson()</code>本来就是和 <code>Person</code>强耦合的，所以，理应放在一起。更重要的是，这种方式可以进行接口编程，对于接口编程来说，也就是一种抽象，主要是用在“多态”，这个技术，在《<a href="/articles/8460.html#%E6%8E%A5%E5%8F%A3%E5%92%8C%E5%A4%9A%E6%80%81" target="_blank" rel="noopener">Go语言简介（上）：接口与多态</a>》中已经讲过。在这里，我想讲另一个Go语言接口的编程模式。</p>
+<p>首先，我们来看一下，有下面这段代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Country struct {
+    Name string
+}
+
+type City struct {
+    Name string
+}
+
+type Printable interface {
+    PrintStr()
+}
+func (c Country) PrintStr() {
+    fmt.Println(c.Name)
+}
+func (c City) PrintStr() {
+    fmt.Println(c.Name)
+}
+
+c1 := Country {&#34;China&#34;}
+c2 := City {&#34;Beijing&#34;}
+c1.PrintStr()
+c2.PrintStr()</pre>
+<p>其中，我们可以看到，其使用了一个 <code>Printable</code> 的接口，而 <code>Country</code> 和 <code>City</code> 都实现了接口方法 <code>PrintStr()</code> 而把自己输出。然而，这些代码都是一样的。能不能省掉呢？</p>
+<p>我们可以使用“结构体嵌入”的方式来完成这个事，如下的代码所示，</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type WithName struct {
+    Name string
+}
+
+type Country struct {
+    WithName
+}
+
+type City struct {
+    WithName
+}
+
+type Printable interface {
+    PrintStr()
+}
+
+func (w WithName) PrintStr() {
+    fmt.Println(w.Name)
+}
+
+c1 := Country {WithName{ &#34;China&#34;}}
+c2 := City { WithName{&#34;Beijing&#34;}}
+c1.PrintStr()
+c2.PrintStr()</pre>
+<p>引入一个叫 <code>WithName</code>的结构体，然而，所带来的问题就是，在初始化的时候，变得有点乱。那么，我们有没有更好的方法？下面是另外一个解。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Country struct {
+    Name string
+}
+
+type City struct {
+    Name string
+}
+
+type Stringable interface {
+    ToString() string
+}
+func (c Country) ToString() string {
+    return &#34;Country = &#34; + c.Name
+}
+func (c City) ToString() string{
+    return &#34;City = &#34; + c.Name
+}
+
+func PrintStr(p Stringable) {
+    fmt.Println(p.ToString())
+}
+
+d1 := Country {&#34;USA&#34;}
+d2 := City{&#34;Los Angeles&#34;}
+PrintStr(d1)
+PrintStr(d2)</pre>
+<p>上面这段代码，我们可以看到——<strong>我们使用了一个叫<code>Stringable</code> 的接口，我们用这个接口把“业务类型” <code>Country</code> 和 <code>City</code> 和“控制逻辑” <code>Print()</code> 给解耦了。</strong>于是，只要实现了<code>Stringable</code> 接口，都可以传给 <code>PrintStr()</code> 来使用。</p>
+<p>这种编程模式在Go 的标准库有很多的示例，最著名的就是 <code>io.Read</code> 和 <code>ioutil.ReadAll</code> 的玩法，其中 <code>io.Read</code> 是一个接口，你需要实现他的一个 <code>Read(p []byte) (n int, err error)</code> 接口方法，只要满足这个规模，就可以被 <code>ioutil.ReadAll</code>这个方法所使用。<strong>这就是面向对象编程方法的黄金法则——“Program to an interface not an implementation”</strong></p>
+<h4><span class="ez-toc-section" id="%E6%8E%A5%E5%8F%A3%E5%AE%8C%E6%95%B4%E6%80%A7%E6%A3%80%E6%9F%A5"></span>接口完整性检查<span class="ez-toc-section-end"></span></h4>
+<p>另外，我们可以看到，Go语言的编程器并没有严格检查一个对象是否实现了某接口所有的接口方法，如下面这个示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Shape interface {
+    Sides() int
+    Area() int
+}
+type Square struct {
+    len int
+}
+func (s* Square) Sides() int {
+    return 4
+}
+func main() {
+    s := Square{len: 5}
+    fmt.Printf(&#34;%d\n&#34;,s.Sides())
+}</pre>
+<p>我们可以看到 <code>Square</code> 并没有实现 <code>Shape</code> 接口的所有方法，程序虽然可以跑通，但是这样编程的方式并不严谨，如果我们需要强制实现接口的所有方法，那么我们应该怎么办呢？</p>
+<p>在Go语言编程圈里有一个比较标准的作法：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var _ Shape = (*Square)(nil)</pre>
+<p>声明一个 <code>_</code> 变量（没人用），其会把一个 <code>nil</code> 的空指针，从 <code>Square</code> 转成 <code>Shape</code>，这样，如果没有实现完相关的接口方法，编译器就会报错：</p>
+<blockquote><p>cannot use (*Square)(nil) (type *Square) as type Shape in assignment: *Square does not implement Shape (missing Area method)</p></blockquote>
+<p>这样就做到了个强验证的方法。</p>
+<h4><span class="ez-toc-section" id="%E6%97%B6%E9%97%B4"></span>时间<span class="ez-toc-section-end"></span></h4>
+<p>对于时间来说，这应该是编程中比较复杂的问题了，相信我，时间是一种非常复杂的事（比如《<a title="你确信你了解时间吗？" href="/articles/5075.html" target="_blank" rel="noopener">你确信你了解时间吗？</a>》、《<a title="关于闰秒" href="/articles/7804.html">关于闰秒</a>》等文章）。而且，时间有时区、格式、精度等等问题，其复杂度不是一般人能处理的。所以，一定要重用已有的时间处理，而不是自己干。</p>
+<p>在 Go 语言中，你一定要使用 <code>time.Time</code> 和 <code>time.Duration</code> 两个类型：</p>
+<ul>
+<li>在命令行上，<code>flag</code> 通过 <code>time.ParseDuration</code> 支持了 <code>time.Duration</code></li>
+<li>JSon 中的 <code>encoding/json</code> 中也可以把<code>time.Time</code> 编码成 <a href="https://tools.ietf.org/html/rfc3339" target="_blank" rel="noopener">RFC 3339</a> 的格式</li>
+<li>数据库使用的 <code>database/sql</code> 也支持把 <code>DATATIME</code> 或 <code>TIMESTAMP</code> 类型转成 <code>time.Time</code></li>
+<li>YAML你可以使用 <code>gopkg.in/yaml.v2</code> 也支持 <code>time.Time</code> 、<code>time.Duration</code> 和 <a href="https://tools.ietf.org/html/rfc3339" target="_blank" rel="noopener">RFC 3339</a> 格式</li>
+</ul>
+<p>如果你要和第三方交互，实在没有办法，也请使用 <a href="https://tools.ietf.org/html/rfc3339" target="_blank" rel="noopener">RFC 3339</a> 的格式。</p>
+<p>最后，如果你要做全球化跨时区的应用，你一定要把所有服务器和时间全部使用UTC时间。</p>
+<h4><span class="ez-toc-section" id="%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA"></span>性能提示<span class="ez-toc-section-end"></span></h4>
+<p>Go 语言是一个高性能的语言，但并不是说这样我们就不用关心性能了，我们还是需要关心的。下面是一个在编程方面和性能相关的提示。</p>
+<ul>
+<li>如果需要把数字转字符串，使用 <code>strconv.Itoa()</code> 会比 <code>fmt.Sprintf()</code> 要快一倍左右</li>
+<li>尽可能地避免把<code>String</code>转成<code>[]Byte</code> 。这个转换会导致性能下降。</li>
+<li>如果在for-loop里对某个slice 使用 <code>append()</code>请先把 slice的容量很扩充到位，这样可以避免内存重新分享以及系统自动按2的N次方幂进行扩展但又用不到，从而浪费内存。</li>
+<li>使用<code>StringBuffer</code> 或是<code>StringBuild</code> 来拼接字符串，会比使用 <code>+</code> 或 <code>+=</code> 性能高三到四个数量级。</li>
+<li>尽可能的使用并发的 go routine，然后使用 <code>sync.WaitGroup</code> 来同步分片操作</li>
+<li>避免在热代码中进行内存分配，这样会导致gc很忙。尽可能的使用 <code>sync.Pool</code> 来重用对象。</li>
+<li>使用 lock-free的操作，避免使用 mutex，尽可能使用 <code>sync/Atomic</code>包。 （关于无锁编程的相关话题，可参看《<a title="无锁队列的实现" href="/articles/8239.html">无锁队列实现</a>》或《<a title="无锁HashMap的原理与实现" href="/articles/9703.html">无锁Hashmap实现</a>》）</li>
+<li>使用 I/O缓冲，I/O是个非常非常慢的操作，使用 <code>bufio.NewWrite()</code> 和 <code>bufio.NewReader()</code> 可以带来更高的性能。</li>
+<li>对于在for-loop里的固定的正则表达式，一定要使用 <code>regexp.Compile()</code> 编译正则表达式。性能会得升两个数量级。</li>
+<li>如果你需要更高性能的协议，你要考虑使用 <a href="https://github.com/golang/protobuf" target="_blank" rel="noopener">protobuf</a> 或 <a href="https://github.com/tinylib/msgp" target="_blank" rel="noopener">msgp</a> 而不是JSON，因为JSON的序列化和反序列化里使用了反射。</li>
+<li>你在使用map的时候，使用整型的key会比字符串的要快，因为整型比较比字符串比较要快。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"></span>参考文档<span class="ez-toc-section-end"></span></h4>
+<p>还有很多不错的技巧，下面的这些参考文档可以让你写出更好的Go的代码，必读！</p>
+<ul>
+<li><b>Effective</b> <b>Go<br/>
+</b><a href="https://golang.org/doc/effective_go.html">https://golang.org/doc/effective_go.html</a></li>
+<li><b>Uber</b> <b>Go</b> <b>Style<br/>
+</b><a href="https://github.com/uber-go/guide/blob/master/style.md">https://github.com/uber-go/guide/blob/master/style.md</a></li>
+<li><b>50 Shades of Go: Traps, Gotchas, and Common Mistakes for New Golang Devs<br/>
+</b><a href="http://devs.cloudimmunity.com/gotchas-and-common-mistakes-in-go-golang/">http://devs.cloudimmunity.com/gotchas-and-common-mistakes-in-go-golang/</a></li>
+<li><b>Go</b> <b>Advice<br/>
+</b><a href="https://github.com/cristaloleg/go-advice">https://github.com/cristaloleg/go-advice</a><b></b></li>
+<li><b>Practical Go Benchmarks<br/>
+</b><a href="https://www.instana.com/blog/practical-golang-benchmarks/">https://www.instana.com/blog/practical-golang-benchmarks/</a><b></b></li>
+<li><b>Benchmarks of Go serialization methods<br/>
+</b><a href="https://github.com/alecthomas/go_serialization_benchmarks">https://github.com/alecthomas/go_serialization_benchmarks</a><b></b></li>
+<li><b>Debugging</b> <b>performance</b> <b>issues</b> <b>in</b> <b>Go</b> <b>programs<br/>
+</b><a href="https://github.com/golang/go/wiki/Performance">https://github.com/golang/go/wiki/Performance</a><b></b></li>
+<li><b>Go</b> <b>code</b> <b>refactoring:</b> <b>the</b> <b>23x</b> <b>performance</b> <b>hunt<br/>
+</b><a href="https://medium.com/@val_deleplace/go-code-refactoring-the-23x-performance-hunt-156746b522f7">https://medium.com/@val_deleplace/go-code-refactoring-the-23x-performance-hunt-156746b522f7</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21128-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go编程模式：切片，接口，时间和性能</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187829" class="comment even thread-even depth-1">
+<article id="div-comment-2187829" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84ede8a0ba81d92fb68990f1f1c55356?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84ede8a0ba81d92fb68990f1f1c55356?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">huareu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2187829"><time datetime="2020-12-27T14:13:51+08:00">2020年12月27日 14:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很好的文章，<br/>
+时间中的，’JSon’是’Json’吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2187835" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2187835" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14f37ce749cc0487e55b3182e2509028?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14f37ce749cc0487e55b3182e2509028?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.hellojukay.cn" class="url" rel="ugc external nofollow">hellojukay</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2187835"><time datetime="2020-12-27T14:35:27+08:00">2020年12月27日 14:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“当我们复杂一个对象时” 应该是 “当我们复制一个对象时” 把，错字。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2187955" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://golangai.com/2020/12/27/gocn_news-2020-12-27/" class="url" rel="ugc external nofollow">gocn_news-2020-12-27 – Golang News | 每日新闻</a> </div>
+</li>
+<li id="comment-2188228" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2188228" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/115e52d69e39797be21b4de3bc86b20a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/115e52d69e39797be21b4de3bc86b20a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Arron</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2188228"><time datetime="2020-12-28T13:55:46+08:00">2020年12月28日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>protobuf中定义时间时该用string还是int32呢</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188266" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2188266" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2188266"><time datetime="2020-12-28T15:39:59+08:00">2020年12月28日 15:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>参看：<a href="https://godoc.org/github.com/golang/protobuf/ptypes#TimestampProto" rel="nofollow ugc">https://godoc.org/github.com/golang/protobuf/ptypes#TimestampProto</a></p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2188232" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2188232" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cc0b48290d3a22cb747a302b6848e4cd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cc0b48290d3a22cb747a302b6848e4cd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://sequix.cn" class="url" rel="ugc external nofollow">sequix</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2188232"><time datetime="2020-12-28T14:04:10+08:00">2020年12月28日 14:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sepIndex := bytes.IndexByte(path,’/’)<br/>
+右侧单引号是全角的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2188317" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2188317" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b4a908e94f1acb16cdbf2ce1df407fab?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b4a908e94f1acb16cdbf2ce1df407fab?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lulu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2188317"><time datetime="2020-12-28T18:31:03+08:00">2020年12月28日 18:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太棒了，一口气出了9篇</p>
+</div>
+ </article>
+</li>
+<li id="comment-2190954" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2190954" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a509b765bf9a6c68e276a1eba31542be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a509b765bf9a6c68e276a1eba31542be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zzhirong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2190954"><time datetime="2021-01-04T12:32:41+08:00">2021年01月04日 12:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看到一个小错误:<br/>
+文中写到”…io.Read 是一个接口…”, <code>io.Read</code> 并不是接口, <code>io.Reader</code> 才是吧.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2191721" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2191721" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5742b6070bc16f5c5507a06702c6cbe4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5742b6070bc16f5c5507a06702c6cbe4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">weaving</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2191721"><time datetime="2021-01-06T11:42:02+08:00">2021年01月06日 11:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>a := make([]int, 32)<br/>
+b := a[1:16]<br/>
+a = append(a, 1)<br/>
+a[2] = 42</p>
+<p>这个地方b的cap应该是31，而图示是15</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2191737" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2191737" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2191737"><time datetime="2021-01-06T13:05:49+08:00">2021年01月06日 13:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，图画错了，我更正一下。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2191760" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2191760" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/501977e795c4244ef0cd32f45becb733?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/501977e795c4244ef0cd32f45becb733?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yuanhao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2191760"><time datetime="2021-01-06T15:12:40+08:00">2021年01月06日 15:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>golang提供的是strings.builder和bytes.buffer，StringBuilder和StringBuffer是Java里面的吧</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2191761" class="comment odd alt depth-2">
+<article id="div-comment-2191761" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/501977e795c4244ef0cd32f45becb733?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/501977e795c4244ef0cd32f45becb733?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yuanhao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2191761"><time datetime="2021-01-06T15:14:03+08:00">2021年01月06日 15:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>strings.Builder和bytes.Buffer</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2191924" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2191924" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/62b4d0fc983e461b6596501e1b036e68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/62b4d0fc983e461b6596501e1b036e68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.geebos.cn" class="url" rel="ugc external nofollow">geebos</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2191924"><time datetime="2021-01-07T00:26:57+08:00">2021年01月07日 00:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>再加上 BCE就更完美了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2191925" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2191925" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/62b4d0fc983e461b6596501e1b036e68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/62b4d0fc983e461b6596501e1b036e68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">geebos</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2191925"><time datetime="2021-01-07T00:27:42+08:00">2021年01月07日 00:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://go101.org/article/bounds-check-elimination.html" rel="nofollow ugc">https://go101.org/article/bounds-check-elimination.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2193665" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2193665" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/298fe05605e76252a1bbb770439ea5a7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/298fe05605e76252a1bbb770439ea5a7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://吴亲强的深夜食堂" class="url" rel="ugc external nofollow">库里</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2193665"><time datetime="2021-01-11T10:15:04+08:00">2021年01月11日 10:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没看懂图中 dir2 的例子，它的容量和长度不应该是9嘛</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2194773" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2194773" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2194773"><time datetime="2021-01-14T12:39:35+08:00">2021年01月14日 12:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的，图片是错的，修正了。谢谢。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2193696" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2193696" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/19f60a4fad56ba53a78e8e3833cc870b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/19f60a4fad56ba53a78e8e3833cc870b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大龙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2193696"><time datetime="2021-01-11T14:19:23+08:00">2021年01月11日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问这个图是怎么画的？ Graphviz么</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2194772" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2194772" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2194772"><time datetime="2021-01-14T12:39:04+08:00">2021年01月14日 12:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Microsoft PowerPoint :-)</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2197553" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2197553" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6338e356cd96e06ca75d187c02bfec45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6338e356cd96e06ca75d187c02bfec45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.gov-bid.com/" class="url" rel="ugc external nofollow">商机文库</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2197553"><time datetime="2021-01-23T11:43:02+08:00">2021年01月23日 11:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章写的不错，赞一个</p>
+</div>
+ </article>
+</li>
+<li id="comment-2206771" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2206771" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/115c21c926963243e6c4ea98d8b17a51?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/115c21c926963243e6c4ea98d8b17a51?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ryan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2206771"><time datetime="2021-02-14T18:52:23+08:00">2021年02月14日 18:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>foo = make([]int , 5)<br/>
+这里是不是短声明<br/>
+foo := make([]int, 5)</p>
+</div>
+ </article>
+</li>
+<li id="comment-2206781" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2206781" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f4cba807aae3fd90117ca32729a049d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f4cba807aae3fd90117ca32729a049d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2206781"><time datetime="2021-02-14T21:13:18+08:00">2021年02月14日 21:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在golang中容量的扩大，并不一定是2倍的基数扩展。比如slice的扩展，超过1024长度的话，会做一些特殊判断：https://golang.org/src/runtime/slice.go#L125</p>
+<p>还有一处也是关于growth的地方，具体忘记是什么了，在一定阈值以下是2倍，以上是1.5倍。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2218654" class="comment odd alt depth-2">
+<article id="div-comment-2218654" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/005536ad803984ae8cdd9042d76fe647?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/005536ad803984ae8cdd9042d76fe647?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xdzzz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2218654"><time datetime="2021-03-16T15:37:27+08:00">2021年03月16日 15:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>貌似超过1024之后是1.25倍扩展</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2208655" class="comment even thread-even depth-1">
+<article id="div-comment-2208655" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/66aa97046a7e83ff1752ff6ecc72cce3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/66aa97046a7e83ff1752ff6ecc72cce3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hef</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2208655"><time datetime="2021-02-19T13:03:48+08:00">2021年02月19日 13:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>「深度比较」 一段中开头的「当我们复杂一个对象时」，复杂 应该是 复制</p>
+</div>
+ </article>
+</li>
+<li id="comment-2212665" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2212665" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec63810d208ae9a499256cad53982b65?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec63810d208ae9a499256cad53982b65?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HefE</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2212665"><time datetime="2021-03-01T14:30:36+08:00">2021年03月01日 14:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在Go语言编程圈里有一个比较标准的作法：</p>
+<p>var _ Shape = (*Square)(nil)</p>
+<p>var file1 Writer = …<br/>
+if file5, ok := file1.(two.IStream); ok {<br/>
+…<br/>
+}<br/>
+这个if语句检查file1接口指向的对象实例是否实现了two.IStream接口，如果实现了，则执<br/>
+行特定的代码。<br/>
+我们的代码里这样用的比较多。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2216146" class="comment even thread-even depth-1">
+<article id="div-comment-2216146" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd07451a16123f1901c57bbb24d984e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd07451a16123f1901c57bbb24d984e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2216146"><time datetime="2021-03-10T20:15:32+08:00">2021年03月10日 20:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥好，感觉这个切片的内存共享方式真的好诡异，对比于内存在写时拷贝，这个内存算是“扩容时拷贝了吧”？这个感觉很容易出错。<br/>
+您觉得语言设计者为何会做这样的设计呢？这个功能主要是和什么便利做了折中考虑呢？说实话感觉还不如指针靠谱</p>
+</div>
+ </article>
+</li>
+<li id="comment-2222207" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2222207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b0316d8450570d2fa9f7b81e66ea7b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b0316d8450570d2fa9f7b81e66ea7b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">KAIYUAN GAN</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2222207"><time datetime="2021-03-24T17:30:38+08:00">2021年03月24日 17:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>string to []byte have zero-copy method</p>
+</div>
+ </article>
+</li>
+<li id="comment-2252228" class="comment even thread-even depth-1">
+<article id="div-comment-2252228" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0ba9ab2bf0fd098e83d149a585a5f4d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0ba9ab2bf0fd098e83d149a585a5f4d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cn4go</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2252228"><time datetime="2021-05-24T11:32:34+08:00">2021年05月24日 11:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>接口完整性检查那里不太对吧，<br/>
+s := Square{len: 5}时定义的仅仅是Square对象，与Shape根本无关<br/>
+var s Shape= Square{len: 5}，直接就会报错</p>
+</div>
+ </article>
+</li>
+<li id="comment-2269157" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2269157" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/887b388cf65067fc08d3beeed0618118?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/887b388cf65067fc08d3beeed0618118?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zzssggjj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2269157"><time datetime="2021-06-24T17:03:37+08:00">2021年06月24日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉在日常业务代码乃至大多数框架类代码中，interface{} 只有一个实现，这种情况面向 interface{} 编程的好处是什么呢？<br/>
+坏处的话：多写了代码；代码阅读比面向实现要困难，IDE也不能跳转</p>
+</div>
+ </article>
+</li>
+<li id="comment-2276049" class="comment even thread-even depth-1">
+<article id="div-comment-2276049" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b686b7613f880570fa9288ac173255fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b686b7613f880570fa9288ac173255fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://adoncn.com/" class="url" rel="ugc external nofollow">电子商务论文</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2276049"><time datetime="2021-07-14T05:45:27+08:00">2021年07月14日 05:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞呀，好人好文章，不顶不行呀</p>
+</div>
+ </article>
+</li>
+<li id="comment-2297112" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.mamaxue.com/article/57/" class="url" rel="ugc external nofollow">专题文章1 – Mamaxue</a> </div>
+</li>
+<li id="comment-2349496" class="comment even thread-even depth-1">
+<article id="div-comment-2349496" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2f82d424ae3eaf78865b8ca7529a198?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2f82d424ae3eaf78865b8ca7529a198?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">某猿</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2349496"><time datetime="2021-12-17T18:17:54+08:00">2021年12月17日 18:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">// 这种情况下append并没有重新分配内存，这是为什么呀？
+func printSliceAddr(a []byte, name string) {
+    ptr := uintptr(unsafe.Pointer(a))
+    //fmt.Printf(&#34;&amp;%s: %v &#34;, name, ptr)
+    fields := []string{&#34;ptr&#34;, &#34;len&#34;, &#34;cap&#34;}
+    for i := 0; i &lt; len(fields); i++ {
+        p := (int)(unsafe.Pointer(ptr + unsafe.Sizeof(int(0)) * uintptr(i)))
+        fmt.Printf(&#34;%s.%s: %d\n&#34;, name, fields[i], *p)
+    }
+}
+
+func TestSliceRealloc(t *testing.T) {
+    a := []byte(&#34;aaaaaaaaaaaaaa&#34;)
+
+b := a[:4:4]
+
+c := a[:5]
+printSliceAddr(&amp;a, &#34;a&#34;)
+printSliceAddr(&amp;b, &#34;b&#34;)
+printSliceAddr(&amp;c, &#34;c&#34;)
+
+c[0] = &#39;c&#39;
+fmt.Println(&#34;change c, a:&#34;, string(a))
+
+printSliceAddr(&amp;a, &#34;a&#34;)
+printSliceAddr(&amp;b, &#34;b&#34;)
+printSliceAddr(&amp;c, &#34;c&#34;)
+
+c = append(c, []byte(&#34;ccc&#34;)...)
+
+fmt.Println(&#34;append c, a:&#34;, string(a))
+
+printSliceAddr(&amp;a, &#34;a&#34;)
+printSliceAddr(&amp;b, &#34;b&#34;)
+printSliceAddr(&amp;c, &#34;c&#34;)
+
+b = append(c, []byte(&#34;bbb&#34;)...)
+fmt.Println(&#34;append b, b:&#34;, string(b))
+
+printSliceAddr(&amp;a, &#34;a&#34;)
+printSliceAddr(&amp;b, &#34;b&#34;)
+printSliceAddr(&amp;c, &#34;c&#34;)
+
+fmt.Println(&#34;a:&#34;, string(a))
+
+printSliceAddr(&amp;a, &#34;a&#34;)
+printSliceAddr(&amp;b, &#34;b&#34;)
+printSliceAddr(&amp;c, &#34;c&#34;)
+
+}
+</pre>
+</div>
+ </article>
+</li>
+<li id="comment-2370310" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370310" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/17c6ac478f64cd700910a7f5554f0fda?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/17c6ac478f64cd700910a7f5554f0fda?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kkk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2370310"><time datetime="2022-04-01T11:04:12+08:00">2022年04月01日 11:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><strong>使用StringBuffer 或是StringBuild 来拼接字符串，会比使用 + 或 += 性能高三到四个数量级。</strong><br/>
+bytes.Buffer<br/>
+strings.Builder<br/>
+说的应该是这两个。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370694" class="comment even thread-even depth-1">
+<article id="div-comment-2370694" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2c1596a9eec93c07a81746ecc810f5b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2c1596a9eec93c07a81746ecc810f5b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://gitub.com/chen3feng" class="url" rel="ugc external nofollow">chen3feng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21128.html#comment-2370694"><time datetime="2022-09-05T20:40:14+08:00">2022年09月05日 20:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>go time 不支持闰秒：<br/>
+<a href="https://pkg.go.dev/time" rel="nofollow ugc">https://pkg.go.dev/time</a><br/>
+<a href="https://github.com/golang/go/issues/15247" rel="nofollow ugc">https://github.com/golang/go/issues/15247</a></p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

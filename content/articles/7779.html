@@ -1,0 +1,393 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>K-Means 算法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7779 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7779" class="post-content post-7779 post type-post status-publish format-standard hentry category-misc category-progdesign tag-algorithm tag-data-mining tag-k-means">
+<header class="entry-header">
+<span class="screen-reader-text">K-Means 算法</span>
+<h1 class="entry-title">K-Means 算法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7779.html" title="08:24" rel="bookmark"><time class="entry-date" datetime="2012-06-29T08:24:02+08:00" pubdate="">2012年06月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7779.html#comments" class="comments-link">88 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 125,395 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>最近在学习一些数据挖掘的算法，看到了这个算法，也许这个算法对你来说很简单，但对我来说，我是一个初学者，我在网上翻看了很多资料，发现中文社区没有把这个问题讲得很全面很清楚的文章，所以，把我的学习笔记记录下来，分享给大家。</p>
+<p>在数据挖掘中， <strong><em>k</em>-Means 算法</strong>是一种 <a title="Cluster analysis" href="https://en.wikipedia.org/wiki/Cluster_analysis">cluster analysis</a> 的算法，其主要是来计算数据聚集的算法，主要通过不断地取离种子点最近均值的算法。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%97%AE%E9%A2%98" title="问题">问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%AE%97%E6%B3%95%E6%A6%82%E8%A6%81" title="算法概要">算法概要</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%B1%82%E7%82%B9%E7%BE%A4%E4%B8%AD%E5%BF%83%E7%9A%84%E7%AE%97%E6%B3%95" title="求点群中心的算法">求点群中心的算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#K-Means%E7%9A%84%E6%BC%94%E7%A4%BA" title="K-Means的演示">K-Means的演示</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#K-Means_%E7%AE%97%E6%B3%95" title="K-Means ++ 算法">K-Means ++ 算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#K-Means_%E7%AE%97%E6%B3%95%E5%BA%94%E7%94%A8" title="K-Means 算法应用">K-Means 算法应用</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98"></span>问题<span class="ez-toc-section-end"></span></h4>
+<p>K-Means算法主要解决的问题如下图所示。我们可以看到，在图的左边有一些点，我们用肉眼可以看出来有四个点群，但是我们怎么通过计算机程序找出这几个点群来呢？于是就出现了我们的K-Means算法（<a title="K-means Clustering 算法" href="https://en.wikipedia.org/wiki/K-means_clustering" target="_blank">Wikipedia链接</a>）</p>
+<figure id="attachment_7780" aria-describedby="caption-attachment-7780" style="width: 600px" class="wp-caption aligncenter"><img decoding="async" class="size-full wp-image-7780" title="K-Means 要解决的问题" src="/uploads/2012/06/K-Means.gif" alt="" width="600" height="300" srcset=""/><figcaption id="caption-attachment-7780" class="wp-caption-text">K-Means 要解决的问题</figcaption></figure>
+<h4><span class="ez-toc-section" id="%E7%AE%97%E6%B3%95%E6%A6%82%E8%A6%81"></span>算法概要<span class="ez-toc-section-end"></span></h4>
+<p>这个算法其实很简单，如下图所示：</p>
+<p><span id="more-7779"></span></p>
+<figure id="attachment_7781" aria-describedby="caption-attachment-7781" style="width: 504px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-7781" title="K-Means 算法概要" src="/uploads/2012/06/K-Means.jpg" alt="K-Means 算法概要" width="504" height="370" srcset="" sizes="(max-width: 504px) 100vw, 504px"/><figcaption id="caption-attachment-7781" class="wp-caption-text">K-Means 算法概要</figcaption></figure>
+<p>从上图中，我们可以看到，<strong>A, B, C, D, E 是五个在图中点。而灰色的点是我们的种子点，也就是我们用来找点群的点</strong>。有两个种子点，所以K=2。</p>
+<p>然后，K-Means的算法如下：</p>
+<ol>
+<li>随机在图中取K（这里K=2）个种子点。</li>
+<li>然后对图中的所有点求到这K个种子点的距离，假如点Pi离种子点Si最近，那么Pi属于Si点群。（上图中，我们可以看到A,B属于上面的种子点，C,D,E属于下面中部的种子点）</li>
+<li>接下来，我们要移动种子点到属于他的“点群”的中心。（见图上的第三步）</li>
+<li>然后重复第2）和第3）步，直到，种子点没有移动（我们可以看到图中的第四步上面的种子点聚合了A,B,C，下面的种子点聚合了D，E）。</li>
+</ol>
+<p>这个算法很简单，但是有些细节我要提一下，求距离的公式我不说了，大家有初中毕业水平的人都应该知道怎么算的。我重点想说一下“求点群中心的算法”</p>
+<h4><span class="ez-toc-section" id="%E6%B1%82%E7%82%B9%E7%BE%A4%E4%B8%AD%E5%BF%83%E7%9A%84%E7%AE%97%E6%B3%95"></span>求点群中心的算法<span class="ez-toc-section-end"></span></h4>
+<p>一般来说，求点群中心点的算法你可以很简的使用各个点的X/Y坐标的平均值。不过，我这里想告诉大家另三个求中心点的的公式：</p>
+<p><strong>1）Minkowski Distance 公式 ——</strong> λ 可以随意取值，可以是负数，也可以是正数，或是无穷大。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7787" title="Minkowski Distance 公式" src="/uploads/2012/06/MinkowskiDistance_clip_image102.gif" alt="" width="131" height="51" srcset=""/></p>
+<p><strong>2）Euclidean Distance 公式 </strong>—— 也就是第一个公式 λ=2 的情况</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7784" title="Euclidean Distance 公式" src="/uploads/2012/06/EuclideanDistance_clip_image002.gif" alt="" width="137" height="51" srcset=""/></p>
+<p><strong>3）CityBlock Distance 公式 </strong>—— 也就是第一个公式 λ=1 的情况</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7782" title="CityBlock Distance 公式" src="/uploads/2012/06/CityBlockDistance_clip_image002.gif" alt="" width="111" height="45" srcset=""/></p>
+<p>这三个公式的求中心点有一些不一样的地方，我们看下图（对于第一个 λ 在 0-1之间）。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" title="Minkowski Mean" src="/uploads/2012/06/Minkowski-Mean.jpg" alt="" width="180" height="180" srcset=""/>   <img decoding="async" loading="lazy" title="Euclidean distance" src="/uploads/2012/06/Euclidean-distance.jpg" alt="" width="180" height="180" srcset=""/>  <img decoding="async" loading="lazy" title="Manhattan distance" src="/uploads/2012/06/Manhattan-distance.jpg" alt="" width="180" height="180" srcset=""/></p>
+<p style="text-align: center;"><strong>（1）Minkowski Distance     （2）<strong>Euclidean Distance    （3） <strong>CityBlock Distance</strong></strong></strong></p>
+<p style="text-align: left;">上面这几个图的大意是他们是怎么个逼近中心的，第一个图以星形的方式，第二个图以同心圆的方式，第三个图以菱形的方式。</p>
+<h4 style="text-align: left;"><span class="ez-toc-section" id="K-Means%E7%9A%84%E6%BC%94%E7%A4%BA"></span>K-Means的演示<span class="ez-toc-section-end"></span></h4>
+<p style="text-align: left;">如果你以”<a href="https://www.google.com/search?hl=zh-CN&amp;q=K+Means+Demo" target="_blank">K Means Demo</a>“为关键字到Google里查你可以查到很多演示。这里推荐一个演示</p>
+<p style="text-align: center;"><a href="http://home.dei.polimi.it/matteucc/Clustering/tutorial_html/AppletKM.html">http://home.dei.polimi.it/matteucc/Clustering/tutorial_html/AppletKM.html</a></p>
+<p style="text-align: left;">操作是，鼠标左键是初始化点，右键初始化“种子点”，然后勾选“Show History”可以看到一步一步的迭代。</p>
+<p style="text-align: left;">注：这个演示的链接也有一个不错的 <a href="http://home.dei.polimi.it/matteucc/Clustering/tutorial_html/index.html" target="_blank">K Means Tutorial</a> 。</p>
+<h4 style="text-align: left;"><span class="ez-toc-section" id="K-Means_%E7%AE%97%E6%B3%95"></span>K-Means ++ 算法<span class="ez-toc-section-end"></span></h4>
+<p>K-Means主要有两个最重大的缺陷——都和初始值有关：</p>
+<ul>
+<li> K 是事先给定的，这个 K 值的选定是非常难以估计的。很多时候，事先并不知道给定的数据集应该分成多少个类别才最合适。（ <a href="https://en.wikipedia.org/wiki/Multispectral_pattern_recognition" target="_blank">ISODATA 算法</a>通过类的自动合并和分裂，得到较为合理的类型数目 K）</li>
+</ul>
+<ul>
+<li>K-Means算法需要用初始随机种子点来搞，这个随机种子点太重要，不同的随机种子点会有得到完全不同的结果。（<a href="https://en.wikipedia.org/wiki/K-means%2B%2B" target="_blank">K-Means++算法</a>可以用来解决这个问题，其可以有效地选择初始点）</li>
+</ul>
+<p>我在这里重点说一下 K-Means++算法步骤：</p>
+<ol>
+<li>先从我们的数据库随机挑个随机点当“种子点”。</li>
+<li>对于每个点，我们都计算其和最近的一个“种子点”的距离D(<var>x</var>)并保存在一个数组里，然后把这些距离加起来得到Sum(D(<var>x</var>))。</li>
+<li>然后，再取一个随机值，用权重的方式来取计算下一个“种子点”。这个算法的实现是，先取一个能落在Sum(D(<var>x</var>))中的随机值Random，然后用Random -= D(<var>x</var>)，直到其&lt;=0，此时的点就是下一个“种子点”。</li>
+<li>重复第（2）和第（3）步直到所有的K个种子点都被选出来。</li>
+<li>进行K-Means算法。</li>
+</ol>
+<p>相关的代码你可以在这里找到“<a href="http://rosettacode.org/wiki/K-means%2B%2B_clustering" target="_blank">implement the K-means++ algorithm</a>”(墙) 另，<a href="http://commons.apache.org/math/api-2.1/index.html?org/apache/commons/math/stat/clustering/KMeansPlusPlusClusterer.html" rel="nofollow" target="_blank">Apache 的通用数据学库也实现了这一算法</a></p>
+<h4><span class="ez-toc-section" id="K-Means_%E7%AE%97%E6%B3%95%E5%BA%94%E7%94%A8"></span>K-Means 算法应用<span class="ez-toc-section-end"></span></h4>
+<p>看到这里，你会说，K-Means算法看来很简单，而且好像就是在玩坐标点，没什么真实用处。而且，这个算法缺陷很多，还不如人工呢。是的，前面的例子只是玩二维坐标点，的确没什么意思。但是你想一下下面的几个问题：</p>
+<p style="padding-left: 30px;">1）如果不是二维的，是多维的，如5维的，那么，就只能用计算机来计算了。</p>
+<p style="padding-left: 30px;">2）二维坐标点的X, Y 坐标，其实是一种向量，是一种数学抽象。现实世界中很多属性是可以抽象成向量的，比如，我们的年龄，我们的喜好，我们的商品，等等，能抽象成向量的目的就是可以让计算机知道某两个属性间的距离。如：我们认为，18岁的人离24岁的人的距离要比离12岁的距离要近，鞋子这个商品离衣服这个商品的距离要比电脑要近，等等。</p>
+<p><strong>只要能把现实世界的物体的属性抽象成向量，就可以用K-Means算法来归类了</strong>。</p>
+<p>在 《<a id="ctl01_lnkTitle" href="http://www.cnblogs.com/leoo2sk/archive/2010/09/20/k-means.html">k均值聚类(K-means)</a>》 这篇文章中举了一个很不错的应用例子，作者用亚洲15支足球队的2005年到1010年的战绩做了一个向量表，然后用K-Means把球队归类，得出了下面的结果，呵呵。</p>
+<ul>
+<li>亚洲一流：日本，韩国，伊朗，沙特</li>
+<li>亚洲二流：乌兹别克斯坦，巴林，朝鲜</li>
+<li>亚洲三流：中国，伊拉克，卡塔尔，阿联酋，泰国，越南，阿曼，印尼</li>
+</ul>
+<p>其实，这样的业务例子还有很多，比如，分析一个公司的客户分类，这样可以对不同的客户使用不同的商业策略，或是电子商务中分析商品相似度，归类商品，从而可以使用一些不同的销售策略，等等。</p>
+<p>最后给一个挺好的算法的幻灯片：<a href="http://www.cs.cmu.edu/~guestrin/Class/10701-S07/Slides/clustering.pdf">http://www.cs.cmu.edu/~guestrin/Class/10701-S07/Slides/clustering.pdf</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7779-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">Data Mining</a>, <a href="javascript:void(0)" rel="tag">K-Means</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>K-Means 算法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-731578" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.lilihui.name/2013/09/12/%e6%95%b0%e6%8d%ae%e7%9a%84%e6%b8%b8%e6%88%8f%ef%bc%9a%e5%86%b0%e4%b8%8e%e7%81%ab/" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | 李立辉的技术与网络营销博客</a> </div>
+</li>
+<li id="comment-796731" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-796731" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d97bc4cd9bfa3eb2c96095f2f9fc66fa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d97bc4cd9bfa3eb2c96095f2f9fc66fa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jason</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-796731"><time datetime="2013-10-09T21:02:02+08:00">2013年10月09日 21:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-543319"><p>
+<strong><a href="#comment-543319" rel="nofollow">Rex</a> :</strong></p>
+<blockquote cite="#commentbody-202242"><p>
+<strong><a href="#comment-202242" rel="nofollow">xiaoqiang</a> :</strong><br/>
+求教：对文中三个求点中心的公式有疑惑？ 三个公式都被称为XX distance，直观理解是计算距离的，即http://www.cnblogs.com/leoo2sk/archive/2010/09/20/k-means.html 里面说的相异度的。而不应该是计算中心位置的吧？
+</p></blockquote>
+<p>+1.这是计算两点距离的吧。维基百科上说的 the Euclidean distance or Euclidean metric is the “ordinary” distance between two points<br/>
+还是说有其他用法，麻烦博主贴出相关链接？
+</p></blockquote>
+<p>+1 难道dij不是代表i到j的距离？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-903101" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ssays.me/index.php/%e4%bb%8e%e5%9c%b0%e5%9b%be%e4%b8%8a%e6%89%be%e5%87%ba%e8%87%aa%e5%b7%b1%e6%9c%80%e5%b8%b8%e5%be%85%e7%9a%84%e5%87%a0%e4%b8%aa%e4%bd%8d%e7%bd%aek-means%e7%ae%97%e6%b3%95/" class="url" rel="ugc external nofollow">从地图上找出自己最常待的几个位置(K-means算法) | Sol&#39;s Blog</a> </div>
+</li>
+<li id="comment-914364" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.sunhaibing.com/?p=2142" class="url" rel="ugc external nofollow">KNN与K-Means的区别 | 超级计算机囧囧囧</a> </div>
+</li>
+<li id="comment-965632" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=201" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | 星达红</a> </div>
+</li>
+<li id="comment-1019363" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/128.html" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1217192" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ichang.sinaapp.com/2014/01/23/hadoop-notebook/" class="url" rel="ugc external nofollow">iChang » hadoop笔记本</a> </div>
+</li>
+<li id="comment-1398830" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1398830" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6ebb7e1a8a8acf1edaf15b544b73872?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6ebb7e1a8a8acf1edaf15b544b73872?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">爱玛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-1398830"><time datetime="2014-03-21T02:49:43+08:00">2014年03月21日 02:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“这个算法很简单，但是有些细节我要提一下，求距离的公式我不说了，大家有初中毕业水平的人都应该知道怎么算的。”</p>
+<p>有些情况下”距离“可以用欧式距离，有些情况不是应该用余弦之类的，此处不需要稍微说明一下咩</p>
+</div>
+ </article>
+</li>
+<li id="comment-1486471" class="comment even thread-even depth-1">
+<article id="div-comment-1486471" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/78615274a0036e8e46d98b7091de08de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/78615274a0036e8e46d98b7091de08de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">yycyycyy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-1486471"><time datetime="2014-06-25T16:16:38+08:00">2014年06月25日 16:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>正好我也想说这一句。<br/>
+距离这个东西，是可以自定义的。</p>
+<p><a href="#comment-1398830" rel="nofollow">@爱玛 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1507165" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1002" class="url" rel="ugc external nofollow">【活动】解迷题送礼物 | 星达红</a> </div>
+</li>
+<li id="comment-1559100" class="comment even thread-even depth-1">
+<article id="div-comment-1559100" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11eb77609927806dfe1890e1d7fd159d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11eb77609927806dfe1890e1d7fd159d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-1559100"><time datetime="2014-09-30T14:12:00+08:00">2014年09月30日 14:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>内容有无。三个distance是距离公式。不是点群中点公式</p>
+</div>
+ </article>
+</li>
+<li id="comment-1617835" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.devilaxe.com/reading/kmeans/" class="url" rel="ugc external nofollow">K-Means 和 K-Means++ 算法 | 鬼斧神工</a> </div>
+</li>
+<li id="comment-1656705" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=3946" class="url" rel="ugc external nofollow">K-Means 聚类算法 | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1662761" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://rss.kcygo.com/?p=8828" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | 内容采集</a> </div>
+</li>
+<li id="comment-1688487" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.readxy.com/archives/easy-k-means-algorithm.html" class="url" rel="ugc external nofollow">深入浅出K-Means算法 | 阅读纵横</a> </div>
+</li>
+<li id="comment-1743342" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dataminers.cn/%e6%95%b0%e6%8d%ae%e7%9a%84%e6%b8%b8%e6%88%8f%ef%bc%9a%e5%86%b0%e4%b8%8e%e7%81%ab/" class="url" rel="ugc external nofollow">数据的游戏：冰与火 – 数说</a> </div>
+</li>
+<li id="comment-1760247" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cumtpn.com/2015/09/20/%e7%ae%97%e6%b3%95%e6%80%bb%e7%bb%93/" class="url" rel="ugc external nofollow">算法总结 | PN结博客</a> </div>
+</li>
+<li id="comment-1788240" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kooball.com/blog/2015/10/21/dm_kmeans_learn/" class="url" rel="ugc external nofollow">[DM] K-means学习 | KooBall</a> </div>
+</li>
+<li id="comment-1799483" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zero2me.com/2015/12/07/k-nearest-neighbor-%e7%ae%97%e6%b3%95/" class="url" rel="ugc external nofollow">K Nearest Neighbor 算法 | Zero2Me :&gt;勿忘初心</a> </div>
+</li>
+<li id="comment-1820957" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1820957" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0ba4b6a714702f1ed8829ff7df36442c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0ba4b6a714702f1ed8829ff7df36442c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fvcaotvlvq.com" class="url" rel="ugc external nofollow">Emeline</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-1820957"><time datetime="2016-04-26T17:06:51+08:00">2016年04月26日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Olin jo luopunut toivosta pravdan ja iltaroskalehtien ym. Turun Sanomien suhteen. Mutta sitten ilmestyi Appelsin. Tervetuloa vaan Appelsiini sinne vÃ¤Ã¤rÃ¤Ã¤ todista lÃ¤himmÃ¤isistÃ¤Ã¤n jakavien viitevasurirahmittajien laumaan.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825397" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e6%95%b0%e6%8d%ae%e7%9a%84%e6%b8%b8%e6%88%8f%ef%bc%9a%e5%86%b0%e4%b8%8e%e7%81%ab-codeba-cc.html" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1853301" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://libaier.net/k-means/" class="url" rel="ugc external nofollow">K-means | libaier</a> </div>
+</li>
+<li id="comment-1860069" class="comment even thread-even depth-1">
+<article id="div-comment-1860069" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0cdadf488169697a6293dcbf1f9e9356?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0cdadf488169697a6293dcbf1f9e9356?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://justyy.com" class="url" rel="ugc external nofollow">JUSTYY 小赖子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-1860069"><time datetime="2016-07-20T21:01:14+08:00">2016年07月20日 21:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“我这里想告诉大家另三个求中心点的的公式”<br/>
+— 这三个公式应该是算距离，不是求中心点。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1924488" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jqhtml.com/10873.html" class="url" rel="ugc external nofollow">K-Means聚类的Python实践 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-1928102" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.kewangst.com/blog/?p=2666" class="url" rel="ugc external nofollow">将K-means算法应用到图像分割的一个尝试 – 科网</a> </div>
+</li>
+<li id="comment-1932292" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://photo.yuedy.com/archives/452" class="url" rel="ugc external nofollow">k均值聚类算法（k-means） – x</a> </div>
+</li>
+<li id="comment-1934401" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.youwus.com/?p=3859" class="url" rel="ugc external nofollow">深入浅出K-Means算法 – 机器研习会</a> </div>
+</li>
+<li id="comment-1934403" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.youwus.com/?p=3963" class="url" rel="ugc external nofollow">K NEAREST NEIGHBOR 算法 – 机器研习会</a> </div>
+</li>
+<li id="comment-1934766" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.youwus.com/?p=4652" class="url" rel="ugc external nofollow">KNN – 机器研习会</a> </div>
+</li>
+<li id="comment-1936108" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.youwus.com/?p=5113" class="url" rel="ugc external nofollow">KNN算法 – 机器研习会</a> </div>
+</li>
+<li id="comment-2160855" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://flashgene.com/archives/151378.html" class="url" rel="ugc external nofollow">聚类算法kmeans，kmeans++及python实现 – 闪念基因 – 个人技术分享</a> </div>
+</li>
+<li id="comment-2194768" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javaxks.com/?p=73371" class="url" rel="ugc external nofollow">k-均值聚类简介-Java小咖秀</a> </div>
+</li>
+<li id="comment-2266664" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/692415" class="url" rel="ugc external nofollow">关于聚类的学习资料整理+思维导图 - 算法网</a> </div>
+</li>
+<li id="comment-2266666" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/692427" class="url" rel="ugc external nofollow">[转载]关于聚类的学习资料整理+思维导图 - 算法网</a> </div>
+</li>
+<li id="comment-2328041" class="comment even thread-even depth-1">
+<article id="div-comment-2328041" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1d28d6145e47c53b615d2c3d34d8cf7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1d28d6145e47c53b615d2c3d34d8cf7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/articles/7779.html#%E6%B1%82%E7%82%B9%E7%BE%A4%E4%B8%AD%E5%BF%83%E7%9A%84%E7%AE%97%E6%B3%95" class="url" rel="ugc">朱驿</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7779.html/comment-page-2#comment-2328041"><time datetime="2021-11-01T20:24:58+08:00">2021年11月01日 20:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>闵可夫斯基距离那里有一些问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370317" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2388519" class="url" rel="ugc external nofollow">系统学习机器学习之半参数方法（一）--基于距离 - 算法网</a> </div>
+</li>
+<li id="comment-2370928" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.zhankr.net/138944.html" class="url" rel="ugc external nofollow">K-Means和K Nearest Neighbor - 站壳网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/7779.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/7779.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">7779</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

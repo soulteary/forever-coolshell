@@ -1,0 +1,682 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>CSDN明文口令泄露的启示 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6193 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6193" class="post-content post-6193 post type-post status-publish format-standard hentry category-itnews tag-csdn tag-password tag-320 tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">CSDN明文口令泄露的启示</span>
+<h1 class="entry-title">CSDN明文口令泄露的启示</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6193.html" title="12:08" rel="bookmark"><time class="entry-date" datetime="2011-12-22T12:08:27+08:00" pubdate="">2011年12月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6193.html#comments" class="comments-link">145 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 72,414 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>2011年12月21日晚，某计算机专业的大学生寝室，某同学大叫到：“兄弟们，最新的日本XX女星的AV片已经下好，大家快过来看啊，相当精彩啊~~~”，然而，这个寝室里的其它同学似乎没有听到这哥们的呼喊，于是，这哥们又叫了三次，没有人理他，因为大家都在眉飞色舞地谈论着CSDN的明文密码和用户帐号泄露的事情，并在网上查找着下载CSDN那600万的用户数据……上面这个故事是我编的，只是想描述一下昨晚的情形。</p>
+<p>其实，CSDN明文密码并不是什么稀奇的事情，我是2000年注册CSDN的吧，当时找回口令的机制就是把口令直接传回来了，这一定是明文了。去年去CSDN参加移动互联网沙龙的时候，范凯和蒋涛说过明文密码的事，不过他们说的是很早以前的事了，而且一笔带过了。1年后的今天，事情又暴了，可见，“出来混的，迟早是要还的”这句话是几近真理的。</p>
+<p>我在以前的BLOG里就提到过CSDN的明文密码（在“<a title="你会做Web上的用户登录功能吗？" href="/articles/5353.html">如何设计用户登录功能</a>”一文）和 帐号泄露（“<a title="如何管理并设计你的口令" href="/articles/2428.html">如何设计自己的口令</a>”） 的事（<strong>由此可见，酷壳里的很多文章里的事都应验了</strong>，因为我知道“出来混的，迟早是要还的”）</p>
+<p>（<strong>可悲吧？还是程序员的网站呢，明文口令和用户信息泄露有悖于一个程序员网站的称号</strong>）</p>
+<h4>泄露的密码分析</h4>
+<p>我昨晚下载了<a href="http://www.csdn.net.sql">www.csdn.net.sql</a>文件，并分析了一下这个文件，经过各种awk, grep, sort, uniq, sed后，下面是我看到的东西：</p>
+<ul>
+<li>有近45万的用户使用 123456789 和 12345678 做口令。</li>
+<li>有近40万的用户使用自己的生日做口令。</li>
+<li>有近15万的用户使用自己的手机号做口令。</li>
+<li>有近25万的用户使用自己的QQ号做口令。</li>
+<li>设置成弱口令的用户占了590万，也就是那种就算你用MD5或是SHA散列的也能很快就被暴力破解出来的口令。</li>
+<li>只有8000多个用户的口令里在8个长度以上，并有大写字母，小写字母，数字，并不在字典表里。</li>
+</ul>
+<p>（很好，这回泄露的还不单单只是明文用户密码和用户邮件，还有用户的手机号，生日和QQ号。挺好的）</p>
+<p>下面，我们来看一下top 100的口令是什么？（第一列是采用这个密码个数，第二列是密码，我擦 dearbook是什么啊）简单地看了一下，top 一万的口令都很SB。比如什么woshishui, 123abc, aaa123456，01010101，haohaoxuexi，msconfig 相当的2B，还有<a href="/cdn-cgi/l/email-protection#f3a3b3808084c38197"><span class="__cf_email__" data-cfemail="5d0d1d2e2e2a6d2f39">[email protected]</span></a>，q1w2e3r4t5，看似文艺，实际很2的口令…. （<strong>可悲吧？还是程序员的网站呢，自己设的口令有悖于一个程序员的称号</strong>）</p>
+<p><span id="more-6193"></span></p>
+<p style="padding-left: 30px;">235033 123456789<br/>
+212751 12345678<br/>
+76346 11111111<br/>
+45902 dearbook<br/>
+34953 00000000<br/>
+19986 123123123<br/>
+17791 1234567890<br/>
+15033 88888888<br/>
+6995 111111111<br/>
+5966 147258369<br/>
+5553 987654321<br/>
+5459 aaaaaaaa<br/>
+5145 1111111111<br/>
+5025 66666666<br/>
+4435 a123456789<br/>
+4096 11223344<br/>
+3667 1qaz2wsx<br/>
+3649 xiazhili<br/>
+3610 789456123<br/>
+3497 password<br/>
+3281 87654321<br/>
+3277 qqqqqqqq<br/>
+3175 000000000<br/>
+3143 qwertyuiop<br/>
+3094 qq123456<br/>
+3077 iloveyou<br/>
+3061 31415926<br/>
+2985 12344321<br/>
+2886 0000000000<br/>
+2826 asdfghjkl<br/>
+2797 1q2w3e4r<br/>
+2580 123456abc<br/>
+2578 0123456789<br/>
+2573 123654789<br/>
+2540 12121212<br/>
+2515 qazwsxedc<br/>
+2396 abcd1234<br/>
+2380 12341234<br/>
+2348 110110110<br/>
+2298 asdasdasd<br/>
+2243 22222222<br/>
+2166 123321123<br/>
+2160 abc123456<br/>
+2145 123456<br/>
+2138 a12345678<br/>
+2113 123456123<br/>
+2106 a1234567<br/>
+2100 1234qwer<br/>
+1989 qwertyui<br/>
+1986 123456789a<br/>
+1971 aa123456<br/>
+1918 asdfasdf<br/>
+1891 99999999<br/>
+1859 999999999<br/>
+1859 123456aa<br/>
+1854 123456123456<br/>
+1699 520520520<br/>
+1656 963852741<br/>
+1652 741852963<br/>
+1652 55555555<br/>
+1589 33333333<br/>
+1480 qwer1234<br/>
+1384 asd123456<br/>
+1339 77777777<br/>
+1316 qweasdzxc<br/>
+1285 code8925<br/>
+1273 11112222<br/>
+1268 ms0083jxj<br/>
+1245 zzzzzzzz<br/>
+1214 111222333<br/>
+1206 qweqweqwe<br/>
+1200 3.1415926<br/>
+1183 123456qq<br/>
+1148 147852369<br/>
+1136 521521521<br/>
+1121 asdf1234<br/>
+1111 123698745<br/>
+1109 1123581321<br/>
+1058 asdfghjk<br/>
+1054 q1w2e3r4<br/>
+1038 12345678a<br/>
+1003 woaini1314<br/>
+991 1234abcd<br/>
+988 123qweasd<br/>
+975 1qazxsw2<br/>
+967 woaiwojia<br/>
+920 321321321<br/>
+910 05962514787<br/>
+894 123456987<br/>
+892 kingcom5<br/>
+882 zxcvbnm123<br/>
+882 5845201314<br/>
+853 0987654321<br/>
+847 wwwwwwww<br/>
+835 11111111111111111111<br/>
+805 12345600<br/>
+783 11235813<br/>
+777 1q2w3e4r5t<br/>
+772 10101010<br/>
+770 123456asd</p>
+<h4>老生长谈安全问题</h4>
+<p>从酷壳出现开始我就在老生长谈用户安全的东西了，今天借着这个事，大家再去重温一下酷壳的文章吧：</p>
+<ul>
+<li><a title="Twitter的禁用口令" href="/articles/2451.html">Twitter禁用的口令</a>。看看去吧，一个好的网站应该如何引导用户设置强口令。Apple ID也是这样，需要你输入的口令有大小写，数字，非数字和字母，等等。<strong>今天CSDN的这个列表应该成为各大网站“口令禁用列表”。</strong></li>
+</ul>
+<ul>
+<li>有朋友说，明文口令是巨2的一件事，是的。我可以告诉你，这个明文口令有可能存在于所有国内的网站上，比如：QQ，新浪，人人，开心，天涯……。<strong>对于安全问题，你要做最坏的假设，鲁迅先生说过：“不惮以最坏的恶意来推测中国人”，所以，对于中国的网站你要做如下最坏假设：1）其以明文存我的口令，2）其内部不良员工会把我的信息泄露出去</strong>。不信你可以看看下面的某QQ群里的截图：（<a href="http://weibo.com/1494759712/xDa7tah7E?type=repost" target="_blank">看看多玩网明文口令的消息吧</a>，<a href="http://weibo.com/1642471052/xDaC1dEhP?type=repost" target="_blank">再看看这个消息吧</a> QQ邮箱和QQ号的）<img decoding="async" class="aligncenter" title="国内网站的数据库" src="http://ww4.sinaimg.cn/large/63071edagw1doah4id8l4j.jpg" alt="" width="333" height="756"/></li>
+</ul>
+<ul>
+<li>你可能会说用MD5和SHA散列口令就好了，这个只比明文好一点点，因为有rainbow table，国外的号称达到99%覆盖，国内的达到93%覆盖。你加salt也没有用。就算我只能拿得到你的被散列的密码，没有rainbow和salt，我一样可以使用暴力破解，甚至就是尝试一下字典里的密码就可以了。这会非常快的，你可以看看本站的这篇文章“<a title="破解你的口令" href="/articles/3801.html" target="_blank">破解你的口令</a>”，<strong>现在暴力破解MD5和SHA的口令很快的，因为MD5和SHA性能太好了。</strong>所以，你需要看看“<a title="如何防范密码被破解" href="/articles/2078.html" target="_blank">如何防范密码被破解</a>”，其会告诉你加密口令要用一个性能差的算法——bcrypt。（也可以参看<a title="Web开发中需要了解的东西" href="/articles/6043.html">Web开发中需要了解的东西</a>中的<a href="http://codahale.com/how-to-safely-store-a-password/" target="_blank">如何安全保存口令一文</a>）</li>
+</ul>
+<ul>
+<li>所以，你有必要地读一读我的这篇“<a title="如何管理并设计你的口令" href="/articles/2428.html">如何管理和设计自己的口令</a>”，不要在同一网站上使用相同的口令，把口令的级别分好的组。自己管理好自己的口令。</li>
+</ul>
+<ul>
+<li> 对于Web用户的安全问题，程序员们一定要看一下 这两篇文章，你要是不看的话，你没有资格开发Web项目。</li>
+<ul>
+<li><a title="你会做Web上的用户登录功能吗？" href="/articles/5353.html">如何设计用户登录功能</a></li>
+<li><a title="Web开发中需要了解的东西" href="/articles/6043.html">Web开发中需要了解的东西</a></li>
+</ul>
+</ul>
+<ul>
+<li>当你看过 <a title="你会做Web上的用户登录功能吗？" href="/articles/5353.html">如何设计用户登录功能</a> 一文后，你一定会头晕的，所以，我想告诉你，<strong>这种事情最好不要自己干，使用OpenID 和 OAuth吧，人家把这事干到了极致了</strong>。而且这样会带来两个好处：</li>
+<ul>
+<li><strong>用户不需要自己维护和管理一套新的帐号</strong>。</li>
+<li><strong>用户的资料放在国外，从政治上来说是安全的</strong>。（八卦一下：Google总部要求中国谷歌所有开发团队不得在本地保存用户的信息）</li>
+</ul>
+</ul>
+<ul>
+<li>再说一点，再说说如何让自己内部的用户数据不会被不良员工外泄。<strong>所有的开发团队都不允许直接操作用户的数据库，只允许通过安全的接口来验证用户，用户信息的数据库中需要对操作者有审计功能，永远不允许不受信的人或操作进行全库扫描</strong>。当然，我相信，国内的开发团队绝对达不到这一步（包括某些银行）。</li>
+</ul>
+<ul>
+<li>再说一下，<strong><span style="color: #000000;">真正的安全系统是协同整个社会的安全系统做出来的一道安全长城，而不是什么都要自己搞</span>。</strong>比如：通过很多方法“耦合”和银行和电信其是别的第三方的安全策略，比如，让用户绑定邮箱，绑定手机，绑定信用卡等。</li>
+</ul>
+<p>最后说一下，CSDN在这次事件的表现看上去还是很不错的，道歉也很诚恳，<strong>但是，我还是希望CSDN反思一下为什么数据库会泄露了？内部有不良员工？还是系统不安全被黑？不要只是诚恳道歉，还要找自己的原因。其它的网站可能就很恶劣了。包括新浪，人人，开心等，最恶心的就是腾讯，你说他的安全有问题，他还找一堆人来骂你。</strong></p>
+<p style="text-align: center;"><span style="color: #cc0000; font-size: 16pt; font-family: &#39;Microsoft YaHei&#39;;"><strong>祝大家新年快乐！</strong></span></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6193-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">业界新闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">CSDN</a>, <a href="javascript:void(0)" rel="tag">password</a>, <a href="javascript:void(0)" rel="tag">口令</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>CSDN明文口令泄露的启示</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-116514" class="comment even thread-even depth-1">
+<article id="div-comment-116514" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b996e1d2178528acf1de492d1750207c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b996e1d2178528acf1de492d1750207c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">invalid</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116514"><time datetime="2011-12-26T19:20:38+08:00">2011年12月26日 19:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>禁止明文保存密码，实质上就相当于防火隔离带一样。</p>
+<p>如果CSDN的密码是MD5散列过的，不用说，仍然很傻；但至少那8000个用户是相对安全的，想用彩虹表攻击这些人并不容易，MD5还没那么弱。</p>
+<p>而如果CSDN的密码是MD5+盐，甚至像我一样直接上sha512的，那么，哪怕是使用简单密码的小白，也不会遭受更大损失。</p>
+<p>但现在，一切都暴露了；而这种暴露，肯定正在威胁着淘宝乃至网银系统。</p>
+<p>甚至，也许黑客本身并未找到攻破淘宝、网银的途径，而且永远找不到；但说不定哪个“头脑灵活”的员工趁这股子乱劲儿监守自盗——让外界对“神通广大的黑客”疑神疑鬼去吧，他一定会很安全，至少是比平常安全。</p>
+</div>
+ </article>
+</li>
+<li id="comment-116562" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-116562" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a24d6120e9f5de2f9224947a0c362d7c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a24d6120e9f5de2f9224947a0c362d7c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116562"><time datetime="2011-12-26T22:18:31+08:00">2011年12月26日 22:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><strong><a href="#comment-116514" rel="nofollow">invalid</a> :</strong><br/>
+如果是这样的话，就只能祈祷了。<br/>
+由于本身是搞互联网的，所以对互联网目前是不信任的，尤其是国内的。<br/>
+对于我个人来讲，即使是所有的密码都丢了。应该不会有什么物质上的损失，因为我只有一张信用卡是可以网上支付的，且额度很低，用的也是动态口令，如果这样也丢钱，只能认倒霉了。<br/>
+至于隐私，我就重来没相信过电脑，所以电脑上和网上就没有可以影响到个人的隐私，至于私人信息泄漏，在国内已经是无可奈何的事情了。再说本人就一屁民，也没什么别人感兴趣的信息。<br/>
+所以，就我个人而言，网上最有价值的东西都在gmail里和dropbox里。如果这两个被盗且被无聊到清空的话，就会心痛了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-116590" class="comment even thread-even depth-1">
+<article id="div-comment-116590" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f3eed77544e7241de678f76f34a9f5fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f3eed77544e7241de678f76f34a9f5fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tonny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116590"><time datetime="2011-12-26T23:30:20+08:00">2011年12月26日 23:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-116397" rel="nofollow">@陈皓 </a><br/>
+搞过类似事情的爬过，某证券系统因故障一部分停了半天，然后那半天手工记账本金的利息要给客户加回去，也是直接update数据库…理论上，也算是直接update账户余额了…不过就像aAic所说的，改数字不是问题，平账和搞定会计才是大问题…<br/>
+至于直接拿生产环境的数据去开发环境分析什么的太常见了….不过按现在的规程好歹还知道把用户敏感信息盖一盖….<br/>
+倒是因为物理隔离，生产环境和开发环境搭错线什么的这些年基本上绝迹了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-116795" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-116795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/80e677078d318d2f69290fe1eb755f56?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/80e677078d318d2f69290fe1eb755f56?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xwblog.cn" class="url" rel="ugc external nofollow">电脑没声音</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116795"><time datetime="2011-12-27T09:32:28+08:00">2011年12月27日 09:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>来这可以开开眼界。。。<br/>
+收藏了，以后多向前辈来学习。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-116811" class="comment even thread-even depth-1">
+<article id="div-comment-116811" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/105b14bfa2422875d1aecc756538a333?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/105b14bfa2422875d1aecc756538a333?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cherryunix</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116811"><time datetime="2011-12-27T10:23:50+08:00">2011年12月27日 10:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>1/8000 路过</p>
+</div>
+ </article>
+</li>
+<li id="comment-116946" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-116946" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed699e01710921ff93df7d9d7532c970?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed699e01710921ff93df7d9d7532c970?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">seagle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116946"><time datetime="2011-12-27T17:10:46+08:00">2011年12月27日 17:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>程序员网站就是用来下载什么电子书、软件什么的，其他还真没什么价值。以前还订阅程序员杂志，现在早就不订阅了。应该改名为架构师、IT经理人之类的， 浮躁啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-116977" class="comment even thread-even depth-1">
+<article id="div-comment-116977" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d1b34207fc52ff5b30717422c031c8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d1b34207fc52ff5b30717422c031c8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Destiny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-116977"><time datetime="2011-12-27T18:10:40+08:00">2011年12月27日 18:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>口令问题永远是个问题，每个网站设置的不一样吧，久了（估计也就一两周）就会忘记，或者记混。写下来吧，更不安全，一漏全漏。这个问题还真不好解决。</p>
+<p>另外，对于网站强迫用户设置强密码，个人觉得这不人性化，拿你的话来说就是用户体验并不好，因为有些人觉得这个号对他来说并不重要，所以设置个什么123456789这样的密码很正常，好记嘛，免得把自己的其他密码给泄漏了。当然，拿手机号这类SB密码另当别论，因为这已经涉及到隐私了，但像123456789这类密码看似“SB”其实还蛮高明的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117406" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117406" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/139b5911dee07ea272e465655da1d981?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/139b5911dee07ea272e465655da1d981?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">123</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-117406"><time datetime="2011-12-28T11:41:24+08:00">2011年12月28日 11:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>12312312ss</p>
+</div>
+ </article>
+</li>
+<li id="comment-117442" class="comment even thread-even depth-1">
+<article id="div-comment-117442" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a324af3428ec0460e67f38306010973?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a324af3428ec0460e67f38306010973?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dsads</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-117442"><time datetime="2011-12-28T13:17:03+08:00">2011年12月28日 13:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真正的安全系统是不要做什么多余无用的事情<br/>
+像登陆注册这种完全没必要的东西，还要搞使用OpenID和OAuth这么复杂，何苦呢<br/>
+就像在这里简单的几句评论还非要填昵称电子邮箱，只是一个评论要这些作甚</p>
+</div>
+ </article>
+</li>
+<li id="comment-117459" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117459" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9946f7563d41ce70d2e0e836c5d3337e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9946f7563d41ce70d2e0e836c5d3337e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rjoo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-117459"><time datetime="2011-12-28T13:45:42+08:00">2011年12月28日 13:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-117442"><p>
+<strong><a href="#comment-117442" rel="nofollow">dsads</a> :</strong><br/>
+真正的安全系统是不要做什么多余无用的事情<br/>
+像登陆注册这种完全没必要的东西，还要搞使用OpenID和OAuth这么复杂，何苦呢<br/>
+就像在这里简单的几句评论还非要填昵称电子邮箱，只是一个评论要这些作甚
+</p></blockquote>
+<p>说的好，虽然承诺“我们会为您保密”，但压根不用填这些东西岂不是更好？</p>
+</div>
+ </article>
+</li>
+<li id="comment-117842" class="comment even thread-even depth-1">
+<article id="div-comment-117842" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98b4ba55bd5862abb3cebdbc56dd3c66?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98b4ba55bd5862abb3cebdbc56dd3c66?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lonelysh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-117842"><time datetime="2011-12-29T08:56:41+08:00">2011年12月29日 08:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我擦 dearbook是什么啊<br/>
+联想起贴纸里的语气…</p>
+</div>
+ </article>
+</li>
+<li id="comment-117927" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117927" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3eddd5ccd592bb2f5eeb9712c7c50faf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3eddd5ccd592bb2f5eeb9712c7c50faf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-117927"><time datetime="2011-12-29T12:29:21+08:00">2011年12月29日 12:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>求问：亚马逊泄了有这一说吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-118520" class="comment even thread-even depth-1">
+<article id="div-comment-118520" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/80f9f1a582c5eceb8f57e998967b0e99?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/80f9f1a582c5eceb8f57e998967b0e99?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">anonymous</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-118520"><time datetime="2011-12-30T14:03:03+08:00">2011年12月30日 14:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-117459" rel="nofollow">@rjoo </a> 你不会填个假的啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-118650" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-118650" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">幻の上帝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-118650"><time datetime="2011-12-30T18:19:14+08:00">2011年12月30日 18:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-117442" rel="nofollow">@dsads </a><br/>
+昵称可以让评论用户区分不同评论用户。<br/>
+邮箱可以让博主验证上述区分的不可靠性。</p>
+</div>
+ </article>
+</li>
+<li id="comment-118702" class="comment even thread-even depth-1">
+<article id="div-comment-118702" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/afb7f35ee2f39ceb85981a45fea934d1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/afb7f35ee2f39ceb85981a45fea934d1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.clyce.net" class="url" rel="ugc external nofollow">clyce</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-118702"><time datetime="2011-12-30T20:14:11+08:00">2011年12月30日 20:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>乃高估国内大学生的素质了。。。。作为一个计算机专业的大三学生表示，本专业95%以上不知道CSDN，剩下的5%里面有70%的人只知道CSDN是一个能找到作业答案的下载站。。。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-119689" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-119689" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a68e171788945850e053acc162549f60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a68e171788945850e053acc162549f60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JOE</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-119689"><time datetime="2012-01-01T16:37:10+08:00">2012年01月01日 16:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不得不承认有些时候，注册 CSDN只是得那20分的初始下载积分<br/>
+如果仅仅只是注册号码，密码简单好记就行了吧，反正又不会长期使用…</p>
+</div>
+ </article>
+</li>
+<li id="comment-120205" class="comment byuser comment-author-leizisdu even thread-even depth-1">
+<article id="div-comment-120205" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83c846bb8292710d264e5e7fb65e7333?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83c846bb8292710d264e5e7fb65e7333?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leizisdu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-120205"><time datetime="2012-01-02T17:29:55+08:00">2012年01月02日 17:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-114523" rel="nofollow">@wujj123456 </a><br/>
+你说的对。密码做得再复杂，以明码泄露出去，那个复杂的密码有什么用？</p>
+</div>
+ </article>
+</li>
+<li id="comment-121175" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-121175" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ffa4d59af6160c3fe617c0d318368732?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ffa4d59af6160c3fe617c0d318368732?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">forsaken2009</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-121175"><time datetime="2012-01-04T16:22:37+08:00">2012年01月04日 16:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么设置弱口令？除了记忆或者填写方便的原因之外，我想还是用户自己觉得这个东西的保密价值太低，所以你看到很多的诸如123456789之类的密码。</p>
+</div>
+ </article>
+</li>
+<li id="comment-121409" class="comment even thread-even depth-1">
+<article id="div-comment-121409" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/78ab30ed8ab2119e7214ec7f358d55ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/78ab30ed8ab2119e7214ec7f358d55ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">neverznga</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-121409"><time datetime="2012-01-04T23:54:18+08:00">2012年01月04日 23:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-121175"><p>
+<strong><a href="#comment-121175" rel="nofollow">forsaken2009</a> :</strong><br/>
+为什么设置弱口令？除了记忆或者填写方便的原因之外，我想还是用户自己觉得这个东西的保密价值太低，所以你看到很多的诸如123456789之类的密码。
+</p></blockquote>
+<p>非常同意，换成网银大家就不会设置这样的密码。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-122125" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-122125" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc79a95765c7759f7171284b52f4a4d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc79a95765c7759f7171284b52f4a4d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liuzm.com" class="url" rel="ugc external nofollow">刘志猛</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-122125"><time datetime="2012-01-06T12:24:27+08:00">2012年01月06日 12:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章写的蛮好的，很详细。值的学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-122592" class="comment even thread-even depth-1">
+<article id="div-comment-122592" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/81f13b512e42c280444abd7c4674fb17?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/81f13b512e42c280444abd7c4674fb17?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shuiren</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-122592"><time datetime="2012-01-07T12:53:32+08:00">2012年01月07日 12:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-114573" rel="nofollow">@apporc </a><br/>
+对的，我的csdn还有一切只为下个东西而注册的网站，都是同一id，密码111111</p>
+</div>
+ </article>
+</li>
+<li id="comment-124617" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-124617" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7638f1147910abd3d3e567cd6f819039?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7638f1147910abd3d3e567cd6f819039?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jn3.141592654.blog.163.com" class="url" rel="ugc external nofollow">Judas.n</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-124617"><time datetime="2012-01-11T22:14:38+08:00">2012年01月11日 22:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-117459" rel="nofollow">@rjoo </a> 对于有些网站而言，你的信息是可以被贩卖的，所以不让你填，我此不是吃亏了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-124619" class="comment even thread-even depth-1">
+<article id="div-comment-124619" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7638f1147910abd3d3e567cd6f819039?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7638f1147910abd3d3e567cd6f819039?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jn3.141592654.blog.163.com" class="url" rel="ugc external nofollow">Judas.n</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-124619"><time datetime="2012-01-11T22:17:22+08:00">2012年01月11日 22:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实密码123456789是挺不错的，我觉得更好是110110这类的，为什么呢？因为一般这样填写的人都是不在意这个网站的，就像我，如果该网站或是该软件、游戏的密码是六位数的话，那多半这个都是我觉得可有可无的地方，即使密码被人知道了我也无所谓。但是类似于QQ，常用邮箱，密码长度都是十六位，中英文特殊符号。<br/>
+我们不要的网站，我们又何必搞的密码长度很严谨呢？不要跟自己过不去才是对的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-132726" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-132726" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9ad5ece0bc8b5d254642fb0bad251051?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9ad5ece0bc8b5d254642fb0bad251051?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eyhel</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-132726"><time datetime="2012-01-31T22:20:35+08:00">2012年01月31日 22:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老生长谈不对，老生常谈为正解。</p>
+</div>
+ </article>
+</li>
+<li id="comment-141629" class="comment byuser comment-author-ssy341 even thread-even depth-1">
+<article id="div-comment-141629" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f44c2f3e08e229ce7c1e0b1ae49806b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f44c2f3e08e229ce7c1e0b1ae49806b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">千纸鹤</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-141629"><time datetime="2012-02-28T09:31:59+08:00">2012年02月28日 09:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>[最恶心的就是腾讯，你说他的安全有问题，他还找一堆人来骂你。]这句话 最好笑 好好 狗日的腾讯</p>
+</div>
+ </article>
+</li>
+<li id="comment-177250" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-177250" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9106340a33a2407d63d22e6275300d33?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9106340a33a2407d63d22e6275300d33?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">anonymous</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-177250"><time datetime="2012-05-03T12:46:24+08:00">2012年05月03日 12:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很多人回复里都提到， 楼主觉得top10000的密码sb，但楼主的分析不够全面。很多用户其实知道这密码很弱，但还是用了，因为他们根本不重示这个账号，又或者不信任这个网站，出于保护自己，才设置了个简单易记的密码。 比如，很多网站，要想在上面下载个东西，都要注册个账户，CSDN就是这样的网站。这种方式造成的结果是，生产出了很多垃圾账号，用一次就扔，很有可能用到top10000密码的账号的大部分都是垃圾账号。既然是垃圾账号，自然要用个垃圾密码，才是安全的做法。真正的强密码，都用在重要的账号上了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-182826" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeislife.tk/index.php/archives/139" class="url" rel="ugc external nofollow">讲一个理想,追求和迷失的故事吧 | Code Is Life</a> </div>
+</li>
+<li id="comment-218925" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wshen.me/uncategorized/%e5%91%9c%e8%a2%ab%e7%9b%97%e5%8f%b7%e4%ba%86/" class="url" rel="ugc external nofollow">Will&#39;s Blog » “呜…被盗号了= =”</a> </div>
+</li>
+<li id="comment-222284" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.g2w.me/2011/12/fuck-renren/" class="url" rel="ugc external nofollow">那二逼的人人网 » Ghoul To World!</a> </div>
+</li>
+<li id="comment-222285" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.g2w.me/2012/01/58-com-405-error-page/" class="url" rel="ugc external nofollow">58同城联系客服页面的405错误 » Ghoul To World!</a> </div>
+</li>
+<li id="comment-234656" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://argcandargv.com/archives/139" class="url" rel="ugc external nofollow">讲一个理想,追求和迷失的故事吧 | argc &amp;&amp; argv</a> </div>
+</li>
+<li id="comment-546160" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-546160" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e4398ab919b6bddb1b977dabcc73de7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e4398ab919b6bddb1b977dabcc73de7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.fakeraybans4sale.com" class="url" rel="ugc external nofollow">www.fakeraybans4sale.com</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-546160"><time datetime="2013-06-14T04:01:54+08:00">2013年06月14日 04:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Hey there would you mind letting me know which hosting company you’re working with? I’ve loaded your blog in 3 completely different web browsers and I must say this blog loads a lot quicker then most. Can you recommend a good internet hosting provider at a reasonable price? Thank you, I appreciate it!</p>
+</div>
+ </article>
+</li>
+<li id="comment-547851" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.apprk.com/archives/49811" class="url" rel="ugc external nofollow">关于密码的那些事儿—浅谈密码的设计与管理 | EvilCode 邪恶代码</a> </div>
+</li>
+<li id="comment-604076" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-604076" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9980e77ec434a64ee2aec041c2174688?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9980e77ec434a64ee2aec041c2174688?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.skiteamsells.com/" class="url" rel="ugc external nofollow">Sac Vanessa Bruno</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6193.html/comment-page-3#comment-604076"><time datetime="2013-07-23T01:03:46+08:00">2013年07月23日 01:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Hi, I do believe this is a great website. I stumbledupon it ;) I’m going to return yet again since I book marked it. Money and freedom is the greatest way to change, may you be rich and continue to guide others.</p>
+</div>
+ </article>
+</li>
+<li id="comment-779211" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.flygon.net/archives/433" class="url" rel="ugc external nofollow">[转]如何设计自己的密码 | 龙哥盟</a> </div>
+</li>
+<li id="comment-1494563" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://v.aws.af.cm/2014/07/%e5%85%b3%e4%ba%8e%e5%af%86%e7%a0%81%e7%9a%84%e9%82%a3%e4%ba%9b%e4%ba%8b%e5%84%bf-%e6%b5%85%e8%b0%88%e5%af%86%e7%a0%81%e7%9a%84%e8%ae%be%e8%ae%a1%e4%b8%8e%e7%ae%a1%e7%90%86" class="url" rel="ugc external nofollow">关于密码的那些事儿—浅谈密码的设计与管理 | fragments</a> </div>
+</li>
+<li id="comment-1541956" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.xuejianbin.com/?p=83" class="url" rel="ugc external nofollow">谈谈数据安全和云存储 | news snack</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6193.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6193.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/6193.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">6193</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

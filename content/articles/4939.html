@@ -1,0 +1,528 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Quora使用到的技术 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4939 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4939" class="post-content post-4939 post type-post status-publish format-standard hentry category-technews category-misc tag-facebook tag-mysql tag-nginx tag-pythondev tag-quora tag-stackexchange">
+<header class="entry-header">
+<span class="screen-reader-text">Quora使用到的技术</span>
+<h1 class="entry-title">Quora使用到的技术</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4939.html" title="08:35" rel="bookmark"><time class="entry-date" datetime="2011-07-04T08:35:37+08:00" pubdate="">2011年07月04日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4939.html#comments" class="comments-link">48 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,441 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>以前向大家介绍过<a title="Stack Exchange 的架构" href="/articles/3721.html" target="_blank">Stack Exchange的系统架构</a>和<a title="Facebook 的系统架构" href="/articles/4549.html" target="_blank">Facebook的系统架构</a>，今天和大家说说Quora的。本文主要参考了<a title="Phil Whelan" href="http://www.philwhln.com/author/admin/">Phil Whelan</a>的这篇文章《<a href="http://www.philwhln.com/quoras-technology-examined" target="_blank">Quora’s Technology Examined</a>》。关于Quora是个什么网站我就不多说了，国内对他的C2C网站叫“知乎”。呵呵。我们还是来看看Quora的技术吧。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Search-Box" title="Search-Box">Search-Box</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%AE%9E%E6%97%B6%E6%9F%A5%E8%AF%A2" title="实时查询">实时查询</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Webnode2_%E5%92%8C_LiveNode" title="Webnode2 和 LiveNode">Webnode2 和 LiveNode</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Amazon_Web_Service" title="Amazon Web Service">Amazon Web Service</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#HAProxy_Load-Balancing" title="HAProxy Load-Balancing">HAProxy Load-Balancing</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Python" title="Python">Python</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#Thrift" title="Thrift">Thrift</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#Tornado" title="Tornado">Tornado</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#Long_Polling_Comet" title="Long Polling (Comet)">Long Polling (Comet)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#MySQL" title="MySQL">MySQL</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#Memcached" title="Memcached">Memcached</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-12" href="#Git" title="Git">Git</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-13" href="#JavaScript_Placement" title="JavaScript Placement">JavaScript Placement</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-14" href="#Charlie_Cheever_%E9%81%B5%E4%BB%8E_%E2%80%9C14_Rules_for_Faster-Loading_Web_Sites%E2%80%9D" title="Charlie Cheever 遵从 “14 Rules for Faster-Loading Web Sites”">Charlie Cheever 遵从 “14 Rules for Faster-Loading Web Sites”</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Search-Box"></span>Search-Box<span class="ez-toc-section-end"></span></h4>
+<p>Quora只能搜索问题，主题标签，用户名，和主题标题。没有全文搜索，所以，你无法搜索问题和答案的内容。而搜索中使用前缀搜索方式，比如你输入mi，则Microsoft会马上出来。其搜索还会有一些非常简单的模糊匹配的算法。另外，如果有重复的问题，其中一个问题会自动跳转到另一个问题，但是在搜索中还是会出现。搜索中没有拼写检查。</p>
+<p>一开始，他们使用的是一个开源的搜索服务器，叫<a href="http://sphinxsearch.com/">Sphinx</a>。其支持上述的那些功能。现在他们不用这个技术了，因为<a href="https://www.quora.com/What-is-the-best-open-source-solution-for-implementing-fast-auto-complete" target="_blank">受到了一些限制</a>。他们做了一个比较新的解决方案，这个算法由Python实现。</p>
+<p><strong>参看</strong>：<a href="https://www.quora.com/What-libraries-does-Quora-use-for-search"><img decoding="async" src="https://www.quora.com/favicon.ico" alt="" width="16" height="16"/>What libraries does Quora use for search?</a></p>
+<h4><span class="ez-toc-section" id="%E5%AE%9E%E6%97%B6%E6%9F%A5%E8%AF%A2"></span>实时查询<span class="ez-toc-section-end"></span></h4>
+<p>Quora的查询是非常高速的，其查询请求是通过AJAX的GET请求发送的，结果返回用的是JSON数据格式，但他们解析JSON是在服务器端，而不是通过浏览器的javascript。这么做的原因可能是他们想高亮搜索关键词，似乎使用Client端的Javascript非常不好做。</p>
+<p>Quora的即时搜索好像比较暴力，如果你输入Microsoft（一共9个字符），你会看到其会像后端发送9次查询——每按一个键一次，无论你敲这个单词的速底有多快，每输入一个字符都会发一个请求给后台。对于这样的看上去没有效率的对后台的请求，后台的服务器端会来控制相关的前台请求，所以，就算是前台这样做，也不会增加服务器端的负载，因为后台会做相关的处理。</p>
+<p>Quora的搜索使用HTTP长连接，当你开始敲查询的时候，连接就建立了，这个连接会持续在那里，你下次搜索的时候会继续使用这个连接，除非你60秒没有动作了。</p>
+<p><strong>参看</strong>：<a href="https://www.quora.com/Quora-product/Is-Quora-going-to-implement-full-text-search"><img decoding="async" src="https://www.quora.com/favicon.ico" alt="" width="16" height="16"/>Is Quora going to implement full-text search?</a></p>
+<p><span id="more-4939"></span></p>
+<h4 id="webnode2-and-livenode"><span class="ez-toc-section" id="Webnode2_%E5%92%8C_LiveNode"></span>Webnode2 和 LiveNode<span class="ez-toc-section-end"></span></h4>
+<p>Webnode2 和 LiveNode 是 Quora 内部的系统，其用来管理内容。Webnode2  生成 HTML, CSS 和 JavaScript 并且和 LiveNode 紧紧地耦合在一起，Webnode2主要是用来管理内容在网页上显示的，LiveNode主要是用来做动态网页内容更新的。Charlie Cheever 说，如果他可以从新开始，他 <a href="https://www.quora.com/What-limitations-has-Quora-encountered-due-to-LiveNode-WebNode#answers" target="_blank">第一件事要做的就是重写整个LiveNode</a>.</p>
+<p>Quora的工程师看上去对他们搞的这些东西非常的满意，并且 <a href="https://www.quora.com/What-limitations-has-Quora-encountered-due-to-LiveNode-WebNode#answers">他们也在努力地找到这些东西的弱点</a>。有一个有意思的关于LiveNode的问题是，如果A和B同时正在看相当的一个问题，那么用户A的一些交互动作会影响B的页面。例如，如果A顶了一下某个答案，那么这个答案可能会往上移动。这样的一个显示变化会通过AJAX更新B的浏览器。如果B此时展开了评论，可能会受到影响。</p>
+<p><a href="https://www.quora.com/What-is-LiveNode-written-in">LiveNode 由这些东西写成：</a>Python, C++, and JavaScript. <a href="http://jquery.com/">jQuery</a> ，<a href="http://cython.org/">Cython</a>也用到了。</p>
+<p>因为Quora <a href="https://www.quora.com/Is-Quora-planning-on-open-sourcing-LiveNode">想要对他们的LiveNode开源</a> 并准备把他们的代码分开，做这个事可能需要太多的工作和时间。</p>
+<p>Charlie Cheever 指出 WebNode2 和 <a href="https://www.quora.com/Quora-Infrastructure/What-is-webnode2">有一个叫做 “free and easy website builder” 的 Webnode 的 webnode.com</a> 没有任何的关系。</p>
+<p><strong>参考</strong>：<a href="https://www.quora.com/Quora-product/Is-Quora-going-to-implement-full-text-search"><img decoding="async" src="https://www.quora.com/favicon.ico" alt="" width="16" height="16"/></a> <a href="https://www.quora.com/Shreyes-Seshasai/Tech-Talk-Webnode2-and-LiveNode" target="_blank">Tech Talk – Webnode2 and LiveNode</a></p>
+<h4><span class="ez-toc-section" id="Amazon_Web_Service"></span>Amazon Web Service<span class="ez-toc-section-end"></span></h4>
+<p>Quora全部host在AWS的EC2和S3上，这对于这些刚刚起步的快速发展的公司非常关键，因为你可以省去了很多硬件和维护的成本。（建一个数据中心并不是所有公司都能干的事）。Quora的操作系统使用Ubuntu Linux，这是非常容易部署和管理。</p>
+<p>其静态页使用了Amazon的CDN的 <a href="http://aws.amazon.com/cloudfront/" target="_blank">Cloudfront</a>服务分发，CloudFront用于所有的静态图片, CSS 和JavaScript。<a href="https://www.quora.com/How-is-Quora-doing-image-uploads-to-Amazon-S3" target="_blank">图片先传到 EC2 服务器</a>，使用 <a href="http://aws.amazon.com/code/134" target="_blank">Pyhon S3 <acronym title="Application Programming Interface ">API</acronym></a> 处理后后传到 S3。</p>
+<h4 id="haproxy-load-balancing"><span class="ez-toc-section" id="HAProxy_Load-Balancing"></span>HAProxy Load-Balancing<span class="ez-toc-section-end"></span></h4>
+<p><a href="http://haproxy.1wt.eu/" target="_blank">HAProxy </a>作为前端负载均衡服务器，反向代理服务器是 Nginx，Nginx 后面则是 Pylons (<a href="http://spacepants.org/blog/pylons-paste-stack">Pylons + Paste</a>) , 承担动态 Web 请求。</p>
+<p><a href="http://pylonshq.com/">Pylons</a>，是一个轻量级的Web框架，通常都是在Nginx后面使用。选用Pylons就像你在春节先饺子当主食一样。他们把Pylons中的template和ORM取走而使用自己的技术（由Python写成），这个地方就是 <a href="https://www.quora.com/What-languages-and-frameworks-were-used-to-code-Quora">LiveNode 和 WebNode2的地方</a>。</p>
+<h4><span class="ez-toc-section" id="Python"></span>Python<span class="ez-toc-section-end"></span></h4>
+<p>从facebook出来的Charlie 和 Adam选用了Python而不是PHP。正如Adam指出的——“<a href="https://www.quora.com/Why-did-Quora-choose-Python-for-its-development">Facebook is stuck on that for legacy reasons, not because it is the best choice right now</a>”（Facebook使用PHP并不是因为其好，而是因为历史原因的问题），当然他们也不会使用C#，因为那样一来就会引入一堆微软的东西。当然，也不会是Java，因为Python要比Java更容易写出代码，Scala太年轻了，还需要考验。Ruby看上来很像Python，但是他们对Ruby没有过多的经验。最终还是Python胜出。当然，他们知道Python的弱点是性能和速度，所以，他们在需要速度和性能的地方使用了C/C++。 他们使用Python的版本是2.6。</p>
+<p>使用Python的另一个原因是Python的数据结构和JSON可以很好的映射起来。代码易读性很高。而且有很多的库，调试器和重载器。Quora的B/S结构几乎完全通过JSON进行数据交互。</p>
+<p>他们<a href="https://www.quora.com/Adam-DAngelo/What-version-of-Python-are-you-programming-in-and-what-IDE-do-you-use" target="_blank">没有使用IDE</a>，他们使用得最多的是Emacs，一看就知道这是一个个人的选择，随着他们开发团队的扩大，这个事会得到改变的。</p>
+<p>另外，他们提到了<a href="http://codespeak.net/pypy/dist/pypy/doc/">PyPy</a>，一个让 Python更快更灵活的项目。</p>
+<h4 id="thrift"><span class="ez-toc-section" id="Thrift"></span>Thrift<span class="ez-toc-section-end"></span></h4>
+<p><a href="http://incubator.apache.org/thrift/">Thrift</a> 用于后端服务器间的通讯。Thrift  服务由 C++开发。<a href="/articles/4549.html" target="_blank">Facebook同样使用了这个技术</a>。</p>
+<p><strong>参考</strong>：<a href="https://www.quora.com/Why-would-you-write-a-Thrift-service-in-C"><img decoding="async" src="https://www.quora.com/favicon.ico" alt="" width="16" height="16"/>Why would you write a Thrift service in C++?</a></p>
+<h4 id="tornado"><span class="ez-toc-section" id="Tornado"></span>Tornado<span class="ez-toc-section-end"></span></h4>
+<p><a href="http://www.tornadoweb.org/">Tornado</a> web 框架用于实时更新，其运行在Comet 服务器上，其用来处理大量的需要长时间poll和push更新的网络连接。</p>
+<h4 id="long-polling-comet"><span class="ez-toc-section" id="Long_Polling_Comet"></span>Long Polling (Comet)<span class="ez-toc-section-end"></span></h4>
+<p>Quora的网页并不是简单的显示，每一个页面都需要更新，或是创建问题，答案和评论。所以，他们使用了Long Polling而不是传统的Polling，传统的Polling需要浏览器一端不停地重复地向服务器询问——“有更新吗？”，服务器说没有，于是过一会浏览大再问，现在呢？服务器说，还是没有，浏览器过一会又问，现在呢？服务器说，还没好。这样一来，就好像让我们的客户端放到了驾驶室里，这显然是有问题的，因为只有服务器知道什么时候会有更新。而且浏览器这么干，很快会让服务器的负载加上去。</p>
+<p>Long polling 也就是我们熟知的 <a href="https://en.wikipedia.org/wiki/Comet_(programming)">Comet</a>，其让服务器来控制这些事，让客服端等在那里听服务器的响应。在client和 server的会话对于两者是是相同的，而不是client需要等着然后向服务器查询。服务器端可以把一个连接打开很长时间（比如：60秒），在这段时间里，服务器会查看是否有相应的东西需要更新，如果有的话，就发给浏览器。如果没有的话，就等下一次的client询问。可见，这种服务器等一会再响应的方法可以让浏览器少发几次查询。</p>
+<p>对于long-polling 的最好的地方是，可以降低浏览器和客户端间来来回回的次数。让服务器端来控制时间，所以，内容更新可能会只是几个毫秒，或是几十秒。 服务器端也可以积攒一堆更新后，一次发给浏览器。这样做会更有效率。</p>
+<p>但是，这个方法的黑暗面是——这会让服务器端出现大量的TCP链接，想一想，Quora也是百万级用户的应用了，只需要10%的在线用户，你就需要一个可以处理10万并发量的架构。注意，如果一个用户在其浏览器里打开了多个Quora网页的话，那么，这个链接器会是非常致命的。</p>
+<p>当然，好的消息是已经有一些技术专门为Long Polling设计，这些技术可以让你在那些等待的连接中只会消耗非常非常少的内存（因为那些等待连接并不需要所有的资源）。例如：Nginx 是一个单线程的事件驱动的小型服务器，每一个链接只花非常小的内存。每一个Nginx的进程只会在一个时候处理一个连接。这意味着其很容易扩展成一个可以处理成千上的并发量的服务架构。</p>
+<p><strong>参考</strong>：<a href="https://www.quora.com/How-do-you-push-messages-back-to-a-web-browser-client-through-AJAX-Is-there-any-way-to-do-this-without-having-the-client-constantly-polling-the-server-for-updates"><img decoding="async" src="https://www.quora.com/favicon.ico" alt="" width="16" height="16"/>How do you push messages back to a web-browser client through AJAX? Is there any way to do this without having the client constantly polling the server for updates?</a></p>
+<h4 id="mysql"><span class="ez-toc-section" id="MySQL"></span>MySQL<span class="ez-toc-section-end"></span></h4>
+<p>就像Adam D’Angelo 的老东家facebook一样，，Quora重度使用MySQL。对于，把数据库里的数据分区是最需要做的事。他们的行事原则是，尽可能的把数据放在一台机器上，使用hash主键把大规模的数据存放到多个数据库中。坚决不用表连接。Adam参考了FriendFeed的一篇文章<a href="https://bret.appspot.com/entry/how-friendfeed-uses-mysql">How FriendFeed uses MySQL to store schema-less data</a>，<a href="https://www.quora.com/NoSQL/In-what-parts-of-a-social-site-with-concert-listings-should-one-use-a-NoSQL-DB-versus-a-SQL-DB">并说</a>你不应该在你的社区还没有100万用户的时候使用NoSQL 数据库。</p>
+<p>并不只是Quora和FriendFeed使用MySQL，Google，Twitter，Facebook都在使用MySQL.</p>
+<p>参考：<a href="https://www.quora.com/How-does-one-evaluate-if-a-database-is-efficient-enough-to-not-crash-as-its-put-under-increasing-load"><img decoding="async" src="https://www.quora.com/favicon.ico" alt="" width="16" height="16"/>How does one evaluate if a database is efficient enough to not crash as it’s put under increasing load?</a></p>
+<h4 id="memcached"><span class="ez-toc-section" id="Memcached"></span>Memcached<span class="ez-toc-section-end"></span></h4>
+<p><a href="http://memcached.org/">Memcached</a> 用于 MySQL的前端缓存。</p>
+<h4 id="git"><span class="ez-toc-section" id="Git"></span>Git<span class="ez-toc-section-end"></span></h4>
+<p><a href="http://git-scm.com/">Git</a> <a href="https://www.quora.com/What-languages-and-frameworks-were-used-to-code-Quora">是他们的源码版本控制工具</a>.</p>
+<h4 id="javascript-placement"><span class="ez-toc-section" id="JavaScript_Placement"></span>JavaScript Placement<span class="ez-toc-section-end"></span></h4>
+<p>如果你看一下Quora的网页源码，你会看到其JavaScript总是在页面的最后。 Charlie Cheever<a href="https://www.quora.com/Why-is-the-Quora-website-so-fast">建议</a> 这会让你的页面显得载入得很快，因为其先显示内容，然后在载入Javascript。</p>
+<h4 id="charlie-cheever-follows-14-rules-for-faster-loading-web-sites"><span class="ez-toc-section" id="Charlie_Cheever_%E9%81%B5%E4%BB%8E_%E2%80%9C14_Rules_for_Faster-Loading_Web_Sites%E2%80%9D"></span>Charlie Cheever 遵从 “14 Rules for Faster-Loading Web Sites”<span class="ez-toc-section-end"></span></h4>
+<p>Steve Souders,  High Performance Web Sites 和 Even Faster Web Sites的作者，其列了一些 <a href="http://stevesouders.com/hpws/rules.php">rules让你网页更快的原则</a>。 Charlie Cheever 的 Quora 创始人提到这些过，这应该也是Quora的速度的原因。</p>
+<blockquote><p>“One resource we used as a guide is Steve Souders’ list of rules for high performance websites:<a href="http://stevesouders.com/hpws/rules.php">http://stevesouders.com/hpws/rules.php</a>”<br/>
+<small><a href="https://www.quora.com/Why-is-the-Quora-website-so-fast">– Charlie Cheever, Quora</a></small></p></blockquote>
+<div>
+<div>Steve Souders的14条规则是——<a href="https://www.amazon.com/gp/product/0596529309?ie=UTF8&amp;tag=getafil-20&amp;linkCode=as2&amp;camp=1789&amp;creative=9325&amp;creativeASIN=0596529309"><img decoding="async" class="alignright" src="https://images-na.ssl-images-amazon.com/images/I/41COtT-V1UL._SL160_.jpg" border="0" alt=""/></a><a href="https://www.amazon.com/gp/product/0596522304?ie=UTF8&amp;tag=getafil-20&amp;linkCode=as2&amp;camp=1789&amp;creative=9325&amp;creativeASIN=0596522304"><br/>
+</a> <p></p>
+<ul>
+<li>Make Fewer HTTP Requests</li>
+<li>Use a Content Delivery Network</li>
+<li>Add an Expires Header</li>
+<li>Gzip Components</li>
+<li>Put Stylesheets at the Top</li>
+<li>Put Scripts at the Bottom</li>
+<li><a href="https://www.amazon.com/gp/product/0596522304?ie=UTF8&amp;tag=getafil-20&amp;linkCode=as2&amp;camp=1789&amp;creative=9325&amp;creativeASIN=0596522304"><img decoding="async" class="alignright" src="https://images-na.ssl-images-amazon.com/images/I/41vfOvQugoL._SL160_.jpg" border="0" alt=""/></a>Avoid CSS Expressions</li>
+<li>Make JavaScript and CSS External</li>
+<li>Reduce DNS Lookups</li>
+<li>Minify JavaScript</li>
+<li>Avoid Redirects</li>
+<li>Remove Duplicate Scripts</li>
+<li>Configure ETags</li>
+<li>Make AJAX Cacheable</li>
+</ul>
+</div>
+</div>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4939-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术新闻</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Facebook</a>, <a href="javascript:void(0)" rel="tag">MySQL</a>, <a href="javascript:void(0)" rel="tag">Nginx</a>, <a href="javascript:void(0)" rel="tag">Python</a>, <a href="javascript:void(0)" rel="tag">Quora</a>, <a href="javascript:void(0)" rel="tag">StackExchange</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Quora使用到的技术</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-62968" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://flychen.com/2011/07/quora-technology-used/" class="url" rel="ugc external nofollow">Quora使用到的技术 | 听雨轩</a> </div>
+</li>
+<li id="comment-62971" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62971" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/97856de99194812ce377b50f47097288?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/97856de99194812ce377b50f47097288?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://helloyuhao.jimdo.com" class="url" rel="ugc external nofollow">雨碎江南</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-62971"><time datetime="2011-07-04T09:02:35+08:00">2011年07月04日 09:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了…</p>
+</div>
+ </article>
+</li>
+<li id="comment-62977" class="comment even thread-even depth-1">
+<article id="div-comment-62977" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bc8b4990e97c2a831a4d3b326f8357d9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bc8b4990e97c2a831a4d3b326f8357d9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Astar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-62977"><time datetime="2011-07-04T09:20:43+08:00">2011年07月04日 09:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，文字错误“使用使用Python的版本是2.6。”。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62982" class="comment byuser comment-author-liuxd odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62982" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/05cdbb54576585408d487d5e8aca534d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/05cdbb54576585408d487d5e8aca534d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">无缺</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-62982"><time datetime="2011-07-04T09:49:20+08:00">2011年07月04日 09:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好东西！正在准备研究Quora就发现这个，非常感谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62988" class="comment even thread-even depth-1">
+<article id="div-comment-62988" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad3e629cc7495ace56f7f59d4d6910cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad3e629cc7495ace56f7f59d4d6910cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://seanchang.me" class="url" rel="ugc external nofollow">sean</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-62988"><time datetime="2011-07-04T10:29:39+08:00">2011年07月04日 10:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，文字错误：“一开会，他们使用的是一个开源的搜索服务器，叫Sphinx。”</p>
+</div>
+ </article>
+</li>
+<li id="comment-62990" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-62990" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad3e629cc7495ace56f7f59d4d6910cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad3e629cc7495ace56f7f59d4d6910cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://seanchang.me" class="url" rel="ugc external nofollow">sean</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-62990"><time datetime="2011-07-04T10:36:16+08:00">2011年07月04日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果你输入Microsoft（一共9个字符），你会看到其会像后端发送9次查询——每按一个键一次，无论你敲这个单词的速底有多快，这个事情交给服务器端来控制，所以，这样做不会让增加服务器端的负载。”这个没看明白。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-62994" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-62994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-62994"><time datetime="2011-07-04T10:55:22+08:00">2011年07月04日 10:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sorry，我重述了一下。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-63026" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.umtry.com/201107/quora%e4%bd%bf%e7%94%a8%e5%88%b0%e7%9a%84%e6%8a%80%e6%9c%af.html5" class="url" rel="ugc external nofollow">Quora使用到的技术 - 玉米串|无限尝试，无限可能!</a> </div>
+</li>
+<li id="comment-63040" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-63040" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab6fa88389955c86461b8565ddb0b085?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab6fa88389955c86461b8565ddb0b085?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jlee.co" class="url" rel="ugc external nofollow">nemo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63040"><time datetime="2011-07-04T16:28:40+08:00">2011年07月04日 16:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>他们没有使用IDE，他们使用得最多的是Emacs，一看就知道这是一个个人的选择，随着他们开发团队的扩大，这个事会得到改变的。</p>
+<p>为什么团队变大就要改变呢? 是IDE有什么功能吗还是?</p>
+</div>
+ </article>
+</li>
+<li id="comment-63052" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.alibuybuy.com/posts/61766.html" class="url" rel="ugc external nofollow">Quora使用到的技术 | 互联网的那点事</a> </div>
+</li>
+<li id="comment-63086" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-63086" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0458e17fdf296eeace0cab7107c60091?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0458e17fdf296eeace0cab7107c60091?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NG</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63086"><time datetime="2011-07-04T22:03:23+08:00">2011年07月04日 22:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果你输入Microsoft（一共9个字符），你会看到其会像后端发送9次查询——每按一个键一次，无论你敲这个单词的速底有多快，这个事情交给服务器端来控制，所以，这样做不会让增加服务器端的负载。”</p>
+<p>为什么这些事情都有服务器来控制，反而不会增加服务器的负载？？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-63100" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-63100" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b83538d5c4ec351d75ccfcb343afd74?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b83538d5c4ec351d75ccfcb343afd74?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ziliang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63100"><time datetime="2011-07-04T23:14:51+08:00">2011年07月04日 23:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章不是早就有人翻译过了吗？ 再重新翻译一次有什么特别的原因吗？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-63107" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-63107" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63107"><time datetime="2011-07-04T23:56:24+08:00">2011年07月04日 23:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@Ziliang 撞车了，我还真不知道有人翻译过了。你是在哪里看到的翻译？对比起来有什么不一样的？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-63151" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63151" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b83538d5c4ec351d75ccfcb343afd74?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b83538d5c4ec351d75ccfcb343afd74?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ziliang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63151"><time datetime="2011-07-05T05:08:07+08:00">2011年07月05日 05:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://www.dbanotes.net/arch/quora_tech.html" rel="nofollow ugc">http://www.dbanotes.net/arch/quora_tech.html</a></p>
+<p>原文在这， 不过好像翻译得比较简单。 你们的比较详细。<br/>
+我之前直接读的英文，所以以为翻译的是详细版，造成误会了，sorry ：）</p>
+</div>
+ </article>
+</li>
+<li id="comment-63190" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.boj6.com/it/760.html" class="url" rel="ugc external nofollow">Quora使用到的技术 - 网旮旯里 | 把握最新动态，关注IT前沿</a> </div>
+</li>
+<li id="comment-63219" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63219" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f620fd9849e7f0fb333638e97cf38367?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f620fd9849e7f0fb333638e97cf38367?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.lutiaotiao.com" class="url" rel="ugc external nofollow">luzi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63219"><time datetime="2011-07-05T12:52:17+08:00">2011年07月05日 12:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉上关键点都不在技术上</p>
+</div>
+ </article>
+</li>
+<li id="comment-63464" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.myhomespace.net/p/2011/07/647" class="url" rel="ugc external nofollow">Quora使用到的技术 - 我家空间</a> </div>
+</li>
+<li id="comment-63800" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63800" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b3472388e32cf17310d602fab51bdf3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b3472388e32cf17310d602fab51bdf3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sandy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-63800"><time datetime="2011-07-07T17:03:05+08:00">2011年07月07日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>技术都可以模仿，但国外的IT生态圈是国内没办法比的，比如国内就没有AWS，没有顶级的应用产生，就没有驱动顶级技术的可能</p>
+</div>
+ </article>
+</li>
+<li id="comment-63912" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://songtianyi.info/?p=173" class="url" rel="ugc external nofollow">Coolshell笔记二 - songtianyi</a> </div>
+</li>
+<li id="comment-64455" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liange.sinaapp.com/?p=24" class="url" rel="ugc external nofollow">Quora使用到的技术(转载) | liange</a> </div>
+</li>
+<li id="comment-66343" class="comment even thread-even depth-1">
+<article id="div-comment-66343" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/90ae75d76ad6906aa1d7f2162610c987?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/90ae75d76ad6906aa1d7f2162610c987?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">AmGeek</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-66343"><time datetime="2011-07-20T10:41:50+08:00">2011年07月20日 10:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>php效率要比python低吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-66694" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liange.sinaapp.com/?p=76" class="url" rel="ugc external nofollow">程序员技术练级攻略 | liange</a> </div>
+</li>
+<li id="comment-68594" class="comment even thread-even depth-1">
+<article id="div-comment-68594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/08b898f9de3455c62c47b040608cec20?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/08b898f9de3455c62c47b040608cec20?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhenhua.tam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-68594"><time datetime="2011-07-27T10:20:53+08:00">2011年07月27日 10:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错！讲解的比较全！</p>
+</div>
+ </article>
+</li>
+<li id="comment-70380" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zhangchiqing.sinaapp.com/?p=116" class="url" rel="ugc external nofollow">Quora使用到的技术 | 一张一驰，轻松生活</a> </div>
+</li>
+<li id="comment-72561" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://phiger.wordpress.com/2011/08/11/my-favorites/" class="url" rel="ugc external nofollow">My Favorites « phiger</a> </div>
+</li>
+<li id="comment-87792" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-87792" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/414172919206c599ff01815b9bb8dca9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/414172919206c599ff01815b9bb8dca9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://digdeeply.org" class="url" rel="ugc external nofollow">DigDeeply</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-87792"><time datetime="2011-10-19T10:49:39+08:00">2011年10月19日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Quora ，现在跟语音搭配比较不错~~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-90426" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.jobbole.com/1019/quora%e4%bd%bf%e7%94%a8%e5%88%b0%e7%9a%84%e6%8a%80%e6%9c%af/" class="url" rel="ugc external nofollow">Quora使用到的技术 - 博客 - 伯乐在线</a> </div>
+</li>
+<li id="comment-100308" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-100308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f4e692911443a508a380a2f6aa53cb1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f4e692911443a508a380a2f6aa53cb1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.imxpan.com" class="url" rel="ugc external nofollow">饭小烦</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-100308"><time datetime="2011-11-22T13:28:23+08:00">2011年11月22日 13:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>正在研究知乎的搜索引擎，学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-102366" class="comment even thread-even depth-1">
+<article id="div-comment-102366" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d7bdbfeaaf0eebc5c17dac47b9b8ae7a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d7bdbfeaaf0eebc5c17dac47b9b8ae7a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鱼人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4939.html#comment-102366"><time datetime="2011-11-27T00:25:49+08:00">2011年11月27日 00:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>话说真心学习了~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-169980" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://x.zzmss.com/program/articles/1048.html" class="url" rel="ugc external nofollow">Quora的技术探索 | 编程X资讯</a> </div>
+</li>
+<li id="comment-193116" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/zuckerbergs-letter-on-facebook-the-ipo.html" class="url" rel="ugc external nofollow">Definite Digest » 扎克伯格的一封信：关于Facebook IPO</a> </div>
+</li>
+<li id="comment-193117" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/zuckerbergs-letter-on-facebook-the-ipo.html" class="url" rel="ugc external nofollow">Definite Digest » 扎克伯格的一封信：关于Facebook IPO</a> </div>
+</li>
+<li id="comment-195114" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://falcon.sinaapp.com/post-29942.html" class="url" rel="ugc external nofollow">Quora 使用到的技术 | 雕刻时光-海量热帖</a> </div>
+</li>
+<li id="comment-195747" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.81n.org/303.htm" class="url" rel="ugc external nofollow">Quora使用到的技术 | 81难</a> </div>
+</li>
+<li id="comment-213544" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://fastfood.sinaapp.com/?p=878" class="url" rel="ugc external nofollow">xsank的快餐 » Quora 使用到的技术</a> </div>
+</li>
+<li id="comment-280695" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/1232" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » 扎克伯格的一封信：关于Facebook IPO</a> </div>
+</li>
+<li id="comment-789541" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://kexanie.info/blog/316" class="url" rel="ugc external nofollow">究竟什么是创新？ ‹ 美利坚合众国驻华大使馆办事处</a> </div>
+</li>
+<li id="comment-1585869" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wx.fjut.edu.cn/?p=2910" class="url" rel="ugc external nofollow">这些硅谷创业的公司，哪一家惊艳了你？（多图） - 福建工程学院内容平台</a> </div>
+</li>
+<li id="comment-1585902" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itotii.com/338977.html" class="url" rel="ugc external nofollow">这些硅谷创业的公司，哪一家惊艳了你？（多图） – itotii</a> </div>
+</li>
+<li id="comment-1586077" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://elevencitys.com/2014/10/%e7%a1%85%e8%b0%b7%e5%88%9b%e4%b8%9a%e5%85%ac%e5%8f%b8%e6%8c%87%e5%8d%97/" class="url" rel="ugc external nofollow">十一城elevencitys.com » 硅谷创业公司指南</a> </div>
+</li>
+<li id="comment-1586840" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.alibuybuy.com/posts/85930.html" class="url" rel="ugc external nofollow">这些硅谷创业的公司，哪一家惊艳了你？ | 互联网的那点事</a> </div>
+</li>
+<li id="comment-1589611" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.it51share.com/archives/7344" class="url" rel="ugc external nofollow">哪些然你眼前一亮的硅谷创业公司？ – IT Share网</a> </div>
+</li>
+<li id="comment-1593171" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.senonweb.com/?p=106" class="url" rel="ugc external nofollow">这些硅谷创业的公司，哪一家惊艳了你？（多图） - Senonweb</a> </div>
+</li>
+<li id="comment-1594382" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.36dsj.com/archives/16060" class="url" rel="ugc external nofollow">全景透析：硅谷19家一线创业公司和4家大数据新创企业 | 36大数据</a> </div>
+</li>
+<li id="comment-1613426" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://52wendao.cn/article/85/1.html" class="url" rel="ugc external nofollow">这些硅谷创业的公司，哪一家惊艳了你？（多图） – 【52WenDao.cn 我爱问道】</a> </div>
+</li>
+<li id="comment-1655175" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://rss.kcygo.com/?p=5599" class="url" rel="ugc external nofollow">全景透析：硅谷19家一线创业公司和4家大数据新创企业 | 内容采集</a> </div>
+</li>
+<li id="comment-1819493" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.infinitesamuel.com/2014/10/%e5%93%aa%e4%ba%9b%e7%a1%85%e8%b0%b7%e5%88%9b%e4%b8%9a%e5%85%ac%e5%8f%b8%e8%83%bd%e7%bb%99%e6%8b%9c%e8%ae%bf%e8%80%85%e7%95%99%e4%b8%8b%e6%b7%b1%e5%88%bb%e5%8d%b0" class="url" rel="ugc external nofollow">哪些硅谷创业公司能给拜访者留下深刻印象？ – 雁过留声</a> </div>
+</li>
+<li id="comment-2041438" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wxhongbao.com/67524.html" class="url" rel="ugc external nofollow">关于Facebook 的 React 专利许可证 - 微信红包网</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

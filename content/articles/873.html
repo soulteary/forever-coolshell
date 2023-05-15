@@ -1,0 +1,579 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>谁说C语言很简单？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-873 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-873" class="post-content post-873 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">谁说C语言很简单？</span>
+<h1 class="entry-title">谁说C语言很简单？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/873.html" title="22:10" rel="bookmark"><time class="entry-date" datetime="2009-05-19T22:10:25+08:00" pubdate="">2009年05月19日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/873.html#comments" class="comments-link">40 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 48,251 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<p class="li-enumerate">前两天，Neo写了一篇《<a href="/articles/830.html">语言的歧义</a>》其使用C语言讨论了一些语言的歧义。大家应该也顺便了解了一下C语言中的很多不可思异的东西，可能也是你从未注意到的东西。</p>
+<p class="li-enumerate">是的，C语言并不简单，让我们来看看下面这些示例：</p>
+<ol class="enumerate" type="1">
+<li class="li-enumerate"><strong>为什么下面的代码会返回0？(这题应该很简单吧)<br/>
+</strong><p></p>
+<pre class="verbatim"><span style="color: #0000ff;">  int x;
+  return x == (1 &amp;&amp; x);
+</span></pre>
+<p>本题主要是关于C/C++中变量初始化的问题。</p></li>
+<p><span id="more-873"></span></p>
+<li class="li-enumerate"><strong>为什么下面的代码会返回0而不是-1？</strong>
+<pre class="verbatim"><span style="color: #0000ff;"> return ((1 - sizeof(int)) &gt;&gt; 32);
+</span></pre>
+<p>答案：<tt>sizeof</tt> 是一个unsigned的类型，所以……</p></li>
+<li class="li-enumerate"><strong>代码作用域是一件很诡异的事，下面这个函数返回值是什么？<br/>
+</strong><p></p>
+<pre class="verbatim"><span style="color: #0000ff;">int x = 5;
+int f() {
+  int x = 3;
+  {
+    extern int x;
+    return x;
+  }
+}
+</span></pre>
+<p>答案：5</p></li>
+<li class="li-enumerate"><strong>函数和函数指针可以相互转换。下面的语句哪些是合法的？<br/>
+</strong><p></p>
+<pre class="verbatim"><span style="color: #0000ff;">int (*pf)(void);
+int f(void)
+{
+
+   pf = &amp;f; <span style="color: #008000;">// 没问题</span>
+   pf = ***f; <span style="color: #008000;">// 取址？</span>
+   pf(); <span style="color: #008000;">// 函数指针可以调用？
+</span>   (****pf)();  <span style="color: #008000;">// 这又是什么？</span>
+   (***************f)(); <span style="color: #008000;">// 这个够变态了吧？</span>
+}
+</span></pre>
+<p>答案：全部合法。</p></li>
+<li class="li-enumerate"><strong>初始化可能是ISO C中最难的部分了。无论是MSVC 还是GCC 都没有完全实现。GCC 可能更接近标准。在下面的代码中，<tt>i.nested.y</tt> 和<tt>i.nested.z的最终值是什么？</tt></strong>
+<pre class="verbatim"><span style="color: #0000ff;">struct {
+   int x;
+   struct {
+       int y, z;
+   } nested;
+} i = { .nested.y = 5, 6, .x = 1, 2 };
+</span></pre>
+<p>答案：2和6</p></li>
+<li class="li-enumerate"><strong>下面这个示例是C语言的痛，main函数返回值是什么？</strong>
+<pre class="verbatim"><span style="color: #0000ff;">typedef struct
+{
+  char *key;
+  char *value;
+} T1;
+
+typedef struct
+{
+  long type;
+  char *value;
+} T3;
+
+T1 a[] =
+{
+  {
+    &#34;&#34;,
+    ((char *)&amp;((T3) {1, (char *) 1}))
+  }
+};
+int main() {
+   T3 *pt3 = (T3*)a[0].value;
+   return pt3-&gt;value;
+}
+</span></pre>
+<p>答案：1（你知道为什么吗？）</p></li>
+<li class="li-enumerate"><strong>下面这个例就更变态了。在GCC的文档中，这个语法是合法的，但是不知道为什么GCC并没有实现。下面的代码返回 2.</strong>
+<pre class="verbatim"><span style="color: #0000ff;"> return ((int []){1,2,3,4})[1];
+</span></pre>
+<p> </p></li>
+<li class="li-enumerate"><strong>在下面的这个示例中，有一个“bar” 函数及其函数指针 “pbar” 的两个拷贝(static 类型一般作用于语句块或文件域).</strong>
+<pre class="verbatim"><span style="color: #0000ff;">  int foo() {
+     static bar();
+     static (*pbar)() = bar;
+
+  }
+
+  static bar() {
+    return 1;
+  }
+
+  static (*pbar)() = 0;
+</span></pre>
+<p> </p></li>
+<li class="li-enumerate"><strong>下面的这个函数返回值是什么？取决于编译器是先处理unsigned long转型，还是负号。</strong>
+<pre class="verbatim"><span style="color: #0000ff;">  unsigned long foo() {
+    return (unsigned long) - 1 / 8;
+  }
+</span></pre>
+<p>如果是： <tt>((unsigned long) - 1) / 8，那将是一个很大的数。<br/>
+</tt><tt>如果是：</tt> <tt>(unsigned long) (- 1 / 8 )</tt>, 那将是 0</p></li>
+</ol>
+<p class="li-enumerate">是的，这样使用C语言可能很奇怪，不过我们可以从另一方面了解C语言的很多我们不常注意的特性。C语言其实并不容易。</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-873-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>谁说C语言很简单？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-125" class="comment even thread-even depth-1">
+<article id="div-comment-125" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e9912c103bb3080c22d374ec6262bb7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e9912c103bb3080c22d374ec6262bb7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.isuanfa.cn" class="url" rel="ugc external nofollow">爱算法</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-125"><time datetime="2009-05-19T23:49:03+08:00">2009年05月19日 23:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好！<br/>
+您写的文章都非常好！<br/>
+我们希望能跟您做友情链接！<br/>
+爱算法论坛<br/>
+<a href="http://www.isuanfa.cn" rel="nofollow ugc">http://www.isuanfa.cn</a><br/>
+谢谢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-126" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-126" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://claymore.phpme.info" class="url" rel="ugc external nofollow">Claymore</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-126"><time datetime="2009-05-20T10:10:52+08:00">2009年05月20日 10:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，有意思！</p>
+</div>
+ </article>
+</li>
+<li id="comment-149" class="comment even thread-even depth-1">
+<article id="div-comment-149" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2439bdcccc3abdb91fd8cac227946643?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2439bdcccc3abdb91fd8cac227946643?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dristz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-149"><time datetime="2009-05-27T10:20:26+08:00">2009年05月27日 10:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>((1 – sizeof(int)) &gt;&gt; 32)在int型为32位时，该行为是未定义的</p>
+</div>
+ </article>
+</li>
+<li id="comment-151" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-151" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9f96e450ceb0be3c01ae0cd698309dd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9f96e450ceb0be3c01ae0cd698309dd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wuliao_yuaq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-151"><time datetime="2009-05-27T12:16:08+08:00">2009年05月27日 12:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>int foo() {<br/>
+static bar();<br/>
+static (*pbar)() = bar;</p>
+<p> }<br/>
+error C2372: ‘par’ : redefinition; different types of indirection</p>
+</div>
+ </article>
+</li>
+<li id="comment-154" class="comment even thread-even depth-1">
+<article id="div-comment-154" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2dabf4a1641cf35a8e3efabbd1c5c41d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2dabf4a1641cf35a8e3efabbd1c5c41d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">felloak</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-154"><time datetime="2009-05-27T21:44:42+08:00">2009年05月27日 21:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章真是没什么内容，和 《语言的歧义》差太多档次了</p>
+</div>
+ </article>
+</li>
+<li id="comment-6260" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-6260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cc6c6729052b89744f404d336b325f33?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cc6c6729052b89744f404d336b325f33?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">starwing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-6260"><time datetime="2010-04-20T22:03:47+08:00">2010年04月20日 22:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后一个是错误的。C语言明确规定了转型操作和取负操作的优先级和结合性。只有一种可能，第二种是不符合C的语法规定的。</p>
+<p>前面还有个人说了某个未定义行为。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90930" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/5761.html" class="url" rel="ugc">深入了解C语言 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-91108" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-91108" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b4a6701607ba1a060a6b3b7eaa2b2e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b4a6701607ba1a060a6b3b7eaa2b2e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xiaomu.net" class="url" rel="ugc external nofollow">小木</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-91108"><time datetime="2011-11-01T17:15:07+08:00">2011年11月01日 17:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>前几个还好，后面的无法看下去</p>
+</div>
+ </article>
+</li>
+<li id="comment-119651" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.himdd.com/?p=1653" class="url" rel="ugc external nofollow">himdd » 【转】深入理解C语言</a> </div>
+</li>
+<li id="comment-140936" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-140936" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8eb9e74ba13b2e03931efceac0c1f9c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8eb9e74ba13b2e03931efceac0c1f9c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">degang0x</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-140936"><time datetime="2012-02-25T22:44:53+08:00">2012年02月25日 22:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第二题我机器上的结果是-1.</p>
+</div>
+ </article>
+</li>
+<li id="comment-142645" class="comment even thread-even depth-1">
+<article id="div-comment-142645" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5869ee81dadb86d4244fbd1cb8092cb5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5869ee81dadb86d4244fbd1cb8092cb5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/ayanmw" class="url" rel="ugc external nofollow">ayanmw</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-142645"><time datetime="2012-03-04T23:43:54+08:00">2012年03月04日 23:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>4 递归调用本身了。所以段错误。<br/>
+只能说 函数指针 前面多少个* 都一样。。。</p>
+<p>其他的 有些 感觉就是代码不规范，易读性不好，不推荐那样写的。虽然可编译通过。</p>
+</div>
+ </article>
+</li>
+<li id="comment-144852" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-144852" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44ade41858ef040966f827470536139d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44ade41858ef040966f827470536139d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hunter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-144852"><time datetime="2012-03-13T12:32:38+08:00">2012年03月13日 12:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>I have some problems with the last one, the operator “cast()” and “-” have high precedence “/” .</p>
+</div>
+ </article>
+</li>
+<li id="comment-197787" class="comment even thread-even depth-1">
+<article id="div-comment-197787" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7873124d8f5da82a5c3fac640576c7d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7873124d8f5da82a5c3fac640576c7d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lying</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-197787"><time datetime="2012-06-28T16:30:08+08:00">2012年06月28日 16:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一个，不管怎样，我的都是返回1啊。。。</p>
+<p>LZ确定没有写错？</p>
+<p>不管x是随机值，还是赋值为0或者1，均返回1.。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197788" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197788" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7873124d8f5da82a5c3fac640576c7d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7873124d8f5da82a5c3fac640576c7d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lying</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-197788"><time datetime="2012-06-28T16:37:43+08:00">2012年06月28日 16:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197787" rel="nofollow">@lying </a><br/>
+也不是，设置值为－1的时候，就返回0了，呵呵。。。</p>
+<p>代入0或者1，计算结果是一。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201994" class="comment even thread-even depth-1">
+<article id="div-comment-201994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e8b689559c7d90e2d10b2669274b58c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e8b689559c7d90e2d10b2669274b58c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/lming08?c=spr_web_mthz_sogoumz_weibo_t001" class="url" rel="ugc external nofollow">mingliang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-201994"><time datetime="2012-08-22T15:20:46+08:00">2012年08月22日 15:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一题怎么回事呢？这个明显跟初值有关啊，i为0或1时，返回1；否则返回0啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-223092" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-223092" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6c5d9c1e91f0797486e741fb65077916?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6c5d9c1e91f0797486e741fb65077916?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-223092"><time datetime="2012-11-29T09:52:15+08:00">2012年11月29日 09:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一题说得不对!</p>
+</div>
+ </article>
+</li>
+<li id="comment-262266" class="comment even thread-even depth-1">
+<article id="div-comment-262266" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76977a045fb92fe98f8f42ad75b9138c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76977a045fb92fe98f8f42ad75b9138c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/happyqq" class="url" rel="ugc external nofollow">happyqq</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-262266"><time datetime="2013-01-10T10:52:11+08:00">2013年01月10日 10:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看后面几句头都晕了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-500150" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://chenliang.info/wordpress/?p=348" class="url" rel="ugc external nofollow">函数指针笔记</a> </div>
+</li>
+<li id="comment-500766" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dutengos.duapp.com/index.php/archives/138" class="url" rel="ugc external nofollow">C | Du Teng</a> </div>
+</li>
+<li id="comment-529316" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yuedu8.duapp.com/2013/06/05/deeptoc.html" class="url" rel="ugc external nofollow">深入理解C语言 | 悦读吧</a> </div>
+</li>
+<li id="comment-642214" class="comment even thread-even depth-1">
+<article id="div-comment-642214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/adb53050287f497c223f785f7a7eaead?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/adb53050287f497c223f785f7a7eaead?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zaiping</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-642214"><time datetime="2013-08-07T12:51:48+08:00">2013年08月07日 12:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第四题如果执行的会有segv，编译没问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-909491" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=136" class="url" rel="ugc external nofollow">深入理解C语言 | multiprocess</a> </div>
+</li>
+<li id="comment-1274489" class="comment even thread-even depth-1">
+<article id="div-comment-1274489" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db30a1696b0d0895816bcc28e1c30fed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db30a1696b0d0895816bcc28e1c30fed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">super</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-1274489"><time datetime="2014-02-14T09:27:08+08:00">2014年02月14日 09:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一题说的不对吧，机器上试了，在x=0或者1的情况下，返回值为1，其它值才为零，陈老师能否给更新下</p>
+</div>
+ </article>
+</li>
+<li id="comment-1290166" class="comment byuser comment-author-jkand1 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1290166" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-1290166"><time datetime="2014-02-19T13:55:14+08:00">2014年02月19日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>歧义真不少，这些例子在我机器跑出来的结果都跟皓哥给的参考答案不一样</p>
+</div>
+ </article>
+</li>
+<li id="comment-1411023" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11377.html" class="url" rel="ugc">C语言结构体的数组和指针 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1411245" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jinweekly.com/?p=1252" class="url" rel="ugc external nofollow">今周刊 » 014: C语言结构体里的成员数组和指针</a> </div>
+</li>
+<li id="comment-1411252" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gushifei.com/2014/04/01/c%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 - 故事狒</a> </div>
+</li>
+<li id="comment-1411262" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gushifei.com/2014/04/01/%e6%b7%b1%e5%85%a5%e7%90%86%e8%a7%a3c%e8%af%ad%e8%a8%80/" class="url" rel="ugc external nofollow">深入理解C语言 - 故事狒</a> </div>
+</li>
+<li id="comment-1411481" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ueshell.com/?p=138" class="url" rel="ugc external nofollow">dayu博客 » C语言结构体里的成员数组和指针</a> </div>
+</li>
+<li id="comment-1646983" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://chenliang.info/blog/%e5%87%bd%e6%95%b0%e6%8c%87%e9%92%88%e7%ac%94%e8%ae%b0/" class="url" rel="ugc external nofollow">函数指针笔记 | 笑点低</a> </div>
+</li>
+<li id="comment-1659022" class="comment even thread-even depth-1">
+<article id="div-comment-1659022" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/430cbab6e658225e9e18c41acf7c34ca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/430cbab6e658225e9e18c41acf7c34ca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hxd198</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-1659022"><time datetime="2015-02-10T20:00:08+08:00">2015年02月10日 20:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C学得一般，这歧义很难理解啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1677088" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.macroxjtu.xyz/?p=15" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | 多啦A梦</a> </div>
+</li>
+<li id="comment-1733574" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.programerhome.com/?p=25291" class="url" rel="ugc external nofollow">读陈浩的《C语言结构体里的成员数组和指针》总结，零长度数组 | 程序员之家</a> </div>
+</li>
+<li id="comment-1830173" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/c%e8%af%ad%e8%a8%80%e7%9a%84%e8%b0%9c%e9%a2%98.html" class="url" rel="ugc external nofollow">C语言的谜题 | | Codeba</a> </div>
+</li>
+<li id="comment-1862849" class="comment even thread-even depth-1">
+<article id="div-comment-1862849" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/99952e7509218ae25f0d4ff0a4c0059c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/99952e7509218ae25f0d4ff0a4c0059c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">阿七</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-1862849"><time datetime="2016-07-30T14:02:13+08:00">2016年07月30日 14:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+
+main(){
+	int x;
+  	if(x == (1 &amp;&amp; x))
+	   printf(&#34;1&#34;);
+	else
+	   printf(&#34;0&#34;);
+	return 0;
+}</pre>
+<p>DevC++ 编译运行后 是1.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1910108" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yang.lol/2017/01/06/c-%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C 语言结构体里的成员数组和指针 – lol</a> </div>
+</li>
+<li id="comment-1913210" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yang.life/fab/%e7%bc%96%e7%a8%8b/c/%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88" class="url" rel="ugc external nofollow">C 语言结构体里的成员数组和指针 – hahaha</a> </div>
+</li>
+<li id="comment-1949204" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1949204" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2d5a48435e454c434a574542434a49586d1c1b1e034e4240">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-1949204"><time datetime="2018-12-25T16:55:16+08:00">2018年12月25日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>方向偏了, 不应该向谭浩强的方向走</p>
+</div>
+ </article>
+</li>
+<li id="comment-2223116" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2223116" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4c945456218e0a5380b6994e6b37a424?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4c945456218e0a5380b6994e6b37a424?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Frk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-2223116"><time datetime="2021-03-26T15:22:14+08:00">2021年03月26日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第六题完全看不懂…. 感觉返回6是天经地义</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2223117" class="comment odd alt depth-2">
+<article id="div-comment-2223117" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4c945456218e0a5380b6994e6b37a424?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4c945456218e0a5380b6994e6b37a424?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Frk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/873.html#comment-2223117"><time datetime="2021-03-26T15:22:46+08:00">2021年03月26日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>返回1</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

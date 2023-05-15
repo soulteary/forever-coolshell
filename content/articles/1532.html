@@ -1,0 +1,672 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>到处都是Unix的胎记 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1532 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1532" class="post-content post-1532 post type-post status-publish format-standard hentry category-unixlinux tag-c tag-fork tag-haskell tag-perl tag-php tag-pythondev tag-ruby tag-socket tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">到处都是Unix的胎记</span>
+<h1 class="entry-title">到处都是Unix的胎记</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1532.html" title="18:01" rel="bookmark"><time class="entry-date" datetime="2009-10-11T18:01:06+08:00" pubdate="">2009年10月11日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1532.html#comments" class="comments-link">19 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 26,233 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>一说起Unix编程，不必多说，最著名的系统调用就是fork，pipe，exec，kill或是socket了（<a href="http://www.kernel.org/doc/man-pages/online/pages/man2/fork.2.html"><code>fork(2)</code></a>, <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/execve.2.html"><code>execve(2)</code></a>, <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html"><code>pipe(2)</code></a>, <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/socketpair.2.html"><code>socketpair(2)</code></a>, <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/select.2.html"><code>select(2)</code></a>, <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/kill.2.html"><code>kill(2)</code></a>, <a href="http://www.kernel.org/doc/man-pages/online/pages/man2/sigaction.2.html"><code>sigaction(2)</code></a>）这些系统调用都像是Unix编程的胎记或签名一样，表明着它来自于Unix。</p>
+<p>下面这篇文章，将向大家展示Unix下最经典的socket的编程例子——使用fork + socket来创建一个TCP/IP的服务程序。这个编程模式很简单，首先是创建Socket，然后把其绑定在某个IP和Port上上侦听连接，接下来的一般做法是使用一个fork创建一个client服务进程再加上一个死循环用于处理和client的交互。这个模式是Unix下最经典的Socket编程例子。</p>
+<p>下面，让我们看看用C，Ruby，Python，Perl，PHP和Haskell来实现这一例子，你会发现这些例子中的Unix的胎记。如果你想知道这些例子中的技术细节，那么，向你推荐两本经典书——《Unix高级环境编程》和《Unix网络编程》。</p>
+<p><span id="more-1532"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#C%E8%AF%AD%E8%A8%80" title="C语言">C语言</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Ruby" title="Ruby">Ruby</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Python" title="Python">Python</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Perl" title="Perl">Perl</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#PHP" title="PHP">PHP</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Haskell" title="Haskell">Haskell</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="C%E8%AF%AD%E8%A8%80"></span>C语言<span class="ez-toc-section-end"></span></h4>
+<p>我们先来看一下经典的C是怎么实现的。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">/**
+ * A simple preforking echo server in C.
+ *
+ * Building:
+ *
+ * $ gcc -Wall -o echo echo.c
+ *
+ * Usage:
+ *
+ * $ ./echo
+ *
+ *   ~ then in another terminal ... ~
+ *
+ * $ echo &#39;Hello, world!&#39; | nc localhost 4242
+ *
+ */
+
+#include &lt;unistd.h&gt; /* fork, close */
+#include &lt;stdlib.h&gt; /* exit */
+#include &lt;string.h&gt; /* strlen */
+#include &lt;stdio.h&gt; /* perror, fdopen, fgets */
+#include &lt;sys/socket.h&gt;
+#include &lt;sys/wait.h&gt; /* waitpid */
+#include &lt;netdb.h&gt; /* getaddrinfo */
+
+#define die(msg) do { perror(msg); exit(EXIT_FAILURE); } while (0)
+
+#define PORT &#34;4242&#34;
+#define NUM_CHILDREN 3
+
+#define MAXLEN 1024
+
+int readline(int fd, char *buf, int maxlen); // forward declaration
+
+int
+main(int argc, char** argv)
+{
+    int i, n, sockfd, clientfd;
+    int yes = 1; // used in setsockopt(2)
+    struct addrinfo *ai;
+    struct sockaddr_in *client;
+    socklen_t client_t;
+    pid_t cpid; // child pid
+    char line[MAXLEN];
+    char cpid_s[32];
+    char welcome[32];
+
+    /* Create a socket and get its file descriptor -- socket(2) */
+    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    if (sockfd == -1) {
+    die(&#34;Couldn&#39;t create a socket&#34;);
+    }
+
+    /* Prevents those dreaded &#34;Address already in use&#34; errors */
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, (const void *)&amp;yes, sizeof(int)) == -1) {
+    die(&#34;Couldn&#39;t setsockopt&#34;);
+    }
+
+    /* Fill the address info struct (host + port) -- getaddrinfo(3) */
+    if (getaddrinfo(NULL, PORT, NULL, &amp;ai) != 0) {
+    die(&#34;Couldn&#39;t get address&#34;);
+    }
+
+    /* Assign address to this socket&#39;s fd */
+    if (bind(sockfd, ai-&gt;ai_addr, ai-&gt;ai_addrlen) != 0) {
+    die(&#34;Couldn&#39;t bind socket to address&#34;);
+    }
+
+    /* Free the memory used by our address info struct */
+    freeaddrinfo(ai);
+
+    /* Mark this socket as able to accept incoming connections */
+    if (listen(sockfd, 10) == -1) {
+    die(&#34;Couldn&#39;t make socket listen&#34;);
+    }
+
+    /* Fork you some child processes. */
+    for (i = 0; i &lt; NUM_CHILDREN; i++) {
+    cpid = fork();
+    if (cpid == -1) {
+        die(&#34;Couldn&#39;t fork&#34;);
+    }
+
+    if (cpid == 0) { // We&#39;re in the child ...
+        for (;;) { // Run forever ...
+        /* Necessary initialization for accept(2) */
+        client_t = sizeof client;
+
+        /* Blocks! */
+        clientfd = accept(sockfd, (struct sockaddr *)&amp;client, &amp;client_t);
+        if (clientfd == -1) {
+            die(&#34;Couldn&#39;t accept a connection&#34;);
+        }
+
+        /* Send a welcome message/prompt */
+        bzero(cpid_s, 32);
+        bzero(welcome, 32);
+        sprintf(cpid_s, &#34;%d&#34;, getpid());
+        sprintf(welcome, &#34;Child %s echo&gt; &#34;, cpid_s);
+        send(clientfd, welcome, strlen(welcome), 0);
+
+        /* Read a line from the client socket ... */
+        n = readline(clientfd, line, MAXLEN);
+        if (n == -1) {
+            die(&#34;Couldn&#39;t read line from connection&#34;);
+        }
+
+        /* ... and echo it back */
+        send(clientfd, line, n, 0);
+
+        /* Clean up the client socket */
+        close(clientfd);
+        }
+    }
+    }
+
+    /* Sit back and wait for all child processes to exit */
+    while (waitpid(-1, NULL, 0) &gt; 0);
+
+    /* Close up our socket */
+    close(sockfd);
+
+    return 0;
+}
+
+/**
+ * Simple utility function that reads a line from a file descriptor fd,
+ * up to maxlen bytes -- ripped from Unix Network Programming, Stevens.
+ */
+int
+readline(int fd, char *buf, int maxlen)
+{
+    int n, rc;
+    char c;
+
+    for (n = 1; n &lt; maxlen; n++) {
+    if ((rc = read(fd, &amp;c, 1)) == 1) {
+        *buf++ = c;
+        if (c == &#39;\n&#39;)
+        break;
+    } else if (rc == 0) {
+        if (n == 1)
+        return 0; // EOF, no data read
+        else
+        break; // EOF, read some data
+    } else
+        return -1; // error
+    }
+
+    *buf = &#39;\0&#39;; // null-terminate
+    return n;
+}
+</pre>
+<h4><span class="ez-toc-section" id="Ruby"></span>Ruby<span class="ez-toc-section-end"></span></h4>
+<p>下面是Ruby，你可以看到其中的fork</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="ruby"># simple preforking echo server in Ruby
+require &#39;socket&#39;
+
+# Create a socket, bind it to localhost:4242, and start listening.
+# Runs once in the parent; all forked children inherit the socket&#39;s
+# file descriptor.
+acceptor = Socket.new(Socket::AF_INET, Socket::SOCK_STREAM, 0)
+address = Socket.pack_sockaddr_in(4242, &#39;localhost&#39;)
+acceptor.bind(address)
+acceptor.listen(10)
+
+# Close the socket when we exit the parent or any child process. This
+# only closes the file descriptor in the calling process, it does not
+# take the socket out of the listening state (until the last fd is
+# closed).
+#
+# The trap is guaranteed to happen, and guaranteed to happen only
+# once, right before the process exits for any reason (unless
+# it&#39;s terminated with a SIGKILL).
+trap(&#39;EXIT&#39;) { acceptor.close }
+
+# Fork you some child processes. In the parent, the call to fork
+# returns immediately with the pid of the child process; fork never
+# returns in the child because we exit at the end of the block.
+3.times do
+  fork do
+    # now we&#39;re in the child process; trap (Ctrl-C) interrupts and
+    # exit immediately instead of dumping stack to stderr.
+    trap(&#39;INT&#39;) { exit }
+
+    puts &#34;child #$$ accepting on shared socket (localhost:4242)&#34;
+    loop {
+      # This is where the magic happens. accept(2) blocks until a
+      # new connection is ready to be dequeued.
+      socket, addr = acceptor.accept
+      socket.write &#34;child #$$ echo&gt; &#34;
+      socket.flush
+      message = socket.gets
+      socket.write message
+      socket.close
+      puts &#34;child #$$ echo&#39;d: &#39;#{message.strip}&#39;&#34;
+    }
+    exit
+  end
+end
+
+# Trap (Ctrl-C) interrupts, write a note, and exit immediately
+# in parent. This trap is not inherited by the forks because it
+# runs after forking has commenced.
+trap(&#39;INT&#39;) { puts &#34;\nbailing&#34; ; exit }
+
+# Sit back and wait for all child processes to exit.
+Process.waitall
+
+</pre>
+<h4><span class="ez-toc-section" id="Python"></span>Python<span class="ez-toc-section-end"></span></h4>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">&#34;&#34;&#34;
+Simple preforking echo server in Python.
+&#34;&#34;&#34;
+
+import os
+import sys
+import socket
+
+# Create a socket, bind it to localhost:4242, and start
+# listening. Runs once in the parent; all forked children
+# inherit the socket&#39;s file descriptor.
+acceptor = socket.socket()
+acceptor.bind((&#39;localhost&#39;, 4242))
+acceptor.listen(10)
+
+# Ryan&#39;s Ruby code here traps EXIT and closes the socket. This
+# isn&#39;t required in Python; the socket will be closed when the
+# socket object gets garbage collected.
+
+# Fork you some child processes. In the parent, the call to
+# fork returns immediately with the pid of the child process;
+# fork never returns in the child because we exit at the end
+# of the block.
+for i in range(3):
+    pid = os.fork()
+
+    # os.fork() returns 0 in the child process and the child&#39;s
+    # process id in the parent. So if pid == 0 then we&#39;re in
+    # the child process.
+    if pid == 0:
+        # now we&#39;re in the child process; trap (Ctrl-C)
+        # interrupts by catching KeyboardInterrupt) and exit
+        # immediately instead of dumping stack to stderr.
+        childpid = os.getpid()
+        print &#34;Child %s listening on localhost:4242&#34; % childpid
+        try:
+            while 1:
+                # This is where the magic happens. accept(2)
+                # blocks until a new connection is ready to be
+                # dequeued.
+                conn, addr = acceptor.accept()
+
+                # For easier use, turn the socket connection
+                # into a file-like object.
+                flo = conn.makefile()
+                flo.write(&#39;Child %s echo&gt; &#39; % childpid)
+                flo.flush()
+                message = flo.readline()
+                flo.write(message)
+                flo.close()
+                conn.close()
+                print &#34;Child %s echo&#39;d: %r&#34; % \
+                          (childpid, message.strip())
+        except KeyboardInterrupt:
+            sys.exit()
+
+# Sit back and wait for all child processes to exit.
+#
+# Trap interrupts, write a note, and exit immediately in
+# parent. This trap is not inherited by the forks because it
+# runs after forking has commenced.
+try:
+    os.waitpid(-1, 0)
+except KeyboardInterrupt:
+    print &#34;\nbailing&#34;
+    sys.exit()
+</pre>
+<h4><span class="ez-toc-section" id="Perl"></span>Perl<span class="ez-toc-section-end"></span></h4>
+<pre class="EnlighterJSRAW" data-enlighter-language="perl">#!/usr/bin/perl
+use 5.010;
+use strict;
+
+# simple preforking echo server in Perl
+use Proc::Fork;
+use IO::Socket::INET;
+
+sub strip { s/\A\s+//, s/\s+\z// for my @r = @_; @r }
+
+# Create a socket, bind it to localhost:4242, and start listening.
+# Runs once in the parent; all forked children inherit the socket&#39;s
+# file descriptor.
+my $acceptor = IO::Socket::INET-&gt;new(
+    LocalPort =&gt; 4242,
+    Reuse     =&gt; 1,
+    Listen    =&gt; 10,
+) or die &#34;Couln&#39;t start server: $!\n&#34;;
+
+# Close the socket when we exit the parent or any child process. This
+# only closes the file descriptor in the calling process, it does not
+# take the socket out of the listening state (until the last fd is
+# closed).
+END { $acceptor-&gt;close }
+
+# Fork you some child processes. The code after the run_fork block runs
+# in all process, but because the child block ends in an exit call, only
+# the parent executes the rest of the program. If a parent block were
+# specified here, it would be invoked in the parent only, and passed the
+# PID of the child process.
+for ( 1 .. 3 ) {
+    run_fork { child {
+        while (1) {
+            my $socket = $acceptor-&gt;accept;
+            $socket-&gt;printflush( &#34;child $$ echo&gt; &#34; );
+            my $message = $socket-&gt;getline;
+            $socket-&gt;print( $message );
+            $socket-&gt;close;
+            say &#34;child $$ echo&#39;d: &#39;${\strip $message}&#39;&#34;;
+        }
+        exit;
+    } }
+}
+
+# Trap (Ctrl-C) interrupts, write a note, and exit immediately
+# in parent. This trap is not inherited by the forks because it
+# runs after forking has commenced.
+$SIG{ &#39;INT&#39; } = sub { print &#34;bailing\n&#34;; exit };
+
+# Sit back and wait for all child processes to exit.
+1 while 0 &lt; waitpid -1, 0;
+</pre>
+<h4><span class="ez-toc-section" id="PHP"></span>PHP<span class="ez-toc-section-end"></span></h4>
+<pre class="EnlighterJSRAW" data-enlighter-language="perl">&lt;?
+/*
+Simple preforking echo server in PHP.
+Russell Beattie (russellbeattie.com)
+*/
+
+/* Allow the script to hang around waiting for connections. */
+set_time_limit(0);
+
+# Create a socket, bind it to localhost:4242, and start
+# listening. Runs once in the parent; all forked children
+# inherit the socket&#39;s file descriptor.
+$socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
+socket_bind($socket,&#39;localhost&#39;, 4242);
+socket_listen($socket, 10);
+
+pcntl_signal(SIGTERM, &#39;shutdown&#39;);
+pcntl_signal(SIGINT, &#39;shutdown&#39;);
+
+function shutdown($signal){
+    global $socket;
+    socket_close($socket);
+    exit();
+}
+# Fork you some child processes. In the parent, the call to
+# fork returns immediately with the pid of the child process;
+# fork never returns in the child because we exit at the end
+# of the block.
+for($x = 1; $x &lt;= 3; $x++){
+   
+    $pid = pcntl_fork();
+   
+    # pcntl_fork() returns 0 in the child process and the child&#39;s
+    # process id in the parent. So if $pid == 0 then we&#39;re in
+    # the child process.
+    if($pid == 0){
+
+        $childpid = posix_getpid();
+       
+        echo &#34;Child $childpid listening on localhost:4242 \n&#34;;
+
+        while(true){
+            # This is where the magic happens. accept(2)
+            # blocks until a new connection is ready to be
+            # dequeued.
+            $conn = socket_accept($socket);
+
+            $message = socket_read($conn,1000,PHP_NORMAL_READ);
+           
+            socket_write($conn, &#34;Child $childpid echo&gt; $message&#34;);
+       
+            socket_close($conn);
+       
+            echo &#34;Child $childpid echo&#39;d: $message \n&#34;;
+       
+        }
+
+    }
+}
+#
+# Trap interrupts, write a note, and exit immediately in
+# parent. This trap is not inherited by the forks because it
+# runs after forking has commenced.
+try{
+
+    pcntl_waitpid(-1, $status);
+
+} catch (Exception $e) {
+
+    echo &#34;bailing \n&#34;;
+    exit();
+
+}</pre>
+<h4><span class="ez-toc-section" id="Haskell"></span>Haskell<span class="ez-toc-section-end"></span></h4>
+<pre class="EnlighterJSRAW" data-enlighter-language="haskell">import Network
+import Prelude hiding ((-))
+import Control.Monad
+import System.IO
+import Control.Applicative
+import System.Posix
+import System.Exit
+import System.Posix.Signals
+
+main :: IO ()
+main = with =&lt;&lt; (listenOn - PortNumber 4242) where
+
+  with socket = do
+    replicateM 3 - forkProcess work
+    wait
+
+    where
+    work = do
+      installHandler sigINT (Catch trap_int) Nothing
+      pid &lt;- show &lt;$&gt; getProcessID
+      puts - &#34;child &#34; ++ pid ++ &#34; accepting on shared socket (localhost:4242)&#34;
+     
+      forever - do
+        (h, _, _) &lt;- accept socket
+
+        let write   = hPutStr h
+            flush   = hFlush h
+            getline = hGetLine h
+            close   = hClose h
+
+        write - &#34;child &#34; ++ pid ++ &#34; echo&gt; &#34;
+        flush
+        message &lt;- getline
+        write - message ++ &#34;\n&#34;
+        puts - &#34;child &#34; ++ pid ++ &#34; echo&#39;d: &#39;&#34; ++ message ++ &#34;&#39;&#34;
+        close
+
+    wait = forever - do
+      ( const () &lt;$&gt; getAnyProcessStatus True True  ) <code data-enlighter-language="raw" class="EnlighterJSRAW">catch</code> const trap_exit
+
+    trap_int = exitImmediately ExitSuccess
+
+    trap_exit = do
+      puts &#34;\nbailing&#34;
+      sClose socket
+      exitSuccess
+
+    puts = putStrLn
+
+  (-) = ($)
+  infixr 0 -
+
+</pre>
+<p>如果你知道更多的，请你告诉我们。（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1532-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">fork</a>, <a href="javascript:void(0)" rel="tag">Haskell</a>, <a href="javascript:void(0)" rel="tag">Perl</a>, <a href="javascript:void(0)" rel="tag">PHP</a>, <a href="javascript:void(0)" rel="tag">Python</a>, <a href="javascript:void(0)" rel="tag">Ruby</a>, <a href="javascript:void(0)" rel="tag">socket</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>到处都是Unix的胎记</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1350" class="comment even thread-even depth-1">
+<article id="div-comment-1350" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c261dcbe965f63ac92d1a0047e146417?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c261dcbe965f63ac92d1a0047e146417?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ff</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1532.html#comment-1350"><time datetime="2009-10-11T21:00:42+08:00">2009年10月11日 21:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Haskell的代码在哪里？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1351" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1351" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d0d6a76db52bd22b0c0969f0e4f55a68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d0d6a76db52bd22b0c0969f0e4f55a68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.oldrev.com" class="url" rel="ugc external nofollow">oldrev</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1532.html#comment-1351"><time datetime="2009-10-11T21:28:44+08:00">2009年10月11日 21:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1350"><p>
+<strong><a href="#comment-1350" rel="nofollow">ff</a> :</strong><br/>
+Haskell的代码在哪里？
+</p></blockquote>
+<p>同问</p>
+</div>
+ </article>
+</li>
+<li id="comment-1352" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-1352" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1532.html#comment-1352"><time datetime="2009-10-11T22:44:02+08:00">2009年10月11日 22:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对不起，一不留神忘了。呵呵。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1364" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1364" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2b6b4f127a08d92660b1460c257587b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2b6b4f127a08d92660b1460c257587b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dabai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1532.html#comment-1364"><time datetime="2009-10-12T15:09:11+08:00">2009年10月12日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我想，unix到今天留给我们最重要的，不是那几个系统，而是很多设计思想和理念。就像hello world和图形处理上那张playboy插图一样。<br/>
+不过，历史是个包袱，最终我们说不定会为之所累。</p>
+</div>
+ </article>
+</li>
+<li id="comment-6044" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://baiduer.net/2010/04/09/unix%e4%bc%a0%e5%a5%87%e4%b8%8b%e7%af%87/" class="url" rel="ugc external nofollow">laiwei_linjuly_homepage » Unix传奇(下篇)</a> </div>
+</li>
+<li id="comment-6204" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://windwild.net/?p=10" class="url" rel="ugc external nofollow">windwild » Blog Archive » UNIX传奇（下）</a> </div>
+</li>
+<li id="comment-6312" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.log4life.info/normal/unix-legend/" class="url" rel="ugc external nofollow">Unix传奇 | Log4Life</a> </div>
+</li>
+<li id="comment-15383" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mojibar.com/index.php/archives/106" class="url" rel="ugc external nofollow">几篇技术文章 磨叽吧官方站 磨叽吧官方站</a> </div>
+</li>
+<li id="comment-20747" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://184.82.237.158/2010/%e5%87%a0%e7%af%87%e6%8a%80%e6%9c%af%e6%96%87%e7%ab%a0.html" class="url" rel="ugc external nofollow">几篇技术文章 | YJ Made and Design</a> </div>
+</li>
+<li id="comment-23622" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jayxu.com/2011/01/17/10439" class="url" rel="ugc external nofollow">UNIX传奇 [zz] | 拈花微笑</a> </div>
+</li>
+<li id="comment-42265" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yongblog.com/archives/184.html" class="url" rel="ugc external nofollow">Unix传奇(下篇) | Yong 的个人博客</a> </div>
+</li>
+<li id="comment-198525" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/less-is-very-much.html" class="url" rel="ugc external nofollow">Definite Digest » 少即是极多</a> </div>
+</li>
+<li id="comment-200657" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=55" class="url" rel="ugc external nofollow">小小说阅读网 » 少即是极多</a> </div>
+</li>
+<li id="comment-200662" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=57" class="url" rel="ugc external nofollow">小小说阅读网 » 代码执行的效率</a> </div>
+</li>
+<li id="comment-201472" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=489" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » 一个fork的面试题</a> </div>
+</li>
+<li id="comment-852526" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=25" class="url" rel="ugc external nofollow">类型的本质和函数式实现 | zengine</a> </div>
+</li>
+<li id="comment-1558469" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.uniteyun.com/?p=11" class="url" rel="ugc external nofollow">UNIX传奇（下篇） | 聚散流沙</a> </div>
+</li>
+<li id="comment-1610662" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1025" class="url" rel="ugc external nofollow">vfork 挂掉的一个问题 | 星达红</a> </div>
+</li>
+<li id="comment-1830995" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jayxu.com/2011/01/17/10439" class="url" rel="ugc external nofollow">UNIX传奇 [zz] | 程序员的信仰</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

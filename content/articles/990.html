@@ -1,0 +1,377 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>编程中的命名设计那点事 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-990 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-990" class="post-content post-990 post type-post status-publish format-standard hentry category-process category-progdesign category-proglanguage tag-coding">
+<header class="entry-header">
+<span class="screen-reader-text">编程中的命名设计那点事</span>
+<h1 class="entry-title">编程中的命名设计那点事</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/990.html" title="16:36" rel="bookmark"><time class="entry-date" datetime="2009-06-07T16:36:49+08:00" pubdate="">2009年06月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/990.html#comments" class="comments-link">29 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 26,696 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>在我开始设计系统的时候，我会花去很多时间去设计命名，因为好的命名和好的设计是分不开的。</p>
+<blockquote><p>In the beginning was the <strong>Word</strong>, and the Word was with God, and the Word was God<br/>
+太初有道。道与神同在，道就是神。 (约翰福音第一章，第一节)</p></blockquote>
+<p>在设计过程中给类，方法和函数好的命名会带来好的设计，虽然这不是一定成立，但是如果坏的命名那一定不会给你带来好的设计。在设计过程，如果你发现你很难命名某一个模块，某个方法时，可能你真正遇到的问题不是难命名的问题，而是这个设计是否真的合理，你或许应该花更多的时间来重新设计一下你的模块。</p>
+<p>好的命名不仅会带来好的设计，好的命名还提高了程序的可读性，降低代码维护的成本。另一方面，如果糟糕的命名会给代码带来一堵无形的墙，让你必须深入代码去研究代码具有的行为，增加你理解代码的时间。</p>
+<p>为此我总结了几条关于命名的指导原则，希望这几条原则能为你的命名设计带来帮助，我使用的是C++的语法，当然这些原则也很容易扩展到其他语言中去。</p>
+<h3><span style="color: #339966;">类型命名(类，接口，和结构)</span></h3>
+<p><span style="color: #339966;"><br/>
+</span></p>
+<p><span style="color: #0000ff;"><strong>名字应该尽量采用名词</strong></span><br/>
+<code>Bad:           Happy<br/>
+Good:          Happiness</code></p>
+<p><span id="more-990"></span></p>
+<p><span style="color: #0000ff;"><strong>不要使用类似名字空间的前缀</strong></span><br/>
+<code>Bad:           SystemOnlineMessage<br/>
+Good:          System::Online:Message<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>形容词不要用太多，能描述清楚就行</strong></span><br/>
+<code>Bad:           IAbstractFactoryPatternBase<br/>
+Good:          IFactory<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>在类型中不要使用Manager 或则 Helper 或则其他没意义的单词</strong></span><br/>
+如果你一定要在一个类型上加上Manager或Helper，那么这个类型要么就是命名的非常糟糕，要么就是设计的非常糟糕，如果是后则，那么这个类型就应该管理manage和帮助help一下自己了。<br/>
+<code>Bad:           ConnectionManager<br/>
+               XmlHelper<br/>
+Good:          Connection<br/>
+               XmlDocument, XmlNode, etc.<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>如果某个类不能通过简单的命名来描述它具有的功能，可以考虑用类比的方式来命名</strong></span><code><br/>
+Bad:           IncomingMessageQueue<br/>
+               CharacterArray<br/>
+               SpatialOrganizer<br/>
+Good:          Mailbox<br/>
+               String<br/>
+               Map<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>如果你使用类比，你就应该一致的使用它们</strong></span><br/>
+<code>Bad:           Mailbox,DestinationID<br/>
+Good:          Mailbox,Address<br/>
+</code></p>
+<h3><span style="color: #339966;">函数(方法和过程)</span></h3>
+<p><span style="color: #339966;"><br/>
+</span></p>
+<p><span style="color: #0000ff;"><strong>简洁</strong></span><br/>
+<code>Bad:           list.GetNumberOfItems()<br/>
+Good:          list.Count()<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>不要太简洁</strong></span><br/>
+<code>Bad:           list.Verify()<br/>
+Good:          list.ContainsNull()<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>避免缩写</strong></span><br/>
+<code>Bad:           list.Srt()<br/>
+Good:          list.Sort()<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>对于完成某件事情的函数使用动词</strong></span><br/>
+<code>Bad:           obj.RefCount();<br/>
+Good:          list.Clear();<br/>
+               list.Sort();<br/>
+               obj.AddReference();<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>对于返回布尔型的函数，使用类似提问的方式</strong></span><br/>
+<code>Bad:           list.Empty();<br/>
+Good:          list.IsEmpty();<br/>
+               list.Contains(item);<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>对于只是返回属性，而不改变状态的函数则使用名词</strong></span><br/>
+<code>Bad:           list.GetCount();<br/>
+Good:          list.Count();<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>不要在函数名字中重复参数的名称</strong></span><br/>
+<code>Bad:           list.AddItem(item);<br/>
+               handler.ReceiveMessage(msg);<br/>
+Good:          list.Add(item);<br/>
+               handler.Receive(msg);<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>不要方法的名字中重复此方法的类的名称</strong></span><br/>
+<code>Bad:           list.AddToList(item);<br/>
+Good:          list.Add(item);<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>不要在函数的名字中加入返回类型，除非函数名必须以返回类型进行区别</strong></span><br/>
+<code>Bad:           list.GetCountInt();<br/>
+Good:          list.GetCount();<br/>
+               message.GetIntValue();<br/>
+               message.GetFloatValue();<br/>
+</code></p>
+<p><span style="color: #0000ff;"><strong>不要名字中使用And 或则 Or</strong></span><br/>
+如果你使用一个连接词来连接函数名，那么这个函数肯定是做了太多的事情，更好的做法是将其分成更小的函数来处理(类似面向对象设计准则中的责任单一原则)。<br/>
+如果你想确保是这是一个原子的操作，那么你应该用一个名字来描述这个操作或一个类来封装他<br/>
+<code>Bad:           mail.VerifyAddressAndSendStatus();<br/>
+Good:          mail.VerifyAddress();<br/>
+               mail.SendStatus();<br/>
+</code></p>
+<p>这是一篇非常优秀的文章，我用我的语言在组织了一下，如果喜欢英文的读者可以点击<a href="http://journal.stuffwithstuff.com/2009/06/05/naming-things-in-code/">这里</a>阅读原文</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-990-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">流程方法</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Coding</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>编程中的命名设计那点事</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-209" class="comment byuser comment-author-neo bypostauthor even thread-even depth-1">
+<article id="div-comment-209" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/adbd7d1f9ec55c6accf6e2a41b5a919a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/adbd7d1f9ec55c6accf6e2a41b5a919a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Neo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-209"><time datetime="2009-06-07T17:24:34+08:00">2009年06月07日 17:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>SDO for Java的规范中，就有XMLHelper，难道SDO的Java规范也是一个糟糕的设计? :)</p>
+</div>
+ </article>
+</li>
+<li id="comment-210" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-210" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://claymore.phpme.info" class="url" rel="ugc external nofollow">Claymore</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-210"><time datetime="2009-06-07T22:45:42+08:00">2009年06月07日 22:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>额…说实话PHP的命名规范才是个问题，<br/>
+有的时候我很想GetXxxxx但是不知不觉就get_xxxxx了….</p>
+</div>
+ </article>
+</li>
+<li id="comment-214" class="comment even thread-even depth-1">
+<article id="div-comment-214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/41af92382535ac2481bdfbf1b4f538ea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/41af92382535ac2481bdfbf1b4f538ea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">平常道</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-214"><time datetime="2009-06-08T09:56:20+08:00">2009年06月08日 09:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人觉得“在类型中不要使用Manager 或则 Helper 或则其他没意义的单词”这个有些问题，不能太绝对。很多的设计模式书里都有如此的设计，包括Helper、Handler、Mediator等辅助词汇。这些东西不是从现实中抽象出来的，本身就是一个辅助方法或信息的集合。ConnectionHelper和Connection明显不可能是一样的东西</p>
+</div>
+ </article>
+</li>
+<li id="comment-232" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cocre.com/?p=1038" class="url" rel="ugc external nofollow">编程命名中的7+1个提示 | 酷壳</a> </div>
+</li>
+<li id="comment-311" class="comment even thread-even depth-1">
+<article id="div-comment-311" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92a6a566327731e20d0a6849fd20c3a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92a6a566327731e20d0a6849fd20c3a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-311"><time datetime="2009-07-02T20:46:35+08:00">2009年07月02日 20:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人觉得容易理解就好了～只要能够制定好一套规范并一直遵守下去就好了</p>
+</div>
+ </article>
+</li>
+<li id="comment-320" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cocre.com/?p=1095" class="url" rel="ugc external nofollow">整洁代码的4个提示 | 酷壳</a> </div>
+</li>
+<li id="comment-335" class="comment even thread-even depth-1">
+<article id="div-comment-335" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/419d37f41c7dd95fdfca6ed0025523b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/419d37f41c7dd95fdfca6ed0025523b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lampstudy.net" class="url" rel="ugc external nofollow">书生</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-335"><time datetime="2009-07-10T10:21:29+08:00">2009年07月10日 10:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章哦。读后受益匪浅，不过这个还是看自己的编程习惯或者是团队的开发文档要求了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2839" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.cn/?p=1990" class="url" rel="ugc">程序命名的一些提示 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-4188" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zfben.com/collection/%e7%a8%8b%e5%ba%8f%e5%91%bd%e5%90%8d%e7%9a%84%e4%b8%80%e4%ba%9b%e6%8f%90%e7%a4%ba/" class="url" rel="ugc external nofollow">程序命名的一些提示 « 寂静小站 – 网摘</a> </div>
+</li>
+<li id="comment-5451" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xen.t963.tk/blog/%e6%88%91%e7%9a%84%e9%98%85%e8%af%bb%e5%88%86%e4%ba%ab/%e7%a8%8b%e5%ba%8f%e5%91%bd%e5%90%8d%e7%9a%84%e4%b8%80%e4%ba%9b%e6%8f%90%e7%a4%ba-2010-01.html" class="url" rel="ugc external nofollow">程序命名的一些提示 | 学习.记录</a> </div>
+</li>
+<li id="comment-8753" class="comment even thread-even depth-1">
+<article id="div-comment-8753" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/19e246863fed885688fb4fae30e24d14?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/19e246863fed885688fb4fae30e24d14?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hzh512</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-8753"><time datetime="2010-08-09T09:34:02+08:00">2010年08月09日 09:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章，正在为编程中变量和函数命名发愁呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-262315" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-262315" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76977a045fb92fe98f8f42ad75b9138c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76977a045fb92fe98f8f42ad75b9138c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/happyqq" class="url" rel="ugc external nofollow">happyqq</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-262315"><time datetime="2013-01-10T11:52:57+08:00">2013年01月10日 11:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>代码规范让团队严格执行，然后做到代码容易理解就行……</p>
+</div>
+ </article>
+</li>
+<li id="comment-752170" class="comment even thread-even depth-1">
+<article id="div-comment-752170" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/70b00273d1b87fd06471b25b75341273?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/70b00273d1b87fd06471b25b75341273?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">磊磊</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-752170"><time datetime="2013-09-22T16:30:47+08:00">2013年09月22日 16:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Android中各种各样的Manager，按照你的说法都有问题？</p>
+</div>
+ </article>
+</li>
+<li id="comment-909647" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=375" class="url" rel="ugc external nofollow">程序命名的一些提示 | multiprocess</a> </div>
+</li>
+<li id="comment-909729" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=718" class="url" rel="ugc external nofollow">编程命名中的7+1个提示 | multiprocess</a> </div>
+</li>
+<li id="comment-1242294" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://thinkinginjavablog.sinaapp.com/?p=12" class="url" rel="ugc external nofollow">优质代码的十诫 | 机会永远留给有准备的人</a> </div>
+</li>
+<li id="comment-1684479" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/archives/2266" class="url" rel="ugc external nofollow">优质代码的十诫 – 运维部落</a> </div>
+</li>
+<li id="comment-1685314" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/archives/2395" class="url" rel="ugc external nofollow">编程命名中的7+1个提示 – 运维部落</a> </div>
+</li>
+<li id="comment-1830195" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e4%bc%98%e8%b4%a8%e4%bb%a3%e7%a0%81%e7%9a%84%e5%8d%81%e8%af%ab.html" class="url" rel="ugc external nofollow">优质代码的十诫 | | Codeba</a> </div>
+</li>
+<li id="comment-1830727" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e6%95%b4%e6%b4%81%e4%bb%a3%e7%a0%81%e7%9a%844%e4%b8%aa%e6%8f%90%e7%a4%ba.html" class="url" rel="ugc external nofollow">整洁代码的4个提示 | | Codeba</a> </div>
+</li>
+<li id="comment-1831435" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e7%bc%96%e7%a8%8b%e5%91%bd%e5%90%8d%e4%b8%ad%e7%9a%8471%e4%b8%aa%e6%8f%90%e7%a4%ba.html" class="url" rel="ugc external nofollow">编程命名中的7+1个提示 | | Codeba</a> </div>
+</li>
+<li id="comment-1919335" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e4%bc%98%e8%b4%a8%e4%bb%a3%e7%a0%81%e7%9a%84%e5%8d%81%e6%9d%a1%e9%bb%84%e9%87%91%e6%b3%95%e5%88%99.html" class="url" rel="ugc external nofollow">优质代码的十条黄金法则 | Codeba</a> </div>
+</li>
+<li id="comment-1921301" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1235" class="url" rel="ugc external nofollow">优质代码的十诫 – 趣学</a> </div>
+</li>
+<li id="comment-1921931" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.linux00.com/archives/972" class="url" rel="ugc external nofollow">优质代码的十诫 | 每天学一点Linux</a> </div>
+</li>
+<li id="comment-1921932" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.linux00.com/archives/975" class="url" rel="ugc external nofollow">编程命名中的7+1个提示 | 每天学一点Linux</a> </div>
+</li>
+<li id="comment-1923141" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.yszhang.tw/c-sharp-naming-rules" class="url" rel="ugc external nofollow">C# 開發通用規則 - 夜升筆談</a> </div>
+</li>
+<li id="comment-2276285" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://onebyone.icu/archives/2891" class="url" rel="ugc external nofollow">优质代码的十诫 — OneByOne DotNet</a> </div>
+</li>
+<li id="comment-2276288" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://onebyone.icu/archives/2912" class="url" rel="ugc external nofollow">编程命名中的7+1个提示 — OneByOne DotNet</a> </div>
+</li>
+<li id="comment-2360249" class="comment even thread-even depth-1">
+<article id="div-comment-2360249" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b7c12675afac5d2a94f58e5e244d2679?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b7c12675afac5d2a94f58e5e244d2679?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Marquezzzz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/990.html#comment-2360249"><time datetime="2022-01-19T14:16:20+08:00">2022年01月19日 14:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>命名，就是好好说话，<br/>
+1.遵循语法，名词动词运用恰当；<br/>
+2.表达不啰嗦，没有冗余信息；<br/>
+3.表达精确，不放大或者缩小要表达的含义；<br/>
+4.只要没有歧义，可以适当简洁</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

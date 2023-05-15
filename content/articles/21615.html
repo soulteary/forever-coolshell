@@ -1,0 +1,660 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go编程模式 ： 泛型编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21615 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21615" class="post-content post-21615 post type-post status-publish format-standard hentry category-go- category-proglanguage tag-generics tag-go tag-golang tag-mapreduce tag-870 series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go编程模式 ： 泛型编程</span>
+<h1 class="entry-title">Go编程模式 ： 泛型编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21615.html" title="13:44" rel="bookmark"><time class="entry-date" datetime="2021-09-04T13:44:02+08:00" pubdate="">2021年09月04日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21615.html#comments" class="comments-link">14 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 58,681 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-21627 " src="/uploads/2021/09/go-generics-1024x512.png" alt="" width="406" height="203" srcset="" sizes="(max-width: 406px) 100vw, 406px"/>Go语言的1.17版本发布了，其中开始正式支持泛型了。虽然还有一些限制（比如，不能把泛型函数export），但是，可以体验了。我的这个《Go编程模式》的系列终于有了真正的泛型编程了，再也不需要使用反射或是go generation这些难用的技术了。周末的时候，我把Go 1.17下载下来，然后，体验了一下泛型编程，还是很不错的。下面，就让我们来看一下Go的泛型编程。（注：不过，如果你对泛型编程的重要性还不是很了解的话，你可以先看一下之前的这篇文章《<a title="Go 编程模式：Go Generation" href="/articles/21179.html" target="_blank" rel="noopener">Go编程模式：Go Generation</a>》，然后再读一下《<a title="Go编程模式：Map-Reduce" href="/articles/21164.html" target="_blank" rel="noopener">Go编程模式：MapReduce</a>》）</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第10 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go编程模式 ： 泛型编程</span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21263.html" rel="prev" title="Go 编程模式：k8s Visitor 模式">上一篇文章</a></span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%88%9D%E6%8E%A2" title="初探">初探</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84" title="数据结构">数据结构</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#Stack_%E6%A0%88" title="Stack 栈">Stack 栈</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#LinkList_%E5%8F%8C%E5%90%91%E9%93%BE%E8%A1%A8" title="LinkList 双向链表">LinkList 双向链表</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%87%BD%E6%95%B0%E5%BC%8F%E8%8C%83%E5%9E%8B" title="函数式范型">函数式范型</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%B3%9B%E5%9E%8BMap" title="泛型Map">泛型Map</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%B3%9B%E5%9E%8B_Reduce" title="泛型 Reduce">泛型 Reduce</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E6%B3%9B%E5%9E%8B_filter" title="泛型 filter">泛型 filter</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E4%B8%9A%E5%8A%A1%E7%A4%BA%E4%BE%8B" title="业务示例">业务示例</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%88%9D%E6%8E%A2"></span>初探<span class="ez-toc-section-end"></span></h4>
+<p>我们先来看一个简单的示例：</p>
+<p><span id="more-21615"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+
+func print[T any] (arr []T) {
+  for _, v := range arr {
+    fmt.Print(v)
+    fmt.Print(&#34; &#34;)
+  }
+  fmt.Println(&#34;&#34;)
+}
+
+func main() {
+  strs := []string{&#34;Hello&#34;, &#34;World&#34;,  &#34;Generics&#34;}
+  decs := []float64{3.14, 1.14, 1.618, 2.718 }
+  nums := []int{2,4,6,8}
+
+  print(strs)
+  print(decs)
+  print(nums)
+}</pre>
+<p>上面这个例子中，有一个 <code>print()</code> 函数，这个函数就是想输出数组的值，如果没有泛型的话，这个函数需要写出 <code>int</code> 版，<code>float</code>版，<code>string</code> 版，以及我们的自定义类型（<code>struct</code>）的版本。现在好了，有了泛型的支持后，我们可以使用 <code>[T any]</code> 这样的方式来声明一个泛型类型（有点像C++的 <code>typename T</code>），然后面都使用 <code>T</code> 来声明变量就好。</p>
+<p>上面这个示例中，我们泛型的 <code>print()</code> 支持了三种类型的适配—— <code>int</code>型，<code>float64</code>型，和 <code>string</code>型。要让这段程序跑起来需要在编译行上加上 <code>-gcflags=-G=3</code>编译参数（这个编译参数会在1.18版上成为默认参数），如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ go run -gcflags=-G=3 ./main.go</pre>
+<p>有了个操作以后，我们就可以写一些标准的算法了，比如，一个查找的算法</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func find[T comparable] (arr []T, elem T) int {
+  for i, v := range arr {
+    if  v == elem {
+      return i
+    }
+  }
+  return -1
+}</pre>
+<p>我们注意到，我们没有使用 <code>[T any]</code>的形式，而是使用 <code>[T comparable]</code>的形式，<code>comparable</code>是一个接口类型，其约束了我们的类型需要支持 <code>==</code> 的操作， 不然就会有类型不对的编译错误。上面的这个 <code>find()</code> 函数同样可以使用于 <code>int</code>, <code>float64</code>或是<code>string</code>类型。</p>
+<p>从上面的这两个小程序来看，Go语言的泛型已基本可用了，只不过，还有三个问题：</p>
+<ul>
+<li>一个是 <code>fmt.Printf()</code>中的泛型类型是 <code>%v</code> 还不够好，不能像c++ <code>iostream</code>重载 <code>&gt;&gt;</code> 来获得程序自定义的输出。</li>
+<li>另外一个是，go不支持操作符重载，所以，你也很难在泛型算法中使用“泛型操作符”如：<code>==</code> 等</li>
+<li>最后一个是，上面的 <code>find()</code> 算法依赖于“数组”，对于hash-table、tree、graph、link等数据结构还要重写。也就是说，没有一个像C++ STL那样的一个泛型迭代器（这其中的一部分工作当然也需要通过重载操作符（如：<code>++</code> 来实现）</li>
+</ul>
+<p>不过，这个已经很好了，让我们来看一下，可以干哪些事了。</p>
+<h4><span class="ez-toc-section" id="%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"></span>数据结构<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="Stack_%E6%A0%88"></span>Stack 栈<span class="ez-toc-section-end"></span></h5>
+<p>编程支持泛型最大的优势就是可以实现类型无关的数据结构了。下面，我们用Slices这个结构体来实现一个Stack的数结构。</p>
+<p>首先，我们可以定义一个泛型的Stack</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type stack [T any] []T</pre>
+<p>看上去很简单，还是 <code>[T any]</code> ，然后 <code>[]T</code> 就是一个数组，接下来就是实现这个数据结构的各种方法了。下面的代码实现了 <code>push()</code> ，<code>pop()</code>，<code>top()</code>，<code>len()</code>，<code>print()</code>这几个方法，这几个方法和 C++的STL中的 Stack很类似。（注：目前Go的泛型函数不支持 export，所以只能使用第一个字符是小写的函数名）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func (s *stack[T]) push(elem T) {
+  *s = append(*s, elem)
+}
+
+func (s *stack[T]) pop() {
+  if len(*s) &gt; 0 {
+    *s = (*s)[:len(*s)-1]
+  } 
+}
+func (s *stack[T]) top() *T{
+  if len(*s) &gt; 0 {
+    return &amp;(*s)[len(*s)-1]
+  } 
+  return nil
+}
+
+func (s *stack[T]) len() int{
+  return len(*s)
+}
+
+func (s *stack[T]) print() {
+  for _, elem := range *s {
+    fmt.Print(elem)
+    fmt.Print(&#34; &#34;)
+  }
+  fmt.Println(&#34;&#34;)
+}</pre>
+<p>上面的这个例子还是比较简单的，不过在实现的过程中，对于一个如果栈为空，那么 <code>top()</code>要么返回<code>error</code>要么返回空值，在这个地方卡了一下。因为，之前，我们返回的“空”值，要么是 int 的<code>0</code>，要么是 string 的 <code>“”</code>，然而在泛型的<code>T</code>下，这个值就不容易搞了。也就是说，除了类型泛型后，还需要有一些“值的泛型”（注：在C++中，如果你要用一个空栈进行 <code>top()</code> 操作，你会得到一个 segmentation fault），所以，这里我们返回的是一个指针，这样可以判断一下指针是否为空。</p>
+<p>下面是如何使用这个stack的代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main() {
+
+  ss := stack[string]{}
+  ss.push(&#34;Hello&#34;)
+  ss.push(&#34;Hao&#34;)
+  ss.push(&#34;Chen&#34;)
+  ss.print()
+  fmt.Printf(&#34;stack top is - %v\n&#34;, *(ss.top()))
+  ss.pop()
+  ss.pop()
+  ss.print()
+
+  
+  ns := stack[int]{}
+  ns.push(10)
+  ns.push(20)
+  ns.print()
+  ns.pop()
+  ns.print()
+  *ns.top() += 1
+  ns.print()
+  ns.pop()
+  fmt.Printf(&#34;stack top is - %v\n&#34;, ns.top())
+
+}</pre>
+<p> </p>
+<h5><span class="ez-toc-section" id="LinkList_%E5%8F%8C%E5%90%91%E9%93%BE%E8%A1%A8"></span>LinkList 双向链表<span class="ez-toc-section-end"></span></h5>
+<p>下面我们再来看一个双向链表的实现。下面这个实现中实现了 这几个方法：</p>
+<ul>
+<li><code>add()</code> – 从头插入一个数据结点</li>
+<li><code>push()</code> – 从尾插入一个数据结点</li>
+<li><code>del()</code> – 删除一个结点（因为需要比较，所以使用了 <code>compareable</code> 的泛型）</li>
+<li><code>print()</code> – 从头遍历一个链表，并输出值。</li>
+</ul>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type node[T comparable] struct {
+  data T
+  prev *node[T]
+  next *node[T]
+}
+
+type list[T comparable] struct {
+  head, tail *node[T]
+  len int
+}
+
+func (l *list[T]) isEmpty() bool {
+  return l.head == nil &amp;&amp; l.tail == nil
+}
+
+func (l *list[T]) add(data T) {
+  n := &amp;node[T] {
+    data : data,
+    prev : nil,
+    next : l.head,
+  }
+  if l.isEmpty() {
+    l.head = n
+    l.tail = n
+  }
+  l.head.prev = n
+  l.head = n
+}
+
+func (l *list[T]) push(data T) { 
+  n := &amp;node[T] {
+    data : data,
+    prev : l.tail,
+    next : nil,
+  }
+  if l.isEmpty() {
+    l.head = n
+    l.tail = n
+  }
+  l.tail.next = n
+  l.tail = n
+}
+
+func (l *list[T]) del(data T) { 
+  for p := l.head; p != nil; p = p.next {
+    if data == p.data {
+      
+      if p == l.head {
+        l.head = p.next
+      }
+      if p == l.tail {
+        l.tail = p.prev
+      }
+      if p.prev != nil {
+        p.prev.next = p.next
+      }
+      if p.next != nil {
+        p.next.prev = p.prev
+      }
+      return 
+    }
+  } 
+}
+
+func (l *list[T]) print() {
+  if l.isEmpty() {
+    fmt.Println(&#34;the link list is empty.&#34;)
+    return 
+  }
+  for p := l.head; p != nil; p = p.next {
+    fmt.Printf(&#34;[%v] -&gt; &#34;, p.data)
+  }
+  fmt.Println(&#34;nil&#34;)
+}</pre>
+<p>上面这个代码都是一些比较常规的链表操作，学过链表数据结构的同学应该都不陌生，使用的代码也不难，如下所示，都很简单，看代码就好了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main(){
+  var l = list[int]{}
+  l.add(1)
+  l.add(2)
+  l.push(3)
+  l.push(4)
+  l.add(5)
+  l.print() //[5] -&gt; [2] -&gt; [1] -&gt; [3] -&gt; [4] -&gt; nil
+  l.del(5)
+  l.del(1)
+  l.del(4)
+  l.print() //[2] -&gt; [3] -&gt; nil
+  
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%87%BD%E6%95%B0%E5%BC%8F%E8%8C%83%E5%9E%8B"></span>函数式范型<span class="ez-toc-section-end"></span></h4>
+<p>接下来，我们就要来看一下我们函数式编程的三大件 <code>map()</code> 、 <code>reduce()</code> 和 <code>filter()</code> 在之前的《<a title="Go编程模式：Map-Reduce" href="/articles/21164.html" target="_blank" rel="noopener">Go编程模式：Map-Reduce</a>》文章中，我们可以看到要实现这样的泛型，需要用到反射，代码复杂到完全读不懂。下面来看一下真正的泛型版本。</p>
+<h5><span class="ez-toc-section" id="%E6%B3%9B%E5%9E%8BMap"></span>泛型Map<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func gMap[T1 any, T2 any] (arr []T1, f func(T1) T2) []T2 {
+  result := make([]T2, len(arr))
+  for i, elem := range arr {
+    result[i] = f(elem)
+  }
+  return result
+}</pre>
+<p>在上面的这个 map函数中我使用了两个类型 – <code>T1</code> 和 <code>T2</code> ，</p>
+<ul>
+<li><code>T1</code> – 是需要处理数据的类型</li>
+<li><code>T2</code> – 是处理后的数据类型</li>
+</ul>
+<p><code>T1</code> 和 <code>T2</code> 可以一样，也可以不一样。</p>
+<p>我们还有一个函数参数 –  <code>func(T1) T2</code> 意味着，进入的是 <code>T1</code> 类型的，出来的是 <code>T2</code> 类型的。</p>
+<p>然后，整个函数返回的是一个 <code>[]T2</code></p>
+<p>好的，我们来看一下怎么使用这个map函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">nums := []int {0,1,2,3,4,5,6,7,8,9}
+squares := gMap(nums, func (elem int) int {
+  return elem * elem
+})
+print(squares)  //0 1 4 9 16 25 36 49 64 81 
+
+strs := []string{&#34;Hao&#34;, &#34;Chen&#34;, &#34;MegaEase&#34;}
+upstrs := gMap(strs, func(s string) string  {
+  return strings.ToUpper(s)
+})
+print(upstrs) // HAO CHEN MEGAEASE 
+
+
+dict := []string{&#34;零&#34;, &#34;壹&#34;, &#34;贰&#34;, &#34;叁&#34;, &#34;肆&#34;, &#34;伍&#34;, &#34;陆&#34;, &#34;柒&#34;, &#34;捌&#34;, &#34;玖&#34;}
+strs =  gMap(nums, func (elem int) string  {
+  return  dict[elem]
+})
+print(strs) // 零 壹 贰 叁 肆 伍 陆 柒 捌 玖</pre>
+<h5><span class="ez-toc-section" id="%E6%B3%9B%E5%9E%8B_Reduce"></span>泛型 Reduce<span class="ez-toc-section-end"></span></h5>
+<p>接下来，我们再来看一下我们的Reduce函数，reduce函数是把一堆数据合成一个。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func gReduce[T1 any, T2 any] (arr []T1, init T2, f func(T2, T1) T2) T2 {
+  result := init
+  for _, elem := range arr {
+    result = f(result, elem)
+  }
+  return result
+}</pre>
+<p>函数实现起来很简单，但是感觉不是很优雅。</p>
+<ul>
+<li>也是有两个类型 <code>T1</code> 和 <code>T2</code>，前者是输出数据的类型，后者是佃出数据的类型。</li>
+<li>因为要合成一个数据，所以需要有这个数据的初始值 <code>init</code>，是 <code>T2</code> 类型</li>
+<li>而自定义函数 <code>func(T2, T1) T2</code>，会把这个init值传给用户，然后用户处理完后再返回出来。</li>
+</ul>
+<p>下面是一个使用上的示例——求一个数组的和</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">nums := []int {0,1,2,3,4,5,6,7,8,9}
+sum := gReduce(nums, 0, func (result, elem int) int  {
+    return result + elem
+})
+fmt.Printf(&#34;Sum = %d \n&#34;, sum)</pre>
+<h5><span class="ez-toc-section" id="%E6%B3%9B%E5%9E%8B_filter"></span>泛型 filter<span class="ez-toc-section-end"></span></h5>
+<p>filter函数主要是用来做过滤的，把数据中一些符合条件（filter in）或是不符合条件（filter out）的数据过滤出来，下面是相关的代码示例</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func gFilter[T any] (arr []T, in bool, f func(T) bool) []T {
+  result := []T{}
+  for _, elem := range arr {
+    choose := f(elem)
+    if (in &amp;&amp; choose) || (!in &amp;&amp; !choose) {
+      result = append(result, elem)
+    }
+  }
+  return result
+}
+
+func gFilterIn[T any] (arr []T, f func(T) bool) []T {
+  return gFilter(arr, true, f)
+}
+
+func gFilterOut[T any] (arr []T, f func(T) bool) []T {
+  return gFilter(arr, false, f)
+}</pre>
+<p>其中，用户需要提从一个 <code>bool</code> 的函数，我们会把数据传给用户，然后用户只需要告诉我行还是不行，于是我们就会返回一个过滤好的数组给用户。</p>
+<p>比如，我们想把数组中所有的奇数过滤出来</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">nums := []int {0,1,2,3,4,5,6,7,8,9}
+odds := gFilterIn(nums, func (elem int) bool  {
+    return elem % 2 == 1
+})
+print(odds)</pre>
+<h4><span class="ez-toc-section" id="%E4%B8%9A%E5%8A%A1%E7%A4%BA%E4%BE%8B"></span>业务示例<span class="ez-toc-section-end"></span></h4>
+<p>正如《<a title="Go编程模式：Map-Reduce" href="/articles/21164.html" target="_blank" rel="noopener">Go编程模式：Map-Reduce</a>》中的那个业务示例，我们在这里再做一遍。</p>
+<p>首先，我们先声明一个员工对象和相关的数据</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Employee struct {
+  Name     string
+  Age      int
+  Vacation int
+  Salary   float32
+}
+
+var employees = []Employee{
+  {&#34;Hao&#34;, 44, 0, 8000.5},
+  {&#34;Bob&#34;, 34, 10, 5000.5},
+  {&#34;Alice&#34;, 23, 5, 9000.0},
+  {&#34;Jack&#34;, 26, 0, 4000.0},
+  {&#34;Tom&#34;, 48, 9, 7500.75},
+  {&#34;Marry&#34;, 29, 0, 6000.0},
+  {&#34;Mike&#34;, 32, 8, 4000.3},
+}</pre>
+<p>然后，我们想统一下所有员工的薪水，我们就可以使用前面的reduce函数</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">total_pay := gReduce(employees, 0.0, func(result float32, e Employee) float32 {
+  return result + e.Salary
+})
+fmt.Printf(&#34;Total Salary: %0.2f\n&#34;, total_pay) // Total Salary: 43502.05</pre>
+<p>我们函数这个 <code>gReduce</code> 函数有点啰嗦，还需要传一个初始值，在用户自己的函数中，还要关心 <code>result</code> 我们还是来定义一个更好的版本。</p>
+<p>一般来说，我们用 reduce 函数大多时候基本上是统计求和或是数个数，所以，是不是我们可以定义的更为直接一些？比如下面的这个 <code>CountIf()</code>，就比上面的 Reduce 干净了很多。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func gCountIf[T any](arr []T, f func(T) bool) int {
+  cnt := 0
+  for _, elem := range arr {
+    if f(elem) {
+      cnt += 1
+    }
+  }
+  return cnt;
+}</pre>
+<p>我们做求和，我们也可以写一个Sum的泛型。</p>
+<ul>
+<li>处理 <code>T</code> 类型的数据，返回 <code>U</code>类型的结果</li>
+<li>然后，用户只需要给我一个需要统计的 <code>T</code> 的 <code>U</code> 类型的数据就可以了。</li>
+</ul>
+<p>代码如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Sumable interface {
+  type int, int8, int16, int32, int64,
+        uint, uint8, uint16, uint32, uint64,
+        float32, float64
+}
+
+func gSum[T any, U Sumable](arr []T, f func(T) U) U {
+  var sum U
+  for _, elem := range arr {
+    sum += f(elem)
+  }
+  return sum
+}</pre>
+<p>上面的代码我们动用了一个叫 Sumable 的接口，其限定了 U 类型，只能是 Sumable里的那些类型，也就是整型或浮点型，这个支持可以让我们的泛型代码更健壮一些。</p>
+<p>于是，我们就可以完成下面的事了。</p>
+<p><strong>1）统计年龄大于40岁的员工数</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">old := gCountIf(employees, func (e Employee) bool  {
+    return e.Age &gt; 40
+})
+fmt.Printf(&#34;old people(&gt;40): %d\n&#34;, old) 
+// ld people(&gt;40): 2</pre>
+<p><strong>2）统计薪水超过 6000元的员工数</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">high_pay := gCountIf(employees, func(e Employee) bool {
+  return e.Salary &gt;= 6000
+})
+fmt.Printf(&#34;High Salary people(&gt;6k): %d\n&#34;, high_pay) 
+//High Salary people(&gt;6k): 4</pre>
+<p><strong>3）统计年龄小于30岁的员工的薪水</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">younger_pay := gSum(employees, func(e Employee) float32 {
+  if e.Age &lt; 30 {
+      return e.Salary
+  } 
+  return 0
+})
+fmt.Printf(&#34;Total Salary of Young People: %0.2f\n&#34;, younger_pay)
+//Total Salary of Young People: 19000.00</pre>
+<p><strong>4）统计全员的休假天数</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">total_vacation := gSum(employees, func(e Employee) int {
+  return e.Vacation
+})
+fmt.Printf(&#34;Total Vacation: %d day(s)\n&#34;, total_vacation)
+//Total Vacation: 32 day(s)</pre>
+<p><strong>5）把没有休假的员工过滤出来</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">no_vacation := gFilterIn(employees, func(e Employee) bool {
+  return e.Vacation == 0
+})
+print(no_vacation)
+//{Hao 44 0 8000.5} {Jack 26 0 4000} {Marry 29 0 6000}</pre>
+<p>怎么样，你大概了解了泛型编程的意义了吧。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21615-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">generics</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">MapReduce</a>, <a href="javascript:void(0)" rel="tag">泛型</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go编程模式 ： 泛型编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2298253" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2298253" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.twofei.com" class="url" rel="ugc external nofollow">T</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2298253"><time datetime="2021-09-05T00:10:16+08:00">2021年09月05日 00:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>啥时候支持 std::forward(arr)… 那么第一个例子就可以大大简化了，哈哈哈哈。。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2298255" class="comment odd alt depth-2">
+<article id="div-comment-2298255" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.twofei.com" class="url" rel="ugc external nofollow">T</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2298255"><time datetime="2021-09-05T00:11:44+08:00">2021年09月05日 00:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>std::forward(arr)… 怎么把 吃掉了，难道当成 html tag 了。（备份：&lt;T&gt;）</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2300124" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2300124" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/590cb8c886ab4d2924e239cb825699d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/590cb8c886ab4d2924e239cb825699d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://abbabab.xyz" class="url" rel="ugc external nofollow">liusuifeng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2300124"><time datetime="2021-09-08T20:01:31+08:00">2021年09月08日 20:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>浩哥，从你这儿转几篇文章可以不，我会注明转载地址的</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2300963" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2300963" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2300963"><time datetime="2021-09-10T10:38:39+08:00">2021年09月10日 10:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可以的</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2302380" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2302380" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wardenlym</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2302380"><time datetime="2021-09-13T14:31:53+08:00">2021年09月13日 14:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>然而不支持export只能是变相鼓励源码复制粘贴复用了。如果一个语言引入泛型却不支持接口复用，那么意义何在。。。。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2337018" class="comment odd alt depth-2">
+<article id="div-comment-2337018" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d3a06de9283fb41d100318a0705375c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d3a06de9283fb41d100318a0705375c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://ahuigo.github.io" class="url" rel="ugc external nofollow">ahuigo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2337018"><time datetime="2021-11-20T20:40:01+08:00">2021年11月20日 20:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可能未来支持，只是现在还没有成熟。<br/>
+很多人是反对立即引入泛型，不能太快了</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2304299" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2304299" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/410ac5a20da57cecda80fe2d2f9cdca8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/410ac5a20da57cecda80fe2d2f9cdca8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rty</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2304299"><time datetime="2021-09-17T10:04:17+08:00">2021年09月17日 10:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还不是很了解</p>
+</div>
+ </article>
+</li>
+<li id="comment-2324370" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2324370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d594a4a5f002fdcea5260ad956e13da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d594a4a5f002fdcea5260ad956e13da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://neilwang.wiki" class="url" rel="ugc external nofollow">Neil</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2324370"><time datetime="2021-10-25T13:34:20+08:00">2021年10月25日 13:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>醍醐灌顶</p>
+</div>
+ </article>
+</li>
+<li id="comment-2326979" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2326979" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2ff15aa7c32dd618090b2ac78e0bb0e5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2ff15aa7c32dd618090b2ac78e0bb0e5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.xiariboke.net" class="url" rel="ugc external nofollow">夏日博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2326979"><time datetime="2021-10-30T21:01:54+08:00">2021年10月30日 21:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GO语言现在很流行，可惜一直没时间去学习。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2332709" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2332709" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3bfd728351363c82363c21fa779dd710?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3bfd728351363c82363c21fa779dd710?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">充电桩</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2332709"><time datetime="2021-11-11T14:02:14+08:00">2021年11月11日 14:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2344506" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2344506" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/025712f75913374fd33762e50add5d1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/025712f75913374fd33762e50add5d1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.fusiontechnology.in/" class="url" rel="ugc external nofollow">Sorav Patil</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2344506"><time datetime="2021-12-06T12:43:31+08:00">2021年12月06日 12:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Thanks for the blog but If your looking to switch your career to the Airline Industry we the Fusion is the best place to pursue. It is one of the best <a href="https://www.fusiontechnology.in/cabin-crew-course.php" rel="nofollow ugc">Air hostess Training</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2345190" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2345190" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d48a13cfa5e9e411f5493819eb03d81?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d48a13cfa5e9e411f5493819eb03d81?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://twitter.com/cherrot" class="url" rel="ugc external nofollow">赛博胖次</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2345190"><time datetime="2021-12-07T22:46:51+08:00">2021年12月07日 22:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><code>if (in &amp;&amp; choose) || (!in &amp;&amp; !choose) {<br/>
+</code></p>
+<p>是不是写成</p>
+<p><code>if (in == choose) {<br/>
+</code></p>
+<p>更直观呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2347376" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2347376" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4932ee4706f37451e4e420cbefd4141f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4932ee4706f37451e4e420cbefd4141f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">不错</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2347376"><time datetime="2021-12-12T13:13:33+08:00">2021年12月12日 13:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>playwright</p>
+</div>
+ </article>
+</li>
+<li id="comment-2351924" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2351924" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/99f6dd05347ccbe09ba2b028a11d7695?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/99f6dd05347ccbe09ba2b028a11d7695?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">netwjx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21615.html#comment-2351924"><time datetime="2021-12-23T19:42:42+08:00">2021年12月23日 19:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>go 的泛型 也是类型擦除么? 运行时就没有了?</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

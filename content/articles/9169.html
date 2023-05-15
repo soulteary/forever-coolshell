@@ -1,0 +1,591 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>并发框架Disruptor译文 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9169 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9169" class="post-content post-9169 post type-post status-publish format-standard hentry category-javadev category-602 tag-disruptor tag-java tag-lmax tag-performance">
+<header class="entry-header">
+<span class="screen-reader-text">并发框架Disruptor译文</span>
+<h1 class="entry-title">并发框架Disruptor译文</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9169.html" title="20:13" rel="bookmark"><time class="entry-date" datetime="2013-02-28T20:13:46+08:00" pubdate="">2013年02月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/kiral" title="View all posts by 方 腾飞" rel="author">方 腾飞</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9169.html#comments" class="comments-link">38 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 62,595 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢同事<a href="http://ifeve.com" target="_blank">方腾飞</a>投递本文）</strong></p>
+<p><img decoding="async" class="alignright size-medium wp-image-9188" alt="" src="/uploads/2013/02/Disruptor-300x144.png" width="300" height="144" srcset=""/>Martin Fowler在自己网站上写了一篇<a href="http://ifeve.com/lmax" target="_blank">LMAX架构</a>的文章，在文章中他介绍了LMAX是一种新型零售金融交易平台，它能够以很低的延迟产生大量交易。这个系统是建立在JVM平台上，其核心是一个业务逻辑处理器，它能够在一个线程里每秒处理6百万订单。业务逻辑处理器完全是运行在内存中，使用事件源驱动方式。业务逻辑处理器的核心是Disruptor。</p>
+<p>Disruptor它是一个开源的并发框架，并获得<a href="http://www.java.net/dukeschoice" target="_blank">2011 Duke’s </a>程序框架创新奖，能够在无锁的情况下实现网络的Queue并发操作。本文是<a href="https://code.google.com/p/disruptor/wiki/BlogsAndArticles" target="_blank">Disruptor官网</a>中发布的文章的译文（<a href="https://lmax-exchange.github.com/disruptor/" target="_blank">现在被移到了GitHub</a>）。</p>
+<h4><strong><span style="color: #008000">剖析Disruptor:为什么会这么快</span></strong></h4>
+<ul>
+<li><a href="http://ifeve.com/locks-are-bad/" target="_blank">剖析Disruptor:为什么会这么快？(一)锁的缺点</a></li>
+</ul>
+<ul>
+<li><a title="剖析Disruptor:为什么会这么快？（二）神奇的缓存行填充" href="http://ifeve.com/disruptor-cacheline-padding/" target="_blank">剖析Disruptor:为什么会这么快？(二)神奇的缓存行填充</a></li>
+</ul>
+<ul>
+<li><a title="伪共享(False Sharing)" href="http://ifeve.com/falsesharing/" target="_blank">剖析Disruptor:为什么会这么快？(三)伪共享</a></li>
+</ul>
+<ul>
+<li><a title="剖析Disruptor:为什么会这么快？(四)揭秘内存屏障" href="http://ifeve.com/disruptor-memory-barrier/" target="_blank">剖析Disruptor:为什么会这么快？(四)揭秘内存屏障</a></li>
+</ul>
+<h4><span style="color: #008000">Disruptor如何工作和使用</span></h4>
+<ul>
+<li><a title="剖析Disruptor:为什么会这么快？（一）Ringbuffer的特别之处" href="http://ifeve.com/dissecting-disruptor-whats-so-special/" target="_blank">如何使用Disruptor（一）Ringbuffer的特别之处</a></li>
+</ul>
+<ul>
+<li><a title="如何使用Disruptor（二）如何从Ringbuffer读取" href="http://ifeve.com/dissecting_the_disruptor_how_doi_read_from_the_ring_buffer/" target="_blank">如何使用Disruptor（二）如何从Ringbuffer读取</a></li>
+</ul>
+<ul>
+<li><a title="如何使用 Disruptor（三）写入 Ringbuffer" href="http://ifeve.com/disruptor-writing-ringbuffer/" target="_blank">如何使用Disruptor（三）写入Ringbuffer</a></li>
+</ul>
+<p><span id="more-9169"></span></p>
+<ul>
+<li><a title="Disruptor(无锁并发框架)-发布" href="http://ifeve.com/the-disruptor-lock-free-publishing/" target="_blank">Disruptor(无锁并发框架)-发布</a></li>
+</ul>
+<ul>
+<li><a title="LMAX Disruptor——一个高性能、低延迟且简单的框架" href="http://ifeve.com/disruptor-dsl/" target="_blank" rel="nofollow">LMAX Disruptor——一个高性能、低延迟且简单的框架</a></li>
+</ul>
+<ul>
+<li><a title="Disruptor Wizard已死，Disruptor Wizard永存！" href="http://ifeve.com/disruptor-wizard/" target="_blank" rel="nofollow">Disruptor Wizard已死，Disruptor Wizard永存！</a></li>
+</ul>
+<ul>
+<li><a title="Disruptor 2.0更新摘要" href="http://ifeve.com/disruptor-2-change/" target="_blank">Disruptor 2.0更新摘要</a></li>
+</ul>
+<ul>
+<li><a title="线程间共享数据无需竞争" href="http://ifeve.com/sharing-data-among-threads-without-contention/" target="_blank">线程间共享数据不需要竞争</a></li>
+</ul>
+<h4><span style="color: #008000">Disruptor的应用</span></h4>
+<ul>
+<li><a title="LMAX架构" href="http://ifeve.com/lmax/" target="_blank">LMAX的架构</a></li>
+</ul>
+<ul>
+<li><a title="通过Axon和Disruptor处理1M tps" href="http://ifeve.com/axon/" target="_blank">通过Axon和Disruptor处理1M tps</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9169-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Disruptor</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">lmax</a>, <a href="javascript:void(0)" rel="tag">Performance</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>并发框架Disruptor译文</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-299832" class="comment even thread-even depth-1">
+<article id="div-comment-299832" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7fbcc3f547d91c5cc602f69cb78c26cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7fbcc3f547d91c5cc602f69cb78c26cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://microcai.org" class="url" rel="ugc external nofollow">microcai</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-299832"><time datetime="2013-02-28T21:20:56+08:00">2013年02月28日 21:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>java的啊　：（</p>
+</div>
+ </article>
+</li>
+<li id="comment-299856" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-299856" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ac.net.blog.163.com/" class="url" rel="ugc external nofollow">Atry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-299856"><time datetime="2013-02-28T21:53:58+08:00">2013年02月28日 21:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>内存运算每秒600万次这不算啥。关键Java是IO，不论用同步IO，NIO，还是NIO.2，哪怕一次只读写1字节，每秒都只能处理十万次请求这个数量级。</p>
+</div>
+ </article>
+</li>
+<li id="comment-299870" class="comment even thread-even depth-1">
+<article id="div-comment-299870" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ac.net.blog.163.com/" class="url" rel="ugc external nofollow">Atry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-299870"><time datetime="2013-02-28T22:30:13+08:00">2013年02月28日 22:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我想了一下，我觉得每秒600万次请求的网络服务还是有可能的，但要求请求很小，多个请求合并在一个IP包中，就可以减少IO次数了。</p>
+<p>如果用于网络游戏的话，这种服务器只能是后台的逻辑服务器，不能直接面对客户端连接。</p>
+</div>
+ </article>
+</li>
+<li id="comment-299872" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-299872" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/133d5b476ccfcd2132857823fb26433b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/133d5b476ccfcd2132857823fb26433b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.colinsong.com" class="url" rel="ugc external nofollow">Colin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-299872"><time datetime="2013-02-28T22:38:54+08:00">2013年02月28日 22:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该学lwn搞个one big page， 方便send to kindle/ pocket之类的。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-299873" class="comment even thread-even depth-1">
+<article id="div-comment-299873" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e29f9e1365edb602cb9e097e59db559d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e29f9e1365edb602cb9e097e59db559d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">franzteem</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-299873"><time datetime="2013-02-28T22:41:30+08:00">2013年02月28日 22:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>牛叉</p>
+</div>
+ </article>
+</li>
+<li id="comment-299888" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-299888" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/975488f416ff2005465e3bd0ab59e52e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/975488f416ff2005465e3bd0ab59e52e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.styleit.me" class="url" rel="ugc external nofollow">Ritchie_E</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-299888"><time datetime="2013-02-28T23:08:07+08:00">2013年02月28日 23:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看了一下，这个框架之所以高性能主要是因为能有效的解锁，避免了伪共享，我很好奇一点，他是如何针对具体的处理器而变化的呢?是使用在所有架构的处理器上么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-300293" class="comment even thread-even depth-1">
+<article id="div-comment-300293" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c23c7d77f9582daba2418c54a03c354d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c23c7d77f9582daba2418c54a03c354d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mcs51a</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-300293"><time datetime="2013-03-01T12:34:46+08:00">2013年03月01日 12:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>要高效使用多核心的CPU，不可能完全无锁吧。锁用的少还是可以理解的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-300323" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-300323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/28583ab5ebfc1157681680b7f6666ecb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/28583ab5ebfc1157681680b7f6666ecb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">www</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-300323"><time datetime="2013-03-01T13:31:05+08:00">2013年03月01日 13:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>test</p>
+</div>
+ </article>
+</li>
+<li id="comment-300324" class="comment even thread-even depth-1">
+<article id="div-comment-300324" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ca831b8eed3e47be5cf026961b2708ca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ca831b8eed3e47be5cf026961b2708ca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fireflyc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-300324"><time datetime="2013-03-01T13:31:12+08:00">2013年03月01日 13:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大概看了一下，可以理解为两个东西<br/>
+1. 在线程级别的Actor并发，姑且不论好有无必要；并发实体从Process简化为Thread又从Thread变成Actor。。难道说并发实体真的是越小越好？这不科学吧。<br/>
+2. 无锁的生产消费队列，没啥好说的，到处是这些东西。这个framework似乎用它来做消息的承载。</p>
+</div>
+ </article>
+</li>
+<li id="comment-300328" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-300328" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/257534fe31bb9e137f3eea9095552360?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/257534fe31bb9e137f3eea9095552360?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://runfriends.iteye.com/" class="url" rel="ugc external nofollow">helloworld</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-300328"><time datetime="2013-03-01T13:44:39+08:00">2013年03月01日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哪儿有demo可以看看</p>
+</div>
+ </article>
+</li>
+<li id="comment-300433" class="comment even thread-even depth-1">
+<article id="div-comment-300433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-300433"><time datetime="2013-03-01T16:48:02+08:00">2013年03月01日 16:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>【这个系统是建立在JVM平台上，其核心是一个业务逻辑处理器，它能够在一个线程里每秒处理6百万订单】<br/>
+什么配置的硬件平台？1笔订单需要做哪些事情？</p>
+<p>这个机制很复杂吗？需要一个框架来实现？<br/>
+如真的有效，应该有c或c++的实现例子吧？操作系统会把它利用起来（彻底抛弃锁）吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-303268" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-303268" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf0da2f56a3338790819eb520d420c54?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf0da2f56a3338790819eb520d420c54?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.felix021.com" class="url" rel="ugc external nofollow">felix021</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-303268"><time datetime="2013-03-04T22:00:33+08:00">2013年03月04日 22:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>该代码在4×4核Xeon E7520 1.87G上测试，16线程加padding和不加padding性能差别是2.9倍左右，远没有图示数据那么夸张；另外用C/C++写的测试代码也是类似结果（差距更小一些），详见 <a href="http://www.felix021.com/blog/read.php?2106" rel="nofollow ugc">http://www.felix021.com/blog/read.php?2106</a> 。我怀疑是共享的L2/L3 Cache导致Cache Line失效的开销显著降低了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-303271" class="comment even thread-even depth-1">
+<article id="div-comment-303271" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf0da2f56a3338790819eb520d420c54?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf0da2f56a3338790819eb520d420c54?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.felix021.com" class="url" rel="ugc external nofollow">felix021</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-303271"><time datetime="2013-03-04T22:01:57+08:00">2013年03月04日 22:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>p.s. 我指的是伪共享那篇的Java代码</p>
+</div>
+ </article>
+</li>
+<li id="comment-305170" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-305170" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cd4b9992791be04edffe7028d8e10375?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cd4b9992791be04edffe7028d8e10375?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">阿斯蒂芬</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-305170"><time datetime="2013-03-06T17:09:32+08:00">2013年03月06日 17:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>10人都给5分，曲高和寡。</p>
+</div>
+ </article>
+</li>
+<li id="comment-309784" class="comment even thread-even depth-1">
+<article id="div-comment-309784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eabd8f0d958895c8ef747940180fc4a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eabd8f0d958895c8ef747940180fc4a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hongzy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-309784"><time datetime="2013-03-13T17:09:47+08:00">2013年03月13日 17:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>深傲点的技术文章没啥人看， 扯淡的文章回复率会很高，浮躁啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-309795" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-309795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eabd8f0d958895c8ef747940180fc4a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eabd8f0d958895c8ef747940180fc4a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hongzy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-309795"><time datetime="2013-03-13T17:16:54+08:00">2013年03月13日 17:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-303268" rel="nofollow">@felix021 </a><br/>
+我用笔记本跑了一下， I5-3210MCPU ,双核4线程。4线程加padding成绩是8209617297<br/>
+，不加是29167167375，差距大概3.5倍。</p>
+</div>
+ </article>
+</li>
+<li id="comment-310177" class="comment even thread-even depth-1">
+<article id="div-comment-310177" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf0da2f56a3338790819eb520d420c54?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf0da2f56a3338790819eb520d420c54?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.felix021.com/blog/" class="url" rel="ugc external nofollow">felix021</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-310177"><time datetime="2013-03-14T10:56:29+08:00">2013年03月14日 10:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-309795" rel="nofollow">@hongzy </a><br/>
+嗯，差不多，原文那个太夸张了。而且我觉得这个东西的性能，真的有那么重要吗，真实系统中瓶颈往往在数据库、IO上面。</p>
+</div>
+ </article>
+</li>
+<li id="comment-311588" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-311588" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-311588"><time datetime="2013-03-17T14:25:56+08:00">2013年03月17日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-309795" rel="nofollow">@hongzy </a> 不仅仅是padding的优化。</p>
+</div>
+ </article>
+</li>
+<li id="comment-311589" class="comment even thread-even depth-1">
+<article id="div-comment-311589" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-311589"><time datetime="2013-03-17T14:27:49+08:00">2013年03月17日 14:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-299888" rel="nofollow">@Ritchie_E </a><br/>
+只能针对主流处理器。</p>
+</div>
+ </article>
+</li>
+<li id="comment-311592" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-311592" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-311592"><time datetime="2013-03-17T14:33:07+08:00">2013年03月17日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-310177" rel="nofollow">@felix021 </a><br/>
+对于它们来说数据库，IO已经不再是瓶颈了，而是在进行极致的优化，Disruptor针对处理器进行优化的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-311593" class="comment even thread-even depth-1">
+<article id="div-comment-311593" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-311593"><time datetime="2013-03-17T14:33:33+08:00">2013年03月17日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-300328" rel="nofollow">@helloworld </a><br/>
+直接去github下载源码吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-311594" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-311594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-311594"><time datetime="2013-03-17T14:35:29+08:00">2013年03月17日 14:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-303268" rel="nofollow">@felix021 </a> 亲自测测非常好。</p>
+</div>
+ </article>
+</li>
+<li id="comment-311596" class="comment even thread-even depth-1">
+<article id="div-comment-311596" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-311596"><time datetime="2013-03-17T14:37:34+08:00">2013年03月17日 14:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-309784" rel="nofollow">@hongzy </a><br/>
+呵呵 你说的很对啊，这可能也是为什么并发编程网流量上不去的原因。</p>
+</div>
+ </article>
+</li>
+<li id="comment-313133" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-313133" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6f10947e83ea00bd23faf80e767d9a19?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6f10947e83ea00bd23faf80e767d9a19?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.maidou.com" class="url" rel="ugc external nofollow">麦兜不卖兜</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-313133"><time datetime="2013-03-20T15:49:25+08:00">2013年03月20日 15:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大概看了一遍<br/>
+有个问题不是很理解<br/>
+多个线程读取 Ringbuffer 的话怎么保证线程读取到的不是重复的数据<br/>
+按我以前的做法，是维护一个读索引，做原子自增操作<br/>
+但是文章上说Ringbuffer只维护一个写索引。。。<br/>
+望指教</p>
+</div>
+ </article>
+</li>
+<li id="comment-318282" class="comment even thread-even depth-1">
+<article id="div-comment-318282" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49934bc92549227d3b0dd55015125172?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49934bc92549227d3b0dd55015125172?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dylan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-318282"><time datetime="2013-03-28T13:54:37+08:00">2013年03月28日 13:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个可以做高频交易吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-318688" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-318688" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f26cbfacb5ae686f846c56fefa489d07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f26cbfacb5ae686f846c56fefa489d07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kavin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-318688"><time datetime="2013-03-29T09:12:39+08:00">2013年03月29日 09:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-313133" rel="nofollow">@麦兜不卖兜 </a><br/>
+代码中有个WorkPool的类，结合WorkProcessor和WorkHandler来解决这个问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-328847" class="comment even thread-even depth-1">
+<article id="div-comment-328847" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bcad1a5ddd01bdca66ca6ceb94ecc49f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bcad1a5ddd01bdca66ca6ceb94ecc49f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">corns</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-328847"><time datetime="2013-04-17T17:30:10+08:00">2013年04月17日 17:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://ifeve.com/的連結都死了" rel="nofollow ugc">http://ifeve.com/的連結都死了</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-385679" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-385679" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-385679"><time datetime="2013-05-06T23:42:53+08:00">2013年05月06日 23:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-328847" rel="nofollow">@corns </a><br/>
+已经恢复</p>
+</div>
+ </article>
+</li>
+<li id="comment-495040" class="comment even thread-even depth-1">
+<article id="div-comment-495040" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5f577e4f492838568723862003a0977f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5f577e4f492838568723862003a0977f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">流浪的铺盖</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-495040"><time datetime="2013-05-24T12:10:47+08:00">2013年05月24日 12:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个疑问呢，希望大家能够帮忙解决一下，文章说的是在cpu是多核情况下的伪共享会有优化，如果是单核的呢，会不会在伪共享的优化上边就没有意义了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-546337" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-546337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2537d6eb2ee11dffc6eb5b3a392e874c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2537d6eb2ee11dffc6eb5b3a392e874c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.fakeraybans4sale.com" class="url" rel="ugc external nofollow">replica Ray Bans sunglasses wholesale online</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-546337"><time datetime="2013-06-14T04:40:40+08:00">2013年06月14日 04:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Hi, Neat post. There is an issue with your web site in web explorer, may test this? IE nonetheless is the marketplace chief and a big part of folks will omit your fantastic writing due to this problem.</p>
+</div>
+ </article>
+</li>
+<li id="comment-607999" class="comment even thread-even depth-1">
+<article id="div-comment-607999" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">并发编程网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-607999"><time datetime="2013-07-24T23:32:09+08:00">2013年07月24日 23:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-495040" rel="nofollow">@流浪的铺盖 </a><br/>
+单核也是有意义的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-653855" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-653855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60106a2f2985bc1a0d9f14b06bdcbdcd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60106a2f2985bc1a0d9f14b06bdcbdcd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://coderbee.net" class="url" rel="ugc external nofollow">coderbee</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9169.html#comment-653855"><time datetime="2013-08-12T22:06:24+08:00">2013年08月12日 22:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大家好，我最近阅读了Disruptor的大部分源码，重点集中于 事件发布、事件处理的源码，做了个笔记： <a href="http://coderbee.net/index.php/open-source/20130812/400" rel="nofollow ugc">http://coderbee.net/index.php/open-source/20130812/400</a> ，希望能对大家有点帮助。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1207346" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=430" class="url" rel="ugc external nofollow">分布式系统的事务处理 | zengine</a> </div>
+</li>
+<li id="comment-1430847" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=981" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 | zengine</a> </div>
+</li>
+<li id="comment-1929617" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.kewangst.com/blog/?p=5574" class="url" rel="ugc external nofollow">从构建分布式秒杀系统聊聊Disruptor高性能队列 – 科网</a> </div>
+</li>
+<li id="comment-1932179" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.180go.cn/%e4%bb%8e%e6%9e%84%e5%bb%ba%e5%88%86%e5%b8%83%e5%bc%8f%e7%a7%92%e6%9d%80%e7%b3%bb%e7%bb%9f%e8%81%8a%e8%81%8adisruptor%e9%ab%98%e6%80%a7%e8%83%bd%e9%98%9f%e5%88%97/" class="url" rel="ugc external nofollow">180经验-实用生活指南</a> </div>
+</li>
+<li id="comment-2357111" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2070914" class="url" rel="ugc external nofollow">disruptor框架为什么这么强大 - 算法网</a> </div>
+</li>
+<li id="comment-2370930" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/279331" class="url" rel="ugc external nofollow">Java 并发实践 — ConcurrentHashMap 与 CAS - Java天堂</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

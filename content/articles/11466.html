@@ -1,0 +1,1017 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C语言的整型溢出问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11466 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11466" class="post-content post-11466 post type-post status-publish format-standard hentry category-cplusplus category-progdesign category-proglanguage category-netsecurity tag-c tag-overflow tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">C语言的整型溢出问题</span>
+<h1 class="entry-title">C语言的整型溢出问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11466.html" title="08:18" rel="bookmark"><time class="entry-date" datetime="2014-04-21T08:18:01+08:00" pubdate="">2014年04月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11466.html#comments" class="comments-link">96 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 109,639 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>整型溢出有点老生常谈了，bla, bla, bla… 但似乎没有引起多少人的重视。整型溢出会有可能导致缓冲区溢出，缓冲区溢出会导致各种黑客攻击，比如最近OpenSSL的heartbleed事件，就是一个buffer overread的事件。在这里写下这篇文章，希望大家都了解一下整型溢出，编译器的行为，以及如何防范，以写出更安全的代码。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E6%95%B4%E5%9E%8B%E6%BA%A2%E5%87%BA" title="什么是整型溢出">什么是整型溢出</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%95%B4%E5%9E%8B%E6%BA%A2%E5%87%BA%E7%9A%84%E5%8D%B1%E5%AE%B3" title="整型溢出的危害">整型溢出的危害</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%A4%BA%E4%BE%8B%E4%B8%80%EF%BC%9A%E6%95%B4%E5%BD%A2%E6%BA%A2%E5%87%BA%E5%AF%BC%E8%87%B4%E6%AD%BB%E5%BE%AA%E7%8E%AF" title="示例一：整形溢出导致死循环">示例一：整形溢出导致死循环</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%A4%BA%E4%BE%8B%E4%BA%8C%EF%BC%9A%E6%95%B4%E5%BD%A2%E8%BD%AC%E5%9E%8B%E6%97%B6%E7%9A%84%E6%BA%A2%E5%87%BA" title="示例二：整形转型时的溢出">示例二：整形转型时的溢出</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%A4%BA%E4%BE%8B%E4%B8%89%EF%BC%9A%E5%88%86%E9%85%8D%E5%86%85%E5%AD%98" title="示例三：分配内存">示例三：分配内存</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%A4%BA%E4%BE%8B%E5%9B%9B%EF%BC%9A%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA%E5%AF%BC%E8%87%B4%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98" title="示例四：缓冲区溢出导致安全问题">示例四：缓冲区溢出导致安全问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%A4%BA%E4%BE%8B%E4%BA%94%EF%BC%9Asize_t_%E7%9A%84%E6%BA%A2%E5%87%BA" title="示例五：size_t 的溢出">示例五：size_t 的溢出</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%85%B3%E4%BA%8E%E7%BC%96%E8%AF%91%E5%99%A8%E7%9A%84%E8%A1%8C%E4%B8%BA" title="关于编译器的行为">关于编译器的行为</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#%E7%BC%96%E8%AF%91%E5%99%A8%E4%BC%98%E5%8C%96" title="编译器优化">编译器优化</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#%E8%8A%B1%E7%B5%AE%EF%BC%9A%E7%BC%96%E8%AF%91%E5%99%A8%E7%9A%84%E5%BD%A9%E8%9B%8B" title="花絮：编译器的彩蛋">花絮：编译器的彩蛋</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#%E6%AD%A3%E7%A1%AE%E6%A3%80%E6%B5%8B%E6%95%B4%E5%9E%8B%E6%BA%A2%E5%87%BA" title="正确检测整型溢出">正确检测整型溢出</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-12" href="#%E4%BA%8C%E5%88%86%E5%8F%96%E4%B8%AD%E6%90%9C%E7%B4%A2%E7%AE%97%E6%B3%95%E4%B8%AD%E7%9A%84%E6%BA%A2%E5%87%BA" title="二分取中搜索算法中的溢出">二分取中搜索算法中的溢出</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-13" href="#%E4%B8%8A%E6%BA%A2%E5%87%BA%E5%92%8C%E4%B8%8B%E6%BA%A2%E5%87%BA%E7%9A%84%E6%A3%80%E6%9F%A5" title="上溢出和下溢出的检查">上溢出和下溢出的检查</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-14" href="#%E5%85%B6%E5%AE%83" title="其它">其它</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BB%80%E4%B9%88%E6%98%AF%E6%95%B4%E5%9E%8B%E6%BA%A2%E5%87%BA"></span>什么是整型溢出<span class="ez-toc-section-end"></span></h4>
+<p>C语言的整型问题相信大家并不陌生了。对于整型溢出，分为无符号整型溢出和有符号整型溢出。</p>
+<p><strong>对于unsigned整型溢出，C的规范是有定义的</strong>——“溢出后的数会以2^(8*sizeof(type))作模运算”，也就是说，如果一个unsigned char（1字符，8bits）溢出了，会把溢出的值与256求模。例如：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">unsigned char x = 0xff;
+printf(&#34;%d\n&#34;, ++x);</pre>
+<p>上面的代码会输出：0 （因为0xff + 1是256，与2^8求模后就是0）</p>
+<p><strong>对于signed整型的溢出，C的规范定义是“undefined behavior”</strong>，也就是说，编译器爱怎么实现就怎么实现。对于大多数编译器来说，算得啥就是啥。比如：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">signed char x =0x7f; //注：0xff就是-1了，因为最高位是1也就是负数了
+printf(&#34;%d\n&#34;, ++x);</pre>
+<p>上面的代码会输出：-128，因为0x7f + 0x01得到0x80，也就是二进制的1000 0000，符号位为1，负数，后面为全0，就是负的最小数，即-128。</p>
+<p><span id="more-11466"></span></p>
+<p>另外，千万别以为signed整型溢出就是负数，这个是不定的。比如：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">signed char x = 0x7f;
+signed char y = 0x05;
+signed char r = x * y;
+printf(&#34;%d\n&#34;, r);</pre>
+<p>上面的代码会输出：123</p>
+<p>相信对于这些大家不会陌生了。</p>
+<h4><span class="ez-toc-section" id="%E6%95%B4%E5%9E%8B%E6%BA%A2%E5%87%BA%E7%9A%84%E5%8D%B1%E5%AE%B3"></span>整型溢出的危害<span class="ez-toc-section-end"></span></h4>
+<p>下面说一下，整型溢出的危害。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%B8%80%EF%BC%9A%E6%95%B4%E5%BD%A2%E6%BA%A2%E5%87%BA%E5%AF%BC%E8%87%B4%E6%AD%BB%E5%BE%AA%E7%8E%AF"></span>示例一：整形溢出导致死循环<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="c"> ... ...
+... ...
+short len = 0;
+... ...
+while(len&lt; MAX_LEN) {
+    len += readFromInput(fd, buf);
+    buf += len;
+}</pre>
+<p>上面这段代码可能是很多程序员都喜欢写的代码（我在很多代码里看到过多次），其中的MAX_LEN 可能会是个比较大的整型，比如32767，我们知道short是16bits，取值范围是-32768 到 32767 之间。但是，上面的while循环代码有可能会造成整型溢出，而len又是个有符号的整型，所以可能会成负数，导致不断地死循环。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%BA%8C%EF%BC%9A%E6%95%B4%E5%BD%A2%E8%BD%AC%E5%9E%8B%E6%97%B6%E7%9A%84%E6%BA%A2%E5%87%BA"></span>示例二：整形转型时的溢出<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int copy_something(char *buf, int len)
+{
+    #define MAX_LEN 256
+    char mybuf[MAX_LEN];
+     ... ...
+     ... ...
+
+     if(len &gt; MAX_LEN){ // &lt;---- [1]
+         return -1;
+     }
+
+     return memcpy(mybuf, buf, len);
+}</pre>
+<p>上面这个例子中，还是[1]处的if语句，看上去没有会问题，但是len是个signed int，而memcpy则需一个size_t的len，也就是一个unsigned 类型。于是，len会被提升为unsigned，此时，如果我们给len传一个负数，会通过了if的检查，但在memcpy里会被提升为一个正数，于是我们的mybuf就是overflow了。这个会导致mybuf缓冲区后面的数据被重写。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%B8%89%EF%BC%9A%E5%88%86%E9%85%8D%E5%86%85%E5%AD%98"></span>示例三：分配内存<span class="ez-toc-section-end"></span></h5>
+<p>关于整数溢出导致堆溢出的很典型的例子是，OpenSSH Challenge-Response SKEY/BSD_AUTH 远程缓冲区溢出漏洞。下面这段有问题的代码摘自OpenSSH的代码中的auth2-chall.c中的input_userauth_info_response() 函数:</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">nresp = packet_get_int();
+if (nresp &gt; 0) {
+    response = xmalloc(nresp*sizeof(char*));
+    for (i = 0; i &lt; nresp; i++)
+        response[i] = packet_get_string(NULL);
+}</pre>
+<p>上面这个代码中，nresp是size_t类型（size_t一般就是unsigned int/long int），这个示例是一个解数据包的示例，一般来说，数据包中都会有一个len，然后后面是data。如果我们精心准备一个len，比如：1073741825（在32位系统上，指针占4个字节，unsigned int的最大值是0xffffffff，我们只要提供0xffffffff/4 的值——0x40000000，这里我们设置了0x4000000 + 1）， nresp就会读到这个值，然后nresp<em>sizeof(char</em>)就成了 1073741825 * 4，于是溢出，结果成为了 0x100000004，然后求模，得到4。于是，malloc(4)，于是后面的for循环1073741825 次，就可以干环事了（经过0x40000001的循环,用户的数据早已覆盖了xmalloc原先分配的4字节的空间以及后面的数据，包括程序代码，函数指针，于是就可以改写程序逻辑。关于更多的东西，你可以看一下这篇文章《<a href="http://engj.org/index.php/ej/article/view/112/167" target="_blank" rel="noopener noreferrer">Survey of Protections from Buffer-Overflow Attacks</a>》）。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E5%9B%9B%EF%BC%9A%E7%BC%93%E5%86%B2%E5%8C%BA%E6%BA%A2%E5%87%BA%E5%AF%BC%E8%87%B4%E5%AE%89%E5%85%A8%E9%97%AE%E9%A2%98"></span>示例四：缓冲区溢出导致安全问题<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int func(char *buf1, unsigned int len1,
+         char *buf2, unsigned int len2 )
+{
+   char mybuf[256]; 
+
+   if((len1 + len2) &gt; 256){    //&lt;--- [1]
+       return -1;
+   } 
+
+   memcpy(mybuf, buf1, len1);
+   memcpy(mybuf + len1, buf2, len2); 
+
+   do_some_stuff(mybuf); 
+
+   return 0;
+}</pre>
+<p>上面这个例子本来是想把buf1和buf2的内容copy到mybuf里，其中怕len1 + len2超过256 还做了判断，但是，如果len1+len2溢出了，根据unsigned的特性，其会与2^32求模，所以，基本上来说，上面代码中的[1]处有可能为假的。（注：通常来说，在这种情况下，如果你开启-O代码优化选项，那个if语句块就全部被和谐掉了——被编译器给删除了）比如，你可以测试一下 len1=0x104， len2 = 0xfffffffc 的情况。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%BA%94%EF%BC%9Asize_t_%E7%9A%84%E6%BA%A2%E5%87%BA"></span>示例五：size_t 的溢出<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">for (int i= strlen(s)-1;  i&gt;=0; i--)  { ... }</pre>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">for (int i=v.size()-1; i&gt;=0; i--)  { ... }</pre>
+<p>上面这两个示例是我们经常用的从尾部遍历一个数组的for循环。第一个是字符串，第二个是C++中的vector容器。strlen()和vector::size()返回的都是 size_t，size_t在32位系统下就是一个unsigned int。你想想，如果strlen(s)和v.size() 都是0呢？这个循环会成为个什么情况？于是strlen(s) – 1 和 v.size() – 1 都不会成为 -1，而是成为了 (unsigned int)(-1)，一个正的最大数。导致你的程序越界访问。</p>
+<p>这样的例子有很多很多，这些整型溢出的问题如果在关键的地方，尤其是在搭配有用户输入的地方，如果被黑客利用了，就会导致很严重的安全问题。</p>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8E%E7%BC%96%E8%AF%91%E5%99%A8%E7%9A%84%E8%A1%8C%E4%B8%BA"></span>关于编译器的行为<span class="ez-toc-section-end"></span></h4>
+<p>在谈一下如何正确的检查整型溢出之前，我们还要来学习一下编译器的一些东西。请别怪我罗嗦。</p>
+<h5><span class="ez-toc-section" id="%E7%BC%96%E8%AF%91%E5%99%A8%E4%BC%98%E5%8C%96"></span>编译器优化<span class="ez-toc-section-end"></span></h5>
+<p>如何检查整型溢出或是整型变量是否合法有时候是一件很麻烦的事情，就像上面的第四个例子一样，编译的优化参数-O/-O2/-O3基本上会假设你的程序不会有整形溢出。会把你的代码中检查溢出的代码给优化掉。</p>
+<p>关于编译器的优化，在这里再举个例子，假设我们有下面的代码（又是一个相当相当常见的代码）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int len;
+char* data;
+
+if (data + len &lt; data){
+    printf(&#34;invalid len\n&#34;);
+    exit(-1);
+}
+</pre>
+<p>上面这段代码中，len 和 data 配套使用，我们害怕len的值是非法的，或是len溢出了，于是我们写下了if语句来检查。这段代码在-O的参数下正常。但是在-O2的编译选项下，整个if语句块被优化掉了。</p>
+<p>你可以写个小程序，在gcc下编译（我的版本是4.4.7，记得加上-O2和-g参数），然后用gdb调试时，用disass /m命信输出汇编，你会看到下面的结果（你可以看到整个if语句块没有任何的汇编代码——直接被编译器和谐掉了）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">7 int len = 10;
+8 char* data = (char *)malloc(len);
+0x00000000004004d4 &lt;+4&gt;: mov $0xa,%edi
+0x00000000004004d9 &lt;+9&gt;: callq 0x4003b8 &lt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="076a666b6b686447776b73">[email protected]</a>&gt;
+
+9
+10 if (data + len &lt; data){
+11 printf(&#34;invalid len\n&#34;);
+12 exit(-1);
+13 }
+14
+15 }
+0x00000000004004de &lt;+14&gt;: add $0x8,%rsp
+0x00000000004004e2 &lt;+18&gt;: retq
+</pre>
+<p>对此，你需要把上面 char* 转型成 uintptr_t 或是 size_t，说白了也就是把char*转成unsigned的数据结构，if语句块就无法被优化了。如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">if ((uintptr_t)data + len &lt; (uintptr_t)data){
+    ... ...
+}</pre>
+<p>关于这个事，你可以看一下C99的规范说明《 <a href="http://www.open-std.org/JTC1/SC22/WG14/www/docs/n1124.pdf" target="_blank" rel="noopener noreferrer">ISO/IEC 9899:1999 C specification</a> 》第 §6.5.6 页，第8点，我截个图如下：（这段话的意思是定义了指针+/-一个整型的行为，如果越界了，则行为是undefined）</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-11469" src="/uploads/2014/04/c99.jpg" alt="" width="647" height="310" srcset="" sizes="(max-width: 647px) 100vw, 647px"/></p>
+<p>注意上面标红线的地方，说如果指针指在数组范围内没事，如果越界了就是undefined，也就是说这事交给编译器实现了，编译器想咋干咋干，那怕你想把其优化掉也可以。在这里要重点说一下，<strong>C语言中的一个大恶魔—— Undefined! 这里都是“野兽出没”的地方，你一定要小心小心再小心</strong>。</p>
+<h5><span class="ez-toc-section" id="%E8%8A%B1%E7%B5%AE%EF%BC%9A%E7%BC%96%E8%AF%91%E5%99%A8%E7%9A%84%E5%BD%A9%E8%9B%8B"></span>花絮：编译器的彩蛋<span class="ez-toc-section-end"></span></h5>
+<p>上面说了所谓的undefined行为就全权交给编译器实现，gcc在1.17版本下对于undefined的行为还玩了个彩蛋（<a href="https://en.wikipedia.org/wiki/Undefined_behavior#Compiler_easter_eggs" target="_blank" rel="noopener noreferrer">参看Wikipedia</a>）。</p>
+<p>下面gcc 1.17版本下的遭遇undefined行为时，gcc在unix发行版下玩的彩蛋的源代码。我们可以看到，它会去尝试去执行一些游戏<a href="https://en.wikipedia.org/wiki/NetHack">NetHack</a>， <a href="https://en.wikipedia.org/wiki/Rogue_%28computer_game%29">Rogue</a> 或是Emacs的 <a href="https://en.wikipedia.org/wiki/Tower_of_Hanoi#Applications">Towers of Hanoi</a>，如果找不到，就输出一条NB的报错。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">execl(&#34;/usr/games/hack&#34;, &#34;#pragma&#34;, 0); // try to run the game NetHack
+execl(&#34;/usr/games/rogue&#34;, &#34;#pragma&#34;, 0); // try to run the game Rogue
+// try to run the Tower&#39;s of Hanoi simulation in Emacs.
+execl(&#34;/usr/new/emacs&#34;, &#34;-f&#34;,&#34;hanoi&#34;,&#34;9&#34;,&#34;-kill&#34;,0);
+execl(&#34;/usr/local/emacs&#34;,&#34;-f&#34;,&#34;hanoi&#34;,&#34;9&#34;,&#34;-kill&#34;,0); // same as above
+fatal(&#34;You are in a maze of twisty compiler features, all different&#34;);</pre>
+<h4><span class="ez-toc-section" id="%E6%AD%A3%E7%A1%AE%E6%A3%80%E6%B5%8B%E6%95%B4%E5%9E%8B%E6%BA%A2%E5%87%BA"></span>正确检测整型溢出<span class="ez-toc-section-end"></span></h4>
+<p>在看过编译器的这些行为后，你应该会明白——“<strong>在整型溢出之前，一定要做检查，不然，就太晚了</strong>”。</p>
+<p>我们来看一段代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c"> void foo(int m, int n)
+{
+    size_t s = m + n;
+    .......
+}</pre>
+<p>上面这段代码有两个风险：<strong>1）有符号转无符号</strong>，<strong>2）整型溢出</strong>。这两个情况在前面的那些示例中你都应该看到了。<strong>所以，你千万不要把任何检查的代码写在 s = m + n 这条语名后面，不然就太晚了</strong>。undefined行为就会出现了——用句纯正的英文表达就是——“Dragon is here”——你什么也控制不住了。（注意：有些初学者也许会以为size_t是无符号的，而根据优先级 m 和 n 会被提升到unsigned int。其实不是这样的，m 和 n 还是signed int，m + n 的结果也是signed int，然后再把这个结果转成unsigned int 赋值给s）</p>
+<p>比如，下面的代码是错的：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c"> void foo(int m, int n)
+{
+    size_t s = m + n;
+    if ( m&gt;0 &amp;&amp; n&gt;0 &amp;&amp; (SIZE_MAX - m &lt; n) ){
+        //error handling...
+    }
+}</pre>
+<p>上面的代码中，大家要注意 <strong>(SIZE_MAX – m &lt; n)</strong> 这个判断，为什么不用m + n &gt; SIZE_MAX呢？因为，如果 m + n 溢出后，就被截断了，所以表达式恒真，也就检测不出来了。另外，这个表达式中，m和n分别会被提升为unsigned。</p>
+<p>但是上面的代码是错的，因为：</p>
+<p style="padding-left: 30px;">1）检查的太晚了，if之前编译器的undefined行为就已经出来了（你不知道什么会发生）。</p>
+<p style="padding-left: 30px;">2）就像前面说的一样，(SIZE_MAX – m &lt; n) 可能会被编译器优化掉。</p>
+<p style="padding-left: 30px;">3）另外，SIZE_MAX是size_t的最大值，size_t在64位系统下是64位的，严谨点应该用INT_MAX或是UINT_MAX</p>
+<p> 所以，正确的代码应该是下面这样：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c"> void foo(int m, int n)
+{
+    size_t s = 0;
+    if ( m&gt;0 &amp;&amp; n&gt;0 &amp;&amp; ( UINT_MAX - m &lt; n ) ){
+        //error handling...
+        return;
+    }
+    s = (size_t)m + (size_t)n;
+}</pre>
+<p>在《<a href="https://developer.apple.com/library/ios/documentation/Security/Conceptual/SecureCodingGuide/SecureCodingGuide.pdf" target="_blank" rel="noopener noreferrer">苹果安全编码规范</a>》（PDF）中，第28页的代码中：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-11472" src="/uploads/2014/04/apple_security_code.jpg" alt="" width="300" height="94" srcset=""/></p>
+<p>如果n和m都是signed int，那么这段代码是错的。正确的应该像上面的那个例子一样，至少要在n<em>m时要把 n 和 m 给 cast 成 size_t。因为，n</em>m可能已经溢出了，已经undefined了，undefined的代码转成size_t已经没什么意义了。（如果m和n是unsigned int，也会溢出），上面的代码仅在m和n是size_t的时候才有效。</p>
+<p>不管怎么说，《<a href="https://developer.apple.com/library/ios/documentation/Security/Conceptual/SecureCodingGuide/SecureCodingGuide.pdf" target="_blank" rel="noopener noreferrer">苹果安全编码规范</a>》绝对值得你去读一读。</p>
+<h5><span class="ez-toc-section" id="%E4%BA%8C%E5%88%86%E5%8F%96%E4%B8%AD%E6%90%9C%E7%B4%A2%E7%AE%97%E6%B3%95%E4%B8%AD%E7%9A%84%E6%BA%A2%E5%87%BA"></span>二分取中搜索算法中的溢出<span class="ez-toc-section-end"></span></h5>
+<p>我们再来看一个二分取中搜索算法（binary search），大多数人都会写成下面这个样子：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int binary_search(int a[], int len, int key)
+{
+    int low = 0; 
+    int high = len - 1; 
+
+    while ( low&lt;=high ) {
+        int mid = (low + high)/2;
+        if (a[mid] == key) {
+            return mid;
+        }
+        if (key &lt; a[mid]) {
+            high = mid - 1;
+        }else{
+            low = mid + 1;
+        }
+    }
+    return -1;
+}</pre>
+<p>上面这个代码中，你可能会有这样的想法：</p>
+<p>1） 我们应该用size_t来做len, low, high, mid这些变量的类型。没错，应该是这样的。但是如果这样，你要小心第四行 int high = len -1; 如果len为0，那么就“high大发了”。</p>
+<p>2） 无论你用不用size_t。我们在计算mid = (low+high)/2; 的时候，(low + high) 都可以溢出。正确的写法应该是：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int mid = low + (high - low)/2;</pre>
+<h5><span class="ez-toc-section" id="%E4%B8%8A%E6%BA%A2%E5%87%BA%E5%92%8C%E4%B8%8B%E6%BA%A2%E5%87%BA%E7%9A%84%E6%A3%80%E6%9F%A5"></span>上溢出和下溢出的检查<span class="ez-toc-section-end"></span></h5>
+<p>前面的代码只判断了正数的上溢出overflow，没有判断负数的下溢出underflow。让们来看看怎么判断：</p>
+<p>对于加法，还好。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">#include &lt;limits.h&gt;
+
+void f(signed int si_a, signed int si_b) {
+    signed int sum;
+    if (((si_b &gt; 0) &amp;&amp; (si_a &gt; (INT_MAX - si_b))) ||
+        ((si_b &lt; 0) &amp;&amp; (si_a &lt; (INT_MIN - si_b)))) {
+        /* Handle error */
+        return;
+    }
+    sum = si_a + si_b;
+}</pre>
+<p>对于乘法，就会很复杂（下面的代码太夸张了）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">void func(signed int si_a, signed int si_b)
+{
+  signed int result;
+  if (si_a &gt; 0) {  /* si_a is positive */
+    if (si_b &gt; 0) {  /* si_a and si_b are positive */
+      if (si_a &gt; (INT_MAX / si_b)) {
+        /* Handle error */
+      }
+    } else { /* si_a positive, si_b nonpositive */
+      if (si_b &lt; (INT_MIN / si_a)) {
+        /* Handle error */
+      }
+    } /* si_a positive, si_b nonpositive */
+  } else { /* si_a is nonpositive */
+    if (si_b &gt; 0) { /* si_a is nonpositive, si_b is positive */
+      if (si_a &lt; (INT_MIN / si_b)) {
+        /* Handle error */
+      }
+    } else { /* si_a and si_b are nonpositive */
+      if ( (si_a != 0) &amp;&amp; (si_b &lt; (INT_MAX / si_a))) {
+        /* Handle error */
+      }
+    } /* End if si_a and si_b are nonpositive */
+  } /* End if si_a is nonpositive */
+
+  result = si_a * si_b;
+}</pre>
+<p>更多的防止在操作中整型溢出的安全代码可以参看《<a href="https://www.securecoding.cert.org/confluence/display/seccode/INT32-C.+Ensure+that+operations+on+signed+integers+do+not+result+in+overflow">INT32-C. Ensure that operations on signed integers do not result in overflow</a>》</p>
+<h4><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83"></span>其它<span class="ez-toc-section-end"></span></h4>
+<p>对于C++来说，你应该使用STL中的numeric_limits::max() 来检查溢出。</p>
+<p>另外，微软的SafeInt类是一个可以帮你远理上面这些很tricky的类，下载地址：<a href="http://safeint.codeplex.com/" target="_blank" rel="noopener noreferrer">http://safeint.codeplex.com/</a></p>
+<p>对于Java 来说，一种是用JDK 1.7中Math库下的safe打头的函数，如safeAdd()和safeMultiply()，另一种用更大尺寸的数据类型，最大可以到BigInteger。</p>
+<p>可见，写一个安全的代码并不容易，尤其对于C/C++来说。对于黑客来说，他们只需要搜一下开源软件中代码有memcpy/strcpy之类的地方，然后看一看其周边的代码，是否可以通过用户的输入来影响，如果有的话，你就惨了。</p>
+<p><strong>参考</strong>：</p>
+<ul>
+<li><a href="http://phrack.org/issues/60/10.html" target="_blank" rel="noopener noreferrer">Basic Integer Overflow</a></li>
+</ul>
+<ul>
+<li><a href="https://www.owasp.org/index.php/Integer_overflow" target="_blank" rel="noopener noreferrer">OWASP：Integer overflow</a></li>
+</ul>
+<ul>
+<li><a href="https://www.kb.cert.org/vuls/id/162289" target="_blank" rel="noopener noreferrer">C compilers may silently discard some wraparound checks</a></li>
+</ul>
+<ul>
+<li><a href="https://developer.apple.com/library/ios/documentation/Security/Conceptual/SecureCodingGuide/SecureCodingGuide.pdf" target="_blank" rel="noopener noreferrer">Apple Secure Coding Guide</a></li>
+</ul>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Undefined_behavior" target="_blank" rel="noopener noreferrer">Wikipedia: Undefined Behavior</a></li>
+</ul>
+<ul>
+<li>
+<p id="title-text" class="with-breadcrumbs"><a href="https://www.securecoding.cert.org/confluence/display/seccode/INT32-C.+Ensure+that+operations+on+signed+integers+do+not+result+in+overflow">INT32-C. Ensure that operations on signed integers do not result in overflow</a></p>
+</li>
+</ul>
+<p>最后， 不好意思，这篇文章可能罗嗦了一些，大家见谅。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11466-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Overflow</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C语言的整型溢出问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1450473" class="comment even thread-even depth-1">
+<article id="div-comment-1450473" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7bf23b3768f3c5a6b4ccb1f7cab3c721?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7bf23b3768f3c5a6b4ccb1f7cab3c721?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bestwolf1983</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1450473"><time datetime="2014-04-30T15:37:52+08:00">2014年04月30日 15:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>for(unsigned char i = 0; i 256){<br/>
+printf(“overflow\n”);<br/>
+}<br/>
+可以运行，请问浩歌，是为什么呢？C语言在什么情况下进行类型提升？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1450479" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1450479" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00737909712c74a8e57f87516ae2bd0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00737909712c74a8e57f87516ae2bd0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">不吃臭豆腐</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1450479"><time datetime="2014-04-30T15:50:39+08:00">2014年04月30日 15:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也做过类似的计算，但是我利用了unsigned char型数据的溢出特性，实现了一个小范围内使用的方案。我的文章地址是<br/>
+<a href="http://blog.163.com/jilianglijie@126/blog/static/1360525982014319101934733/" rel="nofollow ugc">http://blog.163.com/<span class="__cf_email__" data-cfemail="0b616267626a656c676261626e4b3a393d">[email protected]</span>/blog/static/1360525982014319101934733/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1450717" class="comment even thread-even depth-1">
+<article id="div-comment-1450717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce9d410ceb9c9246dc93a044efa115a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce9d410ceb9c9246dc93a044efa115a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bombless</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1450717"><time datetime="2014-04-30T23:46:04+08:00">2014年04月30日 23:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实ANSI C里面signed char，char和unsigned char是3种不同的类型，数值范围也互相没有关系。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1452483" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1452483" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/112975361af2f98ffb8d7f6efdd9c7ef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/112975361af2f98ffb8d7f6efdd9c7ef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">blackball</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1452483"><time datetime="2014-05-03T10:49:52+08:00">2014年05月03日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>FYI<br/>
+<a href="http://randomascii.wordpress.com/2014/04/17/buggy-security-guidance-from-apple/#more-1677" rel="nofollow ugc">http://randomascii.wordpress.com/2014/04/17/buggy-security-guidance-from-apple/#more-1677</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1454665" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://buptguo.com/2014/05/06/c%e8%af%ad%e8%a8%80%e6%95%b4%e6%95%b0%e7%9a%84%e4%b8%80%e4%ba%9bquiz/" class="url" rel="ugc external nofollow">C语言整数的一些quiz | Guo&#39;Blog</a> </div>
+</li>
+<li id="comment-1472082" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1472082" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c315839684b6030663c1ec45cab1a30f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c315839684b6030663c1ec45cab1a30f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rainmaker</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1472082"><time datetime="2014-05-29T17:01:41+08:00">2014年05月29日 17:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1441886" rel="nofollow">@谷壳 </a><br/>
+这个问题在《深入理解计算机系统》（中文版）第二章 也就是51页有解释：<br/>
+short sx = -12345；<br/>
+unsigned uy = sx；<br/>
+大端输出 uy = 4294954951： ff ff cf c7<br/>
+这表明当把short转换成unsigned时，我们先要改变大小，之后再完成从有符号到无符号的转换。<br/>
+也就是说 （unsigned）sx 等价于（unsigned ）（int）sx， 求值得到4294954951，<br/>
+而不等价于（unsigned）（unsigned short）sx，后者得到53191,。<br/>
+事实上 这个规则是c语言标准要求的。<br/>
+另外提一点，m+n 是表达式，单个变量sx 也属于表达式。</p>
+<p>另外再贴出溢出的判断：<br/>
+t=a+b；这里的变量a,b,t都是整型的<br/>
+（unsigned）t 无符号溢出<br/>
+（a&lt;0 == b&lt;0) &amp;&amp; (t&lt;0 != a 有符号溢出 ，a b 同号，与t异号</p>
+</div>
+ </article>
+</li>
+<li id="comment-1472604" class="comment even thread-even depth-1">
+<article id="div-comment-1472604" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c315839684b6030663c1ec45cab1a30f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c315839684b6030663c1ec45cab1a30f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rainmaker</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1472604"><time datetime="2014-05-30T10:00:53+08:00">2014年05月30日 10:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1472082" rel="nofollow">@rainmaker </a><br/>
+倒数第二行少写了 补个：(unsigned ) t &lt; (unsigned) a 无符号溢出</p>
+</div>
+ </article>
+</li>
+<li id="comment-1474042" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1474042" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/68edb5c164e92482efbf8b48691544e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/68edb5c164e92482efbf8b48691544e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sysabod</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1474042"><time datetime="2014-06-01T10:27:43+08:00">2014年06月01日 10:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于本文对C99的规范说明《 ISO/IEC 9899:1999 C specification 》第 §6.5.6 页，第8点红色下划线部分的解释，按照我对原文的理解，意思是说如果指针或者指针运算的结果有一个越界了，那么这个运算不应该产生溢出（就数值来说没溢出），如果编译器按照溢出处理的话，那么程序的行为是未定义的。</p>
+<p>皓哥，如有错误，请指正，我觉得原文的说法有歧义。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1909051" class="comment even depth-2 parent">
+<article id="div-comment-1909051" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1909051"><time datetime="2016-12-28T23:09:50+08:00">2016年12月28日 23:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也觉得不是 划线部分的原因，而且我试的时候O2优化，并没有把if段优化掉，我还发现了一些其他的东西</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1909054" class="comment odd alt depth-3">
+<article id="div-comment-1909054" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1909054"><time datetime="2016-12-28T23:54:23+08:00">2016年12月28日 23:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果按作者gdb调试的代码原样写if段确实被优化掉了</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1487102" class="comment even thread-even depth-1">
+<article id="div-comment-1487102" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Martin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1487102"><time datetime="2014-06-26T22:07:49+08:00">2014年06月26日 22:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天在check代码的时候，发现这样一个问题，想到您那篇关于《C语言的整型溢出问题》的文章<br/>
+觉得有很大的机会发生在代码中<br/>
+本人并不资深，觉得这样的问题之前可能会有犯过<br/>
+想象场景：<br/>
+std::vector int_vec;<br/>
+for( size_t i = int_vec.size()-1; i&gt;0; i–)<br/>
+{<br/>
+很容易会做如下操作<br/>
+int_vec[i] = xxx;<br/>
+}<br/>
+感觉这样的情况很容易发生，遍历一个容器的时候，去掉编译器warning，所以 变量i和 size()返回值保持一致，size_t<br/>
+如果容器size=0，i=0xffffffff，然后遍历。。。<br/>
+vector会这样赋值，而set，deque，也会根据i作为index进行赋值，这样个人认为是很有可能发生的<br/>
+提出来，希望有则改之，无责加冕，也算是一个分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-1487272" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1487272" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/30e63aff0f47f054b54b50af3c222f66?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/30e63aff0f47f054b54b50af3c222f66?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">UStone</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1487272"><time datetime="2014-06-27T11:06:27+08:00">2014年06月27日 11:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真是好文章，长了不少见识。感叹我写了这么多年的C，看到过，但是都没有仔细考虑这方面的东西，真的是细节是魔鬼啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1492001" class="comment even thread-even depth-1">
+<article id="div-comment-1492001" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff032a25b1c70f4a3be75350ac4436a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff032a25b1c70f4a3be75350ac4436a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">三毛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1492001"><time datetime="2014-07-07T17:50:55+08:00">2014年07月07日 17:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>楼主辛苦<br/>
+要是能在各个示例的后面给出安全的修正方案让初学者来学习就更好了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1492002" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1492002" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff032a25b1c70f4a3be75350ac4436a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff032a25b1c70f4a3be75350ac4436a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">三毛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1492002"><time datetime="2014-07-07T17:53:07+08:00">2014年07月07日 17:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1492001" rel="nofollow">@三毛 </a><br/>
+下面有检测方案<br/>
+不好意思看到一半就来评论了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1492355" class="comment even thread-even depth-1">
+<article id="div-comment-1492355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/35d34ea77e5846b1831c38ccbd35e332?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/35d34ea77e5846b1831c38ccbd35e332?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cainiao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1492355"><time datetime="2014-07-08T10:24:10+08:00">2014年07月08日 10:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教各位大大一个问题, 示例二.<br/>
+if(len &gt; MAX_LEN){ // &lt;—- [1]<br/>
+return -1;<br/>
+}</p>
+<p>&#34;…len是个signed int，而memcpy则需一个size_t的len，也就是一个unsigned 类型。于是，len会被提升为unsigned，此时，如果我们给len传一个负数，会通过了if的检查…&#34;</p>
+<p>实测了一下, 的确能够通过检查, 但还是不明白.<br/>
+len被提升为unsigned应该是在memcpy()里面? memcpy()执行时, 它从栈上抓几个字节解释为unsigned. 但在copy_something()里面, 也就是调用memcpy()之前, 不还是一个普通的int吗, 然后if()应该通不过呀. 难道编译器预见到len会被传递给memcpy(), 提前将它转为unsigned了?</p>
+<p>谢谢.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1506567" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1506567" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d028ad9f75fc19e6148f949064023d60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d028ad9f75fc19e6148f949064023d60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">RelicOfTesla</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1506567"><time datetime="2014-08-03T16:22:49+08:00">2014年08月03日 16:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1492355" rel="nofollow">@cainiao </a><br/>
+-10 &gt; 256么，肯定是等于false，既然false了，干嘛还会进入if呢。。于是crash!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1513647" class="comment even thread-even depth-1">
+<article id="div-comment-1513647" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9539e6207857abcbd11f109daafdacc4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9539e6207857abcbd11f109daafdacc4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">球球</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1513647"><time datetime="2014-08-16T09:20:27+08:00">2014年08月16日 09:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得示例5中的for()改为下面的更合适些：<br/>
+for (unsigned int s = strlen(s) – 1; s &gt;= 0; –s)</p>
+<p>for (unsigned int v = v.size() – 1; s &gt;= 0; –s)</p>
+</div>
+ </article>
+</li>
+<li id="comment-1514202" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1514202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/632f3520a6ad5f8bb7276a421d21c00f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/632f3520a6ad5f8bb7276a421d21c00f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://upliu.net/" class="url" rel="ugc external nofollow">开飞机的小蜗牛</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1514202"><time datetime="2014-08-17T12:26:21+08:00">2014年08月17日 12:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主，示例五：size_t 的溢出，对于这个我的疑问是 strlen(s) – 1 被不会被强转为 int 然后赋值给 i 吗？<br/>
+我写了如下的代码，但是并没有溢出：<br/>
+#include<br/>
+#include<br/>
+#include </p>
+<p>int main(int argc, char **argv)<br/>
+{<br/>
+char *str = “”;</p>
+<p> for (int i = strlen(str) – 1; i &gt;= 0; i–) {<br/>
+printf(“%d “, i);<br/>
+}</p>
+<p> return EXIT_SUCCESS;<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-1520877" class="comment byuser comment-author-shenbaise9527 even thread-even depth-1">
+<article id="div-comment-1520877" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7ad0ecb20b01c7e4e509eb06738e7921?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7ad0ecb20b01c7e4e509eb06738e7921?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shenbaise9527</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1520877"><time datetime="2014-08-27T23:24:12+08:00">2014年08月27日 23:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>示例五：size_t 的溢出<br/>
+for (int i=v.size()-1; i&gt;=0; i–)</p>
+<p>v.size()为0时，v.size()-1会转换为无符号的最大正数，但在赋值给int i时不是又会转换为带符号的么，此时i为-1，这个循环根本进不去哈</p>
+<p>求解惑？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1528989" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1528989" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7587203c6bdc3f27994785aafda236fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7587203c6bdc3f27994785aafda236fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">toles</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1528989"><time datetime="2014-09-08T14:28:29+08:00">2014年09月08日 14:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“对于unsigned整型溢出，C的规范是有定义的”，这个定义是在哪个标准定义的，哪个章节？我咋没抓到啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1534752" class="comment even thread-even depth-1">
+<article id="div-comment-1534752" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a354ba6ddf9177cdbee1cfc76cc96591?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a354ba6ddf9177cdbee1cfc76cc96591?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hzj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1534752"><time datetime="2014-09-15T15:54:22+08:00">2014年09月15日 15:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1487102" rel="nofollow">@Martin </a><br/>
+这个就算不考虑溢出问题，也应该是i&gt;=0吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1572005" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1572005" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba678ebd94ac508e5a9798731f9ca4a9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba678ebd94ac508e5a9798731f9ca4a9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">locky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1572005"><time datetime="2014-10-14T23:23:59+08:00">2014年10月14日 23:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得编译器优化那段写的有问题，在博主给的例子程序里，len已经被确定为10了，所以if条件永远不可能被满足，被优化掉很正常。如果博主在if前面加一个scanf(“%d”,&amp;len)，那么if语句就不会被优化掉了。我没有gcc4.4, 但是在gcc4.8里的确如此。 @陈皓</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1909056" class="comment even depth-2">
+<article id="div-comment-1909056" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1909056"><time datetime="2016-12-28T23:56:43+08:00">2016年12月28日 23:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也同意你的说法</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1675839" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1675839" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff032a25b1c70f4a3be75350ac4436a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff032a25b1c70f4a3be75350ac4436a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.sanmaosoft.com/" class="url" rel="ugc external nofollow">三毛</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1675839"><time datetime="2015-03-17T16:27:11+08:00">2015年03月17日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写程序多年 还是经常犯上述错误，应该自省了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1746156" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1746156" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2f90b4a5809ea362684fff292cd9ed8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2f90b4a5809ea362684fff292cd9ed8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">帅锅</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1746156"><time datetime="2015-08-13T22:31:27+08:00">2015年08月13日 22:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1520877"><p>
+<strong><a href="#comment-1520877" rel="nofollow">shenbaise9527</a> :</strong><br/>
+示例五：size_t 的溢出<br/>
+for (int i=v.size()-1; i&gt;=0; i–)<br/>
+v.size()为0时，v.size()-1会转换为无符号的最大正数，但在赋值给int i时不是又会转换为带符号的么，此时i为-1，这个循环根本进不去哈<br/>
+求解惑？
+</p></blockquote>
+<p>是的，我在GCC里试过int i= strlen(s)-1，结果还是-1啊</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1909055" class="comment odd alt depth-2">
+<article id="div-comment-1909055" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1909055"><time datetime="2016-12-28T23:55:54+08:00">2016年12月28日 23:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这是因为 strlen(s) -1 计算的时候会提升到size_t的类型，计算后赋值给i又降级到int类型</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1805019" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/04/14/%e5%85%b3%e4%ba%8e%e7%a7%bb%e5%8a%a8%e7%ab%af%e7%9a%84%e9%92%93%e9%b1%bc%e5%bc%8f%e6%94%bb%e5%87%bb/" class="url" rel="ugc external nofollow">关于移动端的钓鱼式攻击 | 大耳门</a> </div>
+</li>
+<li id="comment-1805021" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2014/12/31/linus%ef%bc%9a%e4%b8%ba%e4%bd%95%e5%af%b9%e8%b1%a1%e5%bc%95%e7%94%a8%e8%ae%a1%e6%95%b0%e5%bf%85%e9%a1%bb%e6%98%af%e5%8e%9f%e5%ad%90%e7%9a%84/" class="url" rel="ugc external nofollow">Linus：为何对象引用计数必须是原子的 | 大耳门</a> </div>
+</li>
+<li id="comment-1807994" class="comment byuser comment-author-xdarg even thread-even depth-1">
+<article id="div-comment-1807994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6d093903d2a1f3da5f5867c29efb0d30?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6d093903d2a1f3da5f5867c29efb0d30?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xdarg</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1807994"><time datetime="2016-01-28T08:27:14+08:00">2016年01月28日 08:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近刚好碰到过一个简单的溢出，以后用之前就应该想一下这个问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1841684" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2089" class="url" rel="ugc external nofollow">C语言的整型溢出问题 – linux运维部落</a> </div>
+</li>
+<li id="comment-1862380" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.hikyle.me/leetcode-reverse-integer/" class="url" rel="ugc external nofollow">LeetCode: Reverse Integer | Kyle 笔记</a> </div>
+</li>
+<li id="comment-1900975" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1900975" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c7ea4bed85fe48a8d58ad4f8c4846212?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c7ea4bed85fe48a8d58ad4f8c4846212?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">昊天</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1900975"><time datetime="2016-11-23T13:44:38+08:00">2016年11月23日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果我们给len传一个负数，会通过了if的检查”<br/>
+怎么能通过if检查呢！！！</p>
+<p>if(len &gt; MAX_LEN){ // &lt;—- [1] return -1; }</p>
+</div>
+ </article>
+</li>
+<li id="comment-1906767" class="comment even thread-even depth-1">
+<article id="div-comment-1906767" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bbfe195f4cabb821dd7c82f4b63a2e9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bbfe195f4cabb821dd7c82f4b63a2e9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gaoxiaodiao.com" class="url" rel="ugc external nofollow">站长高小调</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-1906767"><time datetime="2016-12-13T09:33:39+08:00">2016年12月13日 09:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>int mid = low + (high – low)/2;<br/>
+当low为1,hight为0时,结果是1<br/>
+当low为0,hight为1时,结果是0<br/>
+如果采取mid = low + ((high – low)&gt;&gt;1);<br/>
+就正常,全是0</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917726" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://collect.tobecoder.com/index.php/2017/09/18/c%e8%af%ad%e8%a8%80%e7%9a%84%e6%95%b4%e5%9e%8b%e6%ba%a2%e5%87%ba%e9%97%ae%e9%a2%98/" class="url" rel="ugc external nofollow">C语言的整型溢出问题 – 非典型收藏集</a> </div>
+</li>
+<li id="comment-1942699" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/9957.html" class="url" rel="ugc external nofollow">如何重构“箭头型”代码 – 西部IT科技</a> </div>
+</li>
+<li id="comment-2018033" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2018033" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b27b9c6b111e25b9da46138b4f9e47a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b27b9c6b111e25b9da46138b4f9e47a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">VictorV</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-2018033"><time datetime="2019-09-05T16:22:53+08:00">2019年09月05日 16:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>for (int i=v.size()-1; i&gt;=0; i–) { … } 这个并不会溢出, 因为是有符号比较, 即使v.size()为0, i=-1, 因为-1&lt;0, 所以不会进入循环, 请更正</p>
+</div>
+ </article>
+</li>
+<li id="comment-2034538" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2034538" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4865db0c9abf919ce68809b6add1eed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4865db0c9abf919ce68809b6add1eed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hu60.cn" class="url" rel="ugc external nofollow">老虎会游泳</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-2034538"><time datetime="2019-11-01T13:04:11+08:00">2019年11月01日 13:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><code>data + len &lt; data</code> 被优化的原因是你的代码中 <code>len = 10</code>，所以len可以内联为常量。一个指针加10是不可能小于该指针本身的，所以可以安全的优化掉。如果len接收来自用户的输入，则不会被优化掉。这与整形溢出无关。<br/>
+比如下面的代码：</p>
+<p>[code lang=”c”]<br/>
+#include &lt;stdio.h&gt;<br/>
+#include &lt;stdlib.h&gt;</p>
+<p>void a()<br/>
+{<br/>
+int len = 10;<br/>
+char* data = (char *)malloc(len);</p>
+<p> if (data + len &lt; data){<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+}<br/>
+printf(data);<br/>
+}</p>
+<p>void b(int size)<br/>
+{<br/>
+int len = size;<br/>
+char* data = (char *)malloc(len);</p>
+<p> if (data + len &lt; data){<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+}<br/>
+printf(data);<br/>
+}<br/>
+[/code]</p>
+<p>用以下命令编译并输出汇编代码：</p>
+<p>[code lang=”shell”]<br/>
+gcc -c -g -O1 test.c<br/>
+objdump -S test.o<br/>
+[/code]</p>
+<p>可以看到，函数<code>a()</code>中没有为<code>if</code>生成代码，但是函数<code>b()</code>生成了。</p>
+<p>[code lang=”c”]<br/>
+Disassembly of section .text:</p>
+<p>0000000000000000 &lt;a&gt;:<br/>
+#include &lt;stdio.h&gt;;<br/>
+#include &lt;stdlib.h&gt;;</p>
+<p>void a()<br/>
+{<br/>
+0: 48 83 ec 08 sub $0x8,%rsp<br/>
+int len = 10;<br/>
+char* data = (char *)malloc(len);<br/>
+4: bf 0a 00 00 00 mov $0xa,%edi<br/>
+9: e8 00 00 00 00 callq e &amp;lt;a+0xe&amp;gt;<br/>
+e: 48 89 c7 mov %rax,%rdi</p>
+<p> if (data + len &lt; data){<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+}<br/>
+printf(data);</p>
+<p>11: b8 00 00 00 00 mov $0x0,%eax<br/>
+16: e8 00 00 00 00 callq 1b &amp;lt;a+0x1b&amp;gt;<br/>
+}<br/>
+1b: 48 83 c4 08 add $0x8,%rsp<br/>
+1f: c3 retq</p>
+<p>0000000000000020 &lt;b&gt;:</p>
+<p>void b(int size)<br/>
+{<br/>
+20: 55 push %rbp<br/>
+21: 53 push %rbx<br/>
+22: 48 83 ec 08 sub $0x8,%rsp<br/>
+26: 89 fb mov %edi,%ebx<br/>
+int len = size;<br/>
+char* data = (char *)malloc(len);<br/>
+28: 48 63 ff movslq %edi,%rdi<br/>
+2b: e8 00 00 00 00 callq 30 &amp;lt;b+0x10&amp;gt;<br/>
+30: 48 89 c5 mov %rax,%rbp</p>
+<p> if (data + len &lt; data){</p>
+<p>33: 85 db test %ebx,%ebx<br/>
+35: 78 14 js 4b &amp;lt;b+0x2b&amp;gt;<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+}<br/>
+printf(data);<br/>
+37: 48 89 ef mov %rbp,%rdi<br/>
+3a: b8 00 00 00 00 mov $0x0,%eax<br/>
+3f: e8 00 00 00 00 callq 44 &amp;lt;b+0x24&amp;gt;<br/>
+}<br/>
+44: 48 83 c4 08 add $0x8,%rsp<br/>
+48: 5b pop %rbx<br/>
+49: 5d pop %rbp<br/>
+4a: c3 retq<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+4b: 48 8d 3d 00 00 00 00 lea 0x0(%rip),%rdi # 52 &amp;lt;b+0x32&amp;gt;<br/>
+52: e8 00 00 00 00 callq 57 &amp;lt;b+0x37&amp;gt;<br/>
+57: eb de jmp 37 &amp;lt;b+0x17&amp;gt;<br/>
+[/code]</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2034544" class="comment odd alt depth-2">
+<article id="div-comment-2034544" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4865db0c9abf919ce68809b6add1eed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4865db0c9abf919ce68809b6add1eed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">老虎会游泳</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11466.html/comment-page-2#comment-2034544"><time datetime="2019-11-01T13:21:27+08:00">2019年11月01日 13:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>代码高亮没有生效？免费博主删除一下格式不正确的评论。另外，我们需要修改评论的功能?</p>
+<p>[code lang=c]<br/>
+Disassembly of section .text:</p>
+<p>0000000000000000 &lt;a&gt;:<br/>
+#include &lt;stdio.h&gt;<br/>
+#include &lt;stdlib.h&gt;</p>
+<p>void a()<br/>
+{<br/>
+0: 48 83 ec 08 sub $0x8,%rsp<br/>
+int len = 10;<br/>
+char* data = (char *)malloc(len);<br/>
+4: bf 0a 00 00 00 mov $0xa,%edi<br/>
+9: e8 00 00 00 00 callq e &lt;a+0xe&gt;<br/>
+e: 48 89 c7 mov %rax,%rdi</p>
+<p> if (data + len &lt; data){<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+}<br/>
+printf(data);<br/>
+11: b8 00 00 00 00 mov $0x0,%eax<br/>
+16: e8 00 00 00 00 callq 1b &lt;a+0x1b&gt;<br/>
+}<br/>
+1b: 48 83 c4 08 add $0x8,%rsp<br/>
+1f: c3 retq</p>
+<p>0000000000000020 &lt;b&gt;:</p>
+<p>void b(int size)<br/>
+{<br/>
+20: 55 push %rbp<br/>
+21: 53 push %rbx<br/>
+22: 48 83 ec 08 sub $0x8,%rsp<br/>
+26: 89 fb mov %edi,%ebx<br/>
+int len = size;<br/>
+char* data = (char *)malloc(len);<br/>
+28: 48 63 ff movslq %edi,%rdi<br/>
+2b: e8 00 00 00 00 callq 30 &lt;b+0x10&gt;<br/>
+30: 48 89 c5 mov %rax,%rbp</p>
+<p> if (data + len &lt; data){<br/>
+33: 85 db test %ebx,%ebx<br/>
+35: 78 14 js 4b &lt;b+0x2b&gt;<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+}<br/>
+printf(data);<br/>
+37: 48 89 ef mov %rbp,%rdi<br/>
+3a: b8 00 00 00 00 mov $0x0,%eax<br/>
+3f: e8 00 00 00 00 callq 44 &lt;b+0x24&gt;<br/>
+}<br/>
+44: 48 83 c4 08 add $0x8,%rsp<br/>
+48: 5b pop %rbx<br/>
+49: 5d pop %rbp<br/>
+4a: c3 retq<br/>
+printf(&#34;invalid len\n&#34;);<br/>
+4b: 48 8d 3d 00 00 00 00 lea 0x0(%rip),%rdi # 52 &lt;b+0x32&gt;<br/>
+52: e8 00 00 00 00 callq 57 &lt;b+0x37&gt;<br/>
+57: eb de jmp 37 &lt;b+0x17&gt;<br/>
+[/code]</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2128087" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaohuodong.cn/96318.html" class="url" rel="ugc external nofollow">计时攻击 Time Attacks - 红包活动资讯网</a> </div>
+</li>
+<li id="comment-2335713" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1771612" class="url" rel="ugc external nofollow">C语言的整型溢出问题 - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11466.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11466.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">11466</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

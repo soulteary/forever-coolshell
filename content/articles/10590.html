@@ -1,0 +1,569 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>二维码的生成细节和原理 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10590 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10590" class="post-content post-10590 post type-post status-publish format-standard hentry category-misc category-progdesign tag-algorithm tag-qr tag-693">
+<header class="entry-header">
+<span class="screen-reader-text">二维码的生成细节和原理</span>
+<h1 class="entry-title">二维码的生成细节和原理</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10590.html" title="08:32" rel="bookmark"><time class="entry-date" datetime="2013-10-29T08:32:35+08:00" pubdate="">2013年10月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10590.html#comments" class="comments-link">165 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 393,573 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>二维码又称QR Code，QR全称Quick Response，是一个近几年来移动设备上超流行的一种编码方式，它比传统的Bar Code条形码能存更多的信息，也能表示更多的数据类型：比如：字符，数字，日文，中文等等。这两天学习了一下二维码图片生成的相关细节，觉得这个玩意就是一个密码算法，在此写一这篇文章 ，揭露一下。供好学的人一同学习之。</p>
+<p>关于QR Code Specification，可参看这个PDF：<a href="http://raidenii.net/files/datasheets/misc/qr_code.pdf" target="_blank">http://raidenii.net/files/datasheets/misc/qr_code.pdf </a></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86" title="基础知识">基础知识</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%AE%9A%E4%BD%8D%E5%9B%BE%E6%A1%88" title="定位图案">定位图案</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%8A%9F%E8%83%BD%E6%80%A7%E6%95%B0%E6%8D%AE" title="功能性数据">功能性数据</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%95%B0%E6%8D%AE%E7%A0%81%E5%92%8C%E7%BA%A0%E9%94%99%E7%A0%81" title="数据码和纠错码">数据码和纠错码</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%95%B0%E6%8D%AE%E7%BC%96%E7%A0%81" title="数据编码">数据编码</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%A4%BA%E4%BE%8B%E4%B8%80%EF%BC%9A%E6%95%B0%E5%AD%97%E7%BC%96%E7%A0%81" title="示例一：数字编码">示例一：数字编码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%A4%BA%E4%BE%8B%E4%BA%8C%EF%BC%9A%E5%AD%97%E7%AC%A6%E7%BC%96%E7%A0%81" title="示例二：字符编码">示例二：字符编码</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E7%BB%93%E6%9D%9F%E7%AC%A6%E5%92%8C%E8%A1%A5%E9%BD%90%E7%AC%A6" title="结束符和补齐符">结束符和补齐符</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#%E6%8C%898bits%E9%87%8D%E6%8E%92" title="按8bits重排">按8bits重排</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#%E8%A1%A5%E9%BD%90%E7%A0%81%EF%BC%88Padding_Bytes%EF%BC%89" title="补齐码（Padding Bytes）">补齐码（Padding Bytes）</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#%E7%BA%A0%E9%94%99%E7%A0%81" title="纠错码">纠错码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-12" href="#%E6%9C%80%E7%BB%88%E7%BC%96%E7%A0%81" title="最终编码">最终编码</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-13" href="#%E7%A9%BF%E6%8F%92%E6%94%BE%E7%BD%AE" title="穿插放置">穿插放置</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-14" href="#Remainder_Bits" title="Remainder Bits">Remainder Bits</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-15" href="#%E7%94%BB%E4%BA%8C%E7%BB%B4%E7%A0%81%E5%9B%BE" title="画二维码图">画二维码图</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-16" href="#Position_Detection_Pattern" title="Position Detection Pattern">Position Detection Pattern</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-17" href="#Alignment_Pattern" title="Alignment Pattern">Alignment Pattern</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-18" href="#Timing_Pattern" title="Timing Pattern">Timing Pattern</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-19" href="#Format_Information" title="Format Information">Format Information</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-20" href="#Version_Information" title="Version Information">Version Information</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-21" href="#%E6%95%B0%E6%8D%AE%E5%92%8C%E6%95%B0%E6%8D%AE%E7%BA%A0%E9%94%99%E7%A0%81" title="数据和数据纠错码">数据和数据纠错码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-22" href="#%E6%8E%A9%E7%A0%81%E5%9B%BE%E6%A1%88" title="掩码图案">掩码图案</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"></span>基础知识<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们先说一下二维码一共有40个尺寸。官方叫版本Version。Version 1是21 x 21的矩阵，Version 2是 25 x 25的矩阵，Version 3是29的尺寸，每增加一个version，就会增加4的尺寸，公式是：(V-1)*4 + 21（V是版本号） 最高Version 40，(40-1)*4+21 = 177，所以最高是177 x 177 的正方形。</p>
+<p>下面我们看看一个二维码的样例：</p>
+<p style="text-align: center;"><img decoding="async" class="aligncenter  wp-image-10592" alt="" src="/uploads/2013/10/QR-Code-Overview.jpeg" width="616" height="370" srcset="" sizes="(max-width: 616px) 100vw, 616px"/></p>
+<p style="text-align: left;"><span id="more-10590"></span></p>
+<h5 style="text-align: left;"><span class="ez-toc-section" id="%E5%AE%9A%E4%BD%8D%E5%9B%BE%E6%A1%88"></span>定位图案<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>Position Detection Pattern是定位图案，用于标记二维码的矩形大小。这三个定位图案有白边叫Separators for Postion Detection Patterns。之所以三个而不是四个意思就是三个就可以标识一个矩形了。</li>
+</ul>
+<ul>
+<li>Timing Patterns也是用于定位的。原因是二维码有40种尺寸，尺寸过大了后需要有根标准线，不然扫描的时候可能会扫歪了。</li>
+</ul>
+<ul>
+<li>Alignment Patterns 只有Version 2以上（包括Version2）的二维码需要这个东东，同样是为了定位用的。</li>
+</ul>
+<h5 style="text-align: left;"><span class="ez-toc-section" id="%E5%8A%9F%E8%83%BD%E6%80%A7%E6%95%B0%E6%8D%AE"></span>功能性数据<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>Format Information 存在于所有的尺寸中，用于存放一些格式化数据的。</li>
+</ul>
+<ul>
+<li>Version Information 在 &gt;= Version 7以上，需要预留两块3 x 6的区域存放一些版本信息。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E6%95%B0%E6%8D%AE%E7%A0%81%E5%92%8C%E7%BA%A0%E9%94%99%E7%A0%81"></span>数据码和纠错码<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>除了上述的那些地方，剩下的地方存放 Data Code 数据码 和 Error Correction Code 纠错码。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E6%95%B0%E6%8D%AE%E7%BC%96%E7%A0%81"></span>数据编码<span class="ez-toc-section-end"></span></h4>
+<p>我们先来说说数据编码。QR码支持如下的编码：</p>
+<p><strong>Numeric mode</strong> 数字编码，从0到9。如果需要编码的数字的个数不是3的倍数，那么，最后剩下的1或2位数会被转成4或7bits，则其它的每3位数字会被编成 10，12，14bits，编成多长还要看二维码的尺寸（下面有一个表Table 3说明了这点）</p>
+<p><strong>Alphanumeric mode</strong> 字符编码。包括 0-9，大写的A到Z（没有小写），以及符号$ % * + – . / : 包括空格。这些字符会映射成一个字符索引表。如下所示：（其中的SP是空格，Char是字符，Value是其索引值） 编码的过程是把字符两两分组，然后转成下表的45进制，然后转成11bits的二进制，如果最后有一个落单的，那就转成6bits的二进制。而编码模式和字符的个数需要根据不同的Version尺寸编成9, 11或13个二进制（如下表中Table 3）</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10594" alt="" src="/uploads/2013/10/Alphanumeric-mode.png" width="549" height="121" srcset="" sizes="(max-width: 549px) 100vw, 549px"/></p>
+<p><strong>Byte mode</strong>, 字节编码，可以是0-255的ISO-8859-1字符。有些二维码的扫描器可以自动检测是否是UTF-8的编码。</p>
+<p><strong>Kanji mode</strong> 这是日文编码，也是双字节编码。同样，也可以用于中文编码。日文和汉字的编码会减去一个值。如：在0X8140 to 0X9FFC中的字符会减去8140，在0XE040到0XEBBF中的字符要减去0XC140，然后把结果前两个16进制位拿出来乘以0XC0，然后再加上后两个16进制位，最后转成13bit的编码。如下图示例：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10595" alt="" src="/uploads/2013/10/Kanji-mode.png" width="600" height="174" srcset="" sizes="(max-width: 600px) 100vw, 600px"/></p>
+<p><strong>Extended Channel Interpretation (ECI) mode</strong> 主要用于特殊的字符集。并不是所有的扫描器都支持这种编码。</p>
+<p><strong>Structured Append mode</strong> 用于混合编码，也就是说，这个二维码中包含了多种编码格式。</p>
+<p><strong>FNC1 mode</strong> 这种编码方式主要是给一些特殊的工业或行业用的。比如GS1条形码之类的。</p>
+<p>简单起见，后面三种不会在本文 中讨论。</p>
+<p>下面两张表中，</p>
+<ul>
+<li>Table 2 是各个编码格式的“编号”，这个东西要写在Format Information中。注：中文是1101</li>
+</ul>
+<ul>
+<li>Table 3 表示了，不同版本（尺寸）的二维码，对于，数字，字符，字节和Kanji模式下，对于单个编码的2进制的位数。（在二维码的规格说明书中，有各种各样的编码规范表，后面还会提到）</li>
+</ul>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10596" alt="" src="/uploads/2013/10/Mode-Indicator.png" width="442" height="332" srcset="" sizes="(max-width: 442px) 100vw, 442px"/></p>
+<p>下面我们看几个示例，</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%B8%80%EF%BC%9A%E6%95%B0%E5%AD%97%E7%BC%96%E7%A0%81"></span>示例一：数字编码<span class="ez-toc-section-end"></span></h5>
+<p style="padding-left: 30px;">在Version 1的尺寸下，纠错级别为H的情况下，编码： 01234567</p>
+<p style="padding-left: 30px;">1. 把上述数字分成三组: 012 345 67</p>
+<p style="padding-left: 30px;">2. 把他们转成二进制:  012 转成 0000001100；  345 转成 0101011001；  67 转成 1000011。</p>
+<p style="padding-left: 30px;">3. 把这三个二进制串起来: 0000001100 0101011001 1000011</p>
+<p style="padding-left: 30px;">4. 把数字的个数转成二进制 (version 1-H是10 bits ): 8个数字的二进制是 0000001000</p>
+<p style="padding-left: 30px;">5. 把数字编码的标志0001和第4步的编码加到前面:  0001 0000001000 0000001100 0101011001 1000011</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%BA%8C%EF%BC%9A%E5%AD%97%E7%AC%A6%E7%BC%96%E7%A0%81"></span>示例二：字符编码<span class="ez-toc-section-end"></span></h5>
+<p style="padding-left: 30px;">在Version 1的尺寸下，纠错级别为H的情况下，编码: AC-42</p>
+<p style="padding-left: 30px;">1. 从字符索引表中找到 AC-42 这五个字条的索引 (10,12,41,4,2)</p>
+<p style="padding-left: 30px;">2. 两两分组: (10,12) (41,4) (2)</p>
+<p style="padding-left: 30px;">3.把每一组转成11bits的二进制:</p>
+<p style="padding-left: 60px;">(10,12) 10*45+12 等于 462 转成 00111001110<br/>
+(41,4) 41*45+4 等于 1849 转成 11100111001<br/>
+(2) 等于 2 转成 000010</p>
+<p style="padding-left: 30px;">4. 把这些二进制连接起来：00111001110 11100111001 000010</p>
+<p style="padding-left: 30px;">5. 把字符的个数转成二进制 (Version 1-H为9 bits ): 5个字符，5转成 000000101</p>
+<p style="padding-left: 30px;">6. 在头上加上编码标识 0010 和第5步的个数编码:  0010 000000101 00111001110 11100111001 000010</p>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9D%9F%E7%AC%A6%E5%92%8C%E8%A1%A5%E9%BD%90%E7%AC%A6"></span>结束符和补齐符<span class="ez-toc-section-end"></span></h4>
+<p>假如我们有个HELLO WORLD的字符串要编码，根据上面的示例二，我们可以得到下面的编码，</p>
+<table>
+<tbody>
+<tr>
+<th>编码</th>
+<th>字符数</th>
+<th>HELLO WORLD的编码</th>
+</tr>
+<tr>
+<td>0010</td>
+<td>000001011</td>
+<td>01100001011 01111000110 10001011100 10110111000 10011010100 001101</td>
+</tr>
+</tbody>
+</table>
+<p>我们还要加上结束符：</p>
+<table>
+<tbody>
+<tr>
+<th>编码</th>
+<th>字符数</th>
+<th>HELLO WORLD的编码</th>
+<th>结束</th>
+</tr>
+<tr>
+<td>0010</td>
+<td>000001011</td>
+<td>01100001011 01111000110 10001011100 10110111000 10011010100 001101</td>
+<td>0000</td>
+</tr>
+</tbody>
+</table>
+<h5><span class="ez-toc-section" id="%E6%8C%898bits%E9%87%8D%E6%8E%92"></span>按8bits重排<span class="ez-toc-section-end"></span></h5>
+<p>如果所有的编码加起来不是8个倍数我们还要在后面加上足够的0，比如上面一共有78个bits，所以，我们还要加上2个0，然后按8个bits分好组：</p>
+<p>00100000   01011011   00001011   01111000   11010001   01110010   11011100   01001101   01000011   010000<span style="color: #ff0000;"><strong>00</strong></span></p>
+<h5><span class="ez-toc-section" id="%E8%A1%A5%E9%BD%90%E7%A0%81%EF%BC%88Padding_Bytes%EF%BC%89"></span>补齐码（Padding Bytes）<span class="ez-toc-section-end"></span></h5>
+<p>最后，如果如果还没有达到我们最大的bits数的限制，我们还要加一些补齐码（Padding Bytes），Padding Bytes就是重复下面的两个bytes：11101100 00010001 （这两个二进制转成十进制是236和17，我也不知道为什么，只知道Spec上是这么写的）关于每一个Version的每一种纠错级别的最大Bits限制，可以参看<a href="http://raidenii.net/files/datasheets/misc/qr_code.pdf" target="_blank">QR Code Spec</a>的第28页到32页的Table-7一表。</p>
+<p>假设我们需要编码的是Version 1的Q纠错级，那么，其最大需要104个bits，而我们上面只有80个bits，所以，还需要补24个bits，也就是需要3个Padding Bytes，我们就添加三个，于是得到下面的编码：</p>
+<p>00100000 01011011 00001011 01111000 11010001 01110010 11011100 01001101 01000011 01000000 <span style="color: #ff0000;"><strong>11101100 00010001 11101100</strong></span></p>
+<p>上面的编码就是数据码了，叫Data Codewords，每一个8bits叫一个codeword，我们还要对这些数据码加上纠错信息。</p>
+<h4><span class="ez-toc-section" id="%E7%BA%A0%E9%94%99%E7%A0%81"></span>纠错码<span class="ez-toc-section-end"></span></h4>
+<p>上面我们说到了一些纠错级别，Error Correction Code Level，二维码中有四种级别的纠错，这就是为什么二维码有残缺还能扫出来，也就是为什么有人在二维码的中心位置加入图标。</p>
+<table>
+<tbody>
+<tr>
+<th colspan="2">错误修正容量</th>
+</tr>
+<tr>
+<td>L水平</td>
+<td>7%的字码可被修正</td>
+</tr>
+<tr>
+<td>M水平</td>
+<td>15%的字码可被修正</td>
+</tr>
+<tr>
+<td>Q水平</td>
+<td>25%的字码可被修正</td>
+</tr>
+<tr>
+<td>H水平</td>
+<td>30%的字码可被修正</td>
+</tr>
+</tbody>
+</table>
+<p>那么，QR是怎么对数据码加上纠错码的？首先，我们需要对数据码进行分组，也就是分成不同的Block，然后对各个Block进行纠错编码，对于如何分组，我们可以查看<a href="http://raidenii.net/files/datasheets/misc/qr_code.pdf" target="_blank">QR Code Spec</a>的第33页到44页的Table-13到Table-22的定义表。注意最后两列：</p>
+<ul>
+<li><strong>Number of Error Code Correction Blocks</strong> ：需要分多少个块。</li>
+</ul>
+<ul>
+<li><strong>Error Correction Code Per Blocks</strong>：每一个块中的code个数，所谓的code的个数，也就是有多少个8bits的字节。</li>
+</ul>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10600" alt="" src="/uploads/2013/10/Error-Correction-Blocks.png" width="576" height="308" srcset="" sizes="(max-width: 576px) 100vw, 576px"/></p>
+<p>举个例子：上述的Version 5 + Q纠错级：需要4个Blocks（2个Blocks为一组，共两组），头一组的两个Blocks中各15个bits数据 + 各 9个bits的纠错码（注：表中的codewords就是一个8bits的byte）（再注：最后一例中的（c, k, r ）的公式为：c = k + 2 * r，因为后脚注解释了：纠错码的容量小于纠错码的一半）</p>
+<p>下图给一个5-Q的示例（因为二进制写起来会让表格太大，所以，我都用了十进制，我们可以看到每一块的纠错码有18个codewords，也就是18个8bits的二进制数）</p>
+<table>
+<tbody>
+<tr>
+<th>组</th>
+<th>块</th>
+<th>数据</th>
+<th>对每个块的纠错码</th>
+</tr>
+<tr>
+<td style="text-align: center;" rowspan="2">1</td>
+<td style="text-align: center;">1</td>
+<td>67 85 70 134 87 38 85 194 119 50 6 18 6 103 38</td>
+<td>213 199 11 45 115 247 241 223 229 248 154 117 154 111 86 161 111 39</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td>246 246 66 7 118 134 242 7 38 86 22 198 199 146 6</td>
+<td>87 204 96 60 202 182 124 157 200 134 27 129 209 17 163 163 120 133</td>
+</tr>
+<tr>
+<td style="text-align: center;" rowspan="2">2</td>
+<td style="text-align: center;">1</td>
+<td>182 230 247 119 50 7 118 134 87 38 82 6 134 151 50 7</td>
+<td>148 116 177 212 76 133 75 242 238 76 195 230 189 10 108 240 192 141</td>
+</tr>
+<tr>
+<td style="text-align: center;">2</td>
+<td>70 247 118 86 194 6 151 50 16 236 17 236 17 236 17 236</td>
+<td>235 159 5 173 24 147 59 33 106 40 255 172 82 2 131 32 178 236</td>
+</tr>
+</tbody>
+</table>
+<p>注：二维码的纠错码主要是通过<a href="https://en.wikipedia.org/wiki/Reed%E2%80%93Solomon_error_correction">Reed-Solomon error correction</a>（里德-所罗门纠错算法）来实现的。对于这个算法，对于我来说是相当的复杂，里面有很多的数学计算，比如：多项式除法，把1-255的数映射成2的n次方（0&lt;=n&lt;=255）的伽罗瓦域Galois Field之类的神一样的东西，以及基于这些基础的纠错数学公式，因为我的数据基础差，对于我来说太过复杂，所以我一时半会儿还有点没搞明白，还在学习中，所以，我在这里就不展开说这些东西了。还请大家见谅了。（当然，如果有朋友很明白，也繁请教教我）</p>
+<h4><span class="ez-toc-section" id="%E6%9C%80%E7%BB%88%E7%BC%96%E7%A0%81"></span>最终编码<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="%E7%A9%BF%E6%8F%92%E6%94%BE%E7%BD%AE"></span>穿插放置<span class="ez-toc-section-end"></span></h5>
+<p>如果你以为我们可以开始画图，你就错了。二维码的混乱技术还没有玩完，它还要把数据码和纠错码的各个codewords交替放在一起。如何交替呢，规则如下：</p>
+<p>对于数据码：把每个块的第一个codewords先拿出来按顺度排列好，然后再取第一块的第二个，如此类推。如：上述示例中的Data Codewords如下：</p>
+<table class="coolshell">
+<tbody>
+<tr>
+<td class="head">块 1</td>
+<td>67</td>
+<td>85</td>
+<td>70</td>
+<td>134</td>
+<td>87</td>
+<td>38</td>
+<td>85</td>
+<td>194</td>
+<td>119</td>
+<td>50</td>
+<td>6</td>
+<td>18</td>
+<td>6</td>
+<td>103</td>
+<td>38</td>
+<td></td>
+</tr>
+<tr>
+<td class="head">块 2</td>
+<td>246</td>
+<td>246</td>
+<td>66</td>
+<td>7</td>
+<td>118</td>
+<td>134</td>
+<td>242</td>
+<td>7</td>
+<td>38</td>
+<td>86</td>
+<td>22</td>
+<td>198</td>
+<td>199</td>
+<td>146</td>
+<td>6</td>
+<td></td>
+</tr>
+<tr>
+<td class="head">块 3</td>
+<td>182</td>
+<td>230</td>
+<td>247</td>
+<td>119</td>
+<td>50</td>
+<td>7</td>
+<td>118</td>
+<td>134</td>
+<td>87</td>
+<td>38</td>
+<td>82</td>
+<td>6</td>
+<td>134</td>
+<td>151</td>
+<td>50</td>
+<td>7</td>
+</tr>
+<tr>
+<td class="head">块 4</td>
+<td>70</td>
+<td>247</td>
+<td>118</td>
+<td>86</td>
+<td>194</td>
+<td>6</td>
+<td>151</td>
+<td>50</td>
+<td>16</td>
+<td>236</td>
+<td>17</td>
+<td>236</td>
+<td>17</td>
+<td>236</td>
+<td>17</td>
+<td>236</td>
+</tr>
+</tbody>
+</table>
+<p>我们先取第一列的：67， 246， 182， 70</p>
+<p>然后再取第二列的：67， 246， 182， 70， 85，246，230 ，247</p>
+<p>如此类推：67， 246， 182， 70， 85，246，230 ，247 ………  ……… ，38，6，50，17，7，236</p>
+<p>对于纠错码，也是一样：</p>
+<table class="coolshell">
+<tbody>
+<tr>
+<td class="head">块 1</td>
+<td>213</td>
+<td>199</td>
+<td>11</td>
+<td>45</td>
+<td>115</td>
+<td>247</td>
+<td>241</td>
+<td>223</td>
+<td>229</td>
+<td>248</td>
+<td>154</td>
+<td>117</td>
+<td>154</td>
+<td>111</td>
+<td>86</td>
+<td>161</td>
+<td>111</td>
+<td>39</td>
+</tr>
+<tr>
+<td class="head">块 2</td>
+<td>87</td>
+<td>204</td>
+<td>96</td>
+<td>60</td>
+<td>202</td>
+<td>182</td>
+<td>124</td>
+<td>157</td>
+<td>200</td>
+<td>134</td>
+<td>27</td>
+<td>129</td>
+<td>209</td>
+<td>17</td>
+<td>163</td>
+<td>163</td>
+<td>120</td>
+<td>133</td>
+</tr>
+<tr>
+<td class="head">块 3</td>
+<td>148</td>
+<td>116</td>
+<td>177</td>
+<td>212</td>
+<td>76</td>
+<td>133</td>
+<td>75</td>
+<td>242</td>
+<td>238</td>
+<td>76</td>
+<td>195</td>
+<td>230</td>
+<td>189</td>
+<td>10</td>
+<td>108</td>
+<td>240</td>
+<td>192</td>
+<td>141</td>
+</tr>
+<tr>
+<td class="head">块 4</td>
+<td>235</td>
+<td>159</td>
+<td>5</td>
+<td>173</td>
+<td>24</td>
+<td>147</td>
+<td>59</td>
+<td>33</td>
+<td>106</td>
+<td>40</td>
+<td>255</td>
+<td>172</td>
+<td>82</td>
+<td>2</td>
+<td>131</td>
+<td>32</td>
+<td>178</td>
+<td>236</td>
+</tr>
+</tbody>
+</table>
+<p>和数据码取的一样，得到：213，87，148，235，199，204，116，159，…… …… 39，133，141，236</p>
+<p>然后，再把这两组放在一起（纠错码放在数据码之后）得到：</p>
+<p>67, 246, 182, 70, 85, 246, 230, 247, 70, 66, 247, 118, 134, 7, 119, 86, 87, 118, 50, 194, 38, 134, 7, 6, 85, 242, 118, 151, 194, 7, 134, 50, 119, 38, 87, 16, 50, 86, 38, 236, 6, 22, 82, 17, 18, 198, 6, 236, 6, 199, 134, 17, 103, 146, 151, 236, 38, 6, 50, 17, 7, 236, 213, 87, 148, 235, 199, 204, 116, 159, 11, 96, 177, 5, 45, 60, 212, 173, 115, 202, 76, 24, 247, 182, 133, 147, 241, 124, 75, 59, 223, 157, 242, 33, 229, 200, 238, 106, 248, 134, 76, 40, 154, 27, 195, 255, 117, 129, 230, 172, 154, 209, 189, 82, 111, 17, 10, 2, 86, 163, 108, 131, 161, 163, 240, 32, 111, 120, 192, 178, 39, 133, 141, 236</p>
+<p>这就是我们的数据区。</p>
+<h5><span class="ez-toc-section" id="Remainder_Bits"></span>Remainder Bits<span class="ez-toc-section-end"></span></h5>
+<p>最后再加上Reminder Bits，对于某些Version的QR，上面的还不够长度，还要加上Remainder Bits，比如：上述的5Q版的二维码，还要加上7个bits，Remainder Bits加零就好了。关于哪些Version需要多少个Remainder bit，可以参看<a href="http://raidenii.net/files/datasheets/misc/qr_code.pdf" target="_blank">QR Code Spec</a>的第15页的Table-1的定义表。</p>
+<h4><span class="ez-toc-section" id="%E7%94%BB%E4%BA%8C%E7%BB%B4%E7%A0%81%E5%9B%BE"></span>画二维码图<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="Position_Detection_Pattern"></span>Position Detection Pattern<span class="ez-toc-section-end"></span></h5>
+<p>首先，先把Position Detection图案画在三个角上。（无论Version如何，这个图案的尺寸就是这么大）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/10/finder.png" width="99" height="141" srcset=""/></p>
+<h5><span class="ez-toc-section" id="Alignment_Pattern"></span>Alignment Pattern<span class="ez-toc-section-end"></span></h5>
+<p>然后，再把Alignment图案画上（无论Version如何，这个图案的尺寸就是这么大）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/10/alignment-pattern.png" width="68" height="91" srcset=""/></p>
+<p>关于Alignment的位置，可以查看<a href="http://raidenii.net/files/datasheets/misc/qr_code.pdf" target="_blank">QR Code Spec</a>的第81页的Table-E.1的定义表（下表是不完全表格）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10613" alt="" src="/uploads/2013/10/Alignment-Position.png" width="582" height="239" srcset="" sizes="(max-width: 582px) 100vw, 582px"/></p>
+<p>下图是根据上述表格中的Version8的一个例子（6，24，42）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10606" alt="" src="/uploads/2013/10/alignment-example.png" width="241" height="288" srcset=""/></p>
+<h5><span class="ez-toc-section" id="Timing_Pattern"></span>Timing Pattern<span class="ez-toc-section-end"></span></h5>
+<p>接下来是Timing Pattern的线（这个不用多说了）</p>
+<p style="text-align: center;"><strong><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/10/Timing-Pattern.png" width="596" height="258" srcset=""/></strong></p>
+<h5><span class="ez-toc-section" id="Format_Information"></span>Format Information<span class="ez-toc-section-end"></span></h5>
+<p>再接下来是Formation Information，下图中的蓝色部分。</p>
+<p style="text-align: left;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10610" alt="" src="/uploads/2013/10/Format-Information.png" width="352" height="199" srcset="" sizes="(max-width: 352px) 100vw, 352px"/></p>
+<p style="text-align: left;">Format Information是一个15个bits的信息，每一个bit的位置如下图所示：（注意图中的Dark Module，那是永远出现的）</p>
+<p style="text-align: left;"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10630" alt="" src="/uploads/2013/10/Format-Info-bits-postion.png" width="363" height="381" srcset="" sizes="(max-width: 363px) 100vw, 363px"/></p>
+<p style="text-align: left;">这15个bits中包括：</p>
+<ul>
+<li>5个数据bits：其中，2个bits用于表示使用什么样的Error Correction Level， 3个bits表示使用什么样的Mask</li>
+<li>10个纠错bits。主要通过BCH Code来计算</li>
+</ul>
+<p>然后15个bits还要与101010000010010做XOR操作。这样就保证不会因为我们选用了00的纠错级别和000的Mask，从而造成全部为白色，这会增加我们的扫描器的图像识别的困难。</p>
+<p>下面是一个示例：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10631" alt="" src="/uploads/2013/10/Format-Information-Example.png" width="376" height="116" srcset="" sizes="(max-width: 376px) 100vw, 376px"/></p>
+<p>关于Error Correction Level如下表所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10632" alt="" src="/uploads/2013/10/Error-Correction-Indicator-Code.png" width="253" height="114" srcset=""/></p>
+<p>关于Mask图案如后面的Table 23所示。</p>
+<h5 style="text-align: left;"><span class="ez-toc-section" id="Version_Information"></span>Version Information<span class="ez-toc-section-end"></span></h5>
+<p style="text-align: left;">再接下来是Version Information（版本7以后需要这个编码），下图中的蓝色部分。<br/>
+<img decoding="async" loading="lazy" class="aligncenter  wp-image-10612" alt="" src="/uploads/2013/10/Version-Information.png" width="508" height="254" srcset="" sizes="(max-width: 508px) 100vw, 508px"/></p>
+<p>Version Information一共是18个bits，其中包括6个bits的版本号以及12个bits的纠错码，下面是一个示例：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10634" alt="" src="/uploads/2013/10/Version-Information-Example.png" width="405" height="63" srcset="" sizes="(max-width: 405px) 100vw, 405px"/></p>
+<p>而其填充位置如下：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10635" alt="" src="/uploads/2013/10/Version-Information-Position.png" width="425" height="149" srcset="" sizes="(max-width: 425px) 100vw, 425px"/></p>
+<h5><span class="ez-toc-section" id="%E6%95%B0%E6%8D%AE%E5%92%8C%E6%95%B0%E6%8D%AE%E7%BA%A0%E9%94%99%E7%A0%81"></span>数据和数据纠错码<span class="ez-toc-section-end"></span></h5>
+<p>然后是填接我们的最终编码，最终编码的填充方式如下：从左下角开始沿着红线填我们的各个bits，1是黑色，0是白色。如果遇到了上面的非数据区，则绕开或跳过。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/10/Data-Placement.png" width="348" height="372" srcset=""/></p>
+<h5><span class="ez-toc-section" id="%E6%8E%A9%E7%A0%81%E5%9B%BE%E6%A1%88"></span>掩码图案<span class="ez-toc-section-end"></span></h5>
+<p>这样下来，我们的图就填好了，但是，也许那些点并不均衡，如果出现大面积的空白或黑块，会告诉我们扫描识别的困难。所以，我们还要做Masking操作（靠，还嫌不复杂）QR的Spec中说了，QR有8个Mask你可以使用，如下所示：其中，各个mask的公式在各个图下面。所谓mask，说白了，就是和上面生成的图做XOR操作。Mask只会和数据区进行XOR，不会影响功能区。（<strong>注：选择一个合适的Mask也是有算法的</strong>）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10614" alt="" src="/uploads/2013/10/masking-pattern.png" width="494" height="274" srcset="" sizes="(max-width: 494px) 100vw, 494px"/></p>
+<p>其Mask的标识码如下所示：（其中的i,j分别对应于上图的x,y）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10633" alt="" src="/uploads/2013/10/Mask-Pattern-Code.png" width="416" height="181" srcset="" sizes="(max-width: 416px) 100vw, 416px"/></p>
+<p>下面是Mask后的一些样子，我们可以看到被某些Mask XOR了的数据变得比较零散了。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10615" alt="" src="/uploads/2013/10/Masking-Examples.png" width="616" height="446" srcset="" sizes="(max-width: 616px) 100vw, 616px"/></p>
+<p>Mask过后的二维码就成最终的图了。</p>
+<p>好了，大家可以去尝试去写一下QR的编码程序，当然，你可以用网上找个Reed Soloman的纠错算法的库，或是看看别人的源代码是怎么实现这个繁锁的编码。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10590-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">QR</a>, <a href="javascript:void(0)" rel="tag">二维码</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>二维码的生成细节和原理</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2336775" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1798587" class="url" rel="ugc external nofollow">二维码知识介绍（转） - 算法网</a> </div>
+</li>
+<li id="comment-2336792" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1798992" class="url" rel="ugc external nofollow">二维码编码库qrencode - 算法网</a> </div>
+</li>
+<li id="comment-2336794" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1799033" class="url" rel="ugc external nofollow">二维码的生成细节和原理 - 算法网</a> </div>
+</li>
+<li id="comment-2342469" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1929145" class="url" rel="ugc external nofollow">OpenCV定位二维码的三个定位点 - 算法网</a> </div>
+</li>
+<li id="comment-2358067" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dianjilingqu.com/11990.html" class="url" rel="ugc external nofollow">聊聊二维码 - 点击领取</a> </div>
+</li>
+<li id="comment-2361172" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.jellyqwq.com/index.php/2022/01/23/bili2233-0/" class="url" rel="ugc external nofollow">bili2233-0 – JELLYQWQ</a> </div>
+</li>
+<li id="comment-2370303" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://flashgene.com/?p=235592" class="url" rel="ugc external nofollow">目标检测：二维码检测方案 – 闪念基因 – 个人技术分享</a> </div>
+</li>
+<li id="comment-2370542" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/668993" class="url" rel="ugc external nofollow">二维码检测定位 - 内存网</a> </div>
+</li>
+<li id="comment-2370776" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.1111down.com/74374.html" class="url" rel="ugc external nofollow">關於二維碼的一些必備知識點</a> </div>
+</li>
+<li id="comment-2370826" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xdicp.com/76674.html" class="url" rel="ugc external nofollow">聊聊qrcode的detect position | 编程案例分享</a> </div>
+</li>
+<li id="comment-2370894" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/745261" class="url" rel="ugc external nofollow">移动互联网的入口-二维码（二维码生成原理及流程） - 内存网</a> </div>
+</li>
+<li id="comment-2370898" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/78628.html" class="url" rel="ugc external nofollow">Javascript生成二维码（QR） - SEOOS技术门户</a> </div>
+</li>
+<li id="comment-2370936" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/282703" class="url" rel="ugc external nofollow">基于zxing生成与解析二维码、条形码 - Java天堂</a> </div>
+</li>
+<li id="comment-2371107" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/214426" class="url" rel="ugc external nofollow">Windows下使用qrencode生成二维码 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10590.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10590.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/10590.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/10590.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">10590</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

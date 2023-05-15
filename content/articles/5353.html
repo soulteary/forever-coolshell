@@ -1,0 +1,289 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>你会做Web上的用户登录功能吗？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5353 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5353" class="post-content post-5353 post type-post status-publish format-standard hentry category-webdev category-progdesign category-netsecurity tag-password tag-web tag-320 tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">你会做Web上的用户登录功能吗？</span>
+<h1 class="entry-title">你会做Web上的用户登录功能吗？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5353.html" title="08:48" rel="bookmark"><time class="entry-date" datetime="2011-08-25T08:48:48+08:00" pubdate="">2011年08月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5353.html#comments" class="comments-link">119 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 143,682 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>Web上的用户登录功能应该是最基本的功能了，可是在我看过一些站点的用户登录功能后，我觉得很有必要写一篇文章教大家怎么来做用户登录功能。下面的文章告诉大家这个功能可能并没有你所想像的那么简单，这是一个关系到用户安全的功能，希望大家能从下面的文章中能知道什么样的方法才是一个好的用户登录功能。<span style="color: #cc0000;"><strong>以下内容，转载时请保持原文一致，并请注明作者和出处</strong></span>。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%94%A8%E6%88%B7%E5%90%8D%E5%92%8C%E5%8F%A3%E4%BB%A4" title="用户名和口令">用户名和口令</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E7%8A%B6%E6%80%81" title="用户登录状态">用户登录状态</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%89%BE%E5%9B%9E%E5%8F%A3%E4%BB%A4%E7%9A%84%E5%8A%9F%E8%83%BD" title="找回口令的功能">找回口令的功能</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%8F%A3%E4%BB%A4%E6%8E%A2%E6%B5%8B%E9%98%B2%E5%AE%88" title="口令探测防守">口令探测防守</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%8F%82%E8%80%83%E6%96%87%E7%AB%A0" title="参考文章">参考文章</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%94%A8%E6%88%B7%E5%90%8D%E5%92%8C%E5%8F%A3%E4%BB%A4"></span>用户名和口令<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们先来说说用户名和口令的事。这并不是本站第一次谈论这个事了。<a title="如何管理并设计你的口令" href="/articles/2428.html" target="_blank">如何管理自己的口令</a>让你知道怎么管理自己的口令，<a title="破解你的口令" href="/articles/3801.html" target="_blank">破解你的口令</a>让你知道在现代这样速度的计算速度下，用穷举法破解你的口令可能会是一件很轻松的事。在这里我想告诉从开发者的角度上来做设计这个用户名和口令的事。下面一几件规则：</p>
+<ul style="font-weight: bold;">
+<li><span class="Apple-style-span" style="font-weight: normal;"><strong>限制用户输入一些非常容易被破解的口令</strong>。如什么qwert，123456, password之类，就像<a title="Twitter的禁用口令" href="/articles/2451.html" target="_blank">twitter限制用户的口令</a>一样做一个口令的黑名单。另外，你可以限制用户口令的长度，是否有大小写，是否有数字，你可以用你的程序做一下校验。当然，这可能会让用户感到很不爽，所以，现在很多网站都提供了UX让用户知道他的口令强度是什么样的（比如<a title="另类UX让你输入强口令" href="/articles/3877.html" target="_blank">这个有趣的UX</a>），这样可以让用户有一个选择，目的就是告诉用户——要想安全，先把口令设得好一点。</span></li>
+</ul>
+<ul style="font-weight: bold;">
+<li><span class="Apple-style-span" style="font-weight: normal;"><strong>千万不要明文保存用户的口令</strong>。正如<a title="如何管理并设计你的口令" href="/articles/2428.html" target="_blank">如何管理自己的口令</a>所说的一样，很多时候，用户都会用相同的ID相同的口令来登录很多网站。所以，如果你的网站明文保存的话，那么，如果你的数据被你的不良员工流传出去那对用户是灾难性的。所以，用户的口令一定要加密保存，最好是用不可逆的加密，如MD5或是SHA1之类的有hash算法的不可逆的加密算法。CSDN曾明文保存过用户的口令。（另，对于国内公司的品行以及有关部门的管理方式，我不敢保证国内网站以加密的方式保存你的口令。我觉得，做为一个有良知的人，我们应该加密保存用户的口令）</span></li>
+</ul>
+<div><span id="more-5353"></span></div>
+<ul style="font-weight: bold;">
+<li><span class="Apple-style-span" style="font-weight: normal;"><strong>是否让浏览器保存口令</strong>。我们有N多的方法可以不让浏览器保存用户名和口令。但是这可能对用户来说很不爽。因为在真实世界里谁也记得不住那么多的口令。很多用户可能会使用一些密码管理工具来保存密码，浏览器只是其中一种。是否让浏览器保存这个需要你做决定，重点是看一下你的系统的安全级别是否要求比较高，如果是的话，则不要让浏览器保存密码，并在网站明显的位置告诉用户——保存口令最安全的地方只有你的大脑。</span></li>
+</ul>
+<ul style="font-weight: bold;">
+<li><span class="Apple-style-span" style="font-weight: normal;"><strong>口令在网上的传输</strong>。因为HTTP是明文协议，所以，用户名和口令在网上也是明文发送的，这个很不安全。你可以看看<a title="用Wireshark从http数据包中得到用户的登录信息" href="http://www.blogjava.net/heyang/archive/2011/04/05/340330.html" target="_blank">这篇文章</a>你就明白了。要做到加密传输就必需使用HTTPS协议。但是，在中国还是有很多网站的Web登录方式还在使用ActiveX控件，这可能成为IE6还大量存在的原因。我通常理解为这些ActiveX控件是为了反键盘记录程序的。 不过，我依然觉ActiveX控件不应该存在，因为在国外的众多安全很重要的站点上都看不到ActiveX的控件的身影。</span></li>
+</ul>
+<h4><span class="ez-toc-section" id="%E7%94%A8%E6%88%B7%E7%99%BB%E5%BD%95%E7%8A%B6%E6%80%81"></span>用户登录状态<span class="ez-toc-section-end"></span></h4>
+<p>首先，我想告诉大家的是，因为HTTP是无状态的协议，也就是说，这个协议是无法记录用户访问状态的，其每次请求都是独立的无关联的，一笔是一笔。而我们的网站都是设计成多个页面的，所在页面跳转过程中我们需要知道用户的状态，尤其是用户登录的状态，这样我们在页面跳转后我们才知道是否可以让用户有权限来操作一些功能或是查看一些数据。</p>
+<p><strong>所以，我们每个页面都需要对用户的身份进行认证</strong>。当然，我们不可能让用户在每个页面上输入用户名和口令，这会让用户觉得我们的网站相当的SB。为了实现这一功能，用得最多的技术就是浏览器的cookie，我们会把用户登录的信息存放在客户端的cookie里，这样，我们每个页面都从这个cookie里获得用户是否登录的信息，从而达到记录状态，验证用户的目的。但是，你真的会用cookie吗？下面是使用cookie的一些原则。</p>
+<ul>
+<li><strong>千万不要在cookie中存放用户的密码</strong>。加密的密码都不行。因为这个密码可以被人获取并尝试离线穷举。所以，你一定不能把用户的密码保存在cookie中。我看到太多的站点这么干了。</li>
+</ul>
+<ul>
+<li><strong>正确设计“记住密码”</strong>。这个功能简直就是一个安全隐患，我觉得并不是所有的程序员都知道怎么设计这个事。一般的设计 是——一时用户勾选了这个功能，系统会生成一个cookie，cookie包括用户名和一个固定的散列值，这个固定的散列值一直使用。这样，你就可以在所有的设备和客户上都可以登录，而且可以有多个用户同时登录。这个并不是很安全。下面是一些更为安全的方法供你参考：<br/>
+<span style="color: #000080;">（——<em><strong>更新 2011/08/26，原文中有些小错误，并且说的不清楚，重新调整了一下——</strong></em>）</span></li>
+</ul>
+<p style="padding-left: 60px;">1）在cookie中，保存三个东西——<strong>用户名</strong>，<strong>登录序列</strong>，<strong>登录token</strong>。</p>
+<p style="padding-left: 90px;"><strong>用户名</strong>：明文存放。<br/>
+<strong>登录序列</strong>：一个被MD5散列过的随机数，<span style="color: #cc0000;">仅当强制用户输入口令时更新（如：用户修改了口令）</span>。<br/>
+<strong>登录token</strong>：一个被MD5散列过的随机数，<span style="color: #cc0000;">仅一个登录session内有效，新的登录session会更新它</span>。</p>
+<p style="padding-left: 60px;">2）上述三个东西会存在服务器上，服务器的验证用户需要验证客户端cookie里的这三个事。</p>
+<p style="padding-left: 60px;">3）这样的设计会有什么样的效果，会有下面的效果，</p>
+<p style="padding-left: 90px;">a）<strong>登录token</strong>是单实例登录。意思就是一个用户只能有一个登录实例。</p>
+<p style="padding-left: 90px;">b）<strong>登录序列</strong>是用来做盗用行为检测的。如果用户的cookie被盗后，盗用者使用这个cookie访问网站时，我们的系统是以为是合法用户，然后更新“<strong>登录token</strong>”，而真正的用户回来访问时，系统发现只有“<strong>用户名</strong>”和“<strong>登录序列</strong>”相同，但是“<strong>登录token</strong>” 不对，这样的话，系统就知道，这个用户可能出现了被盗用的情况，于是，系统可以清除并更改<strong>登录序列 </strong>和<strong> <strong>登录token</strong></strong>，这样就可以令所有的cookie失效，并要求用户输入口令。并给警告用户系统安全。</p>
+<p style="padding-left: 60px;">4）当然，<strong>上述这样的设计还是会有一些问题，比如：同一用户的不同设备登录，甚至在同一个设备上使用不同的浏览器保登录</strong>。一个设备会让另一个设备的<strong>登录token</strong>和<strong>登录序列</strong>失效，从而让其它设备和浏览器需要重新登录，并会造成cookie被盗用的假象。所以，你在服务器服还需要考虑- <strong>IP 地址</strong>，</p>
+<p style="padding-left: 90px;">a) 如果以口令方式登录，我们无需更新服务器的“<strong>登录序列</strong>”和 “<strong>登录token</strong>”（但需要更新cookie）。因为我们认为口令只有真正的用户知道。</p>
+<p style="padding-left: 90px;">b) 如果 <strong>IP相同</strong> ，那么，我们无需更新服务器的“<strong>登录序列</strong>”和 “<strong>登录token</strong>”（但需要更新cookie）。因为我们认为是同一用户有同一IP（当然，同一个局域网里也有同一IP，但我们认为这个局域网是用户可以控制的。网吧内并不推荐使用这一功能）。</p>
+<p style="padding-left: 90px;">c) 如果 （<strong>IP不同 </strong>&amp;&amp;<strong> 没有用口令登录</strong>），那么，“<strong>登录token</strong>” 就会在多个IP间发生变化（登录token在两个或多个ip间被来来回回的变换），当在一定时间内达到一定次数后，系统才会真正觉得被盗用的可能性很高，此时系统在后台清除“<strong>登录序列</strong>”和“<strong>登录token</strong>“，让Cookie失效，强制用户输入口令（或是要求用户更改口令），以保证多台设备上的cookie一致。</p>
+<ul>
+<li><strong>不要让cookie有权限访问所有的操作</strong>。否则就是XSS攻击，这个功能请参看<a title="新浪微博的XSS攻击" href="/articles/4914.html" target="_blank">新浪微博的XSS攻击</a>。下面的这些功能一定要用户输入口令：</li>
+</ul>
+<div style="padding-left: 60px;">1）修改口令。</div>
+<div style="padding-left: 60px;">2）修改电子邮件。（电子邮件通常用来找回用户密码，最好通发邮件或是发手机短信的方式修改，或者干脆就不让改一一用电子邮件做帐号名）</div>
+<div style="padding-left: 60px;">3）用户的隐私信息。</div>
+<div style="padding-left: 60px;">4）用户消费功能。</div>
+<div>
+<ul>
+<li><strong>权衡Cookie的过期时间。</strong>如果是永不过期，会有很不错的用户体验，但是这也会让用户很快就忘了登录密码。如果设置上过期期限，比如2周，一个月，那么可能会好一点，但是2周和一个月后，用户依然会忘了密码。尤其是用户在一些公共电脑上，如果保存了永久cookie的话，等于泄露了帐号。所以，对于cookie的过期时间我们还需要权衡。</li>
+</ul>
+</div>
+<h4><span class="ez-toc-section" id="%E6%89%BE%E5%9B%9E%E5%8F%A3%E4%BB%A4%E7%9A%84%E5%8A%9F%E8%83%BD"></span>找回口令的功能<span class="ez-toc-section-end"></span></h4>
+<p>找回口令的功能一定要提供。但是很多朋友并不知道怎么来设计这个功能。我们有很多找回口令的设计，下面我逐个点评一下。</p>
+<ul>
+<li><strong>千万不要使用安全问答</strong>。事实证明，这个环节很烦人，而且用户并不能很好的设置安全问答。什么，我的生日啊，我母亲的生日，等等。因为今天的互联网和以前不一样了，因为SNS，今天的互联比以前更真实了，我可以上facebook，开心，人人网，LinkedIn查到你的很多的真实的信息。通过这些信息我可以使用安全问答来重设你的口令。 这里需要说一下 Facebook，Facebook的安全问答很强大，还要你通过照片认人，呵呵。</li>
+</ul>
+<ul>
+<li><strong>不要重置用户的密码</strong>。因为这有可能让用户的密码遭到恶意攻击。当然，你要发个邮件给用户让其确认，用户点击邮件中的一个链接，你再重置。我并不推荐这样的方法，因为用户一般都会用笔记下来这个很难记的口令，然后登录系统，因为登录系统时使用了“记住密码”的功能，所以导致用户不会去修改密码，从而要么导到被写下来的密码被人盗取，要么又忘记了密码。</li>
+</ul>
+<ul>
+<li><strong>好一点的做法——通过邮件自行重置</strong>。当用户申请找回口令功能的时候，系统生成一个MD5唯一的随机字串（可通过UID+IP+timestamp+随机数），放在数据库中，然后设置上时限（比如1小时内），给用户发一个邮件，这个连接中包含那个MD5的字串的链接，用户通过点击那个链接来自己重新设置新的口令。</li>
+</ul>
+<ul>
+<li><strong>更好一点的做法——多重认证</strong>。比如：通过手机+邮件的方式让用户输入验证码。手机+邮件可能还不把握，因为手机要能会丢了，而我的手机可以访问我的邮箱。所以，使用U盾，SecureID（一个会变化的6位数token），或是通过人工的方式核实用户身份。当然，这主要看你的系统的安全级别了。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8F%A3%E4%BB%A4%E6%8E%A2%E6%B5%8B%E9%98%B2%E5%AE%88"></span>口令探测防守<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><strong>使用验证码</strong>。验证码是后台随机产生的一个短暂的验证码，这个验证码一般是一个计算机很难识别的图片。这样就可以防止以程序的方式来尝试用户的口令。事实证明，这是最简单也最有效的方式。当然，总是让用户输入那些肉眼都看不清的验证码的用户体验不好，所以，可以折中一下。比如Google，当他发现一个IP地址发出大量的搜索后，其会要求你输入验证码。当他发现同一个IP注册了3个以上的gmail邮箱后，他需要给你发短信方式或是电话方式的验证码。</li>
+</ul>
+<ul>
+<li><strong>用户口令失败次数</strong>。调置口令失败的上限，如果失败过多，则把帐号锁了，需要用户以找回口令的方式来重新激活帐号。但是，这个功能可能会被恶意人使用。最好的方法是，增加其尝试的时间成本（以前的这篇文章说过一个<a title="如何防范密码被破解" href="/articles/2078.html" target="_blank">增加时间成本的解密算法</a>）。如，两次口令尝试的间隔是5秒钟。三次以上错误，帐号被临时锁上30秒，5次以上帐号被锁1分钟，10次以上错误帐号被锁4小时……但是这会导致恶意用户用脚本来攻击，所以最好再加上验证码，验证码出错次数过多不禁止登录而是禁lP。</li>
+</ul>
+<ul>
+<li><strong>系统全局防守</strong>。上述的防守只针对某一个别用户。恶意者们深知这一点，所以，他们一般会动用“僵尸网络”轮着尝试一堆用户的口令，所以上述的那种方法可能还不够好。我们需要在系统全局域上监控所有的口令失败的次数。当然，这个需要我们平时没有受到攻击时的数据做为支持。比如你的系统，平均每天有5000次的口令错误的事件，那么你可以认为，当口令错误大幅超过这个数后，而且时间相对集中，就说明有黑客攻击。这个时候你怎么办？一般最常见使用的方法是让所有的用户输错口令后再次尝试的时间成本增加。</li>
+</ul>
+<div>最后，再说一下，关于用户登录，使用第三方的 OAuth 和 OpenID 也不失为一个很不错的选择。</div>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E6%96%87%E7%AB%A0"></span>参考文章<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><a href="http://www.owasp.org/index.php/Guide_to_Authentication" rel="nofollow">OWASP Guide To Authentication</a></li>
+<li><a href="http://www.cs.umass.edu/~kevinfu/papers/webauth_tr.pdf" rel="nofollow">Dos and Don’ts of Client Authentication on the Web </a>（PDF）</li>
+<li><a href="http://fishbowl.pastiche.org/2004/01/19/persistent_login_cookie_best_practice/" rel="nofollow">Charles Miller’s Persistent Login Cookie Best Practice</a></li>
+<li><a href="https://en.wikipedia.org/wiki/HTTP_cookie#Drawbacks_of_cookies" rel="nofollow">Wikipedia: HTTP cookie</a></li>
+<li><a href="http://cups.cs.cmu.edu/soups/2008/proceedings/p13Rabkin.pdf" rel="nofollow">Personal knowledge questions for fallback authentication: Security questions in the era of Facebook </a></li>
+</ul>
+<div>（<strong>以上内容，转载时请保持原文一致，并请注明作者和出处</strong>）</div>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5353-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">password</a>, <a href="javascript:void(0)" rel="tag">Web</a>, <a href="javascript:void(0)" rel="tag">口令</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>你会做Web上的用户登录功能吗？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-852519" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=28" class="url" rel="ugc external nofollow">数据的游戏：冰与火 | zengine</a> </div>
+</li>
+<li id="comment-940382" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeboy.name/2013/11/16/%e5%a6%82%e4%bd%95%e8%ae%be%e8%ae%a1%e7%bd%91%e9%a1%b5%e7%99%bb%e5%bd%95%e7%b3%bb%e7%bb%9f/" class="url" rel="ugc external nofollow">如何设计网页登录系统 | CodeBoy</a> </div>
+</li>
+<li id="comment-1261813" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=536" class="url" rel="ugc external nofollow">从“黑掉Github”学Web安全开发 | zengine</a> </div>
+</li>
+<li id="comment-1410335" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.chedushi.com/archives/7444" class="url" rel="ugc external nofollow">被小伙伴们蠢哭了的那些事儿：找回密码篇 | 岭南六少 - 一朵在LAMP架构下挣扎的云</a> </div>
+</li>
+<li id="comment-1673237" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=30848" class="url" rel="ugc external nofollow">你会做Web上的用户登录功能吗？ | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1833078" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xinyuan.duapp.com/?p=1423" class="url" rel="ugc external nofollow">怎么编写用户注册/登录服务 | 心静志远</a> </div>
+</li>
+<li id="comment-1872427" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1872427" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22e6b6396ec50606c94b4cef11ac47e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22e6b6396ec50606c94b4cef11ac47e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yzf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5353.html/comment-page-3#comment-1872427"><time datetime="2016-08-23T23:30:38+08:00">2016年08月23日 23:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>登录序列 感觉并没有什么用啊</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2291180" class="comment odd alt depth-2">
+<article id="div-comment-2291180" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0805f51382cb33d89ba520dacbc8507a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0805f51382cb33d89ba520dacbc8507a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ove</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5353.html/comment-page-3#comment-2291180"><time datetime="2021-08-22T20:22:50+08:00">2021年08月22日 20:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从文中表述来看，确实是 session 中的登录token 起这识别作用。耗子哥对怎么识别 cookie 不同的策略没有详细讲</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1906379" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1906379" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/188f0bd5ebeebdca6d79b576bd90c39a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/188f0bd5ebeebdca6d79b576bd90c39a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://baozhuwanglei.com" class="url" rel="ugc external nofollow">baozhuwanglei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5353.html/comment-page-3#comment-1906379"><time datetime="2016-12-11T22:49:17+08:00">2016年12月11日 22:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于用户登录状态部分</p>
+<p>如果在家和在办公室的电脑上都使用，那么会不会出现每次都需要重新输入密码登录的情况呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1906380" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1906380" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/188f0bd5ebeebdca6d79b576bd90c39a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/188f0bd5ebeebdca6d79b576bd90c39a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://baozhuwanglei.com" class="url" rel="ugc external nofollow">baozhuwanglei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5353.html/comment-page-3#comment-1906380"><time datetime="2016-12-11T22:52:54+08:00">2016年12月11日 22:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1906379" rel="nofollow">@baozhuwanglei </a><br/>
+哦，文中已经有提到</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913520" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yanmingming.wordpress.com/2016/05/09/%e6%80%8e%e4%b9%88%e7%bc%96%e5%86%99%e7%94%a8%e6%88%b7%e6%b3%a8%e5%86%8c%e4%ba%8e%e7%99%bb%e5%bd%95%e6%9c%8d%e5%8a%a1/" class="url" rel="ugc external nofollow">怎么编写用户注册/登录服务 « 心静志远</a> </div>
+</li>
+<li id="comment-1917003" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=56" class="url" rel="ugc external nofollow">如何免费的让网站启用HTTPS – IT青年文摘</a> </div>
+</li>
+<li id="comment-2273581" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/823059" class="url" rel="ugc external nofollow">前后端分离下如何登录 - 算法网</a> </div>
+</li>
+<li id="comment-2309605" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1291967" class="url" rel="ugc external nofollow">实现Web上的用户登录功能 - 算法网</a> </div>
+</li>
+<li id="comment-2309608" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1291939" class="url" rel="ugc external nofollow">你会做Web上的用户登录功能吗？——关于用户登录你真的做好了吗？ - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/5353.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/5353.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/5353.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">5353</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

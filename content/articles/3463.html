@@ -1,0 +1,362 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>图解SQL的Join | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3463 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3463" class="post-content post-3463 post type-post status-publish format-standard hentry category-datebase tag-join tag-sql tag-venn-diagrams">
+<header class="entry-header">
+<span class="screen-reader-text">图解SQL的Join</span>
+<h1 class="entry-title">图解SQL的Join</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3463.html" title="08:44" rel="bookmark"><time class="entry-date" datetime="2011-01-11T08:44:09+08:00" pubdate="">2011年01月11日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3463.html#comments" class="comments-link">184 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 108,654 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>对于SQL的Join，在学习起来可能是比较乱的。我们知道，<a href="https://en.wikipedia.org/wiki/Join_(SQL)" target="_blank">SQL的Join语法</a>有很多inner的，有outer的，有left的，有时候，对于Select出来的结果集是什么样子有点不是很清楚。Coding Horror上有<a href="http://www.codinghorror.com/blog/2007/10/a-visual-explanation-of-sql-joins.html" target="_blank">一篇文章</a>（实在不清楚为什么Coding Horror也被墙）通过 文氏图 <a href="https://en.wikipedia.org/wiki/Venn_diagram" target="_blank">Venn diagrams</a> 解释了SQL的Join。我觉得清楚易懂，转过来。</p>
+<p>假设我们有两张表。</p>
+<ul>
+<li><strong>Table A</strong> 是左边的表。</li>
+<li><strong>Table B</strong> 是右边的表。</li>
+</ul>
+<p>其各有四条记录，其中有两条记录是相同的，如下所示：</p>
+<pre>id name       id  name
+-- ----       --  ----
+1  <span style="color: red;">Pirate</span>     1   Rutabaga
+2  Monkey     2   <span style="color: red;">Pirate</span>
+3  <span style="color: red;">Ninja</span>      3   Darth Vader
+4  Spaghetti  4   <span style="color: red;">Ninja</span></pre>
+<p>下面让我们来看看不同的Join会产生什么样的结果。</p>
+<p><span id="more-3463"></span></p>
+<table>
+<tbody>
+<tr>
+<td>
+<pre>SELECT * FROM TableA
+<strong>INNER JOIN</strong> TableB
+ON TableA.name = TableB.name
+
+id  name       id   name
+--  ----       --   ----
+1   Pirate     2    Pirate
+3   Ninja      4    Ninja</pre>
+<p><strong>Inner join</strong><br/>
+产生的结果集中，是A和B的交集。</p></td>
+<td><img decoding="async" style="border: 0px initial initial;" alt="Venn diagram of SQL inner join" src="/uploads/2011/01/Inner_Join.png" border="0" srcset=""/></td>
+</tr>
+<tr>
+<td>
+<pre>SELECT * FROM TableA
+<strong>FULL OUTER JOIN</strong> TableB
+ON TableA.name = TableB.name
+
+id    name       id    name
+--    ----       --    ----
+1     Pirate     2     Pirate
+2     Monkey     <span style="color: gray;">null</span>  <span style="color: gray;">null</span>
+3     Ninja      4     Ninja
+4     Spaghetti  <span style="color: gray;">null</span>  <span style="color: gray;">null</span>
+<span style="color: gray;">null</span>  <span style="color: gray;">null</span>       1     Rutabaga
+<span style="color: gray;">null</span>  <span style="color: gray;">null</span>       3     Darth Vader</pre>
+<p><strong>Full outer join</strong> 产生A和B的并集。但是需要注意的是，对于没有匹配的记录，则会以null做为值。</p></td>
+<td><img decoding="async" loading="lazy" style="border: 0px initial initial;" alt="Venn diagram of SQL cartesian join" src="/uploads/2011/01/Full_Outer_Join.png" width="300" height="197" border="0" srcset=""/></td>
+</tr>
+<tr>
+<td>
+<pre>SELECT * FROM TableA
+<strong>LEFT OUTER JOIN</strong> TableB
+ON TableA.name = TableB.name
+
+id  name       id    name
+--  ----       --    ----
+1   Pirate     2     Pirate
+2   Monkey     <span style="color: gray;">null</span>  <span style="color: gray;">null</span>
+3   Ninja      4     Ninja
+4   Spaghetti  <span style="color: gray;">null</span>  <span style="color: gray;">null</span></pre>
+<p><strong>Left outer join</strong> 产生表A的完全集，而B表中匹配的则有值，没有匹配的则以null值取代。</p></td>
+<td><img decoding="async" style="border: 0px initial initial;" alt="Venn diagram of SQL left join" src="/uploads/2011/01/Left_Outer_Join.png" border="0" srcset=""/></td>
+</tr>
+<tr>
+<td>
+<pre>SELECT * FROM TableA
+LEFT OUTER JOIN TableB
+ON TableA.name = TableB.name
+<strong>WHERE TableB.id IS null</strong> 
+
+id  name       id     name
+--  ----       --     ----
+2   Monkey     <span style="color: gray;">null</span>   <span style="color: gray;">null</span>
+4   Spaghetti  <span style="color: gray;">null</span>   <span style="color: gray;">null</span></pre>
+<p>产生在A表中有而在B表中没有的集合。</p></td>
+<td><img decoding="async" style="border: 0px initial initial;" alt="join-left-outer.png" src="/uploads/2011/01/Left_Out_Join_2.png" border="0" srcset=""/></td>
+</tr>
+<tr>
+<td>
+<pre>SELECT * FROM TableA
+FULL OUTER JOIN TableB
+ON TableA.name = TableB.name
+<strong>WHERE TableA.id IS null
+OR TableB.id IS null
+</strong>
+id    name       id    name
+--    ----       --    ----
+2     Monkey     <span style="color: gray;">null</span>  <span style="color: gray;">null</span>
+4     Spaghetti  <span style="color: gray;">null</span>  <span style="color: gray;">null</span>
+<span style="color: gray;">null</span>  <span style="color: gray;">null</span>       1     Rutabaga
+<span style="color: gray;">null</span>  <span style="color: gray;">null</span>       3     Darth Vader</pre>
+<p>产生A表和B表都没有出现的数据集。</p></td>
+<td><img decoding="async" style="border: 0px initial initial;" alt="join-outer.png" src="/uploads/2011/01/Full_Outer_Join_2.png" border="0" srcset=""/></td>
+</tr>
+</tbody>
+</table>
+<p>还需要注册的是我们还有一个是“交差集” <strong>cross join</strong>, 这种Join没有办法用文式图表示，因为其就是把表A和表B的数据进行一个N*M的组合，即笛卡尔积。表达式如下：</p>
+<pre>SELECT * FROM TableA
+<strong>CROSS JOIN</strong> TableB</pre>
+<p>这个笛卡尔乘积会产生 4 x 4 = 16 条记录，一般来说，我们很少用到这个语法。但是我们得小心，如果不是使用嵌套的select语句，一般系统都会产生笛卡尔乘积然再做过滤。这是对于性能来说是非常危险的，尤其是表很大的时候。</p>
+<p><em><strong>更新:2014年3月30日</strong></em></p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-11371" alt="" src="/uploads/2011/01/SQL-Join.jpg" width="600" height="472" srcset="" sizes="(max-width: 600px) 100vw, 600px"/></p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3463-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">数据库</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Join</a>, <a href="javascript:void(0)" rel="tag">SQL</a>, <a href="javascript:void(0)" rel="tag">Venn diagrams</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>图解SQL的Join</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1592605" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lifower.com/index.php/learn001/" class="url" rel="ugc external nofollow">优秀程序员技术练级攻略 – 人生充电站</a> </div>
+</li>
+<li id="comment-1608106" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.coolside.cn/?p=33" class="url" rel="ugc external nofollow">性能调优攻略 | 酷思-CoolSide</a> </div>
+</li>
+<li id="comment-1635049" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dovps.cn/deep/chenhao-performance-tuning-strategy/" class="url" rel="ugc external nofollow">【要进行优化，先得找到性能瓶颈！】性能调优攻略 | 【都VPS–doVPS.cn】</a> </div>
+</li>
+<li id="comment-1637560" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mkzhouqi.wang/?p=17" class="url" rel="ugc external nofollow">程序员练级 | One person One word</a> </div>
+</li>
+<li id="comment-1675366" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yunyour.com/2015/03/133.html" class="url" rel="ugc external nofollow">雲遊光影 | 程序员技术练级攻略</a> </div>
+</li>
+<li id="comment-1679701" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://youngershen.com/2015/03/24/%e7%a8%8b%e5%ba%8f%e5%91%98%e6%8a%80%e6%9c%af%e7%bb%83%e7%ba%a7%e6%94%bb%e7%95%a5.html" class="url" rel="ugc external nofollow">Coding in a deep » 程序员技术练级攻略</a> </div>
+</li>
+<li id="comment-1679715" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weihack.com/?p=10" class="url" rel="ugc external nofollow">性能调优攻略 | Zwhset&#39;Blog</a> </div>
+</li>
+<li id="comment-1680773" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://oniontou.com/?p=355" class="url" rel="ugc external nofollow">NoSQL 数据建模技术 | 洋葱头</a> </div>
+</li>
+<li id="comment-1724766" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.winroad.net/2012/06/21/%e6%80%a7%e8%83%bd%e8%b0%83%e4%bc%98%e6%94%bb%e7%95%a5/" class="url" rel="ugc external nofollow">性能调优攻略 | 围炉网</a> </div>
+</li>
+<li id="comment-1754303" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fcwalkers.info/201509/1435.html" class="url" rel="ugc external nofollow">程序员技术练级攻略 | 风尘♂每个人的心里都有一扇窗!</a> </div>
+</li>
+<li id="comment-1770720" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fcwalkers.com/201509/1435.html" class="url" rel="ugc external nofollow">程序员技术练级攻略 - 风尘</a> </div>
+</li>
+<li id="comment-1793364" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://mzli.sinaapp.com/?p=27" class="url" rel="ugc external nofollow">（转载）----程序员技术练级攻略 | 垂钓老翁</a> </div>
+</li>
+<li id="comment-1794343" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.holahola.club/?p=171" class="url" rel="ugc external nofollow">程序员技术练级攻略 | Zane&#39;s Blog</a> </div>
+</li>
+<li id="comment-1800659" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1800659" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e5cc23f84ec34c7f1fd74432f89241a8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e5cc23f84ec34c7f1fd74432f89241a8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">laozeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3463.html/comment-page-4#comment-1800659"><time datetime="2015-12-13T20:26:08+08:00">2015年12月13日 20:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大哥， cross join 我在mysql下测试后发现和 inner join 是一样的结果啊，</p>
+</div>
+ </article>
+</li>
+<li id="comment-1812163" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itdadao.com/article/569838/" class="url" rel="ugc external nofollow">图解SQL的Join(转) - IT大道</a> </div>
+</li>
+<li id="comment-1820035" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jingwuyuan.net/?p=120" class="url" rel="ugc external nofollow">#转载##经验#$:程序员练级攻略 | 攀登下一个山峰</a> </div>
+</li>
+<li id="comment-1897553" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gedoce.cn/2016/11/08/%e6%9c%8d%e5%8a%a1%e5%99%a8%e6%80%a7%e8%83%bd%e8%b0%83%e4%bc%98%e6%94%bb%e7%95%a5/" class="url" rel="ugc external nofollow">服务器性能调优攻略 - 慕少艾</a> </div>
+</li>
+<li id="comment-1899609" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gtdoer.com/2016/11/19/%e5%9b%be%e8%a7%a3sql%e7%9a%84join%e8%bd%ac/" class="url" rel="ugc external nofollow">图解SQL的Join(转) | IT狂人</a> </div>
+</li>
+<li id="comment-1910069" class="comment even thread-even depth-1">
+<article id="div-comment-1910069" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6fa0734ee2529cd3f3b0d5ba318ecef4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6fa0734ee2529cd3f3b0d5ba318ecef4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://z77z.oschina.io/" class="url" rel="ugc external nofollow">z77z</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3463.html/comment-page-4#comment-1910069"><time datetime="2017-01-06T12:15:50+08:00">2017年01月06日 12:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://z77z.oschina.io/" rel="nofollow ugc">http://z77z.oschina.io/</a> 加个友链啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914127" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog-scottwang.rhcloud.com/post/2017/05/21/performance-optimized.html" class="url" rel="ugc external nofollow">性能调优攻略 | Scott-Blog</a> </div>
+</li>
+<li id="comment-1916454" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://techer.top/?p=107" class="url" rel="ugc external nofollow">图解SQL的JOIN(转载) – 太客</a> </div>
+</li>
+<li id="comment-1917012" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.techer.top/?p=107" class="url" rel="ugc external nofollow">【转载】图解SQL的JOIN – 太客</a> </div>
+</li>
+<li id="comment-1923077" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nd709.com/?p=748" class="url" rel="ugc external nofollow">[转]程序员技术练级攻略 – 川流不息</a> </div>
+</li>
+<li id="comment-1925781" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nndev.cn/archives/553" class="url" rel="ugc external nofollow">性能调优攻略 – 南宁开发者 – 致力于中小企业信息化方案研究</a> </div>
+</li>
+<li id="comment-1929385" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codertw.com/%e8%b3%87%e6%96%99%e5%ba%ab/16645/" class="url" rel="ugc external nofollow">圖解 SQL Join | 程式前沿</a> </div>
+</li>
+<li id="comment-1929830" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/4990.html" class="url" rel="ugc">程序员技术练级攻略 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1934789" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://githubja.com/detailyang/awesome-cheatsheet" class="url" rel="ugc external nofollow">awesome-cheatsheet – ? 素晴らしいチートシート – GitHubじゃ！Pythonじゃ！</a> </div>
+</li>
+<li id="comment-1940141" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dev.go2live.cn/%e6%80%a7%e8%83%bd%e8%b0%83%e4%bc%98%e6%94%bb%e7%95%a5.html" class="url" rel="ugc external nofollow">性能调优攻略 | 演道网</a> </div>
+</li>
+<li id="comment-1980967" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.nndev.cn/archives/553" class="url" rel="ugc external nofollow">性能调优攻略 – 技术人成长 – 聊技术，话成长</a> </div>
+</li>
+<li id="comment-1998836" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://pintouge.online/?p=1803" class="url" rel="ugc external nofollow">程序员技术练级攻略（皓哥） – 平头哥个人博客</a> </div>
+</li>
+<li id="comment-1998891" class="comment even thread-even depth-1">
+<article id="div-comment-1998891" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cee7659608d28ff535c05138f13cf5f7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cee7659608d28ff535c05138f13cf5f7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">anonymous</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3463.html/comment-page-4#comment-1998891"><time datetime="2019-05-27T06:57:04+08:00">2019年05月27日 06:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>厉害</p>
+</div>
+ </article>
+</li>
+<li id="comment-2038128" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/625995" class="url" rel="ugc external nofollow">性能调优攻略-来自酷壳陈皓 - 算法网</a> </div>
+</li>
+<li id="comment-2227562" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.tech-law-pyscho.info/2021/04/04/%e4%bd%bf%e3%81%88%e3%82%8b%e3%83%81%e3%83%bc%e3%83%88%e3%82%b7%e3%83%bc%e3%83%88%e4%b8%80%e8%a6%a7/" class="url" rel="ugc external nofollow">使えるチートシート一覧 – トロちゃんのサイト</a> </div>
+</li>
+<li id="comment-2370740" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/358003.html" class="url" rel="ugc external nofollow">程序员修炼之路 – 源码巴士</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/3463.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/3463.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/3463.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/3463.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">3463</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

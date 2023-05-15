@@ -1,0 +1,333 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>PHP v5.3的新鲜玩意 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11" class="post-content post-11 post type-post status-publish format-standard hentry category-phpdev category-webdev category-proglanguage tag-php">
+<header class="entry-header">
+<span class="screen-reader-text">PHP v5.3的新鲜玩意</span>
+<h1 class="entry-title">PHP v5.3的新鲜玩意</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11.html" title="13:40" rel="bookmark"><time class="entry-date" datetime="2009-03-02T13:40:50+08:00" pubdate="">2009年03月02日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11.html#comments" class="comments-link">2 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 7,399 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>PHP v5.3马上就要release了，这里让我们看看他有一些什么样的新特性。</p>
+<p><strong>1）_callStatic() magic 方法</strong></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">class Foo
+{
+    public static function __callStatic( $name, $args )
+    {
+        echo &#34;Called method $name statically&#34;;
+    } 
+
+    public function __call( $name, $args )
+    {
+        echo &#34;Called method $name&#34;;
+    }
+}</pre>
+<p><span id="more-11"></span></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">Foo::dog();       // outputs &#34;Called method dog statically&#34;
+$foo = new Foo;
+$foo-&amp;gt;dog();      // outputs &#34;Called method dog&#34;</pre>
+<p><strong>2）<span class="atitle"><code>动态调用函数</code></span></strong></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">class Dog
+{
+    public function bark()
+    {
+        echo &#34;Woof!&#34;;
+    }
+&lt;span style=&#34;color: #333399;&#34;&gt;} 
+
+$class = &#34;Dog&#34;
+$action = &#34;bark&#34;;
+$x = new $class(); // instantiates the class &#34;Dog&#34;
+$x-&amp;gt;$action();     // outputs &#34;Woof!&#34; &lt;/span&gt;</pre>
+<p><strong><span class="atitle">3) 标准</span></strong><strong><span class="atitle">PHP</span></strong><strong><span class="atitle">库（SPL）</span></strong></p>
+<p><span class="atitle">加了了少数几个容器类，</span><span class="atitle">比如，栈（</span>SplStack<span class="atitle">）和固定数组（SplFixedArray）</span></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$stack = new SplStack(); 
+
+// push a few new items on the stack
+$stack-&amp;gt;push(&#34;a&#34;);
+$stack-&amp;gt;push(&#34;b&#34;);
+$stack-&amp;gt;push(&#34;c&#34;); 
+
+// see how many items are on the stack
+echo count($stack); // returns 3 
+
+// iterate over the items in the stack
+foreach ( $stack as $item )
+    echo &#34;[$item],&#34;;
+// the above outputs: [c][/c]
+
+ [/c],[b],[a]  // pop an item off the stack echo $stack-&amp;gt;pop(); // returns &#34;c&#34;   // now see how many items are on the stack echo count($stack); // returns 2</pre>
+<p><strong><span class="atitle">4) </span><span class="atitle">Closures 功能</span></strong></p>
+<p><span class="atitle">关于</span>Closures<span class="atitle">，这是一个把函数定义成变量的玩意。让我们看几个例子：</span></p>
+<p><span class="atitle">示例一：</span></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$string = &#34;Hello World!&#34;;
+$closure = function() use ($string) { echo $string; };
+
+$closure();</pre>
+<p><strong>Output:</strong><br/>
+Hello World!<br/>
+示例二 使用引用的变量</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$x = 1
+$closure = function() use (&amp;amp;$x) { ++$x; }
+
+echo $x . &#34;\\n&#34;;
+$closure();
+echo $x . &#34;\\n&#34;;
+$closure();
+echo $x . &#34;\\n&#34;;</pre>
+<p><strong>Output</strong>:<br/>
+1<br/>
+2<br/>
+3<br/>
+示例三，返回值</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">function getAppender($baseString)
+{
+      return function($appendString) use ($baseString)
+  { return $baseString .$appendString; };
+}</pre>
+<p>示例四，Reflection</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">class Counter
+{
+      private $x;
+
+      public function __construct()
+      {
+           $this-&amp;gt;x = 0;
+      }
+
+      public function increment()
+      {
+           $this-&amp;gt;x++;
+      }
+
+      public function currentValue()
+      {
+           echo $this-&amp;gt;x . &#34;\\n&#34;;
+      }
+}
+$class = new ReflectionClass(&#34;Counter&#34;);
+$method = $class-&amp;gt;getMethod(&#34;currentValue&#34;);
+$closure = $method-&amp;gt;getClosure()
+$closure();
+$class-&amp;gt;increment();
+$closure();</pre>
+<p><strong>Output</strong>:<br/>
+0<br/>
+1<br/>
+示例五，Reflection API</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$closure = function ($x, $y = 1) {};
+$m = new ReflectionMethod($closure);
+Reflection::export ($m);
+&lt;strong&gt;Output&lt;/strong&gt;:
+Method [  public method __invoke ] {
+  - Parameters [2] {
+    Parameter #0 [  $x ]
+    Parameter #1 [  $y ]
+  }
+}</pre>
+<p>示例六，Uses Case</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$logdb = function ($string) { Logger::log(&#34;debug&#34;,&#34;database&#34;,$string);};
+$db = mysqli_connect(&#34;server&#34;,&#34;user&#34;,&#34;pass&#34;);
+$logdb(&#34;Connected to database&#34;);
+$db-&amp;gt;query(&#34;insert into parts (part, description) values
+ (&#34;Hammer&#34;,&#34;Pounds nails&#34;);
+$logdb(&#34;Insert Hammer into to parts table&#34;);
+$db-&amp;gt;query(&#34;insert into parts (part, description) values
+       (&#34;Drill&#34;,&#34;Puts holes in wood&#34;);
+$logdb(&#34;Insert Drill into to parts table&#34;);
+$db-&amp;gt;query(&#34;insert into parts (part, description) values
+ (&#34;Saw&#34;,&#34;Cuts wood&#34;);
+$logdb(&#34;Insert Saw into to parts table&#34;);</pre>
+<p>更为详细的文章，请参考这里，<a href="http://www.ibm.com/developerworks/opensource/library/os-php-5.3new2/index.html" target="_blank">链接</a>。</p>
+<p><strong><span class="atitle">5) </span><span class="atitle">使用namespace</span></strong></p>
+<p><span class="atitle">新版的PHP会开始支持C++式的namespace，请参看示例：</span></p>
+<p><span class="atitle">示例一</span></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">/* Foo.php */
+&amp;lt;?php
+namespace Foo;
+function bar()
+{
+    echo &#34;calling bar....&#34;;
+}
+?&amp;gt; 
+
+/* File1.php */
+&amp;lt;?php
+include &#34;./Foo.php&#34;;
+Foo/bar(); // outputs &#34;calling bar....&#34;;
+?&amp;gt; 
+
+/* File2.php */
+&amp;lt;?php
+include &#34;./Foo.php&#34;;
+use Foo as ns;
+ns/bar(); // outputs &#34;calling bar....&#34;;
+?&amp;gt; 
+
+/* File3.php */
+&amp;lt;?php
+include &#34;./Foo.php&#34;;
+use Foo;
+bar(); // outputs &#34;calling bar....&#34;;
+?&amp;gt;
+&lt;!--p include &#34;./Foo.php&#34;; use Foo; bar(); // outputs &#34;calling bar....&#34;;--&gt;</pre>
+<p>示例二，多重namespace</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">&lt;!--p namespace Foo; class Test {}  namespace Bar; class Test {}  $a = new Foo\\Test; $b = new Bar\\Test;  var_dump($a, $b);--&gt; &amp;lt;?php
+namespace Foo;
+class Test {} 
+
+namespace Bar;
+class Test {} 
+
+$a = new Foo\\Test;
+$b = new Bar\\Test; 
+
+var_dump($a, $b); 
+
+Output:
+object(Foo\\Test)#1 (0) {
+}
+object(Bar\\Test)#2 (0) {
+}
+&lt;strong&gt;Output:&lt;/strong&gt;
+object(Foo\\Test)#1 (0) { }
+object(Bar\\Test)#2 (0) { }</pre>
+<p>示例三，不同文件中的namespace</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">/*定义*/
+/* global.php */
+&amp;lt;?php
+function hello()
+{
+    echo &#34;hello from the global scope!&#34;;
+}
+?&amp;gt; 
+
+/* Foo.php */
+&amp;lt;?php
+namespace Foo;
+function hello()
+{
+    echo &#34;hello from the Foo namespace!&#34;;
+}
+?&amp;gt; 
+
+/* Foo_Bar.php */
+&amp;lt;?php
+namespace Foo/Bar;
+function hello()
+{
+    echo &#34;hello from the Foo/Bar namespace!&#34;;
+}
+?&amp;gt;
+&lt;!--p namespace Foo/Bar; function hello() {     echo &#34;hello from the Foo/Bar namespace!&#34;; }--&gt;
+
+/*使用 */
+&lt;!--p include &#34;./global.php&#34;; include &#34;./Foo.php&#34;; include &#34;./Foo_Bar.php&#34;; use Foo;  hello();         // outputs &#34;hello from the Foo namespace!&#34; Bar\\hello();   // outputs &#34;hello from the Foo/Bar namespace!&#34; \\hello();       // outputs &#34;hello from the global scope!&#34;--&gt;&amp;lt;?php
+include &#34;./global.php&#34;;
+include &#34;./Foo.php&#34;;
+include &#34;./Foo_Bar.php&#34;;
+
+use Foo; 
+
+hello();         // outputs &#34;hello from the Foo namespace!&#34;
+Bar\\hello();   // outputs &#34;hello from the Foo/Bar namespace!&#34;
+\\hello();       // outputs &#34;hello from the global scope!&#34;
+?&amp;gt;</pre>
+<p>更为详细的文章，请参考这里，<a href="http://www.ibm.com/developerworks/opensource/library/os-php-5.3new3/index.html" target="_blank">链接</a>。</p>
+<p><strong>6)开始支持Achieve包</strong></p>
+<p>正像JAR一样，PHP也要开始支持自己的Achieve包了，叫作，Phar。PHP提供了一整套函数来帮助开发人员创建和使用Phar，正如下面的示例所示：</p>
+<p style="padding-left: 30px;"><strong>创建</strong>：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$p = new Phar(&#34;/path/to/my.phar&#34;,
+ CURRENT_AS_FILEINFO | KEY_AS_FILENAME, &#34;my.phar&#34;);
+$p-&amp;gt;startBuffering();</pre>
+<p style="padding-left: 30px;"><strong>创建文件存根</strong>（stub）</p>
+<p><code data-enlighter-language="php" class="EnlighterJSRAW">$p-&amp;gt;setStub(&#34;&lt;!--p Phar::mapPhar(); include &#34;phar://myphar.phar/index.php&#34;; __HALT_COMPILER();--&gt;&#34;);</code></p>
+<p style="padding-left: 30px;"><strong>加入文件</strong>：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$p[&#34;file.txt&#34;] = &#34;This is a text file&#34;;
+$p[&#34;index.php&#34;] = file_get_contents(&#34;index.php&#34;);
+$p[&#34;big.txt&#34;] = &#34;This is a big text file&#34;;
+$p[&#34;big.txt&#34;]-&amp;gt;setCompressedBZIP2();
+//加入某目录下所有的文件
+$p-&amp;gt;buildFromDirectory(&#34;/path/to/files&#34;,&#34;./\\.php$/&#34;);</pre>
+<p style="padding-left: 30px;"><strong>使用Phar</strong></p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">include &#34;myphar.phar&#34;;
+include &#34;phar://myphar.phar/file.php&#34;;</pre>
+<p>更为详细的文章，请参考这里，<a href="http://www.ibm.com/developerworks/opensource/library/os-php-5.3new4/index.html" target="_blank">链接</a>。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">PHP脚本</a>, <a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">PHP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>PHP v5.3的新鲜玩意</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-24329" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://deloby.com/entry/777" class="url" rel="ugc external nofollow">Facebook全球关系网 | 中文IT博客聚合</a> </div>
+</li>
+<li id="comment-572857" class="trackback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11.html/trackback/" class="url" rel="ugc">Online casino</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

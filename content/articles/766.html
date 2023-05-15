@@ -1,0 +1,149 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>让Ruby增加30%的性能改进 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-766 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-766" class="post-content post-766 post type-post status-publish format-standard hentry category-rubydev category-proglanguage tag-performance tag-ruby">
+<header class="entry-header">
+<span class="screen-reader-text">让Ruby增加30%的性能改进</span>
+<h1 class="entry-title">让Ruby增加30%的性能改进</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/766.html" title="23:44" rel="bookmark"><time class="entry-date" datetime="2009-05-05T23:44:55+08:00" pubdate="">2009年05月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/766.html#comments" class="comments-link">1 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 6,837 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<h4>一切都和 <code>--enable-pthread</code> 有关</h4>
+<p>问一下 Ruby 黑客怎么简单地增加一个线程的Ruby应用程序的性能。也许，这些黑客会告诉你，“<strong>小伙，每个人都知道在编译Ruby的时候你需要使用<code>configure</code> 的 <code>--disable-pthread</code>参数</strong>”。没错，在<code>configure</code> <code>--disable-pthread</code> 可以让你得到大约 30% 性能提高。但是，这是为什么呢？</p>
+<p>所有的这一些我们需要使用 <a href="http://timetobleed.com/hello-world/">strace</a> 工具，这个工具可以打出所有的真实的操作系统的调用。</p>
+<p>下面，是一段我们测试的例程：</p>
+<p><span id="more-766"></span></p>
+<pre data-enlighter-language="ruby" class="EnlighterJSRAW">def make_thread
+  Thread.new {
+    a = []
+    10_000_000.times {
+      a &lt;&lt; &#34;a&#34;
+      a.pop
+    }
+  }
+end
+
+t = make_thread
+t1 = make_thread
+
+t.join
+t1.join
+</pre>
+<p>如果我们使用 <code>strace</code> 工具去测试 <code>configure</code> <code>--enable-pthread</code> 版本的Ruby引擎，那么我们可以得到下面这样的结果：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">22:46:16.706136 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000004&gt;
+22:46:16.706177 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000004&gt;
+22:46:16.706218 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000004&gt;
+22:46:16.706259 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000005&gt;
+22:46:16.706301 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000004&gt;
+22:46:16.706342 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000004&gt;
+22:46:16.706383 rt_sigprocmask(SIG_BLOCK, NULL, [], 8 ) = 0 &lt;0.000004&gt;
+</pre>
+<p>你会发现上面的sigprocmask 系统调用一页一页又一页地没完没了的。如果你用 <code>strace -c，你会发现</code>一共大约<strong>20,054,180</strong> 个<code>sigprocmask系统调用<span style="font-family: Georgia;">。但是，如果你是在</span></code><code>--disable-pthread</code> 的Ruby版本下运行，你会发现根本没有那么多的<code>sigprocmask</code> 系统调用（只有 <strong>3</strong> 次，简直就是<strong>天壤之别</strong>）</p>
+<h4>查看一下源代码</h4>
+<p>我们知道 <code>configure</code> 是一个脚本，其主要用来创建一个 <code>config.h</code> 文件，其中有一大堆宏定义 <code>define</code>s ，这些宏定义决定了使用什么样的函数。所以，让我们来比较一下版本 <code>./configure --enable-pthread</code> 和版本<code>./configure --disable-pthread的不同之处吧。</code></p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="6,7">$ diff config.h config.h.pthread
+&gt; #define _REENTRANT 1
+&gt; #define _THREAD_SAFE 1
+&gt; #define HAVE_LIBPTHREAD 1
+&gt; #define HAVE_NANOSLEEP 1
+&gt; #define HAVE_GETCONTEXT 1
+&gt; #define HAVE_SETCONTEXT 1
+</pre>
+<p>好的，现在我们再 <code>grep</code> 一下Ruby的源代码，我们可以看到只要<code>HAVE_[S/G]ETCONTEXT</code> 被设置了，Ruby 就会调用<code>setcontext()</code> 和<code>getcontext()</code> 这两个系统调用来存取context 的状态，以便异常处理时的切换（通过<code>EXEC_TAG）。</code></p>
+<p>而如果 <code>HAVE_[S/G]ETCONTEXT</code> <strong>没有被定义</strong> <code>的情况下，</code>Ruby 会使用 <code>_setjmp/_longjmp这两个系统调用。</code></p>
+<div><code>我们来看看 <code>_setjmp/_longjmp</code> 的man page:</code></div>
+<blockquote><p>… The _longjmp() and _setjmp() functions shall be equivalent to longjmp() and setjmp(), respectively, with the additional restriction that _longjmp() and _setjmp() shall not manipulate the signal mask…</p></blockquote>
+<p>还有<code>setcontext /getcontext的</code> man page:</p>
+<blockquote><p>… uc_sigmask is the set of signals blocked in this context (see sigprocmask(2)) …</p></blockquote>
+<p>我们可以看到 <code>getcontext</code> 调用每次都要调用<code>sigprocmask</code> 但是<code>_setjmp</code> 不会。</p>
+<h4>补丁</h4>
+<p>请点击 <strong><a href="https://github.com/ice799/matzruby/commit/0b9b69f9653782a33aee2b8937d405eae245b60c" target="_blank">这里</a></strong>获取补丁</p>
+<p>这个补丁增加了一个configure 的参数 <code>--disable-ucontext</code> 其可以让你关闭使用 <code>setcontext或getcontext，你只需要像如下方式使用就好了。</code></p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">./configure --disable-ucontext --enable-pthread
+</pre>
+<p>如果你以这种方式编译Ruby，那么，你的程序的性能在同等条件下可能会有30%左右的提升。</p>
+<p>文章：<a href="http://timetobleed.com/fix-a-bug-in-rubys-configurein-and-get-a-30-performance-boost/" target="_blank">来源</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-766-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Ruby</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Performance</a>, <a href="javascript:void(0)" rel="tag">Ruby</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>让Ruby增加30%的性能改进</span>》 的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-141372" class="comment even thread-even depth-1">
+<article id="div-comment-141372" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc148aac43aa6ee275a83316bf09dd44?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc148aac43aa6ee275a83316bf09dd44?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ju2ender.cnblogs.com" class="url" rel="ugc external nofollow">Ju2ender</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/766.html#comment-141372"><time datetime="2012-02-27T16:09:18+08:00">2012年02月27日 16:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，谢谢分享！</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

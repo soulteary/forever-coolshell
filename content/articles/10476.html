@@ -1,0 +1,317 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++11的Lambda使用一例：华容道求解 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10476 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10476" class="post-content post-10476 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-lambda">
+<header class="entry-header">
+<span class="screen-reader-text">C++11的Lambda使用一例：华容道求解</span>
+<h1 class="entry-title">C++11的Lambda使用一例：华容道求解</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10476.html" title="15:50" rel="bookmark"><time class="entry-date" datetime="2013-10-09T15:50:21+08:00" pubdate="">2013年10月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/solstice" title="View all posts by Solstice" rel="author">Solstice</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10476.html#comments" class="comments-link">12 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 41,780 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 <a href="http://weibo.com/u/1701018393?source=webim" target="_blank"><img decoding="async" alt="" src="http://tp2.sinaimg.cn/1701018393/50/1297990315/1"/></a><a title="bnu_chenshuo" href="http://weibo.com/u/1701018393?source=webim" target="_blank"> @bnu_chenshuo </a>投稿）</strong></p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="wp-image-10490 alignright" alt="" src="/uploads/2013/10/huarong.png" width="365" height="227" srcset="" sizes="(max-width: 365px) 100vw, 365px"/></p>
+<p>华容道是一个有益的智力游戏，游戏规则不再赘述。用计算机求解华容道也是一道不错的编程练习题，为了寻求最少步数，求解程序一般用广度优先搜索算法。华容道的一种常见开局如图 1 所示。</p>
+<p>广度优先搜索算法求解华容道的基本步骤：</p>
+<ol>
+<li>准备两个“全局变量”，队列 Q 和和集合 S，S 代表“已知局面”。初时 Q 和 S 皆为空。</li>
+<li>将初始局面加入队列 Q 的末尾，并将初始局面设为已知。</li>
+<li>当队列不为空时，从 Q 的队首取出当前局面 <code>curr</code>。如果队列为空则结束搜索，表明无解。</li>
+<li>如果 <code>curr</code> 是最终局面（曹操位于门口，图 2），则结束搜索，否则继续到第 5 步。</li>
+<li>考虑 <code>curr</code> 中每个可以移动的棋子，试着上下左右移动一步，得到新局面 <code>next</code>，如果新局面未知（<code>next</code> ∉ S），则把它加入队列 Q，并设为已知。这一步可能产生多个新局面。</li>
+<li>回到第2步。</li>
+</ol>
+<p>其中“局面已知”并不要求每个棋子的位置相同，而是指棋子的投影的形状相同（代码中用 mask 表示），例如交换图 1 中的张飞和赵云并不产生新局面，这一规定可以大大缩小搜索空间。</p>
+<p>以上步骤很容易转换为 C++ 代码，这篇文章重点关注的是第 5 步的实现。</p>
+<p><span id="more-10476"></span></p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// 第 1 步
+std::unordered_set&lt;Mask&gt; seen;
+std::deque&lt;State&gt; queue;
+
+// 第 2 步
+State initial;
+// 填入 initial，略。
+queue.push_back(initial);
+seen.insert(initial.toMask());
+
+// 第 3 步
+while (!queue.empty())
+{
+  const State curr = queue.front();
+  queue.pop_front();
+
+  // 第 4 步
+  if (curr.isSolved())
+    break;
+
+  // 第 5 步
+  for (const State&amp; next : curr.moves())
+  {
+    auto result = seen.insert(next.toMask());
+    if (result.second)
+      queue.push_back(next);
+  }
+}</pre>
+<p>在以上原始实现中，<code>curr.move()</code> 将返回一个 <code>std::vector&lt;State&gt;</code> 临时对象。一种节省开销的办法是准备一个 <code>std::vector&lt;State&gt;</code> “涂改变量”，让 <code>curr.move()</code> 反复修改它，比如改成：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// 第 1 步新增一个 scratch 变量
+std::vector&lt;State&gt; nextMoves;
+
+// 第 3 步
+while (!queue.empty())
+{
+  // ...
+  // 第 5 步
+  curr.fillMoves(&amp;nextMoves);
+  for (const State&amp; next : nextMoves)
+  { /* 略 */ }
+}</pre>
+<p>还有一种彻底不用这个 <code>std::vector&lt;State&gt;</code> 的办法，把一部分逻辑以 lambda 的形式传给 <code>curr.move()</code>，代码的结构基本不变：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// 第 3 步
+while (!queue.empty())
+{
+  // ...
+  // 第 5 步
+  curr.move([&amp;seen, &amp;queue](const State&amp; next) {
+    auto result = seen.insert(next.toMask());
+    if (result.second)
+      queue.push_back(next);
+  });
+}</pre>
+<p>这样一来，主程序的逻辑依然清晰，不必要的开销也降到了最小。</p>
+<p>在我最早的实现中，<code>curr.move()</code> 的参数是 <code>const std::function&lt;void(const State&amp;)&gt; &amp;</code>，但是我发现这里每次构造 <code>std::function&lt;void(const State&amp;)&gt;</code> 对象都会分配一次内存，似乎有些不值。因此在现在的实现中 <code>curr.move()</code> 是个函数模板，这样就能自动匹配lambda参数（通常是个 struct 对象），省去了 <code>std::function</code>的内存分配。</p>
+<p>本文完整的代码见 <a href="https://github.com/chenshuo/recipes/blob/master/puzzle/huarong.cc">https://github.com/chenshuo/recipes/…/puzzle/huarong.cc</a>，需用 GCC 4.7 编译，求解图 1 的题目的耗时约几十毫秒。</p>
+<p><strong>练习：</strong>修改程序，打印每一步移动棋子的情况。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10476-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Lambda</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++11的Lambda使用一例：华容道求解</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-796208" class="comment even thread-even depth-1">
+<article id="div-comment-796208" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f0e285451063759c0cacab4251881445?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f0e285451063759c0cacab4251881445?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">livelazily</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-796208"><time datetime="2013-10-09T16:49:58+08:00">2013年10月09日 16:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图1怎么两个张飞了….</p>
+</div>
+ </article>
+</li>
+<li id="comment-797095" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-797095" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f46142f504c83d8d3c9ed4da499f3e84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f46142f504c83d8d3c9ed4da499f3e84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">受到了风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-797095"><time datetime="2013-10-09T23:03:47+08:00">2013年10月09日 23:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>诶，陈硕大哥的文章。</p>
+</div>
+ </article>
+</li>
+<li id="comment-798386" class="comment even thread-even depth-1">
+<article id="div-comment-798386" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d423088ed762e1275ae6db27af06144?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d423088ed762e1275ae6db27af06144?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">laocius</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-798386"><time datetime="2013-10-10T08:53:36+08:00">2013年10月10日 08:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图1多了个张飞少了个关羽</p>
+</div>
+ </article>
+</li>
+<li id="comment-808770" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-808770" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c03dd0ab2b17e583c0700ab8bc577cfa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c03dd0ab2b17e583c0700ab8bc577cfa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">likewater</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-808770"><time datetime="2013-10-13T11:19:49+08:00">2013年10月13日 11:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>调试中，发现mask3步后会超出范围！<br/>
+mask-&gt;set(value, top, left+1);<br/>
+会越界，left+1为4，后面断言直接挂掉</p>
+<p>没有判断下一步的可行性</p>
+</div>
+ </article>
+</li>
+<li id="comment-810294" class="comment byuser comment-author-solstice bypostauthor even thread-even depth-1">
+<article id="div-comment-810294" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a652f5a2506b19c14043e56182a69bef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a652f5a2506b19c14043e56182a69bef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Solstice</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-810294"><time datetime="2013-10-13T23:32:43+08:00">2013年10月13日 23:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-808770" rel="nofollow">@likewater </a><br/>
+你改过代码？<br/>
+原版运行是没问题的： <a href="http://ideone.com/GoQAtw" rel="nofollow ugc">http://ideone.com/GoQAtw</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-811752" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-811752" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/290e878c36bdb0b755e27ced4b94c7e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/290e878c36bdb0b755e27ced4b94c7e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">owen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-811752"><time datetime="2013-10-14T11:16:34+08:00">2013年10月14日 11:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>就是个位图+广搜嘛, 最后给move传一个callback, 借助lambda把上下文带进去.</p>
+</div>
+ </article>
+</li>
+<li id="comment-813344" class="comment even thread-even depth-1">
+<article id="div-comment-813344" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c03dd0ab2b17e583c0700ab8bc577cfa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c03dd0ab2b17e583c0700ab8bc577cfa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">likewater</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-813344"><time datetime="2013-10-14T23:34:03+08:00">2013年10月14日 23:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-810294" rel="nofollow">@Solstice </a><br/>
+没有，我使用MingW的gcc4.7.2编译的，boost库也是我自己编译的，我一运行就出现这个问题！</p>
+</div>
+ </article>
+</li>
+<li id="comment-814426" class="comment byuser comment-author-solstice bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-814426" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a652f5a2506b19c14043e56182a69bef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a652f5a2506b19c14043e56182a69bef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Solstice</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-814426"><time datetime="2013-10-15T11:44:55+08:00">2013年10月15日 11:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-813344" rel="nofollow">@likewater </a><br/>
+我用 MinGW g++ 4.7.2 编译运行无误。</p>
+</div>
+ </article>
+</li>
+<li id="comment-817966" class="comment even thread-even depth-1">
+<article id="div-comment-817966" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c03dd0ab2b17e583c0700ab8bc577cfa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c03dd0ab2b17e583c0700ab8bc577cfa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">likewater</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-817966"><time datetime="2013-10-16T17:03:58+08:00">2013年10月16日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-814426" rel="nofollow">@Solstice </a><br/>
+因为没有bzero函数，改成memset过程中，不小心动到某个数字了，我的失误</p>
+</div>
+ </article>
+</li>
+<li id="comment-835277" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-835277" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3645e40d2067cc828af28715d9b1d512?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3645e40d2067cc828af28715d9b1d512?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">化石</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-835277"><time datetime="2013-10-21T23:54:21+08:00">2013年10月21日 23:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看起来如果不定义 enum Shape, 而是直接把 block 定义为 Struct { int width, int height, int left, int top }，可能移动棋子的代码还会简单一点</p>
+</div>
+ </article>
+</li>
+<li id="comment-835422" class="comment byuser comment-author-solstice bypostauthor even thread-even depth-1">
+<article id="div-comment-835422" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a652f5a2506b19c14043e56182a69bef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a652f5a2506b19c14043e56182a69bef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Solstice</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-835422"><time datetime="2013-10-22T01:20:18+08:00">2013年10月22日 01:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-835277" rel="nofollow">@化石 </a><br/>
+定义不用改，用 bottom()、right() 成员函数即可。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923884" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1923884" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb46959335f1069e8db079e9a7dfac05?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb46959335f1069e8db079e9a7dfac05?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://fatgrammer.com" class="url" rel="ugc external nofollow">ThickRammer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10476.html#comment-1923884"><time datetime="2018-02-06T11:12:56+08:00">2018年02月06日 11:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈，这是个Continuation-passing style。原来这么早就有前辈在C++中用函数式风格了，膜拜。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

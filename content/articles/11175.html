@@ -1,0 +1,738 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Java中的CopyOnWrite容器 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11175 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11175" class="post-content post-11175 post type-post status-publish format-standard hentry category-javadev tag-copy-on-write tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">Java中的CopyOnWrite容器</span>
+<h1 class="entry-title">Java中的CopyOnWrite容器</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11175.html" title="08:26" rel="bookmark"><time class="entry-date" datetime="2014-03-07T08:26:31+08:00" pubdate="">2014年03月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/kiral" title="View all posts by 方 腾飞" rel="author">方 腾飞</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11175.html#comments" class="comments-link">38 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 45,288 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-11219" alt="" src="/uploads/2014/03/cow-copy-300x222.jpg" width="300" height="222" srcset=""/><strong>感谢 <a href="http://ifeve.com" target="_blank">清英</a> 同学的投稿</strong></p>
+<p>Copy-On-Write简称COW，是一种用于程序设计中的优化策略。其基本思路是，从一开始大家都在共享同一个内容，当某个人想要修改这个内容的时候，才会真正把内容Copy出去形成一个新的内容然后再改，这是一种延时懒惰策略。从JDK1.5开始Java并发包里提供了两个使用CopyOnWrite机制实现的并发容器,它们是CopyOnWriteArrayList和CopyOnWriteArraySet。CopyOnWrite容器非常有用，可以在非常多的并发场景中使用到。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BB%80%E4%B9%88%E6%98%AFCopyOnWrite%E5%AE%B9%E5%99%A8" title="什么是CopyOnWrite容器">什么是CopyOnWrite容器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#CopyOnWriteArrayList%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86" title="CopyOnWriteArrayList的实现原理">CopyOnWriteArrayList的实现原理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#CopyOnWrite%E7%9A%84%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF" title="CopyOnWrite的应用场景">CopyOnWrite的应用场景</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#CopyOnWrite%E7%9A%84%E7%BC%BA%E7%82%B9" title="CopyOnWrite的缺点">CopyOnWrite的缺点</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BB%80%E4%B9%88%E6%98%AFCopyOnWrite%E5%AE%B9%E5%99%A8"></span>什么是CopyOnWrite容器<span class="ez-toc-section-end"></span></h4>
+<p>CopyOnWrite容器即写时复制的容器。通俗的理解是当我们往一个容器添加元素的时候，不直接往当前容器添加，而是先将当前容器进行Copy，复制出一个新的容器，然后新的容器里添加元素，添加完元素之后，再将原容器的引用指向新的容器。这样做的好处是我们可以对CopyOnWrite容器进行并发的读，而不需要加锁，因为当前容器不会添加任何元素。所以CopyOnWrite容器也是一种读写分离的思想，读和写不同的容器。</p>
+<p><span id="more-11175"></span></p>
+<h4><span class="ez-toc-section" id="CopyOnWriteArrayList%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"></span>CopyOnWriteArrayList的实现原理<span class="ez-toc-section-end"></span></h4>
+<p>在使用CopyOnWriteArrayList之前，我们先阅读其源码了解下它是如何实现的。以下代码是向ArrayList里添加元素，可以发现在添加的时候是需要加锁的，否则多线程写的时候会Copy出N个副本出来。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public boolean add(T e) {
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    try {
+
+        Object[] elements = getArray();
+
+        int len = elements.length;
+        // 复制出新数组
+
+        Object[] newElements = Arrays.copyOf(elements, len + 1);
+        // 把新元素添加到新数组里
+
+        newElements[len] = e;
+        // 把原数组引用指向新数组
+
+        setArray(newElements);
+
+        return true;
+
+    } finally {
+
+        lock.unlock();
+
+    }
+
+}
+
+final void setArray(Object[] a) {
+    array = a;
+}
+</pre>
+<p>读的时候不需要加锁，如果读的时候有多个线程正在向ArrayList添加数据，读还是会读到旧的数据，因为写的时候不会锁住旧的ArrayList。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public E get(int index) {
+    return get(getArray(), index);
+}
+</pre>
+<p>JDK中并没有提供CopyOnWriteMap，我们可以参考CopyOnWriteArrayList来实现一个，基本代码如下：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">
+
+import java.util.Collection;
+import java.util.Map;
+import java.util.Set;
+
+public class CopyOnWriteMap&lt;K, V&gt; implements Map&lt;K, V&gt;, Cloneable {
+    private volatile Map&lt;K, V&gt; internalMap;
+
+    public CopyOnWriteMap() {
+        internalMap = new HashMap&lt;K, V&gt;();
+    }
+
+    public V put(K key, V value) {
+
+        synchronized (this) {
+            Map&lt;K, V&gt; newMap = new HashMap&lt;K, V&gt;(internalMap);
+            V val = newMap.put(key, value);
+            internalMap = newMap;
+            return val;
+        }
+    }
+
+    public V get(Object key) {
+        return internalMap.get(key);
+    }
+
+    public void putAll(Map&lt;? extends K, ? extends V&gt; newData) {
+        synchronized (this) {
+            Map&lt;K, V&gt; newMap = new HashMap&lt;K, V&gt;(internalMap);
+            newMap.putAll(newData);
+            internalMap = newMap;
+        }
+    }
+}
+</pre>
+<p>实现很简单，只要了解了CopyOnWrite机制，我们可以实现各种CopyOnWrite容器，并且在不同的应用场景中使用。</p>
+<h4><span class="ez-toc-section" id="CopyOnWrite%E7%9A%84%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"></span>CopyOnWrite的应用场景<span class="ez-toc-section-end"></span></h4>
+<p>CopyOnWrite并发容器用于读多写少的并发场景。比如白名单，黑名单，商品类目的访问和更新场景，假如我们有一个搜索网站，用户在这个网站的搜索框中，输入关键字搜索内容，但是某些关键字不允许被搜索。这些不能被搜索的关键字会被放在一个黑名单当中，黑名单每天晚上更新一次。当用户搜索时，会检查当前关键字在不在黑名单当中，如果在，则提示不能搜索。实现代码如下：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">package com.ifeve.book;
+
+import java.util.Map;
+
+import com.ifeve.book.forkjoin.CopyOnWriteMap;
+
+/**
+ * 黑名单服务
+ *
+ * @author fangtengfei
+ *
+ */
+public class BlackListServiceImpl {
+
+    private static CopyOnWriteMap&lt;String, Boolean&gt; blackListMap = new CopyOnWriteMap&lt;String, Boolean&gt;(
+            1000);
+
+    public static boolean isBlackList(String id) {
+        return blackListMap.get(id) == null ? false : true;
+    }
+
+    public static void addBlackList(String id) {
+        blackListMap.put(id, Boolean.TRUE);
+    }
+
+    /**
+     * 批量添加黑名单
+     *
+     * @param ids
+     */
+    public static void addBlackList(Map&lt;String,Boolean&gt; ids) {
+        blackListMap.putAll(ids);
+    }
+
+}
+</pre>
+<p>代码很简单，但是使用CopyOnWriteMap需要注意两件事情：</p>
+<p>1. 减少扩容开销。根据实际需要，初始化CopyOnWriteMap的大小，避免写时CopyOnWriteMap扩容的开销。</p>
+<p>2. 使用批量添加。因为每次添加，容器每次都会进行复制，所以减少添加次数，可以减少容器的复制次数。如使用上面代码里的addBlackList方法。</p>
+<h4><span class="ez-toc-section" id="CopyOnWrite%E7%9A%84%E7%BC%BA%E7%82%B9"></span>CopyOnWrite的缺点<span class="ez-toc-section-end"></span></h4>
+<p>CopyOnWrite容器有很多优点，但是同时也存在两个问题，即内存占用问题和数据一致性问题。所以在开发的时候需要注意一下。</p>
+<p><strong>内存占用问题</strong>。因为CopyOnWrite的写时复制机制，所以在进行写操作的时候，内存里会同时驻扎两个对象的内存，旧的对象和新写入的对象（注意:在复制的时候只是复制容器里的引用，只是在写的时候会创建新对象添加到新容器里，而旧容器的对象还在使用，所以有两份对象内存）。如果这些对象占用的内存比较大，比如说200M左右，那么再写入100M数据进去，内存就会占用300M，那么这个时候很有可能造成频繁的Yong GC和Full GC。之前我们系统中使用了一个服务由于每晚使用CopyOnWrite机制更新大对象，造成了每晚15秒的Full GC，应用响应时间也随之变长。</p>
+<p>针对内存占用问题，可以通过压缩容器中的元素的方法来减少大对象的内存消耗，比如，如果元素全是10进制的数字，可以考虑把它压缩成36进制或64进制。或者不使用CopyOnWrite容器，而使用其他的并发容器，如<a href="http://ifeve.com/concurrenthashmap/" target="_blank">ConcurrentHashMap</a>。</p>
+<p><strong>数据一致性问题</strong>。CopyOnWrite容器只能保证数据的最终一致性，不能保证数据的实时一致性。所以如果你希望写入的的数据，马上能读到，请不要使用CopyOnWrite容器。</p>
+<p>关于C++的STL中，曾经也有过Copy-On-Write的玩法，参见陈皓的《<a href="http://blog.csdn.net/haoel/article/details/24058" target="_blank">C++ STL String类中的Copy-On-Write</a>》，后来，因为有很多线程安全上的事，就被去掉了。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11175-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Copy-On-Write</a>, <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Java中的CopyOnWrite容器</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1341454" class="comment even thread-even depth-1">
+<article id="div-comment-1341454" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/737a37b172af262ed6e9defdb9882f0d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/737a37b172af262ed6e9defdb9882f0d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jefferent</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1341454"><time datetime="2014-03-07T09:36:07+08:00">2014年03月07日 09:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文件系统特性 – COW事务，文件系统中常用的事务实现方式。写时复制(COW)是维护数据集合的副本和使用相同数据处理多个任务时管理资源的优化技术。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1341495" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1341495" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fed95eda80c637866332a84c29f20b9f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fed95eda80c637866332a84c29f20b9f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小明</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1341495"><time datetime="2014-03-07T09:44:59+08:00">2014年03月07日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>CopyOnWriteMap实现中，<br/>
+new HashMap(internalMap) 和 internalMap.get 互相之间不锁，这个好像不对吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1341767" class="comment even thread-even depth-1">
+<article id="div-comment-1341767" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff0e1009589d0c4582edad36c6ca514d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff0e1009589d0c4582edad36c6ca514d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bugsos</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1341767"><time datetime="2014-03-07T11:19:23+08:00">2014年03月07日 11:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>copyonwrite 是linux的思想吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342038" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1342038" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ce0a171830f1ce54d584b267c7b27c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ce0a171830f1ce54d584b267c7b27c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Majoy7</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342038"><time datetime="2014-03-07T13:01:54+08:00">2014年03月07日 13:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因为CopyOnWrite的写时复制机制，所以在进行写操作的时候，内存里会同时驻扎两份对象的内存。<br/>
+复制的只是对象的引用，所以内存占用问题没文中说的那么严重吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342184" class="comment byuser comment-author-kiral bypostauthor even thread-even depth-1">
+<article id="div-comment-1342184" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342184"><time datetime="2014-03-07T13:53:52+08:00">2014年03月07日 13:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1342038" rel="nofollow">@Majoy7 </a> </p>
+<p>复制的虽然是容器里对象的引用，但是复制完之后，进行写操作，写一个新元素，就多一个元素的内存。而原容器的元素在没写完之前还在使用，不能回收。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342185" class="comment byuser comment-author-kiral bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1342185" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342185"><time datetime="2014-03-07T13:54:08+08:00">2014年03月07日 13:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的<a href="#comment-1341767" rel="nofollow">@bugsos </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1342238" class="comment even thread-even depth-1">
+<article id="div-comment-1342238" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/41ecaf675f9a963ac47aec132fd468a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/41ecaf675f9a963ac47aec132fd468a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.henix.info/" class="url" rel="ugc external nofollow">henix</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342238"><time datetime="2014-03-07T14:13:11+08:00">2014年03月07日 14:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，讲得很清楚</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342578" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1342578" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f23a5c5b2533079845bca2dae85997c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f23a5c5b2533079845bca2dae85997c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">BlueIceQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342578"><time datetime="2014-03-07T15:53:02+08:00">2014年03月07日 15:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1341495" rel="nofollow">@小明 </a><br/>
+1、new HashMap(internalMap) 是构造器里面的代码，对象还没有发布呢，不会有并发方面的问题；<br/>
+2、internalMap.get方法自然没有加锁了，COW的机制就是读的时候不加锁，写的时候加锁，拷贝一份出来，然后增加元素，最后把引用改一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342584" class="comment even thread-even depth-1">
+<article id="div-comment-1342584" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec3bc567be9c728588f7d125d465c60e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec3bc567be9c728588f7d125d465c60e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">GameHeven</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342584"><time datetime="2014-03-07T15:56:16+08:00">2014年03月07日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>CopyOnWrite加一堆锁之后，也可以线程安全。只是加锁之后，效率当然变差。所以facebook有自己做一个fbstring。非常复杂！</p>
+<p>短字串使用small string optimization<br/>
+中字串直接复制。<br/>
+长字串使用CopyOnWrite。 (有加锁)</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342605" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1342605" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f23a5c5b2533079845bca2dae85997c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f23a5c5b2533079845bca2dae85997c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">BlueIceQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342605"><time datetime="2014-03-07T16:09:53+08:00">2014年03月07日 16:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有点意思，思想很重要。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342718" class="comment even thread-even depth-1">
+<article id="div-comment-1342718" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df67c8fbad100a1ef1961081fbec180e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df67c8fbad100a1ef1961081fbec180e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ketp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342718"><time datetime="2014-03-07T16:48:13+08:00">2014年03月07日 16:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>内核的RCU锁就是COW吧， 实现还是比较复杂的，主要是切换的时机问题<br/>
+用户态还没有相应的实现</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342760" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1342760" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20ba8d9a8937b36bc926003a443c004d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20ba8d9a8937b36bc926003a443c004d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jarod</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1342760"><time datetime="2014-03-07T16:59:06+08:00">2014年03月07日 16:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1342038" rel="nofollow">@Majoy7 </a><br/>
+你是对的. 拷贝的只是容器,容器本来就不存对象,只存对象引用<br/>
+================================<br/>
+// groovy代码<br/>
+def list = new CopyOnWriteArrayList();<br/>
+list.add([“k1″:”v1”, “k2″:”v2”]);<br/>
+def obj0 = list.get(0);<br/>
+list.add([“k3″:”v3”, “k4″:”v4”]);<br/>
+list.get(0).put(“k1″,”vvvvvvv”);<br/>
+println(list.get(0).hashCode() + “@” + list.get(0));<br/>
+println(obj0.hashCode() + “@” + obj0);<br/>
+==============================<br/>
+// 输出<br/>
+842097771@[k1:vvvvvvv, k2:v2]<br/>
+842097771@[k1:vvvvvvv, k2:v2]</p>
+<p>按照作者的说法第二个输出应该是不一样才对的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1343840" class="comment byuser comment-author-kiral bypostauthor even thread-even depth-1">
+<article id="div-comment-1343840" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1343840"><time datetime="2014-03-07T22:51:24+08:00">2014年03月07日 22:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1342760" rel="nofollow">@Jarod </a><br/>
+复制的是引用，但是复制完之后，进行写操作就会额外占用内存。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1347018" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1347018" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c19f17b17947b3be3895712c33552621?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c19f17b17947b3be3895712c33552621?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tt_alen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1347018"><time datetime="2014-03-08T16:59:56+08:00">2014年03月08日 16:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>后面讲解应用场景 优缺点 非常好<br/>
+全文逻辑很清晰</p>
+</div>
+ </article>
+</li>
+<li id="comment-1347032" class="comment even thread-even depth-1">
+<article id="div-comment-1347032" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c19f17b17947b3be3895712c33552621?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c19f17b17947b3be3895712c33552621?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tt_alen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1347032"><time datetime="2014-03-08T17:05:48+08:00">2014年03月08日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1342760" rel="nofollow">@Jarod </a><br/>
+你的代码写错了吧 你的意思是想这样吧：<br/>
+list.get(0).put(“k1″,”vvvvvvv”); 改成 list.add(“k1″,”vvvvvvv”);</p>
+</div>
+ </article>
+</li>
+<li id="comment-1347033" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1347033" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c19f17b17947b3be3895712c33552621?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c19f17b17947b3be3895712c33552621?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tt_alen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1347033"><time datetime="2014-03-08T17:06:13+08:00">2014年03月08日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1342760"><p>
+<strong><a href="#comment-1342760" rel="nofollow">Jarod</a> :</strong><br/>
+<a href="#comment-1342038" rel="nofollow">@Majoy7 </a><br/>
+你是对的. 拷贝的只是容器,容器本来就不存对象,只存对象引用<br/>
+================================<br/>
+// groovy代码<br/>
+def list = new CopyOnWriteArrayList();<br/>
+list.add([“k1″:”v1”, “k2″:”v2”]);<br/>
+def obj0 = list.get(0);<br/>
+list.add([“k3″:”v3”, “k4″:”v4”]);<br/>
+list.get(0).put(“k1″,”vvvvvvv”);<br/>
+println(list.get(0).hashCode() + “@” + list.get(0));<br/>
+println(obj0.hashCode() + “@” + obj0);<br/>
+==============================<br/>
+// 输出<br/>
+842097771@[k1:vvvvvvv, k2:v2]<br/>
+842097771@[k1:vvvvvvv, k2:v2]<br/>
+按照作者的说法第二个输出应该是不一样才对的
+</p></blockquote>
+<p>你的代码写错了吧 你的意思是想这样吧：<br/>
+list.get(0).put(“k1″,”vvvvvvv”); 改成 list.add(“k1″,”vvvvvvv”);</p>
+</div>
+ </article>
+</li>
+<li id="comment-1350478" class="comment even thread-even depth-1">
+<article id="div-comment-1350478" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0ff551490e679f23dbbb05f2d747442b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0ff551490e679f23dbbb05f2d747442b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pythonee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1350478"><time datetime="2014-03-09T12:02:09+08:00">2014年03月09日 12:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1342184" rel="nofollow">@方 腾飞 </a> </p>
+<p>如果复制的是引用，那么这里的可见性和并发写会有问题吧，我咋觉得是深拷贝呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1354502" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1354502" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e97312e6a098b9983dbabaa5779b832?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e97312e6a098b9983dbabaa5779b832?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">橙衣恶少</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1354502"><time datetime="2014-03-10T13:42:21+08:00">2014年03月10日 13:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的挺好，概念、原理、源码、使用场景、优缺点，全部涵盖，期待更多优秀文章。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1358597" class="comment byuser comment-author-kiral bypostauthor even thread-even depth-1">
+<article id="div-comment-1358597" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1358597"><time datetime="2014-03-11T11:10:46+08:00">2014年03月11日 11:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1350478" rel="nofollow">@pythonee </a><br/>
+加锁了，不能并发写哦</p>
+</div>
+ </article>
+</li>
+<li id="comment-1364066" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1364066" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fbe52f34bcff7e20ea8395290eca4a09?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fbe52f34bcff7e20ea8395290eca4a09?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zawdd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1364066"><time datetime="2014-03-12T16:07:02+08:00">2014年03月12日 16:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果一个用户在COW操作前开始读数据，而再COW操作后，他还在读，这时候内存中原来的对象占用的内存就不会释放，如果这样的用户很多，或者他们是恶意的，会不会造成内存中有许多份旧的对象？从而内存被占满，导致新的COW操作无法进行。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1364595" class="comment byuser comment-author-kiral bypostauthor even thread-even depth-1">
+<article id="div-comment-1364595" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1364595"><time datetime="2014-03-12T18:52:01+08:00">2014年03月12日 18:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1364066" rel="nofollow">@zawdd </a><br/>
+COW完之后，就会把旧的应用地址指向新的内存对象。旧的就会逐渐回收掉。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1367717" class="comment byuser comment-author-kiral bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1367717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1367717"><time datetime="2014-03-13T10:21:58+08:00">2014年03月13日 10:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1341767" rel="nofollow">@bugsos </a><br/>
+linux里面的确有</p>
+</div>
+ </article>
+</li>
+<li id="comment-1368528" class="comment even thread-even depth-1">
+<article id="div-comment-1368528" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fed95eda80c637866332a84c29f20b9f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fed95eda80c637866332a84c29f20b9f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小明</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1368528"><time datetime="2014-03-13T14:48:50+08:00">2014年03月13日 14:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1342578" rel="nofollow">@BlueIceQ </a><br/>
+new HashMap(internalMap)<br/>
+这个实际要遍历internalMap，internalMap是发布了的，不过是读而已</p>
+</div>
+ </article>
+</li>
+<li id="comment-1368755" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1368755" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96d073e0523d1083d52335cc5bbaf280?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96d073e0523d1083d52335cc5bbaf280?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">一棵树</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1368755"><time datetime="2014-03-13T15:52:15+08:00">2014年03月13日 15:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从源码来看，应该是‘Object[] newElements = Arrays.copyOf(elements, len + 1);’这个复制操作复制了原数组对象，为什么作者说是‘在复制的时候只是复制容器里的引用’？让人费解。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1373488" class="comment even thread-even depth-1">
+<article id="div-comment-1373488" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e52248c2fc976ac39be01f3193bf5c76?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e52248c2fc976ac39be01f3193bf5c76?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大笨猫同学</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1373488"><time datetime="2014-03-14T16:12:38+08:00">2014年03月14日 16:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我感觉如果把cow当作临时对象来用的话就违背初衷了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1417452" class="comment byuser comment-author-kiral bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1417452" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a21e2b8f4893347e62eeca7597f04ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ifeve.com" class="url" rel="ugc external nofollow">方 腾飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1417452"><time datetime="2014-04-08T12:56:07+08:00">2014年04月08日 12:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1368755" rel="nofollow">@一棵树 </a><br/>
+如果数组元素是对象，不是基本数据类型，那么复制的就是引用，否则复制的是基本类型的值。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1430848" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=981" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 | zengine</a> </div>
+</li>
+<li id="comment-1432505" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=981" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 | 星达红</a> </div>
+</li>
+<li id="comment-1452383" class="comment even thread-even depth-1">
+<article id="div-comment-1452383" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2d92bd154c4a6e66292b4106e019104?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2d92bd154c4a6e66292b4106e019104?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lostcoder</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1452383"><time datetime="2014-05-03T04:58:48+08:00">2014年05月03日 04:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“因为有很多线程安全上的事，就被去掉了。”耗子叔能详细说说这里么？具体会导致线程安全上的哪些问题?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1454773" class="comment byuser comment-author-qianxc77 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1454773" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d8e18f7c864dd2aaa61ea53045f6c1af?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d8e18f7c864dd2aaa61ea53045f6c1af?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qianxc77</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1454773"><time datetime="2014-05-07T01:00:57+08:00">2014年05月07日 01:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>恩，感觉MVCC也有类似的思想,对同一个值，保存多个snapshot。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1705995" class="comment even thread-even depth-1">
+<article id="div-comment-1705995" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/13b2d7d58de24867ce33f1242f02dcbe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/13b2d7d58de24867ce33f1242f02dcbe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">青梓王</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1705995"><time datetime="2015-05-12T21:48:52+08:00">2015年05月12日 21:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1417452" rel="nofollow">@方 腾飞 </a><br/>
+是的，对象的话复制的是引用。<br/>
+这样的话一个在读，一个在写，都是引用都是指向同一个对象，这样不会产生并发问题吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1808385" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1808385" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cad94957fb766f7e3e76110297cf972?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cad94957fb766f7e3e76110297cf972?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1808385"><time datetime="2016-02-02T16:04:07+08:00">2016年02月02日 16:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>提一个小细节，为什么在实现CopyOnWirteMap的时候要实现Map和Cloneable两个接口呢，根据博主的代码，这两个实现是完全没有意义的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1829122" class="comment even thread-even depth-1">
+<article id="div-comment-1829122" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/36df61c7cd06a31f08c5815f90dcafc9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/36df61c7cd06a31f08c5815f90dcafc9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李大仁</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1829122"><time datetime="2016-05-09T11:43:45+08:00">2016年05月09日 11:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>楼主，实现CopyOnWirteMap这个容器没必要吧？<br/>
+ConcurrentHashMap的读操作也是不用加锁的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1833775" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1833775" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e70e8902ec77ca707f420103234f6579?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e70e8902ec77ca707f420103234f6579?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">宁峯</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1833775"><time datetime="2016-05-18T18:03:01+08:00">2016年05月18日 18:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>CopyOnWriteArrayList中<br/>
+setArray(newElements);在加锁上下文设置：array ＝ newElements；<br/>
+getArray在没有加锁的上下文获取，return array；<br/>
+这个怎么保证array的一致性呢？因为set操作里面的赋值不是原子的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913298" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.pa1pa.com/2017/03/01/lazy-ideas-in-programming%e7%bc%96%e7%a8%8b%e4%b8%ad%e7%9a%84%e6%83%b0%e6%80%a7%e6%80%9d%e6%83%b3/" class="url" rel="ugc external nofollow">lazy ideas in programming(编程中的惰性思想) | 爬一爬</a> </div>
+</li>
+<li id="comment-1930803" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1930803" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d8d601dce00387f8df61177c350f46b7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d8d601dce00387f8df61177c350f46b7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">seed</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1930803"><time datetime="2018-06-14T15:21:03+08:00">2018年06月14日 15:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>既然写的时候都需要加锁了。那为啥还需要COW，直接用普通的LIST不就好了吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1940016" class="comment even thread-even depth-1">
+<article id="div-comment-1940016" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2d0ef6732b13a17a40bea503b187abf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2d0ef6732b13a17a40bea503b187abf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://bit.ly/2On7CtQ" class="url" rel="ugc external nofollow">unblocked games</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11175.html#comment-1940016"><time datetime="2018-08-28T16:57:20+08:00">2018年08月28日 16:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>觉得不错就过来看看了，欢迎回访</p>
+</div>
+ </article>
+</li>
+<li id="comment-1941527" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.suwenbo.cn/wordpress/archives/42" class="url" rel="ugc external nofollow">精品博文整理 – 苏文波的博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

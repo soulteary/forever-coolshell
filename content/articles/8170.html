@@ -1,0 +1,633 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>一次Ajax查错的经历 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8170 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8170" class="post-content post-8170 post type-post status-publish format-standard hentry category-ajaxdev category-webdev category-misc tag-ajax tag-ie tag-jquery tag-programmer tag-web tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">一次Ajax查错的经历</span>
+<h1 class="entry-title">一次Ajax查错的经历</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8170.html" title="14:56" rel="bookmark"><time class="entry-date" datetime="2012-08-27T14:56:59+08:00" pubdate="">2012年08月27日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8170.html#comments" class="comments-link">93 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 58,651 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>先说故事，再说想法吧。</p>
+<p>我有一朋友做网站，用jQuery的Ajax方法从后端载入一段HTML代码然后动态插入到网页的Div元件中。这个东西太普遍了。jQuery强大的load方法可以完成这个事情。朋友的代码是这么写的：</p>
+<p>[javascript]var tab = jQuery(&#34;#dynamic_tab&#34;);<br/>
+var url = &#34;/list_ajax/&#34;;<br/>
+tab.load(url);[/javascript]</p>
+<p>简单到不能再简单了。在Chrome，Firefox，Safari下运行一点问题也没有，只有IE不行，不管是IE7，IE8，还是IE9。问题的症壮是，使用IE访问那个Ajax的链接，没有问题，但是在jQuery的Ajax方法返回了“undefined”的respons对象。没有任何报错！</p>
+<p>怎么搞也搞不定，只好Google了一下——“<a href="https://www.google.com/#hl=zh-CN&amp;newwindow=1&amp;site=&amp;source=hp&amp;q=jQuery+load+IE&amp;btnK=Google+%E6%90%9C%E7%B4%A2&amp;oq=jQuery+load+IE" target="_blank">jQuery load IE</a>”，一看，很多人都在问这个问题。于是开始了<a title="各种流行的编程风格" href="/articles/2058.html" target="_blank">散弹枪编程方式</a>。</p>
+<p>排在第一的就是StackOverflow被浏览了33K次的这个问题：<a href="http://stackoverflow.com/questions/1061525/jquerys-load-not-working-in-ie-but-fine-in-firefox-chrome-and-safari" target="_blank">jQuery’s .load() not working in IE – but fine in Firefox, Chrome and Safari</a>，答案没有被打勾（不靠谱），StackOverflow还有很多人问相似的问题，不过都没有答案。不管三七二十一，先试了一下，散弹枪嘛。试了半天都没有用。</p>
+<p>然后上Google查，又看到有人说的IE缓存的问题，什么，要把cache设置成false，或是用下面的方法来解决：</p>
+<p>[javascript]var tab = jQuery(&#34;#dynamic_tab&#34;);<br/>
+var fuckie = Math.random();<br/>
+var url = &#34;/list_ajax/&#34;+&#34;?fuckie=&#34;+fuckie;<br/>
+tab.load(url);[/javascript]</p>
+<p>反正还是一样，统统不Work，几乎所有的都试了，都不Work。搞了一天的朋友恼怒道：“Microsoft应该快点倒闭吧，产品太烂了”。IE的确是太烂了。</p>
+<p><span id="more-8170"></span></p>
+<p>于是我用IE9的网页调试器可以看到点了Ajax的链接后，<strong>IE对网站有http的Ajax请求，也可以看到请求返回了，但是就是不显示在我的页面上——jQuery的Ajax的responseText为undefined!</strong></p>
+<p>对于我这个老家伙，对jQuery也不熟，我只得开始调试jQuery的代码，想看看里面干了什么，报了什么错？调了一个小时，基本上把jQuery的Ajax的封装看懂了七七八八了，但是还是没找到为什么有问题。</p>
+<p>于是，我只得架起原生态的Ajax，看看IE的那个Ajax的ActiveX的对象干了什么事？写了下面的代码（当年写Ajax就是这么写的，所以也不费劲，况且网上还有例程可以抄）：</p>
+<p>[javascript]<br/>
+function InitAjax()<br/>
+{<br/>
+var ajax=false;<br/>
+try {<br/>
+ajax = new ActiveXObject(&#34;Msxml2.XMLHTTP&#34;);<br/>
+} catch (e) {<br/>
+try {<br/>
+ajax = new ActiveXObject(&#34;Microsoft.XMLHTTP&#34;);<br/>
+} catch (E) {<br/>
+ajax = false;<br/>
+}<br/>
+}<br/>
+if (!ajax &amp;&amp; typeof XMLHttpRequest!=’undefined’) {<br/>
+ajax = new XMLHttpRequest();<br/>
+}<br/>
+return ajax;<br/>
+}</p>
+<p>var ajax = InitAjax();<br/>
+ajax.open(&#34;GET&#34;, url, true);<br/>
+ajax.onreadystatechange = function() {<br/>
+if (ajax.readyState == 4 &amp;&amp; ajax.status == 200) {<br/>
+var show = document.getElementById(&#34;HaoChenDIV&#34;).value;<br/>
+show.innerHTML = ajax.responseText;<br/>
+}<br/>
+}<br/>
+ajax.send(null);<br/>
+[/javascript]</p>
+<p>一运行，还是不行，没见IE报什么错，不过，可以确定这不是jQuery的问题了，估计还是我们自己程序的问题。不过此时的程序太好调试了，调试中，在IE9下调式发现原生的IE的Ajax对象在onreadystatechange函数里，其responseText是下面这个样子：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-8171" title="ajax error in ie" src="/uploads/2012/08/ajax_error.jpg" alt="" width="601" height="153" srcset="" sizes="(max-width: 601px) 100vw, 601px"/></p>
+<p>什么是“<strong>系统错误: -1072896658</strong>”？上<a href="https://www.google.com/#hl=zh-CN&amp;newwindow=1&amp;q=ajax+%22%E7%B3%BB%E7%BB%9F%E9%94%99%E8%AF%AF:+-1072896658%22&amp;oq=ajax+%22%E7%B3%BB%E7%BB%9F%E9%94%99%E8%AF%AF:+-1072896658%22" target="_blank">google一查</a>，一堆页面，基本上是说乱码了，也就是ajax的后端程序返回的网页编码不认识吧。需要在返回的http header里加上 charset=utf-8。</p>
+<p>于是，修改后端的Ajax的程序，明确指定了返回的HTTP Header中的charset，于是IE下就工作正常了，再切回jQuery的load代码，一切正常了（后端的程序本来是utf-8的编码格式，但是不骨明确在HTTP Header中指定，但是只有IE不会自动检测）。</p>
+<p>这个问题的原因就是因为我们没有按照规范去写网页。所以，举一反三，HTML的规范还有哪些，太多了，记也记不住。但也许你会知道<strong>有一个叫 <a href="http://validator.w3.org" target="_blank">http://validator.w3.org</a> 的网站可以帮你校验你网页中的很多不规范的东西</strong>。这个工具会报很多很多错，很多都有点吹毛求疵，不过，可以让你看看（注：今天的coolshell装了很多插件，也被我调过一些东西，所以出错很多，我还记得以前没有插件没有我定制化的样式的时候，Wordpress一个错都不报）。</p>
+<h4>后记</h4>
+<p>我把这个问题和过程分享出来，主要有这么几个目的，并抛出几个问题，大家可以思考一下：</p>
+<p style="padding-left: 30px;">1）这个问题网上有很多人都在报，但是基本上找不到答案（包括StackOverflow），所以，我分享出来，填补一下空白。</p>
+<p style="padding-left: 30px;">2）我相信我们的程序员天天都在经历这样的事，我不知道大家在遇到这样的事情会怎么做？也许大多数人都在网上查各种解决方案，然后一个一个的试，直到试对了——散弹枪式的编程，呵呵。当然，大多数答案都是可能找到的。但<strong>当我们找到答案了后，我们还会深入去了解这个问题的具体原因并举一反三地去思考一其周边的东西吗</strong>？</p>
+<p style="padding-left: 30px;">3）另外，在今天这样N多框架，N多lib，N多开源的年代下，<strong>不知道大家有没有失去了从零开始自己写代码的能力？</strong>比如上面的这个问题，不知道有多少人还会自己写原生态的Ajax？不过，我还是建议大家能在使用各种框架的时候，明白那些最基础的知识，求甚解，知其然知其所以然，真的很重要。</p>
+<p>我是从那个“吃糠的年代”过来的程序员，那时的程序员什么都要自己干，很辛苦，今天我和很多人说我以前的那些经历，会被笑话，但是我从这些什么都自己的干的年代过的经历，让我受益很多。我把我的想法分享给大家，希望对大家有用。</p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8170-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Ajax开发</a>, <a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">AJAX</a>, <a href="javascript:void(0)" rel="tag">IE</a>, <a href="javascript:void(0)" rel="tag">jQuery</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">Web</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>一次Ajax查错的经历</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-202347" class="comment even thread-even depth-1">
+<article id="div-comment-202347" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8852ef16a0e5932250ea9fc01f64be7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8852ef16a0e5932250ea9fc01f64be7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://redich.com" class="url" rel="ugc external nofollow">罗迦费升格</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202347"><time datetime="2012-09-04T09:10:14+08:00">2012年09月04日 09:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很佩服从吃糠的年代 过来的程序员。那个时候真的一穷二白三干净。没有你们的付出，现在就没有了这么好的编程环境了。<br/>
+当然，原理还是要学的。不然老是用打包好的东西，一旦出了问题，自己也找不到方法解决了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202365" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202365" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/58905f96e550f33a5c34675cb39cefef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/58905f96e550f33a5c34675cb39cefef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/dinglang/" class="url" rel="ugc external nofollow">Dylan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202365"><time datetime="2012-09-04T23:06:59+08:00">2012年09月04日 23:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于Ajax乱码、浏览器不兼容的怪异问题很多，确实很整人。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202374" class="comment even thread-even depth-1">
+<article id="div-comment-202374" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a5cea5f1e07be423a5a8fedb4ebe95e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a5cea5f1e07be423a5a8fedb4ebe95e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://orzpoint.com" class="url" rel="ugc external nofollow">Z.J.T</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202374"><time datetime="2012-09-05T13:30:57+08:00">2012年09月05日 13:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实比较理想的调试过程应该是先抓 ajax 包分析，一下就能看到整过过程发生的问题；<br/>
+另外 stackoverflow 上的问题可能跟你这个还不一样。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202377" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b917f2f4f94466449a2166e44cf535a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b917f2f4f94466449a2166e44cf535a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Rain_荣</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202377"><time datetime="2012-09-05T17:04:46+08:00">2012年09月05日 17:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“我是从那个“吃糠的年代”过来的程序员…… “<br/>
+看完这段话后，的的确确很难想象前辈以前的幸苦，作为现在新一代的程序员，有时候我会思考在这个年代很多东西都能通过搜素找到答案，可如果当这一切都没的时候该怎么办？可如果什么都要去学习，我又要花多长的时间才能沉淀下来？<br/>
+现今时代技术快速迭代，我们确确实实没办法把所有的技术都去学习，但我们能做的就是通过理解基础知识，明白其中最基本的道理。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202466" class="comment even thread-even depth-1">
+<article id="div-comment-202466" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dac67663e506cbdeb7bac75fffb91c4e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dac67663e506cbdeb7bac75fffb91c4e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://kainy.cn/" class="url" rel="ugc external nofollow">Freetao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202466"><time datetime="2012-09-07T19:38:22+08:00">2012年09月07日 19:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>读起来感觉怪怪的，不像是陈皓的写作风格丫。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202498" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202498" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6f4f8f3faeec6f49a74a05c120e72e51?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6f4f8f3faeec6f49a74a05c120e72e51?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ityait.com" class="url" rel="ugc external nofollow">ityait</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202498"><time datetime="2012-09-09T15:43:42+08:00">2012年09月09日 15:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个真程序员的态度，自己动手，而不是只用别人现成的答案。</p>
+<p>推荐一篇文章：一个老华为工程师的回忆录，看通信之路，体验百态人生：</p>
+<p>&lt;&gt;<br/>
+<a href="http://ityait.com/forum.php?mod=viewthread&amp;tid=755&amp;fromuid=1" rel="nofollow ugc">http://ityait.com/forum.php?mod=viewthread&amp;tid=755&amp;fromuid=1</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-202507" class="comment even thread-even depth-1">
+<article id="div-comment-202507" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c9acbdc0a6d7769e400f91579641db50?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c9acbdc0a6d7769e400f91579641db50?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/beginor" class="url" rel="ugc external nofollow">张志敏</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202507"><time datetime="2012-09-10T07:20:27+08:00">2012年09月10日 07:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>先抓包，后分析是比较好的分析方式。 另外， 文中提到的“另外，在今天这样N多框架，N多lib，N多开源的年代下，不知道大家有没有失去了从零开始自己写代码的能力？”确实是很多开发人员的通病， JQ用多了， 连一个简单的setTimeout也不会了， Linq用多了， 简单的SQL不会写了， 和ORM用多了， ADO 又不会了， 还整天吵着要用最新的技术，</p>
+</div>
+ </article>
+</li>
+<li id="comment-202666" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202666" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96749fd8c5f7acd745f4938d3c44b71b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96749fd8c5f7acd745f4938d3c44b71b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ccppjava</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202666"><time datetime="2012-09-13T00:17:52+08:00">2012年09月13日 00:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>前一段时间， 同事遇到一个类似的问题， 在那个问题里面， IE是有返回正确的html内容， 但是还是load不到div里。 最后， 我发现URL最后有一个空格， 去掉空格之后就可以了。 用的是jQuery 1.7.2版本， 不确定底层原因是什么， 分享一下， 也许有人用的上~</p>
+</div>
+ </article>
+</li>
+<li id="comment-202942" class="comment even thread-even depth-1">
+<article id="div-comment-202942" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59b6852f5409b256381843b146d1b090?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59b6852f5409b256381843b146d1b090?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">monomaniar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202942"><time datetime="2012-09-16T18:35:30+08:00">2012年09月16日 18:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>需要哪个js标签内的部分是gbk的时候，就把那个标签加一个属性charset=‘gbk’<a href="#comment-202209" rel="nofollow">@simon </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-202959" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202959" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e15bb3b7293d6fb4325ded30cf844924?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e15bb3b7293d6fb4325ded30cf844924?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.zforzelda.com/" class="url" rel="ugc external nofollow">JimmyZ</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-202959"><time datetime="2012-09-17T23:20:23+08:00">2012年09月17日 23:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-202164" rel="nofollow">@陈皓 </a><br/>
+我是按你的原文写的”jQuery的Ajax的responseText为undefined!”总结的关键字</p>
+</div>
+ </article>
+</li>
+<li id="comment-203068" class="comment even thread-even depth-1">
+<article id="div-comment-203068" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1f626ed4ef4e5ce8532e92833ed3fe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1f626ed4ef4e5ce8532e92833ed3fe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bhhzd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-203068"><time datetime="2012-09-23T21:23:20+08:00">2012年09月23日 21:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>碰到ajax问题一般开个 fiddler 看一下http通讯就可以了</p>
+</div>
+ </article>
+</li>
+<li id="comment-203069" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203069" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5fe13a80ff76423747520ee901a2b37c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5fe13a80ff76423747520ee901a2b37c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://thinkalways.net/z-blog/" class="url" rel="ugc external nofollow">大头</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-203069"><time datetime="2012-09-23T22:32:34+08:00">2012年09月23日 22:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在现在开源框架越来越多的时候，确实编程都变得越来越简单了，但是用我导师的话说，现在的学生，知道的东西却越来越少了，低，不了解原生的东西，高，又不精通最新的东西。</p>
+</div>
+ </article>
+</li>
+<li id="comment-203085" class="comment even thread-even depth-1">
+<article id="div-comment-203085" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/912ee7dac32f55ca8b24a67f325271e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/912ee7dac32f55ca8b24a67f325271e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rocky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-203085"><time datetime="2012-09-24T17:55:36+08:00">2012年09月24日 17:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是不是json问题. {a:”1″,} 多个, ie 会报错的.其他不会</p>
+</div>
+ </article>
+</li>
+<li id="comment-203511" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203511" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f3c9ab9f06f338e8ce1daaf8f8fa133?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f3c9ab9f06f338e8ce1daaf8f8fa133?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">robin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-203511"><time datetime="2012-10-09T21:29:00+08:00">2012年10月09日 21:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>遇到这样一个问题，我们在用jQuery的ajax时，传递参数<br/>
+jQuery.ajax({…,<br/>
+data:{<br/>
+“user.name”:”robin”,<br/>
+“user.age”:20<br/>
+}<br/>
+})<br/>
+服务端用struts2，在对应的action中有user作为成员变量，在该ajax方法中是能正确得到该user对象，但是在最近的一个项目中，偶尔该对象会包NPE，在线上环境会出现，但是测试中无法重现，不知道各位有没遇到相应的问题，难道也会是乱码导致struts2中的参数拦截器无法实例化？</p>
+</div>
+ </article>
+</li>
+<li id="comment-204382" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/bret-victor-learnable-programming.html" class="url" rel="ugc external nofollow">Definite Digest » Bret Victor – Learnable Programming</a> </div>
+</li>
+<li id="comment-206743" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-206743" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a69d87e25b6b6e1ee92716435168c85?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a69d87e25b6b6e1ee92716435168c85?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qbq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-206743"><time datetime="2012-10-25T16:10:07+08:00">2012年10月25日 16:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉着这些库和框架就是一层层的包装<br/>
+找问题就是扒元葱<br/>
+一层层的去掉<br/>
+找问题<br/>
+找到眼睛酸痛<br/>
+才能在一个不起眼的地方找到</p>
+</div>
+ </article>
+</li>
+<li id="comment-207251" class="comment even thread-even depth-1">
+<article id="div-comment-207251" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/136b87cd0576e7ea0c2358ecb862bce7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/136b87cd0576e7ea0c2358ecb862bce7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张春建</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-207251"><time datetime="2012-10-27T04:13:11+08:00">2012年10月27日 04:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一次上线救火经历，遇到过一个类似的诡异问题， 最不喜欢做这类事情，临时救火队、空降兵，对系统情况一无所知，还得在短时间内解决疑难杂症。而且外来的和尚会念经，远道而来被客户当专家来捧着。搞得定还好，搞不定灰溜溜搬救兵或者直接被客户踢走，鸭梨山大啊</p>
+<p>问题：两个系统之间（weblogic）的JMS request response. 单元测试完全OK，压力测试，请求1万次，必然精确地丢失600个的消息，连丢失的个数是可重现的！没有error log，没有任何异常，诡异地就是丢了</p>
+<p>1，Weblogic log level 改为DEBUG，JMS LOG 一行行看，无线索！<br/>
+2，是配置问题？ Weblogic 11g, JMS integration over SAF，曾在Weblogic 10g上使用过相同配置没有任何问题，JMS encoding 和 jvm 中的java encoding都正确。难道11g有BUG？到Metalink上找Weblogic 11g上长长的known bug逐个看，没有线索。<br/>
+3, 性能瓶颈：CPU富裕，难道是JVM执行Full GC时造成jvm hang? 拉出GC log， 查看执行Full GC的时间，对比丢失消息的发送时间，不吻合，排除。DB和IO都看过一切正常<br/>
+4，测试数据问题，1万个测试数据，测试多次都是有600个消息，这600个测试数据有问题？ 再测一次，排除掉这600个，发送9400个消息，结果还是丢600！成功8600个！<br/>
+5， Metalink knowledge base，Google求助， 无任何线索！</p>
+<p>5板斧砍出去，已经用了40多个小时了。现在是晚上9点，距离上线还有一晚上时间，准确地说是11个小时,所有线索都断了. 整个Team士气低落。客户的project owner买了夜宵笑眯眯地来探班，问情况怎样了，你懂的，这种客气的压力。</p>
+<p>洗个脸，冷静，重头开始梳理。已经做过的分析和尝试有没有被疏忽的细节？</p>
+<p>没有线索，就是最大的线索！Goolge/Metalink 对这个问题没有任何描述，通常是3个可能<br/>
+1, 这个问题太新了，只有我遇到 （Weblogic 11g那时新鲜出炉） – 如果是这个原因，几小时内解决是不可能的，不在上面浪费时间<br/>
+2，编码中文问题，老外们不大会遇到<br/>
+3，我搜索关键词不对，没找到 。 复查一遍，可以排除这个可能性</p>
+<p>好，只剩下“编码”这个线索是可掌控的。带着“编码”这个疑问检查所有东西<br/>
+–JVM java encoding, 正常<br/>
+–JMS message encoding，正常<br/>
+–JMS request queue, 正常<br/>
+–JMS response queue ?? 奇怪，没有response queue，问developer，答曰此处response message是不必接收的，所以没配response queue. 那么webservice response message哪里去了？ weblogic default queue ! default encoding setting !</p>
+<p>芝麻开门！ 增加一个queue接收response，并挂个MDB把消息收了。测试通过…</p>
+<p>教训1，救火队不要急于尝试解决问题，而是对系统现状进行了解。如果我一开始就去了解方案细节，不至于花40多个小时走弯路。<br/>
+教训2，细节，永远是细节。encoding的检查在最初几个小时已经做过，但还是疏忽了一些诡异的情况</p>
+</div>
+ </article>
+</li>
+<li id="comment-236736" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-236736" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a167083ebfcd3cbfb32ba8d46a770cb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a167083ebfcd3cbfb32ba8d46a770cb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">97forex</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-236736"><time datetime="2012-12-13T14:48:11+08:00">2012年12月13日 14:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>编程规范啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-283346" class="comment even thread-even depth-1">
+<article id="div-comment-283346" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f5f8eae835387892453477f312d7869?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f5f8eae835387892453477f312d7869?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">clark</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-283346"><time datetime="2013-01-31T11:31:18+08:00">2013年01月31日 11:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从G+一路点过来，顶！</p>
+</div>
+ </article>
+</li>
+<li id="comment-288115" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-288115" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f9c29851d0251827a54af118ac02f759?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f9c29851d0251827a54af118ac02f759?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://zshou.i11r.com" class="url" rel="ugc external nofollow">zshou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-288115"><time datetime="2013-02-07T15:16:08+08:00">2013年02月07日 15:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>去年6月也遇到类似问题，一个ajax调用在ie下无法返回。后来用开发者工具查看输出的http头对比能正确调用的请求头，发现nginx服务器设置的charset值utf8正确的应该为utf-8。</p>
+</div>
+ </article>
+</li>
+<li id="comment-303799" class="comment even thread-even depth-1">
+<article id="div-comment-303799" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/72b25a5c6761da9602e1904dafccfce0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/72b25a5c6761da9602e1904dafccfce0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">peter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-303799"><time datetime="2013-03-05T10:44:49+08:00">2013年03月05日 10:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>自己也遇到过类似的问题，解决方案找了一大堆，原生的也很多。但太高估了自己的眼睛，可见答案不是瞪出来的，是动手加思考出来的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-306642" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-306642" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/03ec79001b70a7dc41d51c1db4db4baa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/03ec79001b70a7dc41d51c1db4db4baa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">预流</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-306642"><time datetime="2013-03-08T16:55:45+08:00">2013年03月08日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>十分同意楼主的观点，光用框架不知原理的话框架用起来也不踏实啊。看到那原生态的ajax代码很亲切啊，记得五年前待的公司里这些东西也是我们自己写的，自己用这些硬生生的写出几千行javascript代码，重复造轮子也不全是坏事。</p>
+</div>
+ </article>
+</li>
+<li id="comment-313168" class="comment even thread-even depth-1">
+<article id="div-comment-313168" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d600fc6499ce247b5a6fd1d3a341ecdf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d600fc6499ce247b5a6fd1d3a341ecdf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haiyun</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-313168"><time datetime="2013-03-20T17:13:21+08:00">2013年03月20日 17:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个问题很早就发现了，也是调试了一大堆才发现编码的问题，处于一线的同学们每天都会遇到很多奇怪的问题！</p>
+</div>
+ </article>
+</li>
+<li id="comment-317173" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jaring.me/?p=1283" class="url" rel="ugc external nofollow">“作环保的程序员，从不用百度开始” | Jaring&#39;s blog</a> </div>
+</li>
+<li id="comment-322942" class="comment even thread-even depth-1">
+<article id="div-comment-322942" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df275bb7055ea9e7eb6fc8fce29a27eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df275bb7055ea9e7eb6fc8fce29a27eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">abc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-322942"><time datetime="2013-04-08T17:41:34+08:00">2013年04月08日 17:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-202498" rel="nofollow">@ityait </a> 完美的 404 Notfound</p>
+</div>
+ </article>
+</li>
+<li id="comment-367382" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/823.html" class="url" rel="ugc external nofollow">“作环保的程序员，从不用百度开始” | 午后小憩</a> </div>
+</li>
+<li id="comment-527589" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://itblog.cc/403.html" class="url" rel="ugc external nofollow">Javascript 装载和执行 – IT技术博客大全</a> </div>
+</li>
+<li id="comment-531398" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jaring.me/?p=1328" class="url" rel="ugc external nofollow">Javascript 装载和执行 | Jaring&#39;s blog</a> </div>
+</li>
+<li id="comment-604773" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=6078" class="url" rel="ugc external nofollow">“作环保的程序员，从不用百度开始” | 奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com</a> </div>
+</li>
+<li id="comment-855777" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yoese.com/?p=1750" class="url" rel="ugc external nofollow">加班与效率 | 有益</a> </div>
+</li>
+<li id="comment-863932" class="comment even thread-even depth-1">
+<article id="div-comment-863932" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e623f1bbd92e5d3caf390c20d8cc591?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e623f1bbd92e5d3caf390c20d8cc591?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lugesot</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-863932"><time datetime="2013-10-31T09:47:21+08:00">2013年10月31日 09:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>jQuery load IE 在stack over flow 的回答中，12年5月 有人提出了时charset的问题了</p>
+</div>
+ </article>
+</li>
+<li id="comment-923160" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://itblog.cc/546.html" class="url" rel="ugc external nofollow">编程能力与编程年龄 – IT技术博客大全</a> </div>
+</li>
+<li id="comment-925188" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=110" class="url" rel="ugc external nofollow">编程能力与编程年龄 | zengine</a> </div>
+</li>
+<li id="comment-944934" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-944934" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/673451e84eef0118bea7952a9b23c804?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/673451e84eef0118bea7952a9b23c804?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">frankliu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-944934"><time datetime="2013-11-17T18:04:47+08:00">2013年11月17日 18:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了,膜拜!<br/>
+作为一个散弹式编程人员,确实需要向你学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1211362" class="comment even thread-even depth-1">
+<article id="div-comment-1211362" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f074557957e49e4de49b6dc1de7de007?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f074557957e49e4de49b6dc1de7de007?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">saviola1999</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-1211362"><time datetime="2014-01-21T22:15:55+08:00">2014年01月21日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>牛逼~<a href="#comment-207251" rel="nofollow">@张春建 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1401906" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1401906" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/376c940e164bda79d248871372c0f42e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/376c940e164bda79d248871372c0f42e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">k</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-1401906"><time datetime="2014-03-24T00:09:32+08:00">2014年03月24日 00:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主 你那个js调试用的啥啊？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1402336" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1402336" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-1402336"><time datetime="2014-03-24T09:09:18+08:00">2014年03月24日 09:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用浏览器啊。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1422424" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=980" class="url" rel="ugc external nofollow">从Code Review 谈如何做技术 | zengine</a> </div>
+</li>
+<li id="comment-1483782" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.makaidong.com/28711.html" class="url" rel="ugc external nofollow">程序算法与人生选择 – 马开东博客</a> </div>
+</li>
+<li id="comment-1675854" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1675854" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0bd9b541fc9c5976762bc10798c54458?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0bd9b541fc9c5976762bc10798c54458?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kevinltw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-1675854"><time datetime="2015-03-17T17:09:27+08:00">2015年03月17日 17:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章让我想起了一个问题，几个月前，通过php echo一个js的alert，ie下就会乱码，其他浏览器都没问题。当时一直没想明白解决办法，最近，忽然灵光一闪，乱码不就是没有告诉浏览器编码嘛，怎么告诉呢，header一个charset不就行了。今天看到这篇文章，真是很有亲切感啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1840895" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dogs.wjmen.com/?p=24472" class="url" rel="ugc external nofollow">[狗博客]php mysql查询不到数据［狗博客］ – 狗博客</a> </div>
+</li>
+<li id="comment-1912627" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1912627" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3d521f83407cc962ef2e1b39daf42390?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3d521f83407cc962ef2e1b39daf42390?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ox39</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8170.html/comment-page-2#comment-1912627"><time datetime="2017-02-06T21:23:01+08:00">2017年02月06日 21:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>精彩</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8170.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8170.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">8170</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

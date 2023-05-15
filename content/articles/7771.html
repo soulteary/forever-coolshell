@@ -1,0 +1,855 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>少即是极多 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7771 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7771" class="post-content post-7771 post type-post status-publish format-standard hentry category-proglanguage tag-c tag-go tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">少即是极多</span>
+<h1 class="entry-title">少即是极多</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7771.html" title="08:12" rel="bookmark"><time class="entry-date" datetime="2012-07-05T08:12:25+08:00" pubdate="">2012年07月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/innocent" title="View all posts by Tim Shen" rel="author">Tim Shen</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7771.html#comments" class="comments-link">50 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 40,426 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>【<span style="color: #cc0000;"><strong>感谢网友 <a href="https://twitter.com/#!/innocentim" target="_blank">@innocentim</a></strong> (Twitter)<strong> 投稿</strong></span>】</p>
+<p>这是一篇翻译练习。力图保留原意。若有不准确处，求速速指出。<a href="https://commandcenter.blogspot.com/2012/06/less-is-exponentially-more.html" target="_blank">猛击此处</a>（墙）看原文。作者为Rob Pike，贝尔实验室来的大牛，现在就职于Google。他主导了Go语言的创建工作。下面是正文——</p>
+<p style="text-align: center; font-size: 9pt;"><span style="color: #999999;">——————————————正文分隔线——————————————</span></p>
+<p><img decoding="async" class="alignright size-full wp-image-7818" title="Less is More" src="/uploads/2012/06/Less-is-More-Box-ShopTab-300x282.jpg" alt="" width="300" height="282" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>这是我在2012年6月的Go SF上演讲的文本。</p>
+<p>这是一个个人演讲。 我承认，虽然面前的团队让Go诞生并延续，但是我的观点并不代表任何其他Go语言小组成员的意见。 我也想感谢Go SF的组织者提供这个和你们交流的机会。</p>
+<p>几星期前我被问起:“你在推出Go的过程中遇到的最大的惊奇是什么？”我立即意识到了答案: 虽然我们希望C++程序员意识到Go是个较好的选择，但是令人意外的是，大多数Go程序员来自Python和Ruby这样的动态语言，而很少有来自C++的。</p>
+<p>我们——Ken，Robert和我——是C++程序员(译者: Ken也用C++？)，当时在为解决我们所写的这类软件产生的问题设计一个新的语言。 这似乎有点自相矛盾，因为别的C++程序员根本不关心这些问题，更不会去设计一个语言。</p>
+<p>我今天想说的是关于那些激发我们创造Go的事情，和为什么它本不应令我们如此惊讶。 我保证这些内容更多与Go相关而不是C++，所以即使你不很了解C++你也能跟得上。</p>
+<p>回答可以这样归结: 你认为”少即是多”呢，还是”少就是少”？</p>
+<p>这里有个比喻，将以真实故事的形式给出。 贝尔实验室中心原来发放3位数号码: 物理研究是111，计算科学研究是127，如此这般。 1980年代早期，一个便笺飞过来说”鉴于你们对研究的理解有所加深，将为你们的号码多加上一位，以便更好地体现你们的工作”。 所以我们中心的号码变成了1127。 Ron Hardin半当真地开玩笑说如果我们真的理解我们的世界更好一点的话，我们将丢掉一位数字，将127变成27。 当然主管没听到这个笑话(这也不是我们希望的)，但是我想这里面有点值得思考的东西。 少即是多。 你理解得越好，你将变得越简洁。</p>
+<p><span id="more-7771"></span></p>
+<p>先记住这句话。</p>
+<p>回到2007年9月，我在做一个庞大的Google C++项目的细微但核心的部分。 开发必须交互进行，但是我这部分在我们的Google编译集群上要编译45分钟。 同时，有个消息传过来说一群在C++社区的Google员工将开一场讲座，介绍即将到来的C++0x(现在称为C++11)。</p>
+<p>在那场持续一小时的讲座中，我们听说了诸如计划中的35个新特性的说法——事实上还有更多，但是那场讲座只说有35个。 有些特性当然是细微的，但是讲座中谈到的至少是足够重要的。 提到的特性中，有些十分微妙并难以理解，比如右值引用(rvalue references); 有些特别符合C++范儿，比如可变参数模板(variadic templates); 还有些十分疯狂，比如用户定义的字面量(user-defined literals)。</p>
+<p>那时候我问了自己一个问题: C++社区真的觉得C++错在没有足够多的特性么？ 显然，从Ron Hardin的笑话的角度看，简化语言将比添加新特性取得更好的效果。 当然，对C++来说这很不靠谱，但是先记住这点。</p>
+<p>在这场讲座的几个月之前我做了一场讲座(你可以通过<a href="https://video.google.com/videoplay？docid=810232012617965344" target="_blank">YouTube</a>看到)，讲的是一个我1980年代做的一个玩具并发编程语言。 这个语言叫<a href="ftp://cs.bell-labs.com/cm/cs/who/rsc/thread/newsqueak.pdf" target="_blank">Newsqueak</a>，而且显然地，它成为了Go的前身。</p>
+<p>在我在Google工作的过程中，我发现我丢掉了Newsqueak中的一些点子。 现在我将重新思考它们，所以我才做了那场讲座。 我相信它们会让服务器端编程变得更容易，而且Google能真正从中获益。</p>
+<p>我真的尝试将这些点子加入到C++中，可惜失败了。 我实在难以将一组并发操作融入到C++的控制流程中去——当真融进去的话，它们将变得十分丑陋，从而难以看到优越性。 另外，C++将它变得十分臃肿(虽然我从来没真正发现C++苗条过)。 所以我放弃了这个想法。</p>
+<p>但是C++0x的讲座使我再次思考。 一件事十分困扰我——我相信也困扰着Ken和Robert——C++的新内存模型居然新增了原子类型。 为这个不堪重负的类型系统加上这么个细致精巧到极致类型机制十分的不靠谱，不是么？ 将语言和今日的硬件绑在一起似乎有点目光短浅并且不明智，因为硬件过几年就有大变。</p>
+<p>那场C++0x讲座结束之后，我们回到办公室。 我开始了另一个编译(译者笑)，转过转过我的椅子，面对Robert，然后开始问一些尖锐的问题。 在编译完成之前，我们拉拢了Ken，并决定做些什么。 我们再也不想写C++了，并且我们——尤其是我——在写Google代码时，想让并发拿来就用。 同时我们也想解决”大系统编程”的问题，容后细说。</p>
+<p>我们在白板上写下一组我们需要的东西——迫切需要的那种。 我们规划出大体的轮廓，忽略了语法细节和语义。</p>
+<p>我仍然有一条碉堡了的那周的邮件线索。 这是一些摘录:</p>
+<blockquote><p><strong>Robert</strong>: 起点: C，修补一些显而易见的瑕疵，去除繁杂的东西。 新增一些特性。</p>
+<p><strong>Rob</strong>: 命名为’go’。 你可以为这个名字编造各种理由，但是它确实拥有很多好的特性。 它短小，易于打出。 工具么: goc，gol，goa。 如果有个交互式调试器/解释器，可以直接叫’go’。 代码后缀是。go。</p>
+<p><strong>Robert</strong>: 空接口: interface {}。 将被所有接口实现(译者: 原文如此)，并且可以取代void*。</p></blockquote>
+<p>我们并没有立即全部设计出来。 比如我们花了一年多才设计出了数组(array)和切片(slice)。 不过相当一部分重要的设计在最初的几天中浮现。</p>
+<p>注意到Robert说C是起点，并非C++。 对于这点我不是很确定，不过我相信他说的是C，因为Ken在场(译者笑)。 但是最后我们并没有从C开始，这倒是真的。 我们从最初的草稿开始，仅仅从其它语言中借鉴琐碎的东西，比如运算符，各种括号和一些常见的关键字。(当然我们也借鉴了我们所知道的语言中的思想。)不管怎么说，我们破而后立，从头做起，以此来响应C++。 我们并非想做一个更好的C++，甚至不是一个更好的C。 它仅仅是一个对我们所关心的软件来说更好的语言。</p>
+<p>最后，我们得到了既不同于C也不同于C++的东西，甚至比许多人意识到的还要不同。 我列了一个对于C和C++的Go的重要的简化的列表:</p>
+<ul>
+<li>常规的语法(不需要一个符号表来辅助解析)</li>
+<li>GC机制(仅仅是GC)</li>
+<li>没有头文件</li>
+<li>显式依赖关系</li>
+<li>没有循环依赖</li>
+<li>数字常量仅仅是数字(译者: 没有类型)</li>
+<li>int和int32不是同种类型</li>
+<li>字母大小写将确定可见性</li>
+<li>任何类型都可以有方法(没有类)</li>
+<li>没有子类型继承(没有子类)</li>
+<li>包级别的初始化和良好定义的初始化顺序</li>
+<li>同一个包的文件一起编译</li>
+<li>包级别的全局定义可以以任意顺序进行</li>
+<li>没有算术类型转换(常量可以弥补)</li>
+<li>接口是隐式实现的(没有”implements”声明)</li>
+<li>嵌入的结构体(没有类型提升和子类)</li>
+<li>方法像函数一样定义(不必定义在特殊的地方)</li>
+<li>方法就是函数</li>
+<li>接口就是方法(没有数据)</li>
+<li>方法仅仅靠名字匹配(不是靠类型)</li>
+<li>没有构造函数和析构函数</li>
+<li>后置增量/减量运算符仅仅是语句，而不是表达式</li>
+<li>没有前置增量/减量运算符</li>
+<li>赋值号是语句，不是表达式</li>
+<li>表达式求值顺序在赋值和函数调用时确定(没有所谓的”sequence point”)</li>
+<li>没有指针算术</li>
+<li>内存总是初始化为0</li>
+<li>对本地变量取地址是合法的</li>
+<li>方法中没有叫this的指针</li>
+<li>分段式栈</li>
+<li>没有常量或其它类型的注记</li>
+<li>没有模板</li>
+<li>没有异常</li>
+<li>内建字符串，切片和映射(map)</li>
+<li>数组边界检查</li>
+</ul>
+<p>并且，我相信通过这一系列的简化，Go将比C或C++更具有表现力。 少即是多。</p>
+<p>但是我们没法一下子把所有部分都做出来。 我们需要构建最基础的部分，比如说类型系统的表示，能良好应用于实际的语法，和一些无法形容的但能让库更容易相互操作的东西。</p>
+<p>我们同样增加了C或C++中没有的东西，比如切片和映射，组合字面量(？)，文件顶层的表达式(这虽是件大事，但是几乎不为人知)，反射机制，GC等等。 自然，还有并发。</p>
+<p>一个显眼的缺少的东西是类型的继承。 请允许我粗暴地对待它一分钟。</p>
+<p>早先构建Go的时候有人跟我说，他无法想象用一门没有泛型的语言工作。 正如我在别处说明的那样，我觉得这是个很诡异的言论。</p>
+<p>公平起见，他用自己的话说可能是他真的很喜欢C++中STL的那些容器。 以辩论为目的的话，我们来正面看看他的言论。</p>
+<p>他说的意味着: 他发现写一个容器，比如以int为元素类型的链表，或字符串映射是一种不能忍的重负。 我发现这是个很诡异的言论，因为我几乎没把时间花在那些个问题上，即使我在用没有泛型的语言。</p>
+<p>但是，更重要的是，他说的那些表示<em>类型系统</em>将会解除这种负担。 <em>类型系统</em>。 不是多态函数，或语言级原语，或其它类型的辅助手段(helpers)，而仅仅是<em>类型系统</em>。</p>
+<p>这就是粘住我的那个细节。</p>
+<p>从C++或Java来Go的程序员怀念和类型系统在一起的日子，特别是带继承和子类的那部分。 也许我在类型系统方面是粗暴了些，但是我绝不觉得那套玩意非常具有表现力。</p>
+<p>我已故的朋友Alain Fournier一次告诉我说他认为学术工作的最底层是分类学。 然后信不信由你，类型继承正是分类学。 你必须决定哪个萝卜扔哪个坑里，每个类型的父类型，A是否继承B或者B是否继承A。 一个可排序的数组是一个带有sort方法的数组呢，还是一个长得像数组的排序器呢？ 如果你觉得类型系统能解决所有设计上的问题，你必须做出这个无意义的选择。</p>
+<p>我相信对编程来说那是个荒诞的思路。 真正的重点不在于事物之间的继承关系，而在于它们能提供些什么。</p>
+<p>因此，接口这个概念进入了Go。 但是它们都是主要部分——真正的Go之道——的一部分。</p>
+<p>如果C++和Java注重类型继承和类型系统的分类学，那末Go就注重组合。</p>
+<p>Doug Mcilroy，Unix管道的最终发明人，在1964年(!)写道:</p>
+<blockquote><p>我们应该有一些机制能将程序耦合(串)起来，像花园软管那样——当我们需要另一种方式传送数据时，拧紧另外一段即可。 I/O也可以这么做。</p></blockquote>
+<p>这也是Go所提倡的道路。 Go吸收这个观点，然后把它推进得十分远。 这是一门关于(功能上的)组合和(调用上的)耦合的语言。</p>
+<p>一个显然的例子是接口是组合各部分的途径。 关键是，那些部分是什么并不重要，如果某类型实现了M方法我就可以把这个方法填到接口里去。</p>
+<p>另一个重要的例子是如何让并发性提供给我们不同的独立计算部分的组合。</p>
+<p>并且还有一种不同寻常(但十分简单)的类型组合形式: 嵌入。</p>
+<p>————————————————————————</p>
+<p>我想提一个和之前不太相关的Go设计: Go被设计为大型团队用来写大型程序的语言。</p>
+<p>这里有个概念是”大型编程”，并且不知何故C++和Java主宰了这个领域。 我相信这只是因为其历史巧合，或者是工业上的巧合。 但是被广泛接纳的观点是他们和面向对象设计有关。</p>
+<p>我压根不相信这点。 大型软件需要确定的方法，但是更重要的是它需要强依赖性管理，干净的接口抽象和优越的文档工具。 C++没一点做得好的(虽然Java明显要好很多)。</p>
+<p>我们还不知道Go语言能做到何种程度，因为现在还没有足够的软件是用Go写的。 但是我非常有信心于Go将会成为一个优越的大型编程语言。 时间会说明一切的。</p>
+<p>————————————————————————</p>
+<p>现在，回到我们演讲开始提的那个问题:</p>
+<p>为什么Go，作为从头被设计为符合C++使用者习惯的语言，没有吸引很多C++程序员？</p>
+<p>严肃点说，我觉得是因为Go和C++在哲学方面有着巨大的不同。</p>
+<p>C++是将所有东西提到你指尖上(译者: 即多范式)。 我在C++11的FAQ上找到了这段引用:</p>
+<blockquote><p>C++能优雅地，灵活地，零损耗地(相比于手工操纵代码)表达抽象的能力大幅提升了。</p></blockquote>
+<p>Go并非这种”围绕式”的。 你并不需要所有的东西都内建好。 你不需要对每个执行细节进行精细的控制。 比如，你不需要RAII，但你拥有一个垃圾回收器，也意味着你不需要执行释放内存的操作。</p>
+<p>你得到的是一组非常强有力但易于理解，易于用来构建积木的功能，这些积木可以用来组合出一个你需要的问题的解法。 这并不意味着它能像别的一些语言创造的解法一样快速，复杂，或带来思想上的激励，但是它总能保证易于书写，易于阅读，易于理解，易于维护，而且可能更安全。</p>
+<p>从另一个角度说，这当然算作过度简化:</p>
+<p>Python和Ruby程序员转到Go，因为他们不需要牺牲表达能力，却获得了性能的提升，并且能好好玩并发系统了。</p>
+<p>C++程序员<em>并没有</em>转到Go是因为他们好不容易获得了对程序的精细控制，并且不想牺牲它们的任何一部分。 对他们而言，写软件不仅包括把事情做完，而且包括用特定的方式完成。</p>
+<p>关键是，在将来，Go的成功将会颠覆他们的世界观。</p>
+<p>并且从一开始我们就应该意识到这点。 对于C++11的新特性很兴奋的人们并不关心一个拥有如此少特性的语言。 即使最后他提供了如此多。</p>
+<p>谢谢。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7771-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>少即是极多</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-198256" class="comment even thread-even depth-1">
+<article id="div-comment-198256" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8bbc4bcd67ac38ce1b3b5a348e07dae0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8bbc4bcd67ac38ce1b3b5a348e07dae0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://vcard.cc" class="url" rel="ugc external nofollow">niko</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198256"><time datetime="2012-07-05T09:20:21+08:00">2012年07月05日 09:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sofa…</p>
+</div>
+ </article>
+</li>
+<li id="comment-198258" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198258" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chai2010</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198258"><time datetime="2012-07-05T09:35:11+08:00">2012年07月05日 09:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章刚出来就有人已经翻译了, 详情见 golang-china 邮件列表.<br/>
+主题: go旧金山聚会 和 “Less is exponentially more”的读后感<br/>
+译文: <a href="http://www.mikespook.com/2012/06/%E7%BF%BB%E8%AF%91%E5%B0%91%E6%98%AF%E6%8C%87%E6%95%B0%E7%BA%A7%E7%9A%84%E5%A4%9A/" rel="nofollow ugc">http://www.mikespook.com/2012/06/%E7%BF%BB%E8%AF%91%E5%B0%91%E6%98%AF%E6%8C%87%E6%95%B0%E7%BA%A7%E7%9A%84%E5%A4%9A/</a></p>
+<p>水木也有关于这个帖子的讨论:<br/>
+<a href="http://www.newsmth.net/bbstcon.php?board=Programming&amp;gid=44510" rel="nofollow ugc">http://www.newsmth.net/bbstcon.php?board=Programming&amp;gid=44510</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198260" class="comment even thread-even depth-1">
+<article id="div-comment-198260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0244e218d0b5bcd3aaf913e00a097635?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0244e218d0b5bcd3aaf913e00a097635?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.mendeley.com/profiles/yi-xin-liu/" class="url" rel="ugc external nofollow">Eshin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198260"><time datetime="2012-07-05T09:38:16+08:00">2012年07月05日 09:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不知道Go用来做科学计算有没有优势？</p>
+</div>
+ </article>
+</li>
+<li id="comment-198263" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198263" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xxx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198263"><time datetime="2012-07-05T09:57:50+08:00">2012年07月05日 09:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>翻译的很到位。go还年轻，有争论和深入讨论会对这个语言的进化有好处。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198272" class="comment even thread-even depth-1">
+<article id="div-comment-198272" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3c389c90e54c6160e81faa1460fd4fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3c389c90e54c6160e81faa1460fd4fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Clover24</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198272"><time datetime="2012-07-05T10:30:43+08:00">2012年07月05日 10:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我对这个Go很感兴趣，尤其是看了那个简化列表，嘿嘿</p>
+</div>
+ </article>
+</li>
+<li id="comment-198276" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198276" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76df613285caaf1cda8b969171c60bbe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76df613285caaf1cda8b969171c60bbe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.airmio.com" class="url" rel="ugc external nofollow">Amio</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198276"><time datetime="2012-07-05T11:30:24+08:00">2012年07月05日 11:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198258" rel="nofollow">@chai2010 </a><br/>
+比那个翻译的好</p>
+</div>
+ </article>
+</li>
+<li id="comment-198277" class="comment even thread-even depth-1">
+<article id="div-comment-198277" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chai2010</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198277"><time datetime="2012-07-05T11:34:32+08:00">2012年07月05日 11:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>golang在Google IO 2012的视频已经上传到youku了:<br/>
+<a href="http://u.youku.com/user_show/uid_golangchina" rel="nofollow ugc">http://u.youku.com/user_show/uid_golangchina</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198279" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198279"><time datetime="2012-07-05T11:39:25+08:00">2012年07月05日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这则有的深广了，先来讨论简单的也许更好：也是go的作者说的<br/>
+泛型编程的困境是：要么苦了程序员，要么苦了编绎器，要么降低运行时效率。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198280" class="comment even thread-even depth-1">
+<article id="div-comment-198280" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/babe6583b6981814907fabca2c18c119?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/babe6583b6981814907fabca2c18c119?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolweblog.appspot.com/" class="url" rel="ugc external nofollow">zhong</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198280"><time datetime="2012-07-05T11:55:04+08:00">2012年07月05日 11:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好玩的一个事情， GO 主页上的示例还有中文哪，『 fmt.Println(“Hello, 世界”)』。<br/>
+是他们为了显示国际化能力，还是纯粹幽默下啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198283" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da2a4c7ae09f8a71a17521632342ab7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da2a4c7ae09f8a71a17521632342ab7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">champ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198283"><time datetime="2012-07-05T12:23:26+08:00">2012年07月05日 12:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Nothing is true, everything is permitted.</p>
+</div>
+ </article>
+</li>
+<li id="comment-198288" class="comment even thread-even depth-1">
+<article id="div-comment-198288" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/25d01a72f776657c60142edbb4a0d4c4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/25d01a72f776657c60142edbb4a0d4c4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">stavka0619</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198288"><time datetime="2012-07-05T13:04:47+08:00">2012年07月05日 13:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198260" rel="nofollow">@Eshin </a><br/>
+一个带gc和boundary check的语言能有什么效率</p>
+</div>
+ </article>
+</li>
+<li id="comment-198289" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198289" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87f9abd61c7c2fe217be5bfaeb373660?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87f9abd61c7c2fe217be5bfaeb373660?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198289"><time datetime="2012-07-05T13:12:05+08:00">2012年07月05日 13:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198258" rel="nofollow">@chai2010 </a><br/>
+chai2010提到的翻译版本比本文好不少。只举一例：<br/>
+“C++能优雅地，灵活地，零损耗地(相比于手工操纵代码)表达抽象的能力大幅提升了。”<br/>
+汉语里的逗号能像英语里面那么用么？？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-198291" class="comment even thread-even depth-1">
+<article id="div-comment-198291" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87f9abd61c7c2fe217be5bfaeb373660?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87f9abd61c7c2fe217be5bfaeb373660?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198291"><time datetime="2012-07-05T13:14:05+08:00">2012年07月05日 13:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GO语言挺优美，但是正则表达式太丑陋了！这一点让我对GO的印象大大降低，以为GO会改进目前CPP里面的RegEx，没想到是这样。还是继续期待C++11和Perl6了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198296" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ac.net.blog.163.com/" class="url" rel="ugc external nofollow">Atry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198296"><time datetime="2012-07-05T13:37:37+08:00">2012年07月05日 13:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们讨厌碰到issue 9就只能Unfortunate的Go<br/>
+我们喜欢编译时执行代码的D </p>
+<p>Less is no More.<br/>
+More is More.<br/>
+我们就爱复杂的编程语言<br/>
+<a href="http://www.douban.com/group/cpl/" rel="nofollow ugc">http://www.douban.com/group/cpl/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198297" class="comment even thread-even depth-1">
+<article id="div-comment-198297" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e74888b20d5dfd867b328b068124d808?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e74888b20d5dfd867b328b068124d808?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yafei.zhang@langtaojin.com" class="url" rel="ugc external nofollow"><span class="__cf_email__" data-cfemail="5b223a3d3e327521333a353c1b373a353c2f3a3431323575383436">[email protected]</span></a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198297"><time datetime="2012-07-05T13:40:18+08:00">2012年07月05日 13:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种只吹捧不说缺点的文章, 借鉴价值不大</p>
+</div>
+ </article>
+</li>
+<li id="comment-198298" class="comment byuser comment-author-innocent bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198298" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tim Shen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198298"><time datetime="2012-07-05T13:58:23+08:00">2012年07月05日 13:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198289" rel="nofollow">@zhang </a><br/>
+由于个人习惯, 我提交的时候都是英文标点, 而在英文中没有顿号. 陈皓老师为方便大家阅读, 不仅配了图, 还将所有英文逗号和点号替换成中文逗号和句号了, 包括文中后缀”.go”变成了”。go”. 我想说明的是, 这不是译者中文修养的问题, 而是译者的个人癖好被误解了. 至于别处, 我对比了两篇译文, 各有到位之处. 本想修改, 只是我貌似没有该文的编辑权限了:(</p>
+</div>
+ </article>
+</li>
+<li id="comment-198299" class="comment even thread-even depth-1">
+<article id="div-comment-198299" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d1b34207fc52ff5b30717422c031c8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d1b34207fc52ff5b30717422c031c8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Destiny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198299"><time datetime="2012-07-05T14:01:08+08:00">2012年07月05日 14:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>纠正下“我已故的朋友Alain Fournier一次告诉我说”翻译成“我已故的朋友Alain Fournier曾经告诉我说“更好点吧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-198301" class="comment byuser comment-author-innocent bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198301" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tim Shen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198301"><time datetime="2012-07-05T14:12:00+08:00">2012年07月05日 14:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198288" rel="nofollow">@stavka0619 </a><br/>
+正如Rob Pike所说, 他最惊讶于Python, Ruby等动态语言程序员的到来. 那末Python是怎么做的呢? 热点部分用C封装即可. Go对C也有非常好的支持(cgo), 所以如果能将科学计算的热点部分, 即计算核心用C实现, 然后Go操纵全局, 比如并发, 通信什么的, 未尝不可.<br/>
+另外, 不知你是如何得出”gc一定慢”这个观点的.<br/>
+对于边界检查, 还是那句话, 热点部分用C. 没有谁强迫你只能用一种语言.</p>
+</div>
+ </article>
+</li>
+<li id="comment-198304" class="comment even thread-even depth-1">
+<article id="div-comment-198304" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1842a0fd171f44992d4e0b45a6f57385?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1842a0fd171f44992d4e0b45a6f57385?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">L</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198304"><time datetime="2012-07-05T14:34:41+08:00">2012年07月05日 14:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个我开始也以为是中文，但是看了官网首页那个视频tour后，里面说这是日文…<a href="#comment-198280" rel="nofollow">@zhong </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198305" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198305" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chai2010</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198305"><time datetime="2012-07-05T14:45:06+08:00">2012年07月05日 14:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于Go的效率取舍, 可以参考rsc的回答:<br/>
+<a href="http://research.swtch.com/gotour" rel="nofollow ugc">http://research.swtch.com/gotour</a></p>
+<p>Q. What is an example of the kind of application you’re working on performance for? How will you beat C++?<br/>
+…<br/>
+Our goal is definitely not to beat C++ on performance. The goal for Go is to be near C++ in terms of performance but at the same time be a much more productive environment and language, so that you’d rather program in Go.</p>
+</div>
+ </article>
+</li>
+<li id="comment-198307" class="comment even thread-even depth-1">
+<article id="div-comment-198307" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chai2010</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198307"><time datetime="2012-07-05T14:48:38+08:00">2012年07月05日 14:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@L<br/>
+看 Rob Pike 的关于 UTF-8 发明的论文:<br/>
+<a href="http://doc.cat-v.org/plan_9/4th_edition/papers/utf" rel="nofollow ugc">http://doc.cat-v.org/plan_9/4th_edition/papers/utf</a></p>
+<p>本来就是日文 “こんにちは 世界” 的一部分.</p>
+</div>
+ </article>
+</li>
+<li id="comment-198308" class="comment byuser comment-author-innocent bypostauthor odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-198308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tim Shen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198308"><time datetime="2012-07-05T14:58:39+08:00">2012年07月05日 14:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198258" rel="nofollow">@chai2010 </a><br/>
+“大道至简”那篇是28号才翻译的. 其实我的翻译27号就出来了(<a href="http://stdio.njuptsast.org/article/3" rel="nofollow">猛击这里</a>, 顺带提句~这blog也是我用go写的, 只是不太会搞前端&gt;.&lt;), 只不过coolshell这边出得晚了些.</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-198315" class="comment byuser comment-author-haoel even depth-2">
+<article id="div-comment-198315" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198315"><time datetime="2012-07-05T17:03:55+08:00">2012年07月05日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Sorry，我之前没有看到，昨晚才看到了。不过，我找到你的twitter帐号。呵呵。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-198311" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198311" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45a452f3aa7e82d0f683e37c93097351?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chai2010</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198311"><time datetime="2012-07-05T15:12:51+08:00">2012年07月05日 15:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198308" rel="nofollow">@Tim Shen </a> </p>
+<p>那篇文章什么时候开始翻译的, 我也不太清楚.</p>
+<p>英文刚出来时我已经看了, 然后就是在 golang-china 看到那个译文了.<br/>
+开始的 名字是 “少是指数级的多”, 后来是参考 邮件里别人的建议 才该为 “大道至简” 的.<br/>
+因为发在了 golang-china 和 水木 可能流传得更广一些.</p>
+<p>golang-china 里人比较多, 关于Go的消息也比即时. 有空可以去那边看看 :)</p>
+</div>
+ </article>
+</li>
+<li id="comment-198322" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198322" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/08453de6a420836a5c8889fb9fba64c5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/08453de6a420836a5c8889fb9fba64c5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198322"><time datetime="2012-07-05T20:17:42+08:00">2012年07月05日 20:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-198297"><p>
+<strong><a href="#comment-198297" rel="nofollow"><span class="__cf_email__" data-cfemail="453c2423202c6b3f2d242b220529242b2231242a2f2c2b6b262a28">[email protected]</span></a> :</strong><br/>
+这种只吹捧不说缺点的文章, 借鉴价值不大
+</p></blockquote>
+<p>决定权在于看官自己吧（笑）</p>
+</div>
+ </article>
+</li>
+<li id="comment-198324" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198324" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/313f1b4166214686195565bd2f29eaf5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/313f1b4166214686195565bd2f29eaf5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tlh1987</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198324"><time datetime="2012-07-05T21:47:52+08:00">2012年07月05日 21:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有人说那个是日文<a href="#comment-198280" rel="nofollow">@zhong </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198351" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198351" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6664718ce134ab69b9930564b15d9916?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6664718ce134ab69b9930564b15d9916?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">thkfly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198351"><time datetime="2012-07-06T09:45:32+08:00">2012年07月06日 09:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Go语言的表现手法是非常不错的，我曾今试图研究Go，但后来还是放弃了，原因如下：<br/>
+1、缺少函数库的支持，这一点是不可想象的；任何一个人想要做点有价值的东西，很多东西还要自己打造，就是不可取<br/>
+2、运行效率和Java差不多，并不是如他所宣称的达到c的运行效率<br/>
+3、没有对GPU计算的支持，对搞图形图像的程序员简直是一种羞辱<br/>
+Go语言只适合Google这样的公司做去他妈的网络编程</p>
+</div>
+ </article>
+</li>
+<li id="comment-198354" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198354" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/babe6583b6981814907fabca2c18c119?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/babe6583b6981814907fabca2c18c119?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolweblog.appspot.com/" class="url" rel="ugc external nofollow">zhong</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198354"><time datetime="2012-07-06T10:04:21+08:00">2012年07月06日 10:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在可能，日本人对汉字日化不完全啊，害我认错了。<br/>
+<a href="#comment-198324" rel="nofollow">@tlh1987 </a><br/>
+<a href="#comment-198304" rel="nofollow">@L </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198368" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xxx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198368"><time datetime="2012-07-06T12:00:39+08:00">2012年07月06日 12:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198351" rel="nofollow">@thkfly </a> </p>
+<blockquote cite="#commentbody-198351"><p>
+<strong><a href="#comment-198351" rel="nofollow">thkfly</a> :</strong><br/>
+Go语言的表现手法是非常不错的，我曾今试图研究Go，但后来还是放弃了，原因如下：<br/>
+1、缺少函数库的支持，这一点是不可想象的；任何一个人想要做点有价值的东西，很多东西还要自己打造，就是不可取<br/>
+2、运行效率和Java差不多，并不是如他所宣称的达到c的运行效率<br/>
+3、没有对GPU计算的支持，对搞图形图像的程序员简直是一种羞辱<br/>
+Go语言只适合Google这样的公司做去他妈的网络编程
+</p></blockquote>
+<p>1.python才开始的时候也是库少，这不是go team该做的事，第三方库会越来越多的，需要时间；<br/>
+2.那是因为go团队还没怎么做性能优化的部分，编译器和gc也在改进中。《unix编程艺术》中有句话叫做”不要过早的优化”。<br/>
+3.同样，需要时间，不论是第三方还是官方支持。goang-nuts里倒是有不少关于集成opengl方面的讨论。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198369" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198369" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198369"><time datetime="2012-07-06T12:02:58+08:00">2012年07月06日 12:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198351" rel="nofollow">@thkfly </a><br/>
+他们说了，只是为了适应他们自己的工作才开发的GO，不一定要适应每一个人吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-198401" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198401" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/be4dde14db18e1a12717020e6e4329f8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/be4dde14db18e1a12717020e6e4329f8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">七赤九紫星</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198401"><time datetime="2012-07-06T17:29:59+08:00">2012年07月06日 17:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>go语言很多设计还是太随意了，使得代码可读性很糟糕，而且本来应该忽略的细枝末节去无线放大比如{ 在下一行还是行末。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198414" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198414" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ffdec2a50f0b1a64c821ab2f1588cc48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ffdec2a50f0b1a64c821ab2f1588cc48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chen3feng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198414"><time datetime="2012-07-06T20:21:11+08:00">2012年07月06日 20:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>go选择了降低效率，用的interface {}的方式。</p>
+<blockquote cite="#commentbody-198279"><p>
+<strong><a href="#comment-198279" rel="nofollow">haitao</a> :</strong><br/>
+这则有的深广了，先来讨论简单的也许更好：也是go的作者说的<br/>
+泛型编程的困境是：要么苦了程序员，要么苦了编绎器，要么降低运行时效率。
+</p></blockquote>
+</div>
+ </article>
+</li>
+<li id="comment-198418" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198418" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af330b83196ec2662156726734fe62b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af330b83196ec2662156726734fe62b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tarside.blog.163.com" class="url" rel="ugc external nofollow">tarside</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198418"><time datetime="2012-07-06T20:51:21+08:00">2012年07月06日 20:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>go 语言的失败是不兼容 C .<br/>
+我认为 C++ 程序员永远不会选择 Go.</p>
+</div>
+ </article>
+</li>
+<li id="comment-198448" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-198448" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3a31d68496792cd9f7e8f0d61f243db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3a31d68496792cd9f7e8f0d61f243db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://kk.it.cx" class="url" rel="ugc external nofollow">xiaokangwang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198448"><time datetime="2012-07-07T13:30:21+08:00">2012年07月07日 13:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还是喜欢C++,什么其他的语言都不喜欢.</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-198472" class="comment byuser comment-author-haoel even depth-2">
+<article id="div-comment-198472" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198472"><time datetime="2012-07-08T00:59:44+08:00">2012年07月08日 00:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也是。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-198476" class="comment byuser comment-author-innocent bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198476" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tim Shen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198476"><time datetime="2012-07-08T02:51:24+08:00">2012年07月08日 02:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198472" rel="nofollow">@陈皓 </a><br/>
+是因为<br/>
+1) C++无所不能<br/>
+2) 自己能驾驭得了<br/>
+吗?</p>
+</div>
+ </article>
+</li>
+<li id="comment-198494" class="comment even thread-even depth-1">
+<article id="div-comment-198494" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/16588db0babd4904d1465b2173fd9b74?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/16588db0babd4904d1465b2173fd9b74?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.pipul.org" class="url" rel="ugc external nofollow">老栋</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198494"><time datetime="2012-07-08T14:17:30+08:00">2012年07月08日 14:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C++程序员并没有转到Go是因为他们好不容易获得了对程序的精细控制，并且不想牺牲它们的任何一部分。 对他们而言，写软件不仅包括把事情做完，而且包括用特定的方式完成。<br/>
+如果go在前。我倒觉得c是为了go/c++这帮程序员而设计出来的了</p>
+</div>
+ </article>
+</li>
+<li id="comment-198499" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198499" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/91c21fe6179de07a26fc3b8c14b0115d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/91c21fe6179de07a26fc3b8c14b0115d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xuby</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198499"><time datetime="2012-07-08T18:11:06+08:00">2012年07月08日 18:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198260" rel="nofollow">@Eshin </a><br/>
+你需要的可能是这个：http://julialang.org/</p>
+</div>
+ </article>
+</li>
+<li id="comment-198510" class="comment even thread-even depth-1">
+<article id="div-comment-198510" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bc5a49d76cafc97ff9e727211dab3d37?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bc5a49d76cafc97ff9e727211dab3d37?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">everettjf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198510"><time datetime="2012-07-08T23:21:08+08:00">2012年07月08日 23:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198280" rel="nofollow">@zhong </a><br/>
+其实那是日语</p>
+</div>
+ </article>
+</li>
+<li id="comment-198648" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198648" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/52268bf79a06ec35bf2b1caad571de11?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/52268bf79a06ec35bf2b1caad571de11?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">stoneyang0915</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-198648"><time datetime="2012-07-10T12:27:05+08:00">2012年07月10日 12:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198258" rel="nofollow">@chai2010 </a><br/>
+水木上的原帖已经被删掉了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-199223" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.baozishan.in/?p=1463" class="url" rel="ugc external nofollow">GWeekly[12] = 出道三年 – 我住包子山</a> </div>
+</li>
+<li id="comment-199244" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-199244" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e54d70725b53c95dc100cafb76939708?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e54d70725b53c95dc100cafb76939708?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">syw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-199244"><time datetime="2012-07-18T09:52:26+08:00">2012年07月18日 09:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得C++的发展已经越来越玩具化（某些学院派专家的玩具），脱离实际问题，走入了一跳死胡同，C++的演进总是纠结与模版和一些无关大局的语法糖。请问：难道没有那么多模版形式，我们就不能写代码吗？一堆堆砌的模板除了把问题搞的更隐晦以外，没有其它任何好处。现代编程语言应该再OS之上，再建立一个虚拟机，这个虚拟机封装了领域内的基本问题，譬如垃圾回收，譬如并发通信（go，erlang, c#….）。用C++写OS？似乎不太合适，但C++并没有比OS提供更多的抽象机制，C++写图形库比较合适，这也是C++开始应用的领域，不过在这方面：2000前的C++已经足够好了，所谓C++0x, C++1x 除了把问题搞得更麻烦，没有任何好处</p>
+</div>
+ </article>
+</li>
+<li id="comment-211475" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=10980" class="url" rel="ugc external nofollow">Go 语言简介（上）— 语法</a> </div>
+</li>
+<li id="comment-211495" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2012/11/go-%e8%af%ad%e8%a8%80%e7%ae%80%e4%bb%8b%ef%bc%88%e4%b8%8a%ef%bc%89%e2%80%94-%e8%af%ad%e6%b3%95/" class="url" rel="ugc external nofollow">Google Reader分享 » Go 语言简介（上）— 语法</a> </div>
+</li>
+<li id="comment-213650" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/go-language-introduction-under-features.html" class="url" rel="ugc external nofollow">Definite Digest » Go 语言简介（下）— 特性</a> </div>
+</li>
+<li id="comment-286513" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-286513" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f50425978e70be9292e017bfad4e5e7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f50425978e70be9292e017bfad4e5e7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xianjian6.com" class="url" rel="ugc external nofollow">summerworm</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-286513"><time datetime="2013-02-05T05:49:15+08:00">2013年02月05日 05:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一上来就是 空接口: interface {}</p>
+</div>
+ </article>
+</li>
+<li id="comment-286516" class="comment even thread-even depth-1">
+<article id="div-comment-286516" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f50425978e70be9292e017bfad4e5e7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f50425978e70be9292e017bfad4e5e7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xianjian6.com" class="url" rel="ugc external nofollow">summerworm</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-286516"><time datetime="2013-02-05T05:58:43+08:00">2013年02月05日 05:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老外们喜欢拿中文装B，就像我们喜欢甩单词一样，额~ <a href="#comment-198280" rel="nofollow">@zhong </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-329354" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-329354" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/93fdd09b8a4ec8545fac4bc4c1a9d3af?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/93fdd09b8a4ec8545fac4bc4c1a9d3af?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Fox</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7771.html#comment-329354"><time datetime="2013-04-17T22:43:41+08:00">2013年04月17日 22:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“请允许我粗暴地对待它一分钟。”，这个粗暴，应该是rough的意思，是粗略，我想说。你的文章翻译的很好。这里只是提一个可能是我认识误解的地方。</p>
+</div>
+ </article>
+</li>
+<li id="comment-965637" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=203" class="url" rel="ugc external nofollow">C++模板”&gt;&gt;”编译问题与词法消歧设计 | 星达红</a> </div>
+</li>
+<li id="comment-1489892" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.makaidong.com/29358.html" class="url" rel="ugc external nofollow">Lua简明教程 – 马开东博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

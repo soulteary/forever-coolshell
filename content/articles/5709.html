@@ -1,0 +1,598 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>API设计：用流畅接口构造内部DSL | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5709 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5709" class="post-content post-5709 post type-post status-publish format-standard hentry category-progdesign category-proglanguage tag-api tag-java tag-javascript tag-ruby">
+<header class="entry-header">
+<span class="screen-reader-text">API设计：用流畅接口构造内部DSL</span>
+<h1 class="entry-title">API设计：用流畅接口构造内部DSL</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5709.html" title="08:28" rel="bookmark"><time class="entry-date" datetime="2011-10-31T08:28:47+08:00" pubdate="">2011年10月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5709.html#comments" class="comments-link">32 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 33,970 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>感谢<a href="http://weibo.com/n/weidagang">@weidagang</a> （Todd）向酷壳投递本文。</strong></p>
+<p>程序设计语言的抽象机制包含了两个最基本的方面：一是语言关注的基本元素/语义；另一个是从基本元素/语义到复合元素/语义的构造规则。在C、C++、Java、C#、Python等通用语言中，语言的基本元素/语义往往离问题域较远，通过API库的形式进行层层抽象是降低问题难度最常用的方法。比如，在C语言中最常见的方式是提供函数库来封装复杂逻辑，方便外部调用。</p>
+<p>不过普通的API设计方法存在一种天然的陷阱，那就是不管怎样封装，大过程虽然比小过程抽象层次更高，但本质上还是过程，受到过程语义的制约。也就是说，通过基本元素/语义构造更高级抽象元素/语义的时候，语言的构造规则很大程度上限制了抽象的维度，我们很难跳出这个维度去，甚至可能根本意识不到这个限制。而SQL、HTML、CSS、make等DSL（领域特定语言）的抽象维度是为特定领域量身定做的，从这些抽象角度看问题往往最为简单，所以DSL在解决其特定领域的问题时比通用程序设计语言更加方便。通常，SQL等非通用语言被称为外部DSL（External DSL）；在通用语言中，我们其实也可以在一定程度上突破语言构造规则的抽象维度限制，定义内部DSL（Internal DSL）。</p>
+<p>本文将介绍一种被称为流畅接口（Fluent Interface）的内部DSL设计方法。Wikipedia上<a title="Fluent Interface" href="https://en.wikipedia.org/wiki/Fluent_interface">Fluent Interface</a>的定义是：</p>
+<blockquote><p>A fluent interface (as first coined by Eric Evans and Martin Fowler) is an implementation of an object oriented API that aims to provide for more readable code. A fluent interface is normally implemented by using method chaining to relay the instruction context of a subsequent call (but a fluent interface entails more than just method chaining).</p></blockquote>
+<div>
+<p>下面将分4个部分来逐步说明流畅接口在构造内部DSL中的典型应用。</p>
+</div>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#1_%E5%9F%BA%E6%9C%AC%E8%AF%AD%E4%B9%89%E6%8A%BD%E8%B1%A1" title="1. 基本语义抽象">1. 基本语义抽象</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#2_%E7%AE%A1%E9%81%93%E6%8A%BD%E8%B1%A1" title="2. 管道抽象">2. 管道抽象</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#3_%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84%E6%8A%BD%E8%B1%A1" title="3. 层次结构抽象">3. 层次结构抽象</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#4_%E5%BC%82%E6%AD%A5%E6%8A%BD%E8%B1%A1" title="4. 异步抽象">4. 异步抽象</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="1_%E5%9F%BA%E6%9C%AC%E8%AF%AD%E4%B9%89%E6%8A%BD%E8%B1%A1"></span><strong>1. 基本语义抽象</strong><span class="ez-toc-section-end"></span></h4>
+<p>如果要输出0..4这5个数，我们一般会首先想到类似这样的代码：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">//Java
+for (int i = 0; i &lt; 5; ++i) {
+    system.out.println(i);
+}</pre>
+<p><span id="more-5709"></span></p>
+<p>而Ruby虽然也支持类似的for循环，但最简单的是下面这样的实现：</p>
+<pre data-enlighter-language="ruby" class="EnlighterJSRAW">//Ruby
+5.times {|i| puts i}</pre>
+<p>Ruby中一切皆对象，5是Fixnum类的实例，times是Fixnum的一个方法，它接受一个block参数。相比for循环实现，Ruby的times方式更简洁，可读性更强，但熟悉OOP的朋友可能会有疑问，times是否应该作为整型类的方法呢？在OOP中，方法调用通常代表了向对象发送消息，改变或查询对象的状态，times方法显然不是对整型对象状态的查询和修改。如果你是Ruby的设计者，你会把times方法放入Fixnum类吗？如果答案是否定的，那么Ruby的这种设计本质上代表了什么呢？实际上，这里的times虽然只是一个普通的类方法，但它的目的却与普通意义上的类方法不同，它的语义实际上类似于for循环这样的语言基本语义，可以被视为一种自定义的基本语义。times的语义从一定程度上跳出了类方法的框框，向问题域迈进了一步！</p>
+<p>另一个例子来自Eric Evans的“用两个时间点构造一个时间段对象”，普通设计：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">//Java
+TimePoint fiveOClock, sixOClock;
+TimeInterval meetingTime = new TimeInterval(fiveOClock, sixOClock);</pre>
+<p>另一种Evans的设计是这样：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">//Java
+TimeInterval meetingTime = fiveOClock.until(sixOClock);</pre>
+<p>按传统OO设计，until方法本不应出现在TimePoint类中，这里TimePoint类的until方法同样代表了一种自定义的基本语义，使得表达时间域的问题更加自然。</p>
+<p>虽然上面的两个简单例子和普通设计相比看不出太大的优势，但它却为我们理解流畅接口打下了基础。重要的是应该体会到它们从一定程度上跳出了语言基本抽象机制的束缚，我们不应该再用类职责划分、迪米特法则（Law of Demeter）等OO设计原则来看待它们。</p>
+<h4><span class="ez-toc-section" id="2_%E7%AE%A1%E9%81%93%E6%8A%BD%E8%B1%A1"></span><strong>2. 管道抽象</strong><span class="ez-toc-section-end"></span></h4>
+<p>在Shell中，我们可以通过管道将一系列的小命令组合在一起实现复杂的功能。管道中流动的是单一类型的文本流，计算过程就是从输入流到输出流的变换过程，每个命令是对文本流的一次变换作用，通过管道将作用叠加起来。在Shell中，很多时候我们只需要一句话就能完成log统计这样的中小规模问题。和其他抽象机制相比，管道的优美在于无嵌套。比如下面这段C程序，由于嵌套层次较深，不容易一下子理解清楚：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C
+min(max(min(max(a,b),c),d),e)
+</pre>
+<p>而用管道来表达同样的功能则清晰得多：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#!/bin/bash
+max a b | min c | max d | min e
+</pre>
+<p>我们很容易理解这段程序表达的意思是：先求a, b的最大值；再把结果和c取最小值；再把结果和d求最大值；再把结果和e求最小值。</p>
+<p>jQuery的链式调用设计也具有管道的风格，方法链上流动的是同一类型的jQuery对象，每一步方法调用是对对象的一次作用，整个方法链将各个方法的作用叠加起来。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//Javascript
+$(&#39;li&#39;).filter(&#39;:event&#39;).css(&#39;background-color&#39;, &#39;red&#39;);
+</pre>
+<h4><span class="ez-toc-section" id="3_%E5%B1%82%E6%AC%A1%E7%BB%93%E6%9E%84%E6%8A%BD%E8%B1%A1"></span>3. 层次结构抽象<span class="ez-toc-section-end"></span></h4>
+<p>除了管道这种“线性”结构外，流畅接口还可用于构造层次结构抽象。比如，用Javascript动态创建创建下面的HTML片段：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;div id=&#34;’product_123’&#34; class=&#34;’product’&#34;&gt;
+&lt;img src=&#34;’preview_123.jpg’&#34; alt=&#34;&#34; /&gt;
+&lt;ul&gt;
+	&lt;li&gt;Name: iPad2 32G&lt;/li&gt;
+	&lt;li&gt;Price: 3600&lt;/li&gt;
+&lt;/ul&gt;
+&lt;/div&gt;
+
+</pre>
+<p>若采用Javascript的DOM API：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//Javascript
+var div = document.createElement(&#39;div&#39;);
+div.setAttribute(‘id’, ‘product_123’);
+div.setAttribute(‘class’, ‘product’);
+
+var img = document.createElement(&#39;img&#39;);
+img.setAttribute(‘src’, ‘preview_123.jpg’);
+div.appendChild(img);
+
+var ul = document.createElement(&#39;ul&#39;);
+var li1 = document.createElement(&#39;li&#39;);
+var txt1 = document.createTextNode(&#34;Name: iPad2 32G&#34;);
+li1.appendChild(txt1);
+…
+div.appendChild(ul);</pre>
+<p>而下面流畅接口API则要有表现力得多：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">//Javascript
+var obj =
+$.div({id:’product_123’, class:’product’})
+    .img({src:’preview_123.jpg’})
+    .ul()
+        .li().text(‘Name: iPad2 32G’)._li()
+        .li().text(‘Price: 3600’)._li()
+    ._ul()
+ ._div();</pre>
+<div>和Javascript的标准DOM API相比，上面的API设计不再局限于孤立地看待某一个方法，而是考虑了它们在解决问题时的组合使用，所以代码的表现形式特别贴近问题的本质。这样的代码是自解释的（self-explanatory）在可读性方面要明显胜于DOM API，这相当于定义了一种类似于HTML的内部DSL，它拥有自己的语义和语法。需要特别注意的是，上面的层次结构抽象和管道抽象有着本质的不同，管道抽象的方法链上通常是同一对象的连续传递，而层次抽象中方法链上的对象却在随着层次的变化而变化。此为，我们可以把业务规则也表达在流畅接口中，比如上面的例子中，body()不能包含在div()返回的对象中，div().body()将抛出”body方法不存在”异常。</div>
+<h4><span class="ez-toc-section" id="4_%E5%BC%82%E6%AD%A5%E6%8A%BD%E8%B1%A1"></span><strong>4. 异步抽象</strong><span class="ez-toc-section-end"></span></h4>
+<div>流畅接口不仅可以构造复杂的层次抽象，还可以用于构造异步抽象。在基于回调机制的异步模式中，多个异步调用的同步和嵌套问题是使用异步的难点所在。有时一个稍复杂的调用和同步关系会导致代码充满了复杂的同步检查和层层回调，难以理解和维护。这个问题从本质上讲和上面HTML的例子一样，是由于多数通用语言并未把异步作为基本元素/语义，许多异步实现模式是向语言的妥协。针对这个问题，我用Javascript编写了一个基于流畅接口的异步DSL，示例代码如下：</div>
+<div>[javascript]<br/>
+//Javascript<br/>
+$.begin()<br/>
+.async(newTask(‘task1’), ‘task1’)<br/>
+.async(newTask(‘task2’), ‘task2’)<br/>
+.async(newTask(‘task3’), ‘task3’)<br/>
+.when()<br/>
+.each_done(function(name, result) {<br/>
+console.log(name + ‘: ‘ + result);})<br/>
+.all_done(function(){ console.log(‘good, all completed’); })<br/>
+.timeout(function(){<br/>
+console.log(‘timeout!!’);<br/>
+$.begin()<br/>
+.async(newTask(‘task4’), ‘task4’)<br/>
+.when()<br/>
+.each_done(function(name, result) {<br/>
+console.log(name + ‘: ‘ + result); })<br/>
+.end();}<br/>
+, 3000)<br/>
+.end();[/javascript]<p></p>
+</div>
+<div>上面的代码只是一句Javascript调用，但从另一个角度看它却像一段描述异步调用的DSL程序。它通过流畅接口定义了begin when end的语法结构，begin后面跟的是启动异步调用的代码；when后面是异步结果处理，可以选择each_done, all_done, timeout中的一种或多种。而begin when end结构本身是可以嵌套的，比如上面的代码在timeout处理分支中就包含了另一个begin when end结构。通过这个DSL，我们可以比基于回调的方式更好地表达异步调用的同步和嵌套关系。</div>
+<p>上面介绍了用流畅接口构造的4种典型抽象，出此之外还有很多其他的抽象和应用场合，比如：不少单元测试框架就通过流畅接口定义了单元测试的DSL。虽然上面的例子以Javascript等动态语言居多，但其实流畅接口所依赖的语法基础并不苛刻，即使在Java这样的静态语言中，同样可以轻松地使用。流畅接口不同于传统的API设计，理解和使用流畅接口关键是要突破语言抽象机制带来的定势思维，根据问题域选取适当的抽象维度，利用语言的基本语法构造领域特定的语义和语法。</p>
+<p><strong>参考</strong></p>
+<ul>
+<li><a title="Wikipedia: Fluent Interface" href="https://en.wikipedia.org/wiki/Fluent_interface">Wikipedia: Fluent Interface</a></li>
+<li><a title="Martin Fowler: Fluent Interface" href="http://www.martinfowler.com/bliki/FluentInterface.html">Martin Fowler: Fluent Interface</a></li>
+<li><a title="jQuery is DSL" href="http://www.cnblogs.com/cathsfz/archive/2009/08/10/1543266.html">jQuery is DSL</a></li>
+<li><a title="An Approach to Internal Domain-Specific Languages in Java" href="http://www.infoq.com/articles/internal-dsls-java">An Approach to Internal Domain-Specific Languages in Java</a></li>
+</ul>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5709-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">API</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">Ruby</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>API设计：用流畅接口构造内部DSL</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-90554" class="comment even thread-even depth-1">
+<article id="div-comment-90554" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dd3b711ef11b74e76a05f693a2f3e403?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dd3b711ef11b74e76a05f693a2f3e403?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://reborn2266.blogspot.com/" class="url" rel="ugc external nofollow">Mars</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90554"><time datetime="2011-10-31T09:02:36+08:00">2011年10月31日 09:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>嗯，的確，基本上，簡潔、優雅、彈性才是不變的設計原則。有經驗的程式設計師不會侷限在特定的方法裡，有時他們會”感覺”到雜亂與不適，那就是該採用不同作法的時候了。這或許也是程式設計比較接近工藝的一面。 :)</p>
+</div>
+ </article>
+</li>
+<li id="comment-90555" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90555" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1c0a29c7f0cfa9a3f586cfddecee628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1c0a29c7f0cfa9a3f586cfddecee628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://bitfoc.us/" class="url" rel="ugc external nofollow">Neuron Teckid</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90555"><time datetime="2011-10-31T09:05:40+08:00">2011年10月31日 09:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在OOP中，方法调用通常代表了向对象发送消息，改变或查询对象的状态，times方法显然不是对整型对象状态的查询和修改。<br/>
+我认为这一点不尽然, 比如工厂模式中, 工厂对象的一些成员方法是用来产生对象而非访问工厂自身的状态, 对这里 times 方法我的理解类似, 它产生了一个抽象的迭代过程.</p>
+<p>当然死板地用 OO 的方式来理解真是一件无趣的事情.</p>
+</div>
+ </article>
+</li>
+<li id="comment-90557" class="comment even thread-even depth-1">
+<article id="div-comment-90557" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f95e2292aae5808b111707fad2f75125?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f95e2292aae5808b111707fad2f75125?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tcdona</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90557"><time datetime="2011-10-31T09:09:42+08:00">2011年10月31日 09:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>忍不住水一下，超级喜欢这篇，但是我也只能说大赞！了</p>
+</div>
+ </article>
+</li>
+<li id="comment-90558" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90558" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4269f61348d8d41dc5e8bb2c562b432e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4269f61348d8d41dc5e8bb2c562b432e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小杰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90558"><time datetime="2011-10-31T09:14:05+08:00">2011年10月31日 09:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>比较有创意</p>
+</div>
+ </article>
+</li>
+<li id="comment-90561" class="comment even thread-even depth-1">
+<article id="div-comment-90561" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b6b5197efdf51b8ff4d035dc178a2858?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b6b5197efdf51b8ff4d035dc178a2858?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.obatu.com" class="url" rel="ugc external nofollow">gray</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90561"><time datetime="2011-10-31T09:27:07+08:00">2011年10月31日 09:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哇，原来DSL是这么优美。我想知道文章中提到的jquery的那些div()还有后面的begin,when,end等方法是哪个版本的？还是作者自己用来做为例举而创造出来的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-90562" class="comment byuser comment-author-todd bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90562" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/weidagang2046/" class="url" rel="ugc external nofollow">Todd</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90562"><time datetime="2011-10-31T09:31:24+08:00">2011年10月31日 09:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-90561" rel="nofollow">@gray </a><br/>
+自己写的，不是jQuery的。很简单，你也可以写一个。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90563" class="comment byuser comment-author-todd bypostauthor even thread-even depth-1">
+<article id="div-comment-90563" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/weidagang2046/" class="url" rel="ugc external nofollow">Todd</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90563"><time datetime="2011-10-31T09:32:53+08:00">2011年10月31日 09:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-90557" rel="nofollow">@tcdona </a><br/>
+有道理，不过一般的设计者可能都不会想到把times放到Fixnum类中去。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90567" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90567" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/013f1d226ba8f7275f36e54892fd042e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/013f1d226ba8f7275f36e54892fd042e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Meiosis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90567"><time datetime="2011-10-31T09:44:25+08:00">2011年10月31日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文，赞一个。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90603" class="comment even thread-even depth-1">
+<article id="div-comment-90603" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9353ba172b61dce6554a84462c8b463a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9353ba172b61dce6554a84462c8b463a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">card323</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90603"><time datetime="2011-10-31T12:37:45+08:00">2011年10月31日 12:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>nice article!</p>
+</div>
+ </article>
+</li>
+<li id="comment-90610" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90610" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7fdb9ff847d2735faf2505bdc41efe5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7fdb9ff847d2735faf2505bdc41efe5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">luobo25</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90610"><time datetime="2011-10-31T13:22:38+08:00">2011年10月31日 13:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>点醒了最近的编码中的疑惑，自己设计的api实在太丑陋了，尤其是涉及到时间、异步问题的时候，简直没法看了。<br/>
+比如最近遇到这样一个需求，有n个按钮B0、B1。。。Bn，绑定n个事件：T0、T1。。。Tn。在点击按钮Bm后，要延迟一秒再触发事件Tm。如果在这一秒钟之内，也就是Tm触发前，用户又点击了按钮Bk，那么取消Tm，转而准备在一秒钟后启动Tk。实现出来不难，但是实现起来很不自然(我用java)。有兴趣的同学可以研究一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90614" class="comment byuser comment-author-lancelot even thread-even depth-1">
+<article id="div-comment-90614" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3f7dd25b7f5bf1bec76b273657600eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3f7dd25b7f5bf1bec76b273657600eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">卡卡西.R</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90614"><time datetime="2011-10-31T13:36:50+08:00">2011年10月31日 13:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很赞，特别是异步抽象那一段，感觉非常好。歪个楼啊 :-) 另外关于Time方法和FixNum类的问题，我觉得是不是说明了OO中的两个方面：方法除了作为对象行为的抽象，是否还作为消息的抽象？ 不过后一种抽象有没有可能引发一定的耦合？因为一般来说，对象之间的消息传递往往被用来组织业务逻辑。欢迎讨论！</p>
+</div>
+ </article>
+</li>
+<li id="comment-90617" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90617" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7bd8851f435daf9c7cce1b7022a738c0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7bd8851f435daf9c7cce1b7022a738c0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aaronike</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90617"><time datetime="2011-10-31T13:48:32+08:00">2011年10月31日 13:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有意思，尤其是异步抽象那段，让我想起erlang里的actor模式。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90618" class="comment even thread-even depth-1">
+<article id="div-comment-90618" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49742eec2f07f165cbb84723d61da675?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49742eec2f07f165cbb84723d61da675?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kevin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90618"><time datetime="2011-10-31T13:49:37+08:00">2011年10月31日 13:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我越来越崇拜 todd了</p>
+</div>
+ </article>
+</li>
+<li id="comment-90649" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90649" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/82baa6c815e66455c6d45904468beaef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/82baa6c815e66455c6d45904468beaef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">404</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90649"><time datetime="2011-10-31T15:46:49+08:00">2011年10月31日 15:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>kevin</p>
+</div>
+ </article>
+</li>
+<li id="comment-90653" class="comment even thread-even depth-1">
+<article id="div-comment-90653" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/489c9549e1356975459131598c69579a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/489c9549e1356975459131598c69579a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://finian.cn" class="url" rel="ugc external nofollow">Finian</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90653"><time datetime="2011-10-31T16:03:31+08:00">2011年10月31日 16:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞！最后的异步抽象，貌似现在用得比较多的是Deferred模式，jQuery现在也已经实现了这种接口</p>
+</div>
+ </article>
+</li>
+<li id="comment-90661" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90661" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d3b61bf864967bf2ae57e7facfa08303?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d3b61bf864967bf2ae57e7facfa08303?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cppblog.com/vczh" class="url" rel="ugc external nofollow">vczh</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90661"><time datetime="2011-10-31T16:33:40+08:00">2011年10月31日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-90610" rel="nofollow">@luobo25 </a><br/>
+如果你用Windows API就可以用一个简单的WaitableTimer搞定了，set它，然后不需要了可以cancel然后再set一个，每次set都把一个能代表按钮的id作为参数并加上一个函数指针作为事件，直接解决了您的问题。java我不清楚。</p>
+</div>
+ </article>
+</li>
+<li id="comment-90664" class="comment even thread-even depth-1">
+<article id="div-comment-90664" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d3b61bf864967bf2ae57e7facfa08303?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d3b61bf864967bf2ae57e7facfa08303?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cppblog.com/vczh" class="url" rel="ugc external nofollow">vczh</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90664"><time datetime="2011-10-31T16:35:04+08:00">2011年10月31日 16:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-90614" rel="nofollow">@卡卡西.R </a><br/>
+现在object.method的“点”已经不是那个意思了，已经发展成一种目标为“纯粹想把object放在method前面”的解决方法了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-90697" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90697" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9353ba172b61dce6554a84462c8b463a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9353ba172b61dce6554a84462c8b463a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">card323</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90697"><time datetime="2011-10-31T18:27:26+08:00">2011年10月31日 18:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>忍不住马上用java实现了异步API：D</p>
+</div>
+ </article>
+</li>
+<li id="comment-90731" class="comment even thread-even depth-1">
+<article id="div-comment-90731" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0f836f209597052ba1309bafb3f702f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0f836f209597052ba1309bafb3f702f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oldrev</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90731"><time datetime="2011-10-31T20:04:01+08:00">2011年10月31日 20:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C# 的扩展方法就是为Fluent Interface而生的</p>
+</div>
+ </article>
+</li>
+<li id="comment-90751" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90751" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4342911a7fbe9d0d8c426c0d4f9a0c8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4342911a7fbe9d0d8c426c0d4f9a0c8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ytj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-90751"><time datetime="2011-10-31T21:44:04+08:00">2011年10月31日 21:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得这个很火星的呀，C++标准库中的流(iostream)不就是流畅接口么，那玩意儿15年前就有人用了吧</p>
+<p>而某些第三方库，例如2001年就有的 Boost Spirit 更是整个库都用的这种 API，比如你可以用如下代码解析一个四则运算，看上去就像 EBNF 一样，而且这样做还几乎没有抽象惩罚：<br/>
+expression = term &gt;&gt; *(‘+’ &gt;&gt; term | ‘-‘ &gt;&gt; term);<br/>
+term = factor &gt;&gt; *(‘*’ &gt;&gt; factor | ‘/’ &gt;&gt; factor);<br/>
+factor = uint_<br/>
+| ‘(‘ &gt;&gt; expression &gt;&gt; ‘)’<br/>
+| ‘-‘ &gt;&gt; factor<br/>
+| ‘+’ &gt;&gt; factor;</p>
+</div>
+ </article>
+</li>
+<li id="comment-91100" class="comment even thread-even depth-1">
+<article id="div-comment-91100" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bd3ad3c96b6eac11475a52c2e871515b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bd3ad3c96b6eac11475a52c2e871515b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://moodylee.me" class="url" rel="ugc external nofollow">moody</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-91100"><time datetime="2011-11-01T16:44:59+08:00">2011年11月01日 16:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文。看了这篇后恍然大悟。<br/>
+原来我自己一直在用的单元测试框架Mockito实际上也是定义了一个DSL..</p>
+</div>
+ </article>
+</li>
+<li id="comment-93237" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-93237" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/88e20f686080a9084941621925145598?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/88e20f686080a9084941621925145598?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Chocoboboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-93237"><time datetime="2011-11-07T22:36:21+08:00">2011年11月07日 22:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-90731"><p>
+<strong><a href="#comment-90731" rel="nofollow">oldrev</a> :</strong><br/>
+C# 的扩展方法就是为Fluent Interface而生的
+</p></blockquote>
+<p>严重同意。使用扩展方法即可保证类设计上OO，又可以按需要提供使用上的“流畅”</p>
+</div>
+ </article>
+</li>
+<li id="comment-93407" class="comment even thread-even depth-1">
+<article id="div-comment-93407" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df627875c802a13e4fb8095f3e09675e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df627875c802a13e4fb8095f3e09675e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sarstime</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-93407"><time datetime="2011-11-08T09:58:03+08:00">2011年11月08日 09:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在上家公司就是用internal DSL定义了metadata框架，用来定义，设计config文件，然后通过codegen来生成对应的java/xml/xsd文件的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-93408" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-93408" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df627875c802a13e4fb8095f3e09675e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df627875c802a13e4fb8095f3e09675e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sarstime</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-93408"><time datetime="2011-11-08T09:59:28+08:00">2011年11月08日 09:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-93407" rel="nofollow">@sarstime </a><br/>
+确实定义configuration的时候更自然，但是也同样提高了复杂度和维护的成本。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117503" class="comment even thread-even depth-1">
+<article id="div-comment-117503" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8547a901490e6d2771acf018006fcaca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8547a901490e6d2771acf018006fcaca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">悲剧了</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-117503"><time datetime="2011-12-28T16:02:13+08:00">2011年12月28日 16:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>DSL感觉就是一种思维方式<br/>
+比如java里面的groovy<br/>
+把很多常规的流程化操作 复杂的使用方式逻辑 一些模式用的东西抽象出来 可以使用简洁的方式</p>
+</div>
+ </article>
+</li>
+<li id="comment-123577" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-123577" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6aeb8cbda2d15c344c0b80c67e6d01f4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6aeb8cbda2d15c344c0b80c67e6d01f4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.it-logger.com/about" class="url" rel="ugc external nofollow">Colin Zhang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-123577"><time datetime="2012-01-09T19:55:04+08:00">2012年01月09日 19:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>设计这类的API,不是Java这类强类型语言的强项.<br/>
+若用ruby,groovy等估计就好多了,动态语言写代码确实愉快多了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-143302" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=2153" class="url" rel="ugc external nofollow">理解Javascript的闭包</a> </div>
+</li>
+<li id="comment-143615" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2012/03/%e7%90%86%e8%a7%a3javascript%e7%9a%84%e9%97%ad%e5%8c%85/" class="url" rel="ugc external nofollow">Google Reader分享 » 理解Javascript的闭包</a> </div>
+</li>
+<li id="comment-198126" class="comment even thread-even depth-1">
+<article id="div-comment-198126" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b0f86fa7c8513c44fcafbb05c2c61ecf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b0f86fa7c8513c44fcafbb05c2c61ecf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hyp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5709.html#comment-198126"><time datetime="2012-07-02T18:36:30+08:00">2012年07月02日 18:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-123577" rel="nofollow">@Colin Zhang </a><br/>
+动态语言的确很方便。<br/>
+不过，DSL并没有限制静态语言的发挥，像作者参考的这篇文章http://www.infoq.com/articles/internal-dsls-java。还有，Hibernate的 criteria query 也很好地体现了 Fluent Interface。</p>
+</div>
+ </article>
+</li>
+<li id="comment-707220" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1757" class="url" rel="ugc external nofollow">Technology of Heartbeat #13 | Steve Guan</a> </div>
+</li>
+<li id="comment-852540" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=29" class="url" rel="ugc external nofollow">数据即代码：元驱动编程 | zengine</a> </div>
+</li>
+<li id="comment-1913852" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tech.dev.aixuexi.com/?p=135" class="url" rel="ugc external nofollow">Fluent Interface – 爱学习技术部</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

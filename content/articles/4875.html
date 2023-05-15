@@ -1,0 +1,150 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>一个空格引发的惨剧 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4875 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4875" class="post-content post-4875 post type-post status-publish format-standard hentry category-unixlinux category-misc category-story tag-bumblebee tag-code-review tag-coding tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">一个空格引发的惨剧</span>
+<h1 class="entry-title">一个空格引发的惨剧</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4875.html" title="08:26" rel="bookmark"><time class="entry-date" datetime="2011-06-20T08:26:34+08:00" pubdate="">2011年06月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4875.html#comments" class="comments-link">106 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 159,012 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>你是否相信如果你的程序里没有检查一个变量会导致怎么系统瘫痪？无论你相不相信，这是我一个亲身经历过的案例，你可以在本站的<a title="程序员那些悲催的事儿" href="/articles/3980.html" target="_blank">程序员那些悲催的事儿</a>中找到很多这样的事。这样的事昨天在发生，今天同样在发生。<a title="Unix传奇(上篇)" href="/articles/2322.html" target="_blank">Unix40多年</a>了，在这40年里，程序员发生过各种各样的的惨剧，但是大多数的事情一而再再而三的重演。</p>
+<p>今天的你，可能在开发者各种各样NB的系统，你会相信你的一个空格也能导致系统瘫痪吗？也许你可能很难相信这个事。不过，再下面这个事将告诉你这个血淋淋的事实 —— 一个空格产生的bug可以让你的系统瘫痪。</p>
+<p><a href="https://github.com/MrMEEE/bumblebee">bumblebee</a>是一个开源项目，这个名字也就是变形金刚里的大黄蜂，这个项目是这样介绍自己的——</p>
+<blockquote><p>bumblebee is Optimus support for Linux, with real offloading, and not switchable graphics.. More important.. it works on Optimus Laptops without a graphical multiplexer..</p></blockquote>
+<p>Optimus 是NVIDIA的“优驰”技术，其可以将您的笔记本电脑PC提升到绝佳状态，提供出色的图形性能，并在需要时延长电池续航时间。这个项目是把这个技术移到Linux上来。</p>
+<p>这个项目本来不出名，不过，程序在其安装脚本install.sh里的一个bug让这个项目一下子成了全世界最瞩目的项目，这个bug的fix如下：</p>
+<pre data-enlighter-language="diff" class="EnlighterJSRAW">@@ -348,7 +348,7 @@ case &#34;$DISTRO&#34; in
+-  rm -rf /usr /lib/nvidia-current/xorg/xorg
++  rm -rf /usr/lib/nvidia-current/xorg/xorg</pre>
+<p>看明白了吗？<strong>空格</strong>。这个空格会导致什么样的问题呢？呵呵。你有没有感到菊花一紧？这个bug绝对的霸气外露！真是验证了<a title="如何写出无法维护的代码" href="/articles/4758.html" target="_blank">“如何写出无法维护代码</a>”的那句话——“<strong>测试你的程序是一种懦夫的行为</strong>”。</p>
+<p>不过，最精彩还不是这个bug，而是全世界程序员的对这个bug 的 code review comments，真的相当的欢乐。请强势围望！</p>
+<p><span id="more-4875"></span></p>
+<p style="text-align: center;"><a href="https://github.com/MrMEEE/bumblebee/commit/a047be85247755cdbe0acce6#diff-1">https://github.com/MrMEEE/bumblebee/commit/a047be85247755cdbe0acce6#diff-1</a></p>
+<p style="text-align: left;">重点是其中的很多图片——下面的图片众多。</p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115950761.gif"><img decoding="async" title="clip_image001" src="http://pic003.cnblogs.com/2011/34358/201106/20110620115951113.gif" alt="clip_image001" width="500" height="275"/></a></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062012551463.jpg" alt=""/></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115950761.gif"><br/>
+</a></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062012574297.jpg" alt=""/></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115951580.jpg"><img decoding="async" loading="lazy" title="clip_image002" src="http://pic003.cnblogs.com/2011/34358/201106/20110620115951524.jpg" alt="clip_image002" width="292" height="302" border="0"/></a></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062012590122.jpg" alt=""/></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013022333.jpg" alt=""/></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013033063.jpg" alt=""/></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013042755.jpg" alt=""/></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115954514.jpg"><img decoding="async" loading="lazy" title="clip_image007" src="http://pic003.cnblogs.com/2011/34358/201106/2011062011595582.jpg" alt="clip_image007" width="406" height="455" border="0"/></a></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115958341.jpg"><img decoding="async" loading="lazy" title="clip_image010" src="http://pic003.cnblogs.com/2011/34358/201106/20110620115958644.jpg" alt="clip_image010" width="401" height="299" border="0"/></a></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115958163.jpg"><img decoding="async" loading="lazy" title="clip_image011" src="http://pic003.cnblogs.com/2011/34358/201106/20110620115959784.jpg" alt="clip_image011" width="408" height="404" border="0"/></a></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620115959641.jpg"><img decoding="async" loading="lazy" title="clip_image012" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120001976.jpg" alt="clip_image012" width="400" height="401" border="0"/></a></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013060775.jpg" alt=""/></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620120001777.gif"><img decoding="async" loading="lazy" title="clip_image014" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120001634.gif" alt="clip_image014" width="400" height="463" border="0"/></a></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013073049.jpg" alt=""/></p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120002955.gif" alt="" width="480" height="360" border="0"/></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013083437.jpg" alt=""/></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013090259.jpg" alt=""/></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620120002899.jpg"><img decoding="async" loading="lazy" title="clip_image016" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120002202.jpg" alt="clip_image016" width="512" height="384" border="0"/></a></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013110568.jpg" alt=""/></p>
+<p style="text-align: center;"><img decoding="async" src="http://pic003.cnblogs.com/2011/1/201106/2011062013121496.jpg" alt=""/></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620120002666.jpg"><img decoding="async" loading="lazy" title="clip_image019" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120002718.jpg" alt="clip_image019" width="397" height="804" border="0"/></a></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/20110620120003129.jpg"><img decoding="async" loading="lazy" title="clip_image020" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120003540.jpg" alt="clip_image020" width="594" height="488" border="0"/></a></p>
+<p style="text-align: center;"><a href="http://pic003.cnblogs.com/2011/34358/201106/2011062012000453.jpg"><img decoding="async" loading="lazy" title="clip_image021" src="http://pic003.cnblogs.com/2011/34358/201106/20110620120004356.jpg" alt="clip_image021" width="400" height="290" border="0"/></a></p>
+<p><img decoding="async" class="aligncenter" src="http://pic003.cnblogs.com/2011/1/201106/2011062013135533.jpg" alt=""/></p>
+<p style="text-align: left;">(全文完)</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4875-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">bumblebee</a>, <a href="javascript:void(0)" rel="tag">Code Review</a>, <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>一个空格引发的惨剧</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1907781" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://longxi.me/?p=4002" class="url" rel="ugc external nofollow">升级MySQL – 小溪</a> </div>
+</li>
+<li id="comment-1952180" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://zakhuang.com/%e4%bb%a3%e7%a0%81%e6%b3%a8%e5%85%a5/" class="url" rel="ugc external nofollow">代码注入 – ZakHuang&#39;s Blog</a> </div>
+</li>
+<li id="comment-2185932" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.h5w3.com/82807.html" class="url" rel="ugc external nofollow">【linux】说说你觉得最狂霸酷炫屌炸天的命令-H5W3</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/4875.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/4875.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/4875.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">4875</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

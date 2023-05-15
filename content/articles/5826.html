@@ -1,0 +1,512 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>千万别用MongoDB？真的吗？！ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5826 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5826" class="post-content post-5826 post type-post status-publish format-standard hentry category-datebase category-story tag-10gen tag-database tag-mongodb">
+<header class="entry-header">
+<span class="screen-reader-text">千万别用MongoDB？真的吗？！</span>
+<h1 class="entry-title">千万别用MongoDB？真的吗？！</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5826.html" title="08:28" rel="bookmark"><time class="entry-date" datetime="2011-11-10T08:28:26+08:00" pubdate="">2011年11月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5826.html#comments" class="comments-link">32 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 78,879 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>某人发了一篇<a href="http://pastebin.com/raw.php?i=FD3xe6Jt" target="_blank">Don’t use MongoDB</a>的血泪控诉，我把原文翻译如下，你可以看看。不过，我想我们还要去看看10gen <a href="http://news.ycombinator.com/item?id=3202081" target="_blank">CTO的对此事的回复</a>，我们还要去在<a href="http://www.reddit.com/r/programming/comments/m2b2b/dont_use_mongodb/" target="_blank">Reddit上</a>看看大家的说法，10gen <a href="http://news.ycombinator.com/item?id=3202081" target="_blank">CTO的对此事的回复</a>后面也有一堆人在讨论这个事，还有一些程序员开始去读MongoDB的源码了，呵呵。看样子，说MongoDB的这些事并不是真的。</p>
+<p>10gen CTO 对此事的并不完全知道，其在回复，对些文中的每一条都做了回复。我把其回复的大体意思也放在原文中。不过，很有意思的是那些程序员的讨论。建议大家看看。</p>
+<h3>正文</h3>
+<p>因为各种政治原因，我这段时间没有说什么，但是现在我觉得因为要对社会负责，所以我要阻止大家不要把你们的业务放在MongoDB上。</p>
+<p>我的团队在一个有巨大用户量（一个有千万用户级的大型的公司）系统上使用的MongoDB，这个系统上让MongoDB有非常大的负载。早期，我们以为使用MongoDB会像10gen公司（MongoDB背后的公司）宣扬其在长期性能扩展有很多好处。但是，我们错了，而这个rant(长篇抱怨)就是为了让你不要相信那些所谓的成功经验而和我们一样犯了大错。如果有人能避免你上当，那么就得我写这么多。希望能警醒更多的人。</p>
+<p>注意，对于和10gen打交道的经历来说，他们给予了我们充分了热情和帮助，而且非常地好。但是这并不能成为我不告诉大家他们的产品失败的理由。</p>
+<p><span id="more-5826"></span></p>
+<h4>为什么这么说？</h4>
+<p>数据库应该是正确的，或是仅可能的正确，因为数据库的错误会比其它使用更大。不仅仅是因为其对运行，性能，开销，和其价值影响巨大，还因为其连带的东西。匆忙去去移植TB级的数据相比起去修改代码中的一个逻辑错误来说是一个很巨大的工作。而在系统出问题后需要恢复TB级的数据，而你即被限制住了，你会有一种绝望的感觉。</p>
+<p>数据库是一个很复杂的系统，对于开发者来说就像一个黑盒一样。你需要对你所采用的数据库持绝对信任的态度，信任它会做正确的事，并尽会保持 一致笥和可用性。</p>
+<p>为什么MongoDB会流行？</p>
+<p>说句公道话，我们必需承认MongoDB是流行的，因为下面这些原因让其流行变得很合理：</p>
+<ul>
+<li>它非常容易地运行</li>
+<li>非常自由的Schema模型，而且可以很容易地和JSON类的数据结果映射起来，这对于程序员来于有很大的感染力（它完全符合程序员的逻辑思维），而且，程序员总是在项目可以做技术选型的人。</li>
+<li>成熟和分健壮，有记录，被真实的Use Case测试过，等等。对于那些喜欢选择成熟的技术的系统管理员和运营专业来说，这是一个很典型的选择。</li>
+<li>它单系统，低读并发的性能测试非常令人惊讶，而对于那些没有经验的评估者来说，这基本上来说是最重要的。</li>
+</ul>
+<p>现在，你可能正在开发一个随便玩一玩的网站，或是一个原型，或是那种只考虑开发速度不考虑别的的项目。老实说，对于这种项止，无所谓你用什么样的技术，只要搞定工作就行了。</p>
+<p>但是，如果你想要在MongoDB上搞一个大规模的系统，在上面运行真实的业务，那么，请不要用MongoDB。</p>
+<h4>为什么不？</h4>
+<p>1）MongoDB为了赢得Benchmark测试而默认使用了不安全的写方式</p>
+<p>如果你不调用getLastError()，MongoDB就不会在确认数据库写操作完成就返回了，这会引入至少两种问题：</p>
+<ul>
+<li>在并发的环境下（连接池，等），在一个读操作“完成”后的连续地读操作会出错，MongoDB没有“栅栏条件锁”来知道什么时候完成写。</li>
+<li>未知个数的保存操作会被丢弃，因为保存操作的队列会在不同的地方。比如TCP缓存等。当你和数据库连接因为一些意味情况断开的时候，这些东西就被丢弃了。</li>
+</ul>
+<blockquote>
+<div>10gen CTO 回复： 这和Benchmark没有任何关系，并说这个就是API的设计，其交给用户自己去选择，因为写的方式也有很多种。</div>
+</blockquote>
+<p>2）MongoDB会以令人震惊的方式丢失数据</p>
+<p>下面是一个我们所经历过的它丢数据的列表：</p>
+<ul>
+<li>数据就是丢了，原因未知</li>
+<li>从损坏的数据库中恢复数据不成功，如事务日志。</li>
+<li>主从结点间的数据复制有缺口，导致从结点丢失主结点有的数据。是的，没有CheckSum，并且是的，你还会看到数据复制过去了。</li>
+<li>数据复制有时会停了，没有错误。你可以监控你的复制状态。</li>
+</ul>
+<blockquote>
+<div>10gen CTO 逐一回复：1）从来没有一个数据丢失的BUG我们没有马上fix的事情。你能告诉我你报给我们的问题号吗？我们至少要明的是怎么一回事。如果是我们的问题，我们会马上fix的。2）从损坏了的数据库中不能完全恢复数据 ，这不挺正常的吗？但是如果有主从服务器互为备份应该会好一些。3）请告诉我你的问题号，我们从来没有接到过这样的错误报告。如果有，的确很严重。4）如果是说错误条件发生的时候没有通知，这有可能。另外，你可以监控数据复制的写操作，你可以使用w=2 为getLastError的参数。</div>
+</blockquote>
+<p>3）MongoDB 需要全局写锁来请求写操作</p>
+<p>在写操作频繁的时候，这等同于杀了你。如果你运行一个blog，你也许不会关心这个事，因为你的读写操作不高。</p>
+<blockquote><p>10gen CTO 回复：读写锁永远都是问题，但是2.0会好很多，2.2会解决得更好一些。</p></blockquote>
+<p>4）MongoDB 的Sharding(分区) 在高负载下会停止工作</p>
+<p>在高负载下加一个shard是一场恶梦。Mongo要么会移动其数据块太快而导致DOS攻击产生很多流量占用带宽，要么就完全地拒绝更多的数据块。这会使一个高流量的网站承受着沉重地写操作。</p>
+<blockquote><p>10gen CTO 回复：如果系统已经超过了其负载，那么移动数据当然会变得很难。我每一次的演讲都说得很清楚，不要在系统性能不行的时候才去加shard，这不行的。</p></blockquote>
+<p>5）Mongo 不可靠</p>
+<p>Mongod/配置服务器/mongos的架构确定合理且聪明。不幸的是，mongos完全就是垃圾。在有负载的情况下，它时不时就都会崩溃，有时几个小时，有时几天。进程重启监控有时也不管用，因为他会抛出一些断言会伪造出一个关键线程，其导致进程还在运行。Double Fail。</p>
+<p>最坏的是，唯一可行的方式是在一堆mongos实例前放一个HaProxy(一种负载均衡器)，运行一个作业其缓慢地轮着访问这些mongos实例，并定期kill掉他们，以变可以重新启动新的实例。我没有在开玩笑。</p>
+<blockquote><p>10gen CTO 回复：不可能有这种事，你能不能告诉我更多的细节？</p></blockquote>
+<p>6）MongoDB有一次甚至删除了整个数据库</p>
+<p>MongoDB 1.6，在数据同步配置中，有时会配置了一个错误的结点（经常是一个空结点）是一个最新的数据结点。于是其它同步数据的结果上的<strong>数据就这样被干掉了</strong>（我说的是700GB的好数据），因为其把这个空结点的数据同步回有数据的结点上。数据库永远永远都不应该干这个。如果出现这种问题，数据库应该抛出一个错误而让DBA来选择合理的操作，或是强制使用正确的配置。而不应该删除所有的数据（那天太糟糕了）。</p>
+<p>他们在1.8中修复了这个问题，偶滴神啊。</p>
+<blockquote><p>10gen CTO 回复：找不到这样的事，也找不到相应提交的代码，你能多给点信息吗？</p></blockquote>
+<p>7）发布了一些不应该发布东西</p>
+<p>众所周知，在稳定版里能找到一些尴尬的bug其会导致数据问题——而我们总是在出了问题后他们才告诉我们这些问题，这是因为我们购买了10gen他们那超级诈骗的白金技术支持。他们回应是，发给我们一个hot patch，他们内部叫RC的玩意，然后让这个hot patch运行在我们的数据上。</p>
+<blockquote><p>10gen CTO 回复：关于白金的技术支持，我们所接手的所有问题都会公开，fix也会公开。没有特定的情景，这种事很难讨论。我们会根据不同的情况作出不同的反应。我们希望我们的用户的问题能尽快得到解决。</p></blockquote>
+<p>8）复制器在繁忙的服务器上黯然失色</p>
+<p>复制器经常性的向Master发起DOS攻击，或是复制非常慢，花了巨长无比的时间，而oplog几乎被耗尽（就算是50GB的oplog）。</p>
+<p>我们有一个繁忙的，大的数据集我们不会复制他因为它是动态的。那是令人痛苦的一个月，或是我们需要在选择不同的数据库系统前交叉双指（注：好运的手势）</p>
+<blockquote><p>10gen CTO 回复：这看起来像上服务器负载过重了。我前面提到过了。</p></blockquote>
+<p><strong>但是最糟糕的问题是：</strong></p>
+<p>你可能会说，我这些问题都是过去式了；他们修复了所有这些问题或是他们会在下一版本中修复这些问题；X问题可以用Y实践来减轻。等等，等等。</p>
+<p>不幸的是，你说这些东西一点用也没有。</p>
+<p>真正的问题是，这么多的问题都是首要的问题。 数据库开发者要能hold住比一般程序员更高的标准。也就是说，你的优先级应该像下面这个样子：</p>
+<ol>
+<li>别搞丢数据，对数据要有完全的把握</li>
+<li>通过实践保证可用性</li>
+<li>多结点的性能扩展性</li>
+<li>最小延迟应该保持在99%和95%之间</li>
+<li>每个资源的每秒请求数</li>
+</ol>
+<p>10gen的顺序好像是 #5  为每一，其它项随便，#1 并不在前3位。</p>
+<blockquote><p>10gen CTO 回复：这明显不是真的。看一看我们提交的代码，看一看我们的fix。 我们从来不会在release版中隐藏一个bug。如果我们非常在乎性能的benchmark的话，我们会花精力解决那些锁的问题，这样一来，多线程并发会更快一些。</p>
+<p>MongoDB是一个新生的东西，还有很多东西需要打磨。如果你想来认识一下我们，我们欢迎你来认识一下我们。</p></blockquote>
+<p>这些失败，还有那所暗示的公司的优先级，指出了一个最基本的企业文化的问题，其会让问题出现在任一发布版中：因为他们缺乏尊守必要的数据库系统的设计律条。</p>
+<p>请慎重考虑这些警告。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5826-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">数据库</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">10gen</a>, <a href="javascript:void(0)" rel="tag">Database</a>, <a href="javascript:void(0)" rel="tag">MongoDB</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>千万别用MongoDB？真的吗？！</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-94766" class="comment even thread-even depth-1">
+<article id="div-comment-94766" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/88c1232a5d8f69a5d0da3888eec4083b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/88c1232a5d8f69a5d0da3888eec4083b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小白杨的困惑</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94766"><time datetime="2011-11-10T09:07:34+08:00">2011年11月10日 09:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>部分问题，一般用户可能还接触不到。</p>
+</div>
+ </article>
+</li>
+<li id="comment-94779" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-94779" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a7c042d1b30e8c3790873dcf97b03c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a7c042d1b30e8c3790873dcf97b03c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sixfooter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94779"><time datetime="2011-11-10T09:17:05+08:00">2011年11月10日 09:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哪有软件没bug呢。 关键是对待bug的态度。 积极的改进， 跟踪， fix就好了。</p>
+<p>几乎所有的大公司都犯过看起来不可原谅的错误。 想找到一个完美的不犯错的公司可能还真难。</p>
+</div>
+ </article>
+</li>
+<li id="comment-94795" class="comment even thread-even depth-1">
+<article id="div-comment-94795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d7af1055e9aae35ba04e8436867280a9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d7af1055e9aae35ba04e8436867280a9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Larry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94795"><time datetime="2011-11-10T09:45:45+08:00">2011年11月10日 09:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关键的是这些问题反映出MangoDB是否可靠，是否可以在生产环境中部署。一旦真的遇到了这些问题，那是非常可怕的，任何数据丢失的情况都是不能原谅的啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-94799" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-94799" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0c3f8712b6fc30ec2f62521562e205b7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0c3f8712b6fc30ec2f62521562e205b7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94799"><time datetime="2011-11-10T09:48:57+08:00">2011年11月10日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>10gen CTO挺委屈的.</p>
+</div>
+ </article>
+</li>
+<li id="comment-94805" class="comment even thread-even depth-1">
+<article id="div-comment-94805" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b6b5197efdf51b8ff4d035dc178a2858?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b6b5197efdf51b8ff4d035dc178a2858?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.obatu.com" class="url" rel="ugc external nofollow">gray</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94805"><time datetime="2011-11-10T09:55:42+08:00">2011年11月10日 09:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也是觉得mongodb不是很稳定，所以在选型的时候放弃了。<br/>
+文中有些地方翻译的不够流畅，相对于这篇文章http://heikezhi.com/2011/11/09/dont-use-mongod/，感觉耗子的这篇文章就有点是机器翻译的东西了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-94891" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-94891" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31422e469320faf134cf68340421c5a2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31422e469320faf134cf68340421c5a2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kero</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94891"><time datetime="2011-11-10T13:40:55+08:00">2011年11月10日 13:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>总体感觉NOSQL仍然处于发展阶段，看到它光明未来就好了，关系数据库发展也是一波三折！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-94911" class="comment even thread-even depth-1">
+<article id="div-comment-94911" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lilydjwg.is-programmer.com/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94911"><time datetime="2011-11-10T15:35:55+08:00">2011年11月10日 15:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-94805" rel="nofollow">@gray </a><br/>
+我也觉得黑客志的翻译要好一些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-94921" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-94921" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/37e8431c912cbe3cfcd866b0ea4a6604?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/37e8431c912cbe3cfcd866b0ea4a6604?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zuora.com" class="url" rel="ugc external nofollow">Everest Huang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94921"><time datetime="2011-11-10T16:15:09+08:00">2011年11月10日 16:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>CTO回复的讨论页太长了，其中有人回复“DISCLAIMER: I submitted this story and it is in fact a hoax that has gone too far, you got trolled, truly frightening how gullible most of you are. DO NOT BELIEVE EVERYTHING YOU READ ON THE INTERNET!” ⋯⋯ 后来演化为讨论作者是否欺骗的话题</p>
+</div>
+ </article>
+</li>
+<li id="comment-94932" class="comment even thread-even depth-1">
+<article id="div-comment-94932" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/991bfd9e60c0eef67774bf7bfb922469?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/991bfd9e60c0eef67774bf7bfb922469?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vt</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94932"><time datetime="2011-11-10T17:29:09+08:00">2011年11月10日 17:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>转自 NoSQLFan (<a href="http://blog.nosqlfan.com/html/3409.html" rel="nofollow ugc">http://blog.nosqlfan.com/html/3409.html</a>):</p>
+<p>最新消息：这篇文章的作者已经承认文章只是他的一个恶作剧，他称只是想做个实验，以显示控制一个人的思维是多么容易。但是他提到的案例并非完全没有出现过，这样一篇恶作剧的文章，虽然着实唬了我们一把，但是能够让一些盲目的朋友更谨慎一些。还是有好处的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-94969" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-94969" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/941f1171250158a8f8ec9e2c1b0ce814?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/941f1171250158a8f8ec9e2c1b0ce814?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.csdn.net/Luciferoffans" class="url" rel="ugc external nofollow">Luciferoffans</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94969"><time datetime="2011-11-10T21:25:27+08:00">2011年11月10日 21:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我项目现在就用的是MongoDB，感觉蛮好的呀…</p>
+</div>
+ </article>
+</li>
+<li id="comment-94974" class="comment even thread-even depth-1">
+<article id="div-comment-94974" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/15903ba698fa32d1ef0af088f3e5e2f4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/15903ba698fa32d1ef0af088f3e5e2f4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">程序员</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-94974"><time datetime="2011-11-10T21:40:46+08:00">2011年11月10日 21:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>令我想起了ibm的5×9服务和7×24服务的差别，他们好像在5×9的时间给出错误的操作提示<br/>
+结果用户在5×9之外按提示操作却无法继续时，他就提醒你该买7×24服务了</p>
+</div>
+ </article>
+</li>
+<li id="comment-95592" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-95592" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b03867eaeefb6b3b283eeb95db434319?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b03867eaeefb6b3b283eeb95db434319?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.lichsword.net" class="url" rel="ugc external nofollow">lichsword</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-95592"><time datetime="2011-11-11T16:36:45+08:00">2011年11月11日 16:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>拼写错误“对于这种项止(目hhhh)”</p>
+</div>
+ </article>
+</li>
+<li id="comment-97423" class="comment even thread-even depth-1">
+<article id="div-comment-97423" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/afb7f35ee2f39ceb85981a45fea934d1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/afb7f35ee2f39ceb85981a45fea934d1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.clyce.net" class="url" rel="ugc external nofollow">clyce</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-97423"><time datetime="2011-11-15T23:21:52+08:00">2011年11月15日 23:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实俺觉得就是作者写了个枪文。。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-116000" class="comment byuser comment-author-any odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-116000" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63e61d874da4bd37fcf5ff34cd5ba876?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63e61d874da4bd37fcf5ff34cd5ba876?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Any</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-116000"><time datetime="2011-12-25T17:34:59+08:00">2011年12月25日 17:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人觉得任何软件 都有它的适用性<br/>
+只在bug在一定的可接受范围内<br/>
+觉得还是可以接受</p>
+</div>
+ </article>
+</li>
+<li id="comment-117360" class="comment even thread-even depth-1">
+<article id="div-comment-117360" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e59b09930fa546ed5ec834a6b794b3f6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e59b09930fa546ed5ec834a6b794b3f6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shiwang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-117360"><time datetime="2011-12-28T09:35:12+08:00">2011年12月28日 09:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>软件翻译后再修改的吗，看起来很别扭。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-128611" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-128611" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/119b0bf9c77621999ef33077280c0bbf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/119b0bf9c77621999ef33077280c0bbf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Schubert zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-128611"><time datetime="2012-01-21T00:08:20+08:00">2012年01月21日 00:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，和cassandra一样，都是因错误的架构来凑热闹的</p>
+</div>
+ </article>
+</li>
+<li id="comment-197647" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.imarks.me/archives/841.html" class="url" rel="ugc external nofollow">千万别用MongoDB？真的吗？！ | 马可咪</a> </div>
+</li>
+<li id="comment-203160" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203160" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/86c4c1d1485a3ab86b9895536e4c42b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/86c4c1d1485a3ab86b9895536e4c42b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Eson</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-203160"><time datetime="2012-09-28T15:37:07+08:00">2012年09月28日 15:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不相关评论：<br/>
+42qu.com，注册成功后激活N次都不成功，不过激活邮件发送挺及时的，两分钟就能收到</p>
+</div>
+ </article>
+</li>
+<li id="comment-316693" class="comment even thread-even depth-1">
+<article id="div-comment-316693" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/970b5303cee67097c28324a8b1490ff3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/970b5303cee67097c28324a8b1490ff3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lazypeople</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-316693"><time datetime="2013-03-25T16:04:10+08:00">2013年03月25日 16:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真的…</p>
+</div>
+ </article>
+</li>
+<li id="comment-523869" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e5%a6%82%e4%bd%95%e7%9c%8b%e5%be%85%e6%9c%80%e8%bf%91%e5%af%b9%e4%ba%8e-mongodb-%e7%9a%84%e8%b4%a8%e7%96%91%ef%bc%9f" class="url" rel="ugc external nofollow">如何看待最近对于 MongoDB 的质疑？ - MongoDB - 开发者问答</a> </div>
+</li>
+<li id="comment-1406210" class="comment even thread-even depth-1">
+<article id="div-comment-1406210" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/weishun" class="url" rel="ugc external nofollow">pythonwood</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-1406210"><time datetime="2014-03-27T18:24:40+08:00">2014年03月27日 18:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以我要阻止大家不要把你们的业务放在MongoDB上<br/>
+高考语文：阻止。。不要。。是病句</p>
+</div>
+ </article>
+</li>
+<li id="comment-1438035" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1438035" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/780b1c5e044dff80b390e1fbf1832f7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/780b1c5e044dff80b390e1fbf1832f7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Rainbowlzy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-1438035"><time datetime="2014-04-19T23:47:02+08:00">2014年04月19日 23:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>软件质量是我作为程序员最高的目标，目前还不能确认MongoDB是否可靠，数据的丢失是绝对不能原谅的，否则我们完全可以自行开发自己的数据库，真正敢用在项目当中的数据库产品是需要通过大量的检验和具有绝对的数据安全性。虽然有些问题，还是依旧看好MongoDB，让我们有底气。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1461037" class="comment even thread-even depth-1">
+<article id="div-comment-1461037" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f5d4af124aa37e23d19dbec3506ea5e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f5d4af124aa37e23d19dbec3506ea5e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dogtap</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-1461037"><time datetime="2014-05-14T11:08:30+08:00">2014年05月14日 11:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章还是有点内容，不是喷子文章，最后的设计顺序，挺到位的。数据安全永远是第一位。不想丢工作的话，这个必须保证的啊。现在手游用mongodb 挺多的。要证明自己，就必须出个经典案例的项目。实践才是真理。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1531130" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1531130" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c136eb0136a40e253397f2cfcc1d051?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c136eb0136a40e253397f2cfcc1d051?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fastfood.sinaapp.com/" class="url" rel="ugc external nofollow">xsank</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-1531130"><time datetime="2014-09-11T11:00:37+08:00">2014年09月11日 11:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们也在使用mongodb，用户千万级别，几百g的数据，工作到现在还算良好，没有文章中那么多问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1659618" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.chawenti.com/articles/29079.html" class="url" rel="ugc external nofollow">Nodejs学习笔记（十）— 与MongoDB的交互（mongodb/node-mongodb-native）、MongoDB入门 – porschev | 查问题</a> </div>
+</li>
+<li id="comment-1795249" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wiki.myoa.cf/zh-blog:246" class="url" rel="ugc external nofollow">[NoSQL] 一个使用MangoDB发生的血泪控诉 - MySQL, Oracle Abc Wiki</a> </div>
+</li>
+<li id="comment-1807051" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.aliog.com/95932.html" class="url" rel="ugc external nofollow">MongoDB 初见指南 - 数据库 - 阿里欧歌</a> </div>
+</li>
+<li id="comment-1813668" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1813668" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9c361f4baad1bc06f07f175010095a1e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9c361f4baad1bc06f07f175010095a1e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">meta</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-1813668"><time datetime="2016-03-23T15:02:58+08:00">2016年03月23日 15:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看看挺可怕的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923757" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.eyiyie.com/res/eeBLOG/?p=2243" class="url" rel="ugc external nofollow">千万别用MongoDB？真的吗？！ – 易可信blog系统</a> </div>
+</li>
+<li id="comment-1926167" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.100phone.cn/2018/04/02/mongodb-%e5%9f%ba%e7%a1%80%e5%85%a5%e9%97%a81/" class="url" rel="ugc external nofollow">MongoDB: 基础入门(1) – 全栈之路的技术博客</a> </div>
+</li>
+<li id="comment-2021841" class="comment even thread-even depth-1">
+<article id="div-comment-2021841" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e54aedf1fac4a7798868bbf4713a0f2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e54aedf1fac4a7798868bbf4713a0f2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">罗飞</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5826.html#comment-2021841"><time datetime="2019-09-18T09:52:10+08:00">2019年09月18日 09:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>MongoDB的查询真的很蛋疼啊，真的没有SQL来的方便。。。个人见解</p>
+</div>
+ </article>
+</li>
+<li id="comment-2161289" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/a/11141705.html" class="url" rel="ugc external nofollow">MongoDB 初见指南 – FIXBBS</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

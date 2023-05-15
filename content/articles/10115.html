@@ -1,0 +1,960 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C语言全局变量那些事儿 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10115 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10115" class="post-content post-10115 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C语言全局变量那些事儿</span>
+<h1 class="entry-title">C语言全局变量那些事儿</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10115.html" title="21:16" rel="bookmark"><time class="entry-date" datetime="2013-07-21T21:16:33+08:00" pubdate="">2013年07月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10115.html#comments" class="comments-link">92 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 77,406 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p>作为一名程序员，如果说沉迷一门编程语言算作一种乐趣的话，那么与此同时反过来去黑一门编程语言就是这种乐趣的升华。今天我们就来黑一把C语言，好好展示一下这门经典语言令人抓狂的一面。</p>
+<p>我们知道，全局变量是C语言语法和语义中一个很重要的知识点，首先它的存在意义需要从三个不同角度去理解：对于程序员来说，它是一个记录内容的<strong>变量(variable)</strong>；对于编译/链接器来说，它是一个需要解析的<strong>符号(symbol)</strong>；对于计算机来说，它可能是具有地址的一块<strong>内存(memory)</strong>。其次是语法/语义：从作用域上看，带static关键字的全局变量范围只能限定在文件里，否则会外联到整个模块和项目中；从生存期来看，它是静态的，贯穿整个程序或模块运行期间（<span style="color: #ff0000;"><strong>注意，正是跨单元访问和持续生存周期这两个特点使得全局变量往往成为一段受攻击代码的突破口，了解这一点十分重要</strong></span>）；从空间分配上看，定义且初始化的全局变量在编译时在数据段(.data)分配空间，定义但未初始化的全局变量<strong>暂存(tentative definition)</strong>在.bss段，编译时自动清零，而仅仅是声明的全局变量只能算个符号，寄存在编译器的符号表内，不会分配空间，直到链接或者运行时再重定向到相应的地址上。</p>
+<p>我们将向您展现一下，<strong>非static限定全局变量</strong>在编译/链接以及程序运行时会发生哪些有趣的事情，顺便可以对C编译器/链接器的解析原理管中窥豹。以下示例对ANSI C和GNU C标准都有效，笔者的编译环境是Ubuntu下的GCC-4.4.3。</p>
+<p><span id="more-10115"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%AC%AC%E4%B8%80%E4%B8%AA%E4%BE%8B%E5%AD%90" title="第一个例子">第一个例子</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%AC%AC%E4%BA%8C%E4%B8%AA%E4%BE%8B%E5%AD%90" title="第二个例子">第二个例子</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%AC%AC%E4%B8%89%E4%B8%AA%E4%BE%8B%E5%AD%90" title="第三个例子">第三个例子</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%AC%AC%E5%9B%9B%E4%B8%AA%E4%BE%8B%E5%AD%90" title="第四个例子">第四个例子</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%80%E4%B8%AA%E4%BE%8B%E5%AD%90"></span>第一个例子<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">/* t.h */
+#ifndef _H_
+#define _H_
+int a;
+#endif
+
+/* foo.c */
+#include &lt;stdio.h&gt;
+#include &#34;t.h&#34;
+
+struct {
+   char a;
+   int b;
+} b = { 2, 4 };
+
+int main();
+
+void foo()
+{
+    printf(&#34;foo:\t(&amp;a)=0x%08x\n\t(&amp;b)=0x%08x\n
+        \tsizeof(b)=%d\n\tb.a=%d\n\tb.b=%d\n\tmain:0x%08x\n&#34;,
+        &amp;a, &amp;b, sizeof b, b.a, b.b, main);
+}
+
+/* main.c */
+#include &lt;stdio.h&gt;
+#include &#34;t.h&#34;
+
+int b;
+int c;
+
+int main()
+{
+    foo();
+    printf(&#34;main:\t(&amp;a)=0x%08x\n\t(&amp;b)=0x%08x\n
+        \t(&amp;c)=0x%08x\n\tsize(b)=%d\n\tb=%d\n\tc=%d\n&#34;,
+        &amp;a, &amp;b, &amp;c, sizeof b, b, c);
+	return 0;
+}
+</pre>
+<p>Makefile如下：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">test: main.o foo.o
+	gcc -o test main.o foo.o
+
+main.o: main.c
+foo.o: foo.c
+
+clean:
+	rm *.o test
+</pre>
+<p>运行情况：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">foo:	(&amp;a)=0x0804a024
+	(&amp;b)=0x0804a014
+	sizeof(b)=8
+	b.a=2
+	b.b=4
+	main:0x080483e4
+main:	(&amp;a)=0x0804a024
+	(&amp;b)=0x0804a014
+	(&amp;c)=0x0804a028
+	size(b)=4
+	b=2
+	c=0
+</pre>
+<p>这个项目里我们定义了四个全局变量，t.h头文件定义了一个整型a，main.c里定义了两个整型b和c并且未初始化，foo.c里定义了一个初始化了的结构体，还定义了一个main的函数指针变量。由于C语言每个源文件单独编译，所以t.h分别包含了两次，所以int a就被定义了两次。两个源文件里变量b和函数指针变量main被重复定义了，实际上可以看做代码段的地址。但编译器并未报错，只给出一条警告：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">/usr/bin/ld: Warning: size of symbol &#39;b&#39; changed from 4 in main.o to 8 in foo.o</code></p>
+<p>运行程序发现，main.c打印中b大小是4个字节，而foo.c是8个字节，因为sizeof关键字是编译时决议，而源文件中对b类型定义不一样。但令人惊奇的是无论是在main.c还是foo.c中，a和b都是相同的地址，也就是说，a和b被定义了两次，b还是不同类型，但内存映像中只有一份拷贝。我们还看到，main.c中b的值居然就是foo.c中结构体第一个成员变量b.a的值，这证实了前面的推断——<strong>即便存在多次定义，内存中只有一份初始化的拷贝。</strong>另外在这里c是置身事外的一个独立变量。</p>
+<p>为何会这样呢？这涉及到<strong>C编译器对多重定义的全局符号的解析和链接。</strong>在编译阶段，编译器将全局符号信息隐含地编码在可重定位目标文件的符号表里。这里有个<strong>“强符号(strong)”</strong>和<strong>“弱符号(weak)”</strong>的概念——前者指的是定义并且初始化了的变量，比如foo.c里的结构体b，后者指的是未定义或者定义但未初始化的变量，比如main.c里的整型b和c，还有两个源文件都包含头文件里的a。当符号被多重定义时，GNU链接器(ld)使用以下规则决议：</p>
+<ul>
+<li>不允许出现多个相同强符号。</li>
+</ul>
+<ul>
+<li>如果有一个强符号和多个弱符号，则选择强符号。</li>
+</ul>
+<ul>
+<li>如果有多个弱符号，那么先决议到size最大的那个，如果同样大小，则按照链接顺序选择第一个。</li>
+</ul>
+<p>像上面这个例子中，全局变量a和b存在重复定义。如果我们将main.c中的b初始化赋值，那么就存在两个强符号而违反了规则一，编译器报错。如果满足规则二，则仅仅提出警告，实际运行时决议的是foo.c中的强符号。而变量a都是弱符号，所以只选择一个（按照目标文件链接时的顺序）。</p>
+<p>事实上，这种规则是C语言里的一个大坑，编译器对这种全局变量多重定义的“纵容”很可能会无端修改某个变量，导致程序不确定行为。如果你还没有意识到事态严重性，我再举个例子。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%BA%8C%E4%B8%AA%E4%BE%8B%E5%AD%90"></span>第二个例子<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">/* foo.c */
+#include &lt;stdio.h&gt;;
+
+struct {
+    int a;
+    int b;
+} b = { 2, 4 };
+
+int main();
+
+void foo()
+{
+    printf(&#34;foo:\t(&amp;b)=0x%08x\n\tsizeof(b)=%d\n
+        \tb.a=%d\n\tb.b=%d\n\tmain:0x%08x\n&#34;,
+        &amp;b, sizeof b, b.a, b.b, main);
+}
+
+/* main.c */
+#include &lt;stdio.h&gt;
+
+int b;
+int c;
+
+int main()
+{
+    if (0 == fork()) {
+        sleep(1);
+        b = 1;
+        printf(&#34;child:\tsleep(1)\n\t(&amp;b):0x%08x\n
+            \t(&amp;c)=0x%08x\n\tsizeof(b)=%d\n\tset b=%d\n\tc=%d\n&#34;,
+            &amp;b, &amp;c, sizeof b, b, c);
+        foo();
+    } else {
+        foo();
+        printf(&#34;parent:\t(&amp;b)=0x%08x\n\t(&amp;c)=0x%08x\n
+            \tsizeof(b)=%d\n\tb=%d\n\tc=%d\n\twait child...\n&#34;,
+            &amp;b, &amp;c, sizeof b, b, c);
+        wait(-1);
+        printf(&#34;parent:\tchild over\n\t(&amp;b)=0x%08x\n
+            \t(&amp;c)=0x%08x\n\tsizeof(b)=%d\n\tb=%d\n\tc=%d\n&#34;,
+            &amp;b, &amp;c, sizeof b, b, c);
+    }
+    return 0;
+}</pre>
+<p>运行情况如下：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">foo:	(&amp;b)=0x0804a020
+	sizeof(b)=8
+	b.a=2
+	b.b=4
+	main:0x080484c8
+parent:	(&amp;b)=0x0804a020
+	(&amp;c)=0x0804a034
+	sizeof(b)=4
+	b=2
+	c=0
+	wait child...
+child:	sleep(1)
+	(&amp;b):0x0804a020
+	(&amp;c)=0x0804a034
+	sizeof(b)=4
+	set b=1
+	c=0
+foo:	(&amp;b)=0x0804a020
+	sizeof(b)=8
+	b.a=1
+	b.b=4
+	main:0x080484c8
+parent:	child over
+	(&amp;b)=0x0804a020
+	(&amp;c)=0x0804a034
+	sizeof(b)=4
+	b=2
+	c=0
+</pre>
+<p>（说明一点，运行情况是直接输出到stdout的打印，笔者曾经将./test输出重定向到log中，结果发现打印的执行序列不一致，所以采用默认输出。）</p>
+<p>这是一个<strong>多进程环境</strong>，首先我们看到无论父进程还是子进程，main.c还是foo.c，全局变量b和c的地址仍然是一致的（当然只是个<strong>逻辑地址</strong>），而且对b的大小不同模块仍然有不同的决议。这里值得注意的是，我们在子进程中对变量b进行赋值动作，从此子进程本身包括foo()调用中，整型b以及结构体成员b.a的值都是1，而父进程中整型b和结构体成员b.a的值仍是2，但它们显示的逻辑地址仍是一致的。</p>
+<p>个人认为可以这样解释，fork创建新进程时，子进程获得了父进程上下文“镜像”（自然包括全局变量），虚拟地址相同但属于不同的进程空间，而且此时真正映射的物理地址中只有一份拷贝，所以b的值是相同的（都是2）。随后子进程对b改写，触发了操作系统的<strong>写时拷贝(copy on write)</strong>机制，这时物理内存中才产生真正的两份拷贝，分别映射到不同进程空间的虚拟地址上，但虚拟地址的值本身仍然不变，这对于应用程序来说是透明的，具有隐瞒性。</p>
+<p>还有一点值得注意，这个示例编译时没有出现第一个示例的警告，即对变量b的sizeof决议，笔者也不知道为什么，或许是GCC的一个bug？</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%89%E4%B8%AA%E4%BE%8B%E5%AD%90"></span>第三个例子<span class="ez-toc-section-end"></span></h4>
+<p>这个例子代码同上一个一致，只不过我们将foo.c做成一个静态链接库libfoo.a进行链接，这里只给出Makefile的改动。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">test: main.o foo.o
+	ar rcs libfoo.a foo.o
+	gcc -static -o test main.o libfoo.a
+
+main.o: main.c
+foo.o: foo.c
+
+clean:
+	rm -f *.o test
+</pre>
+<p>运行情况如下：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">foo:	(&amp;b)=0x080ca008
+	sizeof(b)=8
+	b.a=2
+	b.b=4
+	main:0x08048250
+parent:	(&amp;b)=0x080ca008
+	(&amp;c)=0x080cc084
+	sizeof(b)=4
+	b=2
+	c=0
+	wait child...
+child:	sleep(1)
+	(&amp;b):0x080ca008
+	(&amp;c)=0x080cc084
+	sizeof(b)=4
+	set b=1
+	c=0
+foo:	(&amp;b)=0x080ca008
+	sizeof(b)=8
+	b.a=1
+	b.b=4
+	main:0x08048250
+parent:	child over
+	(&amp;b)=0x080ca008
+	(&amp;c)=0x080cc084
+	sizeof(b)=4
+	b=2
+	c=0
+</pre>
+<p>从这个例子看不出有啥差别，只不过使用<strong>静态链接</strong>后，全局变量加载的地址有所改变，b和c的地址之间似乎相隔更远了些。不过这次编译器倒是给出了变量b的sizeof决议警告。</p>
+<p>到此为止，有些人可能会对上面的例子嗤之以鼻，觉得这不过是列举了C语言的某些特性而已，算不上黑。有些人认为既然如此，对于一切全局变量要么用static限死，要么定义同时初始化，杜绝弱符号，以便在编译时报错检测出来。只要小心地使用，C语言还是很完美的嘛~对于抱这样想法的人，我只想说，请你在夜深人静的时候竖起耳朵仔细聆听，你很可能听到Dennis Richie在九泉之下邪恶的笑声——不，与其说是嘲笑，不如说是诅咒……</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E5%9B%9B%E4%B8%AA%E4%BE%8B%E5%AD%90"></span>第四个例子<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">/* foo.c */
+#include &lt;stdio.h&gt;
+
+const struct {
+    int a;
+    int b;
+} b = { 3, 3 };
+
+int main();
+
+void foo()
+{
+    b.a = 4;
+    b.b = 4;
+    printf(&#34;foo:\t(&amp;b)=0x%08x\n\tsizeof(b)=%d\n
+        \tb.a=%d\n\tb.b=%d\n\tmain:0x%08x\n&#34;,
+        &amp;b, sizeof b, b.a, b.b, main);
+}
+
+/* t1.c */
+#include &lt;stdio.h&gt;
+
+int b = 1;
+int c = 1;
+
+int main()
+{
+    int count = 5;
+    while (count-- &gt; 0) {
+        t2();
+        foo();
+        printf(&#34;t1:\t(&amp;b)=0x%08x\n\t(&amp;c)=0x%08x\n
+            \tsizeof(b)=%d\n\tb=%d\n\tc=%d\n&#34;,
+            &amp;b, &amp;c, sizeof b, b, c);
+        sleep(1);
+    }
+    return 0;
+}
+
+/* t2.c */
+#include &lt;stdio.h&gt;
+
+int b;
+int c;
+
+int t2()
+{
+    printf(&#34;t2:\t(&amp;b)=0x%08x\n\t(&amp;c)=0x%08x\n
+        \tsizeof(b)=%d\n\tb=%d\n\tc=%d\n&#34;,
+        &amp;b, &amp;c, sizeof b, b, c);
+    return 0;
+}</pre>
+<p>Makefile脚本：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">export LD_LIBRARY_PATH:=.
+
+all: test
+	./test
+
+test: t1.o t2.o
+	gcc -shared -fPIC -o libfoo.so foo.c
+	gcc -o test t1.o t2.o -L. -lfoo
+
+t1.o: t1.c
+t2.o: t2.c
+
+.PHONY:clean
+clean:
+	rm -f *.o *.so test*
+</pre>
+<p>执行结果：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">./test
+t2:	(&amp;b)=0x0804a01c
+	(&amp;c)=0x0804a020
+	sizeof(b)=4
+	b=1
+	c=1
+foo:	(&amp;b)=0x0804a01c
+	sizeof(b)=8
+	b.a=4
+	b.b=4
+	main:0x08048564
+t1:	(&amp;b)=0x0804a01c
+	(&amp;c)=0x0804a020
+	sizeof(b)=4
+	b=4
+	c=4
+t2:	(&amp;b)=0x0804a01c
+	(&amp;c)=0x0804a020
+	sizeof(b)=4
+	b=4
+	c=4
+foo:	(&amp;b)=0x0804a01c
+	sizeof(b)=8
+	b.a=4
+	b.b=4
+	main:0x08048564
+t1:	(&amp;b)=0x0804a01c
+	(&amp;c)=0x0804a020
+	sizeof(b)=4
+	b=4
+	c=4
+	...</pre>
+<p>其实前面几个例子只是开胃小菜而已，真正的大坑终于出现了！而且这次编译器既没报错也没警告，但我们确实眼睁睁地看到作为main()中强符号的b被改写了，而且一旁的c也“躺枪”了。眼尖的读者发现，这次foo.c是作为动态链接库运行时加载的，当t1第一次调用t2时，libfoo.so还未加载，一旦调用了foo函数，b立马中弹，而且<strong>c的地址居然还相邻着b，这使得c一同中弹了。</strong>不过笔者有些无法解释这种行为的原因，有种说法是强符号的全局变量在数据段中是连续分布的（相应地弱符号暂存在.bss段或者符号表里），或许可以上报GNU的编译器开发小组。</p>
+<p>另外笔者尝试过将t1.c中的b和c定义前面加上<strong>const限定词</strong>，编译器仍然默认通过，但程序在main()中第一次调用foo()时触发了Segment fault异常导致奔溃，在foo.c里使用指针改写它也一样。<strong>推断这是GCC对const常量所在地址启用了类似操作系统写保护机制，但我无法确定早期版本的GCC是否会让这个const常量被改写而程序不会奔溃。</strong></p>
+<p>至于<strong>volatile关键词</strong>之于全局变量，自测似乎没有影响。</p>
+<p>怎么样？看了最后一个例子是否有点“不明觉厉”呢？C语言在你心目中是否还是当初那个“纯洁”、“干净”、“行为一致”的姑娘呢？也许趁着你不注意的时候她会偷偷给你戴顶绿帽，这一切都是通过全局变量，特别在动态链接的环境下，就算全部定义成强符号仍然无法为编译器所察觉。而一些IT界“恐怖分子”也经常<strong>将恶意代码包装成全局变量注入到root权限下存在漏洞的操作序列中，</strong>就像著名的栈溢出攻击那样。某一天当你傻傻地看着一个程序出现未定义的行为却无法定位原因的时候，请不要忘记Richie大爷那来自九泉之下最深沉的“问候”~</p>
+<p>或许有些人会偷换概念，把这一切归咎于编译器和链接器身上，认为这同语言无关，但我要提醒你，正是编译/链接器的行为支撑了整个语言的语法和语义。你可以反过来思考一下为何C的胞弟C++推出<strong>“命名空间(namespace)”</strong>的概念，或者你可以使用其它高级语言，对于重定义的全局变量是否能通过编译这一关。</p>
+<p>所以请时刻谨记，<span style="color: #ff0000;"><strong>C是一门很恐怖的语言！</strong></span></p>
+<p>P.S.题外话写在最后。我无意挑起语言之争，只是就事论事地去<strong>“黑(hack)</strong><strong>”</strong>一门语言而已，而且要黑就要黑得有理有力有层次，还要带点娱乐精神。其实黑一门语言并非什么尖端复杂的技术，个人觉得起码要做到两点：</p>
+<ul>
+<li><strong>亲自动手写测试程序。</strong>动手写测试程序是开发人员必备的基础技能，只有现成的代码才能让人心服口服，那些只会停留在口头上的争论只能算作cheap hack。</li>
+</ul>
+<ul>
+<li><strong>测试程序不能依赖于不成熟的代码。</strong>软件开发99%以上的bug都是基于不合格(substandard)开发人员导致，这并不能怪罪于语言以及编译器本身。使用诸如#define TRUE FALSE或者#define NULL 1之类的trick来黑C语言只能证明此人很有娱乐精神而不是真正的”hack value”，拿老北京梨园行当里的一句话——“那是下三滥的玩意儿”。</li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10115-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C语言全局变量那些事儿</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-616296" class="comment even thread-even depth-1">
+<article id="div-comment-616296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f34f58f19bb9df6b94ac032ac371dc19?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f34f58f19bb9df6b94ac032ac371dc19?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HansomeDragon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-616296"><time datetime="2013-07-28T09:53:41+08:00">2013年07月28日 09:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不明觉厉，又涨姿势了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-616302" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-616302" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f34f58f19bb9df6b94ac032ac371dc19?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f34f58f19bb9df6b94ac032ac371dc19?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HansomeDragon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-616302"><time datetime="2013-07-28T09:55:13+08:00">2013年07月28日 09:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不明觉厉，又涨姿势了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-616537" class="comment even thread-even depth-1">
+<article id="div-comment-616537" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9087d0a1f252fcb4c22abc68349173d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9087d0a1f252fcb4c22abc68349173d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">voider</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-616537"><time datetime="2013-07-28T12:57:04+08:00">2013年07月28日 12:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后一个例子不能说明c语言恐怖吧？我认为这只是动态链接机制的一个特点：它不做类型检查，而可能引起的一个问题而已。动态库的特点是运行时调用，因此它不会做太多的假设和限定是合理的，正如C语言本身也允许类型的强制转换和赋值，这是合法的行为，但这是“不安全”的。所以，它的“恐怖“反映可它的灵活和强大，言行不一也只是使用者对它的错误使用。换句话说：谁这样用全局变量谁傻x了，哈哈~~！</p>
+</div>
+ </article>
+</li>
+<li id="comment-616581" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-616581" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/163ff78f027277f2c3e3af49b34e8397?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/163ff78f027277f2c3e3af49b34e8397?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hmgle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-616581"><time datetime="2013-07-28T13:44:58+08:00">2013年07月28日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这和语言无关, 这是动态链接时的全局符号介入现象(Global Symbol Interpose). 具体可看 “程序员的自我修养” p217 ~ p218. 下面是文字引用该书:<br/>
+“当一个符号需要被加入全局符号表时, 如果相同的符号名已经存在, 则后加入的符号被忽略.”</p>
+</div>
+ </article>
+</li>
+<li id="comment-620095" class="comment even thread-even depth-1">
+<article id="div-comment-620095" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/390105a4ab80cde30259b6c6bd055be4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/390105a4ab80cde30259b6c6bd055be4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">E7</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-620095"><time datetime="2013-07-30T10:49:33+08:00">2013年07月30日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>高端黑，链接的时候只认符号的，类型神马的早没了，所标识的内存也是同一段内存，以最大的为准，所以你说它是指针它就是指针，你说它是整形就是整形，lz对C了解还不够透彻</p>
+</div>
+ </article>
+</li>
+<li id="comment-624575" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e9%85%b7%e5%a3%b3%e7%83%ad%e6%96%87%ef%bc%9ac%e8%af%ad%e8%a8%80%e5%85%a8%e5%b1%80%e5%8f%98%e9%87%8f%e9%82%a3%e4%ba%9b%e4%ba%8b%e5%84%bf" class="url" rel="ugc external nofollow">酷壳热文：C语言全局变量那些事儿 - Sina App Engine - 开发者第2225548个问答</a> </div>
+</li>
+<li id="comment-624876" class="comment even thread-even depth-1">
+<article id="div-comment-624876" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/798db2626737edc0f2c029fce8a9b180?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/798db2626737edc0f2c029fce8a9b180?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">walkingsk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-624876"><time datetime="2013-08-01T11:50:31+08:00">2013年08月01日 11:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>题外话<br/>
+struct结构中的成员名是b；struct结构的一个实例也是b；另一文件中还有个int类型的b；<br/>
+这种写法值得推荐么？</p>
+<p>反正我不趟这浑水</p>
+</div>
+ </article>
+</li>
+<li id="comment-627594" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-627594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8872ff54b598697090a6a30d40db2470?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8872ff54b598697090a6a30d40db2470?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">noahsarkzhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-627594"><time datetime="2013-08-02T10:12:11+08:00">2013年08月02日 10:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>const限定词的变量是被合并到.text段中了，而.text段是只读的，这个操作系统管理的。对.text字段进行写操作就会出现Segment fault了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-630784" class="comment even thread-even depth-1">
+<article id="div-comment-630784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/112ed0ced660be4971bd15d9a9f4d97f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/112ed0ced660be4971bd15d9a9f4d97f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://none" class="url" rel="ugc external nofollow">owen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-630784"><time datetime="2013-08-03T14:40:36+08:00">2013年08月03日 14:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇博客没什么意思, 感觉不如删掉吧.</p>
+</div>
+ </article>
+</li>
+<li id="comment-633784" class="comment byuser comment-author-full_of_bull bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-633784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://oops_geekchina@googlegroups.com" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-633784"><time datetime="2013-08-04T12:17:25+08:00">2013年08月04日 12:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原来如此：Assuming all data is initialized, both static const and external (global) const will go in text and both non-const-qualified static and non-const-qualified external will go in data. As for bss, modern binary formats like ELF actually have separate bss for constant and nonconstant zero data.<br/>
+<a href="#comment-627594" rel="nofollow">@noahsarkzhang </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-639892" class="comment even thread-even depth-1">
+<article id="div-comment-639892" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/308f51b6766f6e658b5df8405a5844a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/308f51b6766f6e658b5df8405a5844a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">amwtke</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-639892"><time datetime="2013-08-06T14:08:14+08:00">2013年08月06日 14:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个问题其实跟C语言的符号决议策略有关。<br/>
+正式因为c语言是一个文件一个o来链接的，所以GCC不能对处于不同文件的相同名称的全局变量进行预判，而且GCC的linker也不能识别类型，所以导致了这个问题的出现，而且也是C语言的一个特点。<br/>
+C语言有强类型与弱类型之分，初始化了的全局变量属于强类型，而没有初始化的属于弱类型。GCC的linker对于多个o文件中即有强类型也有弱类型的策略是：按照强类型的大小来链接，链接后的目标文件只有一个强类型引用，即初始化了的那个。如果初始化了的强类型大小大于其他的弱类型，则GCC linker不会报出警告，如果小于则会报一条警告信息提示，运行时会出错。<br/>
+其实这个特性可以用来判断链接的不同版本的库引用，比如pthread的多线程版本还是单线程。这个C语言的特性在《程序员的自我修养》一书中有详细解释。不能说C语言恐怖，只是C比较合适黑客使用吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-640210" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-640210" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce2e6179b39f0b501d1826f94061dc5b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce2e6179b39f0b501d1826f94061dc5b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zery</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-640210"><time datetime="2013-08-06T16:28:33+08:00">2013年08月06日 16:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>尼玛，就这水平玩C，到处都是坑。</p>
+</div>
+ </article>
+</li>
+<li id="comment-642274" class="comment even thread-even depth-1">
+<article id="div-comment-642274" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf7164acbd80c63c58256d131d2ab77d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf7164acbd80c63c58256d131d2ab77d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">frank</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-642274"><time datetime="2013-08-07T13:30:14+08:00">2013年08月07日 13:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章充分说明良好的编程习惯是多么重要~</p>
+</div>
+ </article>
+</li>
+<li id="comment-647322" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-647322" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b11b6fe62a1196c417f73895099a99be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b11b6fe62a1196c417f73895099a99be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">才盛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-647322"><time datetime="2013-08-10T00:53:19+08:00">2013年08月10日 00:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓老大， 虽然很长知识， 从没想过这种东西。 但是我也赞同ls @E7的观点， 第三个例子 链接库时没有 进行强符号的覆盖检查， 这是链接时的问题了吧？ 虽然 我也觉得这个问题好坑， 但是编程时注意一下域的概念就可以避免了。可否这样理解:”语言没有完美， 我们在了解语言特性的基础上，进行程序设计时尽可能的防止写出坑的代码” 。 您在电话面试我的时候，给我提出的种种意见，我一直都记得，也在自我反省。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-648880" class="comment even thread-even depth-1">
+<article id="div-comment-648880" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf58432148b643a8b4c41c3901b81d1b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf58432148b643a8b4c41c3901b81d1b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/articles/10115.html#jtss-tsina" class="url" rel="ugc">YYX</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-648880"><time datetime="2013-08-10T18:26:05+08:00">2013年08月10日 18:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>唉，别绕弯子 直接来本质的。就是编译器 连接器 的工作原理，与语言本身毫无关系</p>
+</div>
+ </article>
+</li>
+<li id="comment-660258" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-660258" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">幻の上帝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-660258"><time datetime="2013-08-14T22:05:33+08:00">2013年08月14日 22:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>要说什么东西麻烦先确定论域。<br/>
+ISO C没有正式的“全局”、（作为名词的）variable和symbol的概念，对memory的概念也相当含混（不保证能有你想象的“地址”关联），更没有所谓的.bss和.text。虽然tentative definition这种槽点满载的渣特性倒的确是正儿八斤的玩意儿，不过完全不是这篇文章说的意思。<br/>
+直接说吧——这篇文章在说什么方言的什么实现？</p>
+</div>
+ </article>
+</li>
+<li id="comment-660867" class="comment even thread-even depth-1">
+<article id="div-comment-660867" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7fe2148fc859f2f28c2b4ba0b1940d10?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7fe2148fc859f2f28c2b4ba0b1940d10?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Kane</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-660867"><time datetime="2013-08-15T00:59:22+08:00">2013年08月15日 00:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在大多数语言中, 全局变量（例如Java中的public static变量）都是一把双刃剑，很强大但也很危险。对C语言掌控力不够的时候能不用全局变量就不要用，毕竟很多时候都是可以避免的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-779511" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://itblog.cc/518.html" class="url" rel="ugc external nofollow">C++模板”&gt;&gt;”问题与编译器词法消歧 – IT技术博客大全</a> </div>
+</li>
+<li id="comment-803056" class="comment even thread-even depth-1">
+<article id="div-comment-803056" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d427f753c2b3830b88c2500e90aebd60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d427f753c2b3830b88c2500e90aebd60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">listener</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-803056"><time datetime="2013-10-11T17:50:02+08:00">2013年10月11日 17:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>曾经出现过类似的问题，在windows动态库模版上面被坑了一把。</p>
+</div>
+ </article>
+</li>
+<li id="comment-824429" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.shaizhan.net/%e8%8f%9c%e9%b8%9f%e5%9c%a8c%e8%af%ad%e8%a8%80%e7%bc%96%e8%af%91%ef%bc%8c%e9%93%be%e6%8e%a5%e6%97%b6%e5%8f%af%e8%83%bd%e9%81%87%e5%88%b0%e7%9a%84%e4%b8%a4%e4%b8%aa%e9%97%ae%e9%" class="url" rel="ugc external nofollow">菜鸟在C语言编译，链接时可能遇到的两个问题 – Jack47 | 晒站网 | 关注互联网创业网站的每个动态</a> </div>
+</li>
+<li id="comment-825016" class="comment even thread-even depth-1">
+<article id="div-comment-825016" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b4ef5269bbba69d26a1e52b80ea849a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b4ef5269bbba69d26a1e52b80ea849a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">White</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-825016"><time datetime="2013-10-18T23:06:48+08:00">2013年10月18日 23:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么说“全局变量往往成为一段受攻击代码的突破口”？求LZ解答~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-830421" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-830421" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/Jack47" class="url" rel="ugc external nofollow">Jack47</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-830421"><time datetime="2013-10-20T10:36:52+08:00">2013年10月20日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可以和这篇一起结合着读：菜鸟在C语言编译，链接时可能遇到的两个问题 <a href="http://www.cnblogs.com/Jack47/p/multiply-defined-global-symbols-static-libraries-resolve-reference.html" rel="nofollow ugc">http://www.cnblogs.com/Jack47/p/multiply-defined-global-symbols-static-libraries-resolve-reference.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-864938" class="comment even thread-even depth-1">
+<article id="div-comment-864938" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7820364d49477f6c861b78e6e364be2a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7820364d49477f6c861b78e6e364be2a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">捕风捉影</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-864938"><time datetime="2013-10-31T16:22:17+08:00">2013年10月31日 16:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作者认为这个是定义了一个函数指针— int main();<br/>
+我只能呵呵了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-909352" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=17" class="url" rel="ugc external nofollow">C语言全局变量那些事儿 | multiprocess</a> </div>
+</li>
+<li id="comment-924757" class="comment even thread-even depth-1">
+<article id="div-comment-924757" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a0c2f70904bff2300c49fb69a0e3d33e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a0c2f70904bff2300c49fb69a0e3d33e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wilddragon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-924757"><time datetime="2013-11-13T17:18:30+08:00">2013年11月13日 17:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哥哥，请不要在头文件中定义变量，请通过extern来声明变量。<br/>
+请在.c中定义变量，如果不想变量被其他模块引用，请在变量前加上stastic。</p>
+<p>在头文件中定义变量，是导致你说列举的编译器混乱的根源。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1049355" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/158.html" class="url" rel="ugc external nofollow">C语言全局变量那些事儿 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1058672" class="comment even thread-even depth-1">
+<article id="div-comment-1058672" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bed231c61c81e4e46b1fd2e2036de69c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bed231c61c81e4e46b1fd2e2036de69c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">池中物</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1058672"><time datetime="2013-12-12T13:55:52+08:00">2013年12月12日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一个代码， 居然认为 int a 会被定义2次？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1152376" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1152376" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a013abbd4249cb3aa1f3f751396f4591?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a013abbd4249cb3aa1f3f751396f4591?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1152376"><time datetime="2014-01-07T21:22:45+08:00">2014年01月07日 21:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>黑得高端、大气、上档次！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1166933" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.scuzn.com/?p=178" class="url" rel="ugc external nofollow">C语言全局变量那些事儿 | 同欣网络</a> </div>
+</li>
+<li id="comment-1214323" class="comment byuser comment-author-jkand1 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1214323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1214323"><time datetime="2014-01-22T17:05:13+08:00">2014年01月22日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，又学习了。gcc貌似有些编译选项可以让编译条件变得很严格，排除掉一些runtime error；另一方面，一些linux开始渐渐不再采用gcc作为默认的编译器，这是不是也在证明gcc在诸多方面的不完善呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1302396" class="comment even thread-even depth-1">
+<article id="div-comment-1302396" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3d41704c773c98aadcebe3161371fec0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3d41704c773c98aadcebe3161371fec0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kulong0105</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1302396"><time datetime="2014-02-23T13:07:52+08:00">2014年02月23日 13:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也这么理解的~~~<a href="#comment-602684" rel="nofollow">@Timothy Qiu </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1302419" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1302419" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3d41704c773c98aadcebe3161371fec0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3d41704c773c98aadcebe3161371fec0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kulong0105</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1302419"><time datetime="2014-02-23T13:21:50+08:00">2014年02月23日 13:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-605324"><p>
+<strong><a href="#comment-605324" rel="nofollow">蛮子罗</a> :</strong><br/>
+难道我错了吗？<br/>
+/* t.h */<br/>
+#ifndef _H_<br/>
+#define _H_<br/>
+int a;<br/>
+#endif<br/>
+会有两次定义吗？ 不是通过符号被选择编译了吗？ 编译main.c时，符号_H_被定义，在编译foo.c的时候这个地方不编译啊，怎么会定义两次int a;
+</p></blockquote>
+<p>会的，因为编译是以单个.c文件进行的。 变量和函数不一样，变量如果不加extern就表示定义，而函数则不同。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1412304" class="comment even thread-even depth-1">
+<article id="div-comment-1412304" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6db013151f5f8663255aaa5adac89925?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6db013151f5f8663255aaa5adac89925?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">QueTing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1412304"><time datetime="2014-04-02T10:25:49+08:00">2014年04月02日 10:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-616537" rel="nofollow">@voider </a><br/>
+极度赞同~！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1558896" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1558896" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09ba99f058bbec58b051665eaba0014e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09ba99f058bbec58b051665eaba0014e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">黑夜逃跑</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1558896"><time datetime="2014-09-30T09:19:06+08:00">2014年09月30日 09:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我对作者文章中的提到的”还定义了一个main的函数指针变量”的说法不是很理解。这应该是一个单纯的函数声明啊。<br/>
+不知道是不是我的理解上有问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1679953" class="comment even thread-even depth-1">
+<article id="div-comment-1679953" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/847fef3cc15f53f9ab58d1e99fca5c9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/847fef3cc15f53f9ab58d1e99fca5c9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ranger_ray</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1679953"><time datetime="2015-03-24T22:10:54+08:00">2015年03月24日 22:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#include </p>
+<p>const struct {<br/>
+int a;<br/>
+int b;<br/>
+} b = { 3, 3 };</p>
+<p>int main();</p>
+<p>void foo()<br/>
+{<br/>
+b.a = 4;<br/>
+b.b = 4;<br/>
+printf(“foo:\t(&amp;b)=0x%08x\n\tsizeof(b)=%d\n<br/>
+\tb.a=%d\n\tb.b=%d\n\tmain:0x%08x\n”,<br/>
+&amp;b, sizeof b, b.a, b.b, main);<br/>
+}<br/>
+b 不是const吗？在foo里面不能被修改吧，我在自己的vs2013上测试，编译是不能通过的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1718899" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1718899" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0c563efcf3fd514d98c7b3e7eb086b09?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0c563efcf3fd514d98c7b3e7eb086b09?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">CoffeeIris</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1718899"><time datetime="2015-06-08T14:51:42+08:00">2015年06月08日 14:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1679953" rel="nofollow">@ranger_ray </a><br/>
+我直接在linux系统下面验证的，编译无法通过，提示错误信息：<br/>
+assignment of a member ‘a’ in read-only object</p>
+</div>
+ </article>
+</li>
+<li id="comment-1718903" class="comment even thread-even depth-1">
+<article id="div-comment-1718903" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0c563efcf3fd514d98c7b3e7eb086b09?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0c563efcf3fd514d98c7b3e7eb086b09?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">CoffeeIris</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1718903"><time datetime="2015-06-08T14:56:27+08:00">2015年06月08日 14:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1302419"><p>
+<strong><a href="#comment-1302419" rel="nofollow">kulong0105</a> :</strong></p>
+<blockquote cite="#commentbody-605324"><p>
+<strong><a href="#comment-605324" rel="nofollow">蛮子罗</a> :</strong><br/>
+难道我错了吗？<br/>
+/* t.h */<br/>
+#ifndef _H_<br/>
+#define _H_<br/>
+int a;<br/>
+#endif<br/>
+会有两次定义吗？ 不是通过符号被选择编译了吗？ 编译main.c时，符号_H_被定义，在编译foo.c的时候这个地方不编译啊，怎么会定义两次int a;
+</p></blockquote>
+<p>会的，因为编译是以单个.c文件进行的。 变量和函数不一样，变量如果不加extern就表示定义，而函数则不同。
+</p></blockquote>
+<p>这个回复我不太明白，就算foo.c和main.c单独编译，由于宏的作用，不是会保证头文件只会被定义一次吗？还请高人明示啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1823272" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1823272" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2f2456ff55c500172c3f36673374ebe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2f2456ff55c500172c3f36673374ebe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cn.joamom.com" class="url" rel="ugc external nofollow">韩国时尚购物起义</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1823272"><time datetime="2016-04-30T15:05:46+08:00">2016年04月30日 15:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不关注自己的心灵，无法得到真正的快乐和自由。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825126" class="comment even thread-even depth-1">
+<article id="div-comment-1825126" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ede780201530c2ea33a5d51464fbb895?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ede780201530c2ea33a5d51464fbb895?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mazinkaiser</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1825126"><time datetime="2016-05-03T09:30:26+08:00">2016年05月03日 09:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-616581" rel="nofollow">@hmgle </a><br/>
+不好意思，今天才看到回复您。根据您的回复，您不觉得您的说法正好反了吗。t1.c中先出现的b、c符号，然后在运行时动态链接器才装载libfoo.so，libfoo.so中的符号反而不应该覆盖前一个符号才对。而且我用readelf -r命令查看了test的重定位信息，其中根本就没有有关于b、c的符号，证明此时bc符号已经解析了。对于出现的问题我在网上了只找到了一句话可能能够解释：“如果多个不同的动态库，拥有相同的全局变量名，则最后加载的动态库中的全局变量会冲掉之前加载的全局变量，导致结果异常（程序正常工作）”。最后把网址也发给您：http://blog.csdn.net/zdl1016/article/details/9015447，一口气给您说了这么多，如果有不正确的地方，欢迎您批评指正。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1830827" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1830827" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7e07ca91470df4c799d73609cd25365?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7e07ca91470df4c799d73609cd25365?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hmgle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10115.html/comment-page-2#comment-1830827"><time datetime="2016-05-12T14:28:33+08:00">2016年05月12日 14:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1825126" rel="nofollow">@mazinkaiser </a><br/>
+你没有明白这段话“当一个符号需要被加入全局符号表时, 如果相同的符号名已经存在, 则后加入的符号被忽略”的意思。<br/>
+当链接阶段时，因为符号表已经有 b 这个符号了，’struct { int a; int b;} b = { 3, 3 };’ 这里的b 就不会覆盖原来的b, 经过重定位之后， b.a = 4 操作的实际就是 b 的地址，相当于 b = 4，b.b = 4 实际上操作的是 c 的地址，相当于执行了 c=4</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370246" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2317440" class="url" rel="ugc external nofollow">C/C++中的重复定义bug - 算法网</a> </div>
+</li>
+<li id="comment-2371084" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/119669" class="url" rel="ugc external nofollow">「2014-2-8」Reading a blog on the pain points of Global Variables of C language | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10115.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10115.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">10115</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

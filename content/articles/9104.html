@@ -1,0 +1,530 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>sed 简明教程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9104 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9104" class="post-content post-9104 post type-post status-publish format-standard hentry category-unixlinux category-tools tag-linux tag-sed tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">sed 简明教程</span>
+<h1 class="entry-title">sed 简明教程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9104.html" title="08:36" rel="bookmark"><time class="entry-date" datetime="2013-02-20T08:36:48+08:00" pubdate="">2013年02月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9104.html#comments" class="comments-link">209 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 380,055 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-9126" src="/uploads/2013/02/sed-superman.png" alt="" width="216" height="216" srcset="" sizes="(max-width: 216px) 100vw, 216px"/>awk于1977年出生，今年36岁本命年，sed比awk大2-3岁，awk就像林妹妹，sed就是宝玉哥哥了。所以 <a title="AWK 简明教程" href="/articles/9070.html" target="_blank" rel="noopener noreferrer">林妹妹跳了个Topless</a>，他的哥哥sed坐不住了，也一定要出来抖一抖。</p>
+<p>sed全名叫stream editor，流编辑器，用程序的方式来编辑文本，相当的hacker啊。sed基本上就是玩正则模式匹配，所以，玩sed的人，正则表达式一般都比较强。</p>
+<p>同样，本篇文章不会说sed的全部东西，你可以参看<a href="http://www.gnu.org/software/sed/manual/sed.html" target="_blank" rel="noopener noreferrer">sed的手册</a>，我这里主要还是想和大家竞争一下那些从手机指缝间或马桶里流走的时间，用这些时间来学习一些东西。当然，接下来的还是要靠大家自己双手。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%94%A8s%E5%91%BD%E4%BB%A4%E6%9B%BF%E6%8D%A2" title="用s命令替换">用s命令替换</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%A4%9A%E4%B8%AA%E5%8C%B9%E9%85%8D" title="多个匹配">多个匹配</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%9C%86%E6%8B%AC%E5%8F%B7%E5%8C%B9%E9%85%8D" title="圆括号匹配">圆括号匹配</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#sed%E7%9A%84%E5%91%BD%E4%BB%A4" title="sed的命令">sed的命令</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#N%E5%91%BD%E4%BB%A4" title="N命令">N命令</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#a%E5%91%BD%E4%BB%A4%E5%92%8Ci%E5%91%BD%E4%BB%A4" title="a命令和i命令">a命令和i命令</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#c%E5%91%BD%E4%BB%A4" title="c命令">c命令</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#d%E5%91%BD%E4%BB%A4" title="d命令">d命令</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#p%E5%91%BD%E4%BB%A4" title="p命令">p命令</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%87%A0%E4%B8%AA%E7%9F%A5%E8%AF%86%E7%82%B9" title="几个知识点">几个知识点</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#Pattern_Space" title="Pattern Space">Pattern Space</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-12" href="#Address" title="Address">Address</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-13" href="#%E5%91%BD%E4%BB%A4%E6%89%93%E5%8C%85" title="命令打包">命令打包</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-14" href="#Hold_Space" title="Hold Space">Hold Space</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%94%A8s%E5%91%BD%E4%BB%A4%E6%9B%BF%E6%8D%A2"></span>用s命令替换<span class="ez-toc-section-end"></span></h4>
+<p>我使用下面的这段文本做演示：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat pets.txt
+This is my cat
+  my cat&#39;s name is betty
+This is my dog
+  my dog&#39;s name is frank
+This is my fish
+  my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam</pre>
+<p>把其中的my字符串替换成Hao Chen’s，下面的语句应该很好理解（s表示替换命令，/my/表示匹配my，/Hao Chen’s/表示把匹配替换成Hao Chen’s，/g 表示一行上的替换所有的匹配）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#34;s/my/Hao Chen&#39;s/g&#34; pets.txt
+This is Hao Chen&#39;s cat
+  Hao Chen&#39;s cat&#39;s name is betty
+This is Hao Chen&#39;s dog
+  Hao Chen&#39;s dog&#39;s name is frank
+This is Hao Chen&#39;s fish
+  Hao Chen&#39;s fish&#39;s name is george
+This is Hao Chen&#39;s goat
+  Hao Chen&#39;s goat&#39;s name is adam</pre>
+<p>注意：如果你要使用单引号，那么你没办法通过\’这样来转义，就有双引号就可以了，在双引号内可以用\”来转义。</p>
+<p><span id="more-9104"></span></p>
+<p>再注意：上面的sed并没有对文件的内容改变，只是把处理过后的内容输出，如果你要写回文件，你可以使用重定向，如：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#34;s/my/Hao Chen&#39;s/g&#34; pets.txt &gt; hao_pets.txt</code></p>
+<p>或使用 -i 参数直接修改文件内容：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ sed -i &#34;s/my/Hao Chen&#39;s/g&#34; pets.txt</code></p>
+<p>在每一行最前面加点东西：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/^/#/g&#39; pets.txt
+#This is my cat
+#  my cat&#39;s name is betty
+#This is my dog
+#  my dog&#39;s name is frank
+#This is my fish
+#  my fish&#39;s name is george
+#This is my goat
+#  my goat&#39;s name is adam</pre>
+<p>在每一行最后面加点东西：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/$/ --- /g&#39; pets.txt
+This is my cat ---
+  my cat&#39;s name is betty ---
+This is my dog ---
+  my dog&#39;s name is frank ---
+This is my fish ---
+  my fish&#39;s name is george ---
+This is my goat ---
+  my goat&#39;s name is adam ---</pre>
+<p>顺手介绍一下正则表达式的一些最基本的东西：</p>
+<ul>
+<li> <code>^</code> 表示一行的开头。如：<code>/^#/</code> 以#开头的匹配。</li>
+<li> <code>$</code> 表示一行的结尾。如：<code>/}$/</code> 以}结尾的匹配。</li>
+<li> <code>\&lt;</code> 表示词首。 如：<code>\&lt;abc</code> 表示以 abc 为首的詞。</li>
+<li> <code>\&gt;</code> 表示词尾。 如：<code>abc\&gt;</code> 表示以 abc 結尾的詞。</li>
+<li> <code>.</code> 表示任何单个字符。</li>
+<li> <code>*</code> 表示某个字符出现了0次或多次。</li>
+<li> <code>[ ]</code> 字符集合。 如：<code>[abc]</code> 表示匹配a或b或c，还有 <code>[a-zA-Z]</code> 表示匹配所有的26个字符。如果其中有^表示反，如 <code>[^a]</code> 表示非a的字符</li>
+</ul>
+<p>正规则表达式是一些很牛的事，比如我们要去掉某html中的tags：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">
+
+&lt;b&gt;This&lt;/b&gt; is what &lt;span style=&#34;text-decoration: underline;&#34;&gt;I&lt;/span&gt; meant. Understand?
+
+</pre>
+<p>看看我们的sed命令</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># 如果你这样搞的话，就会有问题
+$ sed &#39;s/&lt;.*&gt;//g&#39; html.txt
+ Understand?
+
+# 要解决上面的那个问题，就得像下面这样。
+# 其中的&#39;[^&gt;]&#39; 指定了除了&gt;的字符重复0次或多次。
+$ sed &#39;s/&lt;[^&gt;]*&gt;//g&#39; html.txt
+This is what I meant. Understand?</pre>
+<p>我们再来看看指定需要替换的内容：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="4">$ sed &#34;3s/my/your/g&#34; pets.txt
+This is my cat
+  my cat&#39;s name is betty
+This is your dog
+  my dog&#39;s name is frank
+This is my fish
+  my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam</pre>
+<p>下面的命令只替换第3到第6行的文本。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="4,5,6,7">$ sed &#34;3,6s/my/your/g&#34; pets.txt
+This is my cat
+  my cat&#39;s name is betty
+This is your dog
+  your dog&#39;s name is frank
+This is your fish
+  your fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam</pre>
+<p> </p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat my.txt
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george
+This is my goat, my goat&#39;s name is adam</pre>
+<p>只替换每一行的第一个s：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/s/S/1&#39; my.txt
+ThiS is my cat, my cat&#39;s name is betty
+ThiS is my dog, my dog&#39;s name is frank
+ThiS is my fish, my fish&#39;s name is george
+ThiS is my goat, my goat&#39;s name is adam</pre>
+<p>只替换每一行的第二个s：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/s/S/2&#39; my.txt
+This iS my cat, my cat&#39;s name is betty
+This iS my dog, my dog&#39;s name is frank
+This iS my fish, my fish&#39;s name is george
+This iS my goat, my goat&#39;s name is adam</pre>
+<p>只替换第一行的第3个以后的s：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/s/S/3g&#39; my.txt
+This is my cat, my cat&#39;S name iS betty
+This is my dog, my dog&#39;S name iS frank
+This is my fiSh, my fiSh&#39;S name iS george
+This is my goat, my goat&#39;S name iS adam</pre>
+<h4><span class="ez-toc-section" id="%E5%A4%9A%E4%B8%AA%E5%8C%B9%E9%85%8D"></span>多个匹配<span class="ez-toc-section-end"></span></h4>
+<p>如果我们需要一次替换多个模式，可参看下面的示例：（第一个模式把第一行到第三行的my替换成your，第二个则把第3行以后的This替换成了That）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;1,3s/my/your/g; 3,$s/This/That/g&#39; my.txt
+This is your cat, your cat&#39;s name is betty
+This is your dog, your dog&#39;s name is frank
+That is your fish, your fish&#39;s name is george
+That is my goat, my goat&#39;s name is adam</pre>
+<p>上面的命令等价于：（注：下面使用的是sed的-e命令行参数）</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">sed -e &#39;1,3s/my/your/g&#39; -e &#39;3,$s/This/That/g&#39; my.txt</code></p>
+<p>我们可以使用&amp;来当做被匹配的变量，然后可以在基本左右加点东西。如下所示：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/my/[&amp;]/g&#39; my.txt
+This is [my] cat, [my] cat&#39;s name is betty
+This is [my] dog, [my] dog&#39;s name is frank
+This is [my] fish, [my] fish&#39;s name is george
+This is [my] goat, [my] goat&#39;s name is adam</pre>
+<h4><span class="ez-toc-section" id="%E5%9C%86%E6%8B%AC%E5%8F%B7%E5%8C%B9%E9%85%8D"></span>圆括号匹配<span class="ez-toc-section-end"></span></h4>
+<p>使用圆括号匹配的示例：（圆括号括起来的正则表达式所匹配的字符串会可以当成变量来使用，sed中使用的是\1,\2…）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;s/This is my \([^,&amp;]*\),.*is \(.*\)/\1:\2/g&#39; my.txt
+cat:betty
+dog:frank
+fish:george
+goat:adam</pre>
+<p>上面这个例子中的正则表达式有点复杂，解开如下（去掉转义字符）：</p>
+<p>正则为：This is my ([^,]*),.*is (.*)<br/>
+匹配为：This is my (cat),……….is (betty)</p>
+<p>然后：\1就是cat，\2就是betty</p>
+<h4><span class="ez-toc-section" id="sed%E7%9A%84%E5%91%BD%E4%BB%A4"></span>sed的命令<span class="ez-toc-section-end"></span></h4>
+<p>让我们回到最一开始的例子pets.txt，让我们来看几个命令：</p>
+<h5><span class="ez-toc-section" id="N%E5%91%BD%E4%BB%A4"></span>N命令<span class="ez-toc-section-end"></span></h5>
+<p>先来看N命令 —— 把下一行的内容纳入当成缓冲区做匹配。</p>
+<p>下面的的示例会把原文本中的偶数行纳入奇数行匹配，而s只匹配并替换一次，所以，就成了下面的结果：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;N;s/my/your/&#39; pets.txt
+This is your cat
+  my cat&#39;s name is betty
+This is your dog
+  my dog&#39;s name is frank
+This is your fish
+  my fish&#39;s name is george
+This is your goat
+  my goat&#39;s name is adam</pre>
+<p>也就是说，原来的文件成了：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">This is my cat\n  my cat&#39;s name is betty
+This is my dog\n  my dog&#39;s name is frank
+This is my fish\n  my fish&#39;s name is george
+This is my goat\n  my goat&#39;s name is adam</pre>
+<p>这样一来，下面的例子你就明白了，</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;N;s/\n/,/&#39; pets.txt
+This is my cat,  my cat&#39;s name is betty
+This is my dog,  my dog&#39;s name is frank
+This is my fish,  my fish&#39;s name is george
+This is my goat,  my goat&#39;s name is adam</pre>
+<h5><span class="ez-toc-section" id="a%E5%91%BD%E4%BB%A4%E5%92%8Ci%E5%91%BD%E4%BB%A4"></span>a命令和i命令<span class="ez-toc-section-end"></span></h5>
+<p>a命令就是append， i命令就是insert，它们是用来添加行的。如：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="2,12"># 其中的1i表明，其要在第1行前插入一行（insert）
+$ sed &#34;1 i This is my monkey, my monkey&#39;s name is wukong&#34; my.txt
+This is my monkey, my monkey&#39;s name is wukong
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george
+This is my goat, my goat&#39;s name is adam
+
+# 其中的1a表明，其要在最后一行后追加一行（append）
+$ sed &#34;$ a This is my monkey, my monkey&#39;s name is wukong&#34; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my monkey, my monkey&#39;s name is wukong
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george
+This is my goat, my goat&#39;s name is adam</pre>
+<p>我们可以运用匹配来添加文本：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="6"># 注意其中的/fish/a，这意思是匹配到/fish/后就追加一行
+$ sed &#34;/fish/a This is my monkey, my monkey&#39;s name is wukong&#34; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george
+This is my monkey, my monkey&#39;s name is wukong
+This is my goat, my goat&#39;s name is adam</pre>
+<p>下面这个例子是对每一行都挺插入：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#34;/my/a ----&#34; my.txt
+This is my cat, my cat&#39;s name is betty
+----
+This is my dog, my dog&#39;s name is frank
+----
+This is my fish, my fish&#39;s name is george
+----
+This is my goat, my goat&#39;s name is adam
+----</pre>
+<h5><span class="ez-toc-section" id="c%E5%91%BD%E4%BB%A4"></span>c命令<span class="ez-toc-section-end"></span></h5>
+<p>c 命令是替换匹配行</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#34;2 c This is my monkey, my monkey&#39;s name is wukong&#34; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my monkey, my monkey&#39;s name is wukong
+This is my fish, my fish&#39;s name is george
+This is my goat, my goat&#39;s name is adam
+
+$ sed &#34;/fish/c This is my monkey, my monkey&#39;s name is wukong&#34; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my monkey, my monkey&#39;s name is wukong
+This is my goat, my goat&#39;s name is adam</pre>
+<h5><span class="ez-toc-section" id="d%E5%91%BD%E4%BB%A4"></span>d命令<span class="ez-toc-section-end"></span></h5>
+<p>删除匹配行</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#39;/fish/d&#39; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my goat, my goat&#39;s name is adam
+
+$ sed &#39;2d&#39; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my fish, my fish&#39;s name is george
+This is my goat, my goat&#39;s name is adam
+
+$ sed &#39;2,$d&#39; my.txt
+This is my cat, my cat&#39;s name is betty</pre>
+<h5><span class="ez-toc-section" id="p%E5%91%BD%E4%BB%A4"></span>p命令<span class="ez-toc-section-end"></span></h5>
+<p>打印命令</p>
+<p>你可以把这个命令当成grep式的命令</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># 匹配fish并输出，可以看到fish的那一行被打了两遍，
+# 这是因为sed处理时会把处理的信息输出
+$ sed &#39;/fish/p&#39; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george
+This is my fish, my fish&#39;s name is george
+This is my goat, my goat&#39;s name is adam
+
+# 使用n参数就好了
+$ sed -n &#39;/fish/p&#39; my.txt
+This is my fish, my fish&#39;s name is george
+
+# 从一个模式到另一个模式
+$ sed -n &#39;/dog/,/fish/p&#39; my.txt
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george
+
+#从第一行打印到匹配fish成功的那一行
+$ sed -n &#39;1,/fish/p&#39; my.txt
+This is my cat, my cat&#39;s name is betty
+This is my dog, my dog&#39;s name is frank
+This is my fish, my fish&#39;s name is george</pre>
+<h4><span class="ez-toc-section" id="%E5%87%A0%E4%B8%AA%E7%9F%A5%E8%AF%86%E7%82%B9"></span>几个知识点<span class="ez-toc-section-end"></span></h4>
+<p>好了，下面我们要介绍四个sed的基本知识点：</p>
+<h5><span class="ez-toc-section" id="Pattern_Space"></span>Pattern Space<span class="ez-toc-section-end"></span></h5>
+<p>第零个是关于-n参数的，大家也许没看懂，没关系，我们来看一下sed处理文本的伪代码，并了解一下Pattern Space的概念：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">foreach line in file {
+    //放入把行Pattern_Space
+    Pattern_Space &lt;= line;
+
+    // 对每个pattern space执行sed命令
+    Pattern_Space &lt;= EXEC(sed_cmd, Pattern_Space);
+
+    // 如果没有指定 -n 则输出处理后的Pattern_Space
+    if (sed option hasn&#39;t &#34;-n&#34;)  {
+       print Pattern_Space
+    }
+}</pre>
+<h5><span class="ez-toc-section" id="Address"></span>Address<span class="ez-toc-section-end"></span></h5>
+<p>第一个是关于address，几乎上述所有的命令都是这样的（注：其中的!表示匹配成功后是否执行命令）</p>
+<p><strong>[address[,address]][!]{cmd}</strong></p>
+<p>address可以是一个数字，也可以是一个模式，你可以通过逗号要分隔两个address 表示两个address的区间，参执行命令cmd，伪代码如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">bool bexec = false
+foreach line in file {
+    if ( match(address1) ){
+        bexec = true;
+    }
+
+    if ( bexec == true) {
+        EXEC(sed_cmd);
+    }
+
+    if ( match (address2) ) {
+        bexec = false;
+    }
+}</pre>
+<p>关于address可以使用相对位置，如：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># 其中的+3表示后面连续3行
+$ sed &#39;/dog/,+3s/^/# /g&#39; pets.txt
+This is my cat
+  my cat&#39;s name is betty
+# This is my dog
+#   my dog&#39;s name is frank
+# This is my fish
+#   my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam</pre>
+<h5><span class="ez-toc-section" id="%E5%91%BD%E4%BB%A4%E6%89%93%E5%8C%85"></span>命令打包<span class="ez-toc-section-end"></span></h5>
+<p>第二个是cmd可以是多个，它们可以用分号分开，可以用大括号括起来作为嵌套命令。下面是几个例子：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="12,21,31">$ cat pets.txt
+This is my cat
+  my cat&#39;s name is betty
+This is my dog
+  my dog&#39;s name is frank
+This is my fish
+  my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam
+
+# 对3行到第6行，执行命令/This/d
+$ sed &#39;3,6 {/This/d}&#39; pets.txt
+This is my cat
+  my cat&#39;s name is betty
+  my dog&#39;s name is frank
+  my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam
+
+# 对3行到第6行，匹配/This/成功后，再匹配/fish/，成功后执行d命令
+$ sed &#39;3,6 {/This/{/fish/d}}&#39; pets.txt
+This is my cat
+  my cat&#39;s name is betty
+This is my dog
+  my dog&#39;s name is frank
+  my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam
+
+# 从第一行到最后一行，如果匹配到This，则删除之；如果前面有空格，则去除空格
+$ sed &#39;1,${/This/d;s/^ *//g}&#39; pets.txt
+my cat&#39;s name is betty
+my dog&#39;s name is frank
+my fish&#39;s name is george
+my goat&#39;s name is adam </pre>
+<h5><span class="ez-toc-section" id="Hold_Space"></span>Hold Space<span class="ez-toc-section-end"></span></h5>
+<p>第三个我们再来看一下 Hold Space</p>
+<p>接下来，我们需要了解一下Hold Space的概念，我们先来看四个命令：</p>
+<p>g： 将hold space中的内容拷贝到pattern space中，原来pattern space里的内容清除<br/>
+G： 将hold space中的内容append到pattern space\n后<br/>
+h： 将pattern space中的内容拷贝到hold space中，原来的hold space里的内容被清除<br/>
+H： 将pattern space中的内容append到hold space\n后<br/>
+x： 交换pattern space和hold space的内容</p>
+<p>这些命令有什么用？我们来看两个示例吧，用到的示例文件是：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat t.txt
+one
+two
+three</pre>
+<p>第一个示例：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ sed &#39;H;g&#39; t.txt
+one
+
+one
+two
+
+one
+two
+three</pre>
+<p>是不是有点没看懂，我作个图你就看懂了。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9118" src="/uploads/2013/02/sed_demo_00.jpg" alt="" width="592" height="404" srcset="" sizes="(max-width: 592px) 100vw, 592px"/></p>
+<p>第二个示例，反序了一个文件的行：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ sed &#39;1!G;h;$!d&#39; t.txt
+three
+two
+one</pre>
+<p>其中的 ‘1!G;h;$!d’ 可拆解为三个命令</p>
+<ul>
+<li>1!G —— 只有第一行不执行G命令，将hold space中的内容append回到pattern space</li>
+<li>h —— 第一行都执行h命令，将pattern space中的内容拷贝到hold space中</li>
+<li>$!d —— 除了最后一行不执行d命令，其它行都执行d命令，删除当前行</li>
+</ul>
+<p>这个执行序列很难理解，做个图如下大家就明白了：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9110" src="/uploads/2013/02/sed_demo.jpg" alt="" width="623" height="316" srcset="" sizes="(max-width: 623px) 100vw, 623px"/></p>
+<p>就先说这么多吧，希望对大家有用。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9104-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">编程工具</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">sed</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>sed 简明教程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2199684" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.bilibilifaka.com/?p=7165" class="url" rel="ugc external nofollow">编程小技巧之 Linux 文本处理下令（二） – bilibilifaka</a> </div>
+</li>
+<li id="comment-2200250" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.winkp.com/5916/.html" class="url" rel="ugc external nofollow">编程小技巧之 Linux 文本处理命令（二）-云科普blog</a> </div>
+</li>
+<li id="comment-2207282" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.bilibilifaka.com/7183.html" class="url" rel="ugc external nofollow">编程小技巧之 Linux 文本处理下令（二） - bilibili的blog</a> </div>
+</li>
+<li id="comment-2277911" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2277911" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5aa0208633d222358be0b5d4938ddaa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5aa0208633d222358be0b5d4938ddaa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://*" class="url" rel="ugc external nofollow">*</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9104.html/comment-page-5#comment-2277911"><time datetime="2021-07-21T16:50:33+08:00">2021年07月21日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>替换那个/3g是每行第三个后面还是第一行第三行后面，您的说明和输出显示不匹配</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2289566" class="comment even depth-2">
+<article id="div-comment-2289566" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ef5e51435e1adcc46206ac14396f97e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ef5e51435e1adcc46206ac14396f97e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">PPPoE</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9104.html/comment-page-5#comment-2289566"><time datetime="2021-08-19T14:23:34+08:00">2021年08月19日 14:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>每行的第三个开始替换，这个还是需要自己都试一下就很明白了</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2371033" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.05vt.com/xtyw/1589.html" class="url" rel="ugc external nofollow">Linux运维基础技能： 脚本编程与Linux命令 - 吾爱分享</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9104.html/comment-page-4#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9104.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/9104.html/comment-page-3#comments">3</a>
+<a class="page-numbers" href="/articles/9104.html/comment-page-4#comments">4</a>
+<span aria-current="page" class="page-numbers current">5</span> <span id="cp_post_id">9104</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

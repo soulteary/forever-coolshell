@@ -1,0 +1,595 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>你可能不知道的Shell | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8619 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8619" class="post-content post-8619 post type-post status-publish format-standard hentry category-unixlinux category-misc category-tools tag-bash tag-linux tag-shell tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">你可能不知道的Shell</span>
+<h1 class="entry-title">你可能不知道的Shell</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8619.html" title="08:19" rel="bookmark"><time class="entry-date" datetime="2012-11-23T08:19:24+08:00" pubdate="">2012年11月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/404null" title="View all posts by 404null" rel="author">404null</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8619.html#comments" class="comments-link">149 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 139,449 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>Shell也叫做命令行界面，它是*nix操作系统下用户和计算机的交互界面。Shell这个词是指操作系统中提供访问内核服务的程序。</p>
+<p>这篇文章向大家介绍Shell一些非广为人知、但却实用有趣的知识，权当品尝shell主食后的甜点吧。</p>
+<h4>科普</h4>
+<p>先科普几个你可能不知道的事实：</p>
+<ul>
+<li>Shell几乎是和Unix操作系统一起诞生，第一个Unix Shell是肯·汤普逊（Ken Thompson）以Multics上的Shell为模范在1971年改写而成，并命名Thompson sh。即便是后来流行的bash（shell的一种变体），它的年龄实际上比当前流行的所有的Linux kernel都大，可谓在Linux系统上是先有Shell再有Kernel。</li>
+</ul>
+<ul>
+<li>当前绝大部分*nix和MacOS操作系统里的默认的Shell都是bash，bash由Brian Fox在1987年创造，全称Bourne Again shell ( bash)。</li>
+</ul>
+<ul>
+<li>你或许听说除了bash之外，还有Bourne shell ( sh)，Korn shell ( ksh)，C shell （包括 csh and tcsh），但是你知道这个星球上一共存在着大约50多种不同的shell么？想了解他们，请参考 <a href="http://www.freebsd.org/ports/shells.html" target="_blank" rel="noopener">http://www.freebsd.org/ports/shells.html</a>。</li>
+</ul>
+<ul>
+<li>每个月<a href="http://www.tiobe.com/index.php/content/paperinfo/tpci/index.html" target="_blank" rel="noopener">tiobe</a>上都会给一个编程语言的排名，来显示各种语言的流行度。排名指数综合了全球范围内使用该语言的工程师人数、教学的课程数和第三方供应商数。截止至2012年11月份，tiobe公布的编程语言排行榜里，bash的指数是0.56%排名22位。如果算上它旗下的awk 0.21%和tcl 0.146%，大概就能排到14名。注意这里还不包括bash的同源的兄弟姐妹csh、ksh等，算上它们，shell家族有望接近前十。值得一提的是一直以来shell的排名就很稳定，不像某些“暴发户”语言，比如objective-c，这些语言的流行完全是因为当前Apple系的崛起，但这种热潮极有可能来得快去得更快。</li>
+</ul>
+<p><span id="more-8619"></span></p>
+<p><img decoding="async" class="aligncenter size-full wp-image-18796" src="/uploads/2012/11/shell.01.png" alt="" width="616" height="614" srcset="" sizes="(max-width: 616px) 100vw, 616px"/></p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-18797" src="/uploads/2012/11/shell.02.png" alt="" width="290" height="531" srcset=""/></p>
+<p> </p>
+<p>全球最大的源代码仓库Github里，shell相关的项目数占到了8%，跻身前5和Java相当，可见在实战工程里，shell可谓宝刀不老。图片来源，<a href="https://github.com/languages">参见这里</a></p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-18798" src="/uploads/2012/11/shell.03.png" alt="" width="700" height="284" srcset=""/></p>
+<h4>一些强大的命令</h4>
+<p>再分享一些可能你不知道的shell用法和脚本，简单&amp;强大！</p>
+<p><em>在阅读以下部分前，强烈建议读者打开一个shell实验，这些都不是shell教科书里的大路货哦：）</em></p>
+<ul>
+<li><strong><code>!$</code></strong><br/>
+<code>!$</code>是一个特殊的环境变量，它代表了上一个命令的最后一个字符串。如：你可能会这样：<p></p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$mkdir mydir
+$mv mydir yourdir
+$cd yourdir</pre>
+<p>可以改成：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$mkdir mydir
+$mv !$ yourdir
+$cd !$</pre>
+</li>
+</ul>
+<ul>
+<li><strong><code>sudo !!</code></strong><br/>
+以root的身份执行上一条命令 。<br/>
+场景举例：比如Ubuntu里用<code>apt-get</code>安装软件包的时候是需要root身份的，我们经常会忘记在<code>apt-get</code>前加<code>sudo</code>。每次不得不加上<code>sudo</code>再重新键入这行命令，这时可以很方便的用<code>sudo !!</code>完事。<br/>
+（陈皓注：在shell下，有时候你会输入很长的命令，你可以使用!xxx来重复最近的一次命令，比如，你以前输入过，vi /where/the/file/is, 下次你可以使用 !vi 重得上次最近一次的vi命令。）</li>
+</ul>
+<ul>
+<li><strong><code>cd –</code></strong><br/>
+回到上一次的目录 。<br/>
+场景举例：当前目录为<code>/home/a</code>，用<code>cd ../b</code>切换到<code>/home/b</code>。这时可以通过反复执行<code>cd –</code>命令在<code>/home/a</code>和<code>/home/b</code>之间来回方便的切换。<br/>
+（陈皓注：cd ~ 是回到自己的Home目录，cd ~user，是进入某个用户的Home目录）</li>
+</ul>
+<ul>
+<li><strong><code>&#39;ALT+.&#39; or &#39;&lt;ESC&gt; .&#39;</code></strong><br/>
+热建alt+. 或 esc+. 可以把上次命令行的参数给重复出来。</li>
+</ul>
+<ul>
+<li><strong><code>^old^new</code></strong><br/>
+替换前一条命令里的部分字符串。<br/>
+场景：<code>echo &#34;wanderful&#34;</code>，其实是想输出<code>echo &#34;wonderful&#34;</code>。只需要<code>^a^o</code>就行了，对很长的命令的错误拼写有很大的帮助。（陈皓注：也可以使用 <strong>!!:gs/old/new</strong>）</li>
+</ul>
+<ul>
+<li><strong><code>du -s * | sort -n | tail</code></strong><br/>
+列出当前目录里最大的10个文件。</li>
+</ul>
+<ul>
+<li><strong><code>:w !sudo tee %</code></strong><br/>
+在vi中保存一个只有root可以写的文件</li>
+</ul>
+<ul>
+<li><strong><code>date <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5d70391d6c6f6e69686b6a65646d">[email protected]</a></code></strong><br/>
+时间截转时间</li>
+</ul>
+<ul>
+<li>
+<div title="Click to select this command">
+<div><strong><code>&gt; file.txt</code></strong><br/>
+创建一个空文件，比touch短。</div>
+</div>
+</li>
+</ul>
+<ul>
+<li><strong><code>mtr coolshell.cn</code></strong><br/>
+mtr命令比traceroute要好。</li>
+</ul>
+<ul>
+<li>在命令行前加空格，该命令不会进入history里。</li>
+</ul>
+<ul>
+<li><strong><code>echo &#34;ls -l&#34; | at midnight</code></strong><br/>
+在某个时间运行某个命令。</li>
+</ul>
+<ul>
+<li><strong><code>curl -u user:pass -d status=&#34;Tweeting from the shell&#34; http://twitter.com/statuses/update.xml</code></strong><br/>
+命令行的方式更新twitter。</li>
+</ul>
+<ul>
+<li><strong><code>curl -u username --silent &#34;https://mail.google.com/mail/feed/atom&#34; | perl -ne &#39;print &#34;\t&#34; if /&lt;name&gt;/; print &#34;$2\n&#34; if /&lt;(title|name)&gt;(.*)&lt;\/\1&gt;/;&#39;</code></strong><br/>
+检查你的gmail未读邮件</li>
+</ul>
+<ul>
+<li><strong><code>ps aux | sort -nk +4 | tail</code></strong><br/>
+列出头十个最耗内存的进程</li>
+</ul>
+<ul>
+<li><strong><code>man ascii</code></strong><br/>
+显示ascii码表。<br/>
+场景：忘记ascii码表的时候还需要google么?尤其在天朝网络如此“顺畅”的情况下，就更麻烦在GWF多应用一次规则了，直接用本地的<code>man ascii</code>吧。</li>
+</ul>
+<ul>
+<li><strong><code>ctrl-x e</code></strong><br/>
+快速启动你的默认编辑器（由变量$EDITOR设置）。</li>
+</ul>
+<ul>
+<li><strong><code>netstat –tlnp</code></strong><br/>
+列出本机进程监听的端口号。（陈皓注：netstat -anop 可以显示侦听在这个端口号的进程）</li>
+</ul>
+<ul>
+<li><strong><code>tail -f /path/to/file.log | sed &#39;/^Finished: SUCCESS$/ q&#39;</code></strong><br/>
+当file.log里出现Finished: SUCCESS时候就退出tail，这个命令用于实时监控并过滤log是否出现了某条记录。</li>
+</ul>
+<ul>
+<li><strong><code>ssh <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="daafa9bfa89aa9bfa8acbfa8">[email protected]</a> bash &lt; /path/to/local/script.sh</code></strong><br/>
+在远程机器上运行一段脚本。这条命令最大的好处就是不用把脚本拷到远程机器上。</li>
+</ul>
+<ul>
+<li><strong><code>ssh <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="becbcddbccfed6d1cdca">[email protected]</a> cat /path/to/remotefile | diff /path/to/localfile -</code></strong><br/>
+比较一个远程文件和一个本地文件</li>
+</ul>
+<ul>
+<li>
+<div title="Click to select this command">
+<div><strong><code>net rpc shutdown -I ipAddressOfWindowsPC -U username%password</code></strong><br/>
+远程关闭一台Windows的机器</div>
+</div>
+</li>
+</ul>
+<ul>
+<li><strong><code>screen -d -m -S some_name ping my_router</code></strong><br/>
+后台运行一段不终止的程序，并可以随时查看它的状态。<code>-d -m</code>参数启动“分离”模式，<code>-S</code>指定了一个session的标识。可以通过<code>-R</code>命令来重新“挂载”一个标识的session。更多细节请参考screen用法 <code>man screen</code>。</li>
+</ul>
+<ul>
+<li><strong><code>wget --random-wait -r -p -e robots=off -U mozilla http://www.example.com</code></strong><br/>
+下载整个www.example.com网站。（注：别太过分，大部分网站都有防爬功能了：））</li>
+</ul>
+<ul>
+<li><strong><code>curl ifconfig.me</code></strong><br/>
+当你的机器在内网的时候，可以通过这个命令查看外网的IP。</li>
+</ul>
+<ul>
+<li><strong><code>convert input.png -gravity NorthWest -background transparent -extent 720x200  output.png</code></strong><br/>
+改一下图片的大小尺寸</li>
+</ul>
+<ul>
+<li><strong><code>lsof –i</code></strong><br/>
+实时查看本机网络服务的活动状态。</li>
+</ul>
+<ul>
+<li><strong><code>vim scp://<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7e0b0d1b0c101f131b3e16110d0a">[email protected]</a>//path/to/somefile</code></strong><br/>
+vim一个远程文件</li>
+</ul>
+<ul>
+<li><strong><code>python -m SimpleHTTPServer</code></strong><br/>
+一句话实现一个HTTP服务，把当前目录设为HTTP服务目录，可以通过<code>http://localhost:8000</code>访问 这也许是这个星球上最简单的HTTP服务器的实现了。</li>
+</ul>
+<ul>
+<li><strong><code>history | awk &#39;{CMD[$2]++;count++;} END { for (a in CMD )print CMD[a] &#34; &#34; CMD[a]/count*100 &#34;% &#34; a }&#39; | grep -v &#34;./&#34; | column -c3 -s &#34; &#34; -t | sort -nr | nl | head -n10</code></strong><br/>
+(陈皓注：有点复杂了，history|awk ‘{print $2}’|awk ‘BEGIN {FS=”|”} {print $1}’|sort|uniq -c|sort -rn|head -10)<br/>
+这行脚本能输出你最常用的十条命令，由此甚至可以洞察你是一个什么类型的程序员。</li>
+</ul>
+<ul>
+<li>
+<div title="Click to select this command">
+<div><strong><code>tr -c &#34;[:digit:]&#34; &#34; &#34; &lt; /dev/urandom | dd cbs=$COLUMNS conv=unblock | GREP_COLOR=&#34;1;32&#34; grep --color &#34;[^ ]&#34;</code></strong><br/>
+想看看Marix的屏幕效果吗？（不是很像，但也很Cool!）</div>
+</div>
+</li>
+</ul>
+<p>看不懂行代码？没关系，系统的学习一下*nix shell脚本吧，力荐<a href="http://www.ituring.com.cn/book/980">《Linux命令行与Shell脚本编程大全》</a>。</p>
+<h4>参考文献：</h4>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Unix_shell#Shell_categories">Unix Shell Wiki</a></li>
+<li><a href="https://github.com">Github language ranking</a></li>
+<li><a href="http://www.softpanorama.org/People/Shell_giants/introduction.shtml">An introduction of Unix Shell history</a></li>
+<li><a href="http://www.tiobe.com/index.php/content/paperinfo/tpci/index.html" target="_blank" rel="noopener">Tiobe Software</a></li>
+<li><a href="http://www.commandlinefu.com/" target="_blank" rel="noopener">http://www.commandlinefu.com/</a></li>
+</ul>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8619-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程工具</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Bash</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Shell</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>你可能不知道的Shell</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-372080" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/851.html" class="url" rel="ugc external nofollow">AWK 简明教程 | 午后小憩</a> </div>
+</li>
+<li id="comment-372907" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/860.html" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 | 午后小憩</a> </div>
+</li>
+<li id="comment-373265" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/864.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 午后小憩</a> </div>
+</li>
+<li id="comment-374302" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/unix-kao-gu-ji-yi-ge-yi-shi-di-shell.html" class="url" rel="ugc external nofollow">Definite Digest » Unix考古记：一个“遗失”的shell</a> </div>
+</li>
+<li id="comment-381170" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jaring.me/?p=1319" class="url" rel="ugc external nofollow">Unix考古记：一个“遗失”的shell | Jaring&#39;s blog</a> </div>
+</li>
+<li id="comment-492262" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-492262" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fac91b2d5ed31fa7c75572b9dcc30167?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fac91b2d5ed31fa7c75572b9dcc30167?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fuckGFW</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-492262"><time datetime="2013-05-23T18:03:09+08:00">2013年05月23日 18:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“在命令行前加空格，该命令不会进入history里”<br/>
+这么说不严谨，要先在shell中export HISTCONTROL=ignorespace，然后执行 空格+命令，这样才不会记录到history中</p>
+</div>
+ </article>
+</li>
+<li id="comment-512827" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://chauncey.info/2013/05/bash-shell-shortcuts/" class="url" rel="ugc external nofollow">你可能不知道的Bash Shell快捷键 | Chauncey&#39;s Live</a> </div>
+</li>
+<li id="comment-548198" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.golang.name/linux_skill_tutorial/" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 小书童</a> </div>
+</li>
+<li id="comment-562497" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://fancyspeed.sinaapp.com/?p=92" class="url" rel="ugc external nofollow">一些强大的Shell命令（Where there is a shell，there is a way!） | Big Kui&#39;s Blog</a> </div>
+</li>
+<li id="comment-579324" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-579324" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e11862e58daceffcf71514e074eba94?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e11862e58daceffcf71514e074eba94?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">月藏峰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-579324"><time datetime="2013-07-03T00:25:16+08:00">2013年07月03日 00:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ssh <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="502523352210233522263522">[email protected]</a> bash &lt; /path/to/local/script.sh<br/>
+在远程机器上运行一段脚本。这条命令最大的好处就是不用把脚本拷到远程机器上。<br/>
+借问下，如果script需要传参数进去，参数放哪儿呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-582408" class="comment even thread-even depth-1">
+<article id="div-comment-582408" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23d67ad5d52828d7912bfc3b34948b18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23d67ad5d52828d7912bfc3b34948b18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://biergaizi.info" class="url" rel="ugc external nofollow">比尔盖子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-582408"><time datetime="2013-07-05T12:28:23+08:00">2013年07月05日 12:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C-X e 启动默认编辑器？为什么我只有蜂鸣警报，没有启动编辑器？$EDITOR 已经设置成 /usr/bin/vi 了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-620812" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://codingmatch.me/?p=215" class="url" rel="ugc external nofollow">敲代码的火柴 | shell第一篇</a> </div>
+</li>
+<li id="comment-709059" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhanghaohao.cn/archives/307" class="url" rel="ugc external nofollow">Alan Cox：大教堂、市集与市议会 | 张浩浩博客</a> </div>
+</li>
+<li id="comment-712591" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-712591" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6afd602c5ef886e08d6cef901204e1ff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6afd602c5ef886e08d6cef901204e1ff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大胖晖</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-712591"><time datetime="2013-09-03T09:37:10+08:00">2013年09月03日 09:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看了coolshell这篇文章后很开心的去404null网站上下单买那个马克杯，结果自从8.18付款到现在还没发货或者处理订单QAQ，我感觉现在这个网站是个坑啊。。我的钱也拿不回来了么QAQ</p>
+</div>
+ </article>
+</li>
+<li id="comment-739277" class="comment even thread-even depth-1">
+<article id="div-comment-739277" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7cb63d87e1d9609a4e2d051e3ed1c8d9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7cb63d87e1d9609a4e2d051e3ed1c8d9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Charles Liu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-739277"><time datetime="2013-09-16T19:44:02+08:00">2013年09月16日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@大胖晖 现在收到了么。。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-904295" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-904295" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ea1947684324730e7737cbd07ef63154?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ea1947684324730e7737cbd07ef63154?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sduzh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-904295"><time datetime="2013-11-09T18:49:07+08:00">2013年11月09日 18:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>经常逛酷壳真的可以学到好多东西</p>
+</div>
+ </article>
+</li>
+<li id="comment-909441" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=83" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | multiprocess</a> </div>
+</li>
+<li id="comment-909558" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=241" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 | multiprocess</a> </div>
+</li>
+<li id="comment-914206" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/archives/2278" class="url" rel="ugc external nofollow">Alan Cox：大教堂、市集与市议会Multiprocess | Multiprocess</a> </div>
+</li>
+<li id="comment-1011323" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1011323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8263a922d63bd760f14b847231ea690b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8263a922d63bd760f14b847231ea690b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dadazh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-1011323"><time datetime="2013-12-02T00:11:34+08:00">2013年12月02日 00:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>无意中发现：<br/>
+热建alt+. 或 esc+. 可以把上次命令行的【最后一项】参数给重复出来。<br/>
+请验证。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1018384" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kookyx.com/blog/?p=102" class="url" rel="ugc external nofollow">[转]Linux基础学习技巧 | 古辛</a> </div>
+</li>
+<li id="comment-1122582" class="comment byuser comment-author-jkand1 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1122582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-1122582"><time datetime="2013-12-30T16:02:56+08:00">2013年12月30日 16:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>shell好强大，真心需要安安心心的把shell好好整整了，就这么定了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1179743" class="comment even thread-even depth-1">
+<article id="div-comment-1179743" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://WWW.OMG.COM" class="url" rel="ugc external nofollow">OMG</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-1179743"><time datetime="2014-01-14T20:35:41+08:00">2014年01月14日 20:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>python -m SimpleHTTPServer，哈哈，这个强大。一句话的server</p>
+</div>
+ </article>
+</li>
+<li id="comment-1470311" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bfire201314.sinaapp.com/archives/145" class="url" rel="ugc external nofollow">应该知道的Linux技巧 - bfire</a> </div>
+</li>
+<li id="comment-1480704" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.aliyun.com/893" class="url" rel="ugc external nofollow">阿里云产品博客 » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-1482844" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ls120.net/ying-gai-zhi-dao-de-linux-ji-qiao.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | Les&#39;s Note</a> </div>
+</li>
+<li id="comment-1515413" class="comment even thread-even depth-1">
+<article id="div-comment-1515413" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b920cf7c0ea753c04a209ce2dd19b6f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b920cf7c0ea753c04a209ce2dd19b6f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zuidaima.com/" class="url" rel="ugc external nofollow">java源代码</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-1515413"><time datetime="2014-08-19T23:47:53+08:00">2014年08月19日 23:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>32个赞，学习了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1558648" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/31461.html" class="url" rel="ugc external nofollow">谜题的答案和活动的心得体会 – 马开东博客</a> </div>
+</li>
+<li id="comment-1578867" class="comment even thread-even depth-1">
+<article id="div-comment-1578867" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ad364568675fdb31fdfc962ed0f6231?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ad364568675fdb31fdfc962ed0f6231?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">noforyes</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-1578867"><time datetime="2014-10-21T10:20:03+08:00">2014年10月21日 10:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>获益匪浅 知识盲点一下就弥补了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1634076" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dovps.cn/lnmp/you-should-know-that-linux-skills/" class="url" rel="ugc external nofollow">那些你应该知道的Linux技巧 | 【都VPS–doVPS.cn】</a> </div>
+</li>
+<li id="comment-1635987" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wandoer.com/tinynote/%e5%85%b3%e4%ba%8e-shell-%e7%9a%84%e7%ac%94%e8%ae%b0.htm" class="url" rel="ugc external nofollow">关于 SHELL 的笔记 | 豌豆</a> </div>
+</li>
+<li id="comment-1743274" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dengkai.me/?p=47" class="url" rel="ugc external nofollow">Linux学习~待续 | 一切皆有可能</a> </div>
+</li>
+<li id="comment-1751230" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dengkai.me/?p=205" class="url" rel="ugc external nofollow">每天看到的好文章 – 2015.08.28 | 一切皆有可能</a> </div>
+</li>
+<li id="comment-1812513" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dovps.cn/op/you-should-know-that-linux-skills.html" class="url" rel="ugc external nofollow">那些你应该知道的Linux技巧 | 【都VPS doVPS.cn】</a> </div>
+</li>
+<li id="comment-1816158" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xuxiaobo.com/?p=983" class="url" rel="ugc external nofollow">应该知道的Linux技巧 酷壳 – CoolShell.cn | 酷 壳 – CoolShell.cn – <span class="__cf_email__" data-cfemail="400c2f2700186e186e02">[email protected]</span></a> </div>
+</li>
+<li id="comment-1898767" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1898767" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4914462d28044c9cae3aad0fdfd84a5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4914462d28044c9cae3aad0fdfd84a5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://not%20yet" class="url" rel="ugc external nofollow">zyx954</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-1898767"><time datetime="2016-11-15T17:04:39+08:00">2016年11月15日 17:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>试了一下<br/>
+还真挺管用 -_-!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913541" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tiangr.com/ying-gai-zhi-dao-de-linux-ji-qiao.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 甜果儿</a> </div>
+</li>
+<li id="comment-1921448" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1259" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 – 趣学</a> </div>
+</li>
+<li id="comment-1933138" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nullbug.cn/index.php/2018/07/05/%e4%bd%a0%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e4%bd%86%e4%b8%8d%e8%a6%81%e6%b1%82%e7%86%9f%e6%82%89%e7%9a%84linux%e4%bd%bf%e7%94%a8%e6%8a%80%e5%b7%a7/" class="url" rel="ugc external nofollow">你应该知道但不要求熟悉的linux使用技巧-Ktong</a> </div>
+</li>
+<li id="comment-1951661" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.52xintaidu.com/?p=1139" class="url" rel="ugc external nofollow">应该知道的LINUX技巧 – 52新态度-JAVA技术</a> </div>
+</li>
+<li id="comment-1977686" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/19219.html" class="url" rel="ugc">打造高效的工作环境 – Shell 篇 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1979331" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/03/21/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e6%89%93%e9%80%a0%e9%ab%98%e6%95%88%e7%9a%84%e5%b7%a5%e4%bd%9c%e7%8e%af%e5%a2%83-shell-%e7%af%87/" class="url" rel="ugc external nofollow">【酷壳】 打造高效的工作环境 – Shell 篇 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2031328" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weixinewm.com/35342.html" class="url" rel="ugc external nofollow">打造高效的工作环境 – Shell 篇 - 微信二维码!</a> </div>
+</li>
+<li id="comment-2032491" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2032491" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b109d743182e8d962f71c3e746864935?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b109d743182e8d962f71c3e746864935?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">conte</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8619.html/comment-page-3#comment-2032491"><time datetime="2019-10-24T14:44:04+08:00">2019年10月24日 14:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>curl ifconfig.me 在 CentOS 7 下似乎不能工作了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2062439" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/447.html" class="url" rel="ugc external nofollow">你可能不知道的SHELL | 3F Blog 2020</a> </div>
+</li>
+<li id="comment-2096729" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.52xintaidu.com/it/linux/1139.html" class="url" rel="ugc external nofollow">应该知道的LINUX技巧 - 52新态度-52新态度</a> </div>
+</li>
+<li id="comment-2301482" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1127742" class="url" rel="ugc external nofollow">Bash 快捷键 - 算法网</a> </div>
+</li>
+<li id="comment-2370668" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.johngo689.com/27139/" class="url" rel="ugc external nofollow">应该知道的Linux技巧_Johngo学长</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8619.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8619.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/8619.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">8619</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

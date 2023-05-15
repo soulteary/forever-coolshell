@@ -1,0 +1,428 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>初学C#编程的注意事项 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1375 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1375" class="post-content post-1375 post type-post status-publish format-standard hentry category-dotnet category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">初学C#编程的注意事项</span>
+<h1 class="entry-title">初学C#编程的注意事项</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1375.html" title="12:15" rel="bookmark"><time class="entry-date" datetime="2009-08-31T12:15:05+08:00" pubdate="">2009年08月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1375.html#comments" class="comments-link">15 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 14,623 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>下面是8个C#编程时的注意事项是给初学者的，可能你知道，也可能你不知道，不过这些都是一些可能会让人疏忽的地方，还是要注意一下。</p>
+<p><strong>1.使用String变量:</strong></p>
+<p>考虑有下面的一个程序想判断一下字符串是否有内容。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">if (someString.Length &gt; 0)
+{
+    // …
+}
+</pre>
+<p>但是，这个字符串对象很可能是个空对象，所以，最好先判断一下null</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">if  (!String.IsNullOrEmpty(someString))
+{
+    // 是不是更好一些？
+}
+</pre>
+<p><span id="more-1375"></span></p>
+<p><strong>2.字符器连接</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">string s = “dev”;
+s += “-”;
+s += “the”;
+s += “-”;
+s += “web”;
+s += “.”;
+s += “com”;
+</pre>
+<p>这样做没什么问题，只不过性能不高，因为+=操作符其实调用的是String类的Append访问，所以，+=会有两次函数调用，下面的则会好一些。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">StringBuilder s = new StringBuilder();
+s.Append(”dev”);
+s.Append(”-”);
+s.Append(”the”);
+s.Append(”-”);
+s.Append(”web”);
+s.Append(”.”);
+s.Append(”com”);
+</pre>
+<p><strong>3.使用Console</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">Console.WriteLine(&#34;A= &#34; + 1 + &#34; B=&#34; + 2 + &#34; C= &#34; + someValue);
+</pre>
+<p>和第二点说的一样，这并没有效率，使用下面的语句，会更有效率。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">Console.WriteLine(”A: {0}\nB: {1}\nC: {2}”, 1, 2, someValue);
+</pre>
+<p><strong>4.字符串转整型</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">int i = int.Parse(Request.QueryString[&#34;id&#34;]);
+</pre>
+<p>这样做的问题是，如果有人这样请求你的页面：yourpage.aspx?id=A6，那么A6将会导致你的程序抛出一个异常。因为A6不是一个整数字符串。使用TryParse会好一点。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">int i;
+if (!int.TryParse(Request.QueryString[&#34;id&#34;] , out i))
+{
+    //…
+}
+</pre>
+<p><strong>5. 调用IDbConnection 的 Close 方法</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">IDbConnection dbConn = null;
+
+try
+{
+    dbConn = new SqlConnection(”some Connection String”);
+    dbConn.Open();
+}
+finally
+{
+    dbConn.Close();
+}
+</pre>
+<p>调用SqlConnection的构造函数可能会出现一个异常，如果是这样的话，我们还需要调用Close方法吗？</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">IDbConnection dbConn = null;
+
+try
+{
+    dbConn = new SqlConnection(”Some Connection String”);
+    dbConn.Open();
+}
+finally
+{
+    if (dbConn != null)
+    {
+        dbConn.Close();
+    }
+}
+</pre>
+<p><strong>6.使用List类</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">public void SomeMethod(List&lt;SomeItem&gt; items)
+{
+    foreach(var item in items)
+    {
+        // do something with the item…
+    }
+}
+</pre>
+<p>如果我们只是遍历List容器中的所有内容的话，那么，使用IEnumerable接口会更好一些。因为函数参数传递一个List对象要比一个IEnumerable接口要花费更多的开销。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">public void SomeMethod(IEnumerable&lt;SomeItem&gt; items)
+{
+    foreach(var item in items)
+    {
+        // do something with the item…
+    }
+}
+</pre>
+<p><strong>7.直接使用数字</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">if(mode == 1) { … }
+else if(mode == 2) { … }
+else if(mode == 3) { … }
+</pre>
+<p>为什么不给你的这些数字取个名字呢？比如使用Enumerations。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">public enum SomeEnumerator
+{
+    DefaultMode = 1,
+    SafeMode = 2,
+    NormalMode = 3
+}
+
+if(mode == SomeEnumerator.DefaultMode) { … }
+else if(mode == SomeEnumerator.SafeMode) { … }
+else if(mode == SomeEnumerator.NormalMode) { … }
+</pre>
+<p><strong>8.字符串替换</strong></p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">string s = &#34;www.coolshell.cn is a amazing site&#34;;
+s.Replace(&#34;amazing&#34;, &#34;awful&#34;);
+</pre>
+<p>字符串s的内容什么也不会改变，因为string返回的是替换过的字串。这点很多初学者经常忘了。下面就没有问题了。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">s = s.Replace(&#34;amazing&#34;, &#34;awful&#34;);
+</pre>
+<p>文章：<a href="http://dev-the-web.com/blog/2009/08/27/top-csharp-programming-mistakes/" target="_blank">来源</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1375-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">.NET编程</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>初学C#编程的注意事项</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-859" class="comment even thread-even depth-1">
+<article id="div-comment-859" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e26f2eda2496990ed97bdbf418b7a7c8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e26f2eda2496990ed97bdbf418b7a7c8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cppblog.com/zdhsoft" class="url" rel="ugc external nofollow">zdhsoft</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-859"><time datetime="2009-08-31T15:11:38+08:00">2009年08月31日 15:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>if (!String.IsNullOrEmpty(someString) &amp;&amp; someString.Length &gt; 0)<br/>
+{<br/>
+// 是不是更好一些？<br/>
+}</p>
+<p>这段真是够BT的，能提供一个方法isEmpty()会不会更好些？</p>
+</div>
+ </article>
+</li>
+<li id="comment-860" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-860" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-860"><time datetime="2009-08-31T15:56:06+08:00">2009年08月31日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-859" rel="nofollow">@zdhsoft </a><br/>
+对不起，写错了，其实只需要!String.IsNullOrEmpty(someString)就可以了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-862" class="comment even thread-even depth-1">
+<article id="div-comment-862" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d0d6a76db52bd22b0c0969f0e4f55a68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d0d6a76db52bd22b0c0969f0e4f55a68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.oldrev.com" class="url" rel="ugc external nofollow">oldrev</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-862"><time datetime="2009-08-31T21:05:59+08:00">2009年08月31日 21:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>5. 不能用 using(var dbConn = new SqlConnection(”Some Connection String”))吗？</p>
+<p>6. “如果我们只是遍历List容器中的所有内容的话，那么，使用IEnumerable接口会更好一些。因为函数参数传递一个List对象要比一个IEnumerable接口要花费更多的开销。”</p>
+<p>这是错误的，都是传引用，没什么不同的开销。</p>
+</div>
+ </article>
+</li>
+<li id="comment-863" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-863" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/01746503b379a2c799d0fde0aa18ed6d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/01746503b379a2c799d0fde0aa18ed6d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">typeb</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-863"><time datetime="2009-08-31T22:47:11+08:00">2009年08月31日 22:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果是List，用For 比For each 要快很多</p>
+</div>
+ </article>
+</li>
+<li id="comment-1474" class="comment byuser comment-author-someone even thread-even depth-1">
+<article id="div-comment-1474" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed4d31a9fb21b58f0b6e1359786482fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed4d31a9fb21b58f0b6e1359786482fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">SomeOne</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-1474"><time datetime="2009-10-20T17:08:04+08:00">2009年10月20日 17:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受教</p>
+</div>
+ </article>
+</li>
+<li id="comment-3550" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-3550" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4233fcab32b4a54d28a46caf3bbe0e10?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4233fcab32b4a54d28a46caf3bbe0e10?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">理想与现实是一家人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-3550"><time datetime="2010-01-15T01:47:34+08:00">2010年01月15日 01:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对“2.字符器连接”有些补充。<br/>
+这里的性能要差很多,不光是2次函数调用的问题。<br/>
+比如，<br/>
+string s = “dev”;<br/>
+这里c#要先在内存中创建一个“dev” string object。<br/>
+s += “-”;<br/>
+这里c#又要在内存中创建另一个“-” string object，然后进行+=运算，结果“dev-”放入一个新创建的string object中,尽管看起来还是string s。<br/>
+这还不算完,之后c#还要destroy两个不用的objects:“dev”和“-”。</p>
+<p>如果用StringBuilder就省很多。</p>
+</div>
+ </article>
+</li>
+<li id="comment-4833" class="comment even thread-even depth-1">
+<article id="div-comment-4833" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e7fabddb3c95d34a8abafa3373ca087?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e7fabddb3c95d34a8abafa3373ca087?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">请持怀疑态度</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-4833"><time datetime="2010-02-01T14:31:53+08:00">2010年02月01日 14:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于字符串连接， 你确定直接相加比StringBuilder 慢？请仔细阅读MSDN文档关于StringBuilder的解释（the String class is preferable for a concatenation operation if a fixed number of String objects are concatenated.）并自己写代码测试。 固定个数的string连接直接相加比用StringBuilder要快， 比如”a”+”b”+”c”+”d” 比 StringBuilder a=new StringBuilder(“a”); a.Append(“b”); a.Append(“c”); a.Append(“d”); 要快，要连接的字符串越多越明显。 只有在循环等不能事先确定由多少子串要拼接的时候才应该用StringBuilder。 例如：StringBuilder a=new StringBuilder(); for(int i=0;li&lt;100;i++){a.Append(i.ToString();}</p>
+</div>
+ </article>
+</li>
+<li id="comment-11824" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11824" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/37b6af209e2859d008bd338b568c9387?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/37b6af209e2859d008bd338b568c9387?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhenfeng.ren</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-11824"><time datetime="2010-10-18T12:51:04+08:00">2010年10月18日 12:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>都是以前常遇到的问题，总结的真全面</p>
+</div>
+ </article>
+</li>
+<li id="comment-93398" class="comment even thread-even depth-1">
+<article id="div-comment-93398" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fc2360fa2d16411f9021ac1541a9e5c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fc2360fa2d16411f9021ac1541a9e5c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jhkmnm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-93398"><time datetime="2011-11-08T09:29:35+08:00">2011年11月08日 09:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-4833"><p>
+<strong><a href="#comment-4833" rel="nofollow">请持怀疑态度</a> :</strong><br/>
+关于字符串连接， 你确定直接相加比StringBuilder 慢？请仔细阅读MSDN文档关于StringBuilder的解释（the String class is preferable for a concatenation operation if a fixed number of String objects are concatenated.）并自己写代码测试。 固定个数的string连接直接相加比用StringBuilder要快， 比如”a”+”b”+”c”+”d” 比 StringBuilder a=new StringBuilder(“a”); a.Append(“b”); a.Append(“c”); a.Append(“d”); 要快，要连接的字符串越多越明显。 只有在循环等不能事先确定由多少子串要拼接的时候才应该用StringBuilder。 例如：StringBuilder a=new StringBuilder(); for(int i=0;li&lt;100;i++){a.Append(i.ToString();}
+</p></blockquote>
+<p>这个正解，new StringBuilder()时会分配一个足够大的连续内存空间，如果连接的串很少就是一种浪费</p>
+</div>
+ </article>
+</li>
+<li id="comment-109413" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-109413" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0d7c10a00e4b41369b66f64d15d580e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0d7c10a00e4b41369b66f64d15d580e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://beinet.cn" class="url" rel="ugc external nofollow">水边</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-109413"><time datetime="2011-12-12T14:32:15+08:00">2011年12月12日 14:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>3.使用Console<br/>
+1 Console.WriteLine(“A= ” + 1 + ” B=” + 2 + ” C= ” + someValue);<br/>
+和第二点说的一样，这并没有效率，使用下面的语句，会更有效率。<br/>
+1 Console.WriteLine(”A: {0}\nB: {1}\nC: {2}”, 1, 2, someValue); </p>
+<p>这2种写法，没有太大区别，有效率的写法是值类型要加上ToString，如：<br/>
+Console.WriteLine(“A= ” + 1.ToString() + ” B=” + 2.ToString() + ” C= ” + someValue);<br/>
+Console.WriteLine(”A: {0}\nB: {1}\nC: {2}”, 1.ToString(), 2.ToString(), someValue);<br/>
+因为这2种调用，都是把值类型当成Object传递，造成拼接的时候，值类型要先装箱，而.net里装箱和拆箱的效率是非常低的，而调用ToString方法，是调用外部的<br/>
+[MethodImpl(MethodImplOptions.InternalCall)]<br/>
+public static extern string FormatInt32(int value, string format, NumberFormatInfo info);<br/>
+效率会高的多</p>
+</div>
+ </article>
+</li>
+<li id="comment-195742" class="comment even thread-even depth-1">
+<article id="div-comment-195742" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad7f517159350ae1997713b686130c98?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad7f517159350ae1997713b686130c98?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">-岁月如刀</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-195742"><time datetime="2012-05-25T17:32:20+08:00">2012年05月25日 17:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那个DBConnection的例子用using语句更好一些</p>
+</div>
+ </article>
+</li>
+<li id="comment-646112" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-646112" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/34b2502c716fe9a4d780f8fe1137b917?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/34b2502c716fe9a4d780f8fe1137b917?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nulldust</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-646112"><time datetime="2013-08-09T11:34:59+08:00">2013年08月09日 11:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>6.使用List类<br/>
+理由写的不正确，传List与传IEnumerable都是引用传递，没有效率上的差异。<br/>
+为何使用 IEnumerable 是从接口的角度来考量的，如果你的接口仅仅是做遍历，那使用IEnumerable 则可以支持所有实现该接中的类型去调用该方法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-765667" class="comment even thread-even depth-1">
+<article id="div-comment-765667" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/580b36f46921b259da1ac638edecb98f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/580b36f46921b259da1ac638edecb98f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">samuel</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-765667"><time datetime="2013-09-27T14:59:00+08:00">2013年09月27日 14:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://www.coolshell.cn" rel="nofollow ugc">http://www.coolshell.cn</a> is an amazing site</p>
+</div>
+ </article>
+</li>
+<li id="comment-1462316" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1462316" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a017e1023aa320bdcb0e8b4a340fd05?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a017e1023aa320bdcb0e8b4a340fd05?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.srdz.biz" class="url" rel="ugc external nofollow">C# 大白菜</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-1462316"><time datetime="2014-05-16T09:16:51+08:00">2014年05月16日 09:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果能再加入一些性能数据就更好了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370692" class="comment even thread-even depth-1">
+<article id="div-comment-2370692" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/584d001c681fde63364bc6dcc805b0b1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/584d001c681fde63364bc6dcc805b0b1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dsmilely</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1375.html#comment-2370692"><time datetime="2022-09-04T11:10:54+08:00">2022年09月04日 11:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>来源链接有问题，麻烦查看下，链接到了一个导航页面，且带颜色</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

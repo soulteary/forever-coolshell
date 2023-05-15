@@ -1,0 +1,534 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>一个浮点数跨平台产生的问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11235 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11235" class="post-content post-11235 post type-post status-publish format-standard hentry category-dotnet category-cplusplus tag-net tag-c tag-float tag-fpu tag-sse">
+<header class="entry-header">
+<span class="screen-reader-text">一个浮点数跨平台产生的问题</span>
+<h1 class="entry-title">一个浮点数跨平台产生的问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11235.html" title="20:44" rel="bookmark"><time class="entry-date" datetime="2014-03-15T20:44:24+08:00" pubdate="">2014年03月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/tanglei-name" title="View all posts by tanglei.name" rel="author">tanglei.name</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11235.html#comments" class="comments-link">25 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 34,766 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>感谢网友<a href="http://www.tanglei.name/" target="_blank">唐磊</a>（微博@<a title="唐磊_name" href="http://weibo.com/tangleithu?from=feed&amp;loc=nickname">唐磊_name</a>）投稿，本文原文在唐磊的博客上（<a href="http://www.tanglei.name/a-bug-relate-with-float-point-between-x86-and-x64-in-csharp/">原文地址</a>），原文分析还不够好，而且可能对人有误导，所以，我对原文做了很多修改，并加了Linux下的内容。浮点数是一个很复杂的事情，希望这篇文章有助于大家了解浮点数与其相关的C/C++的编译选项。</strong>（注：我没有Windows 32位以及C#的环境，所以，对于Windows 32位的程序和C#的程序没有验证过）</p>
+<p>背景就简单点儿说，最近一个项目C#编写，涉及浮点运算，来龙去脉省去，直接看如下代码。</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">float p3x = 80838.0f;
+float p2y = -2499.0f;
+double v321 = p3x * p2y;
+Console.WriteLine(v321);</pre>
+<p>很简单吧，马上笔算下结果为-202014162，没问题，难道C#没有产生这样的结果？不可能吧，开启Visual Studio，copy代码试试，果然结果是-202014162。就这样完了么？显然没有！你把编译时的选项从AnyCPU改成x64试试~(服务器环境正是64位滴哦！！)结果居然边成了-202014160，对没错，就是-202014160。有点不相信，再跑两遍，仍然是-202014160。呃，想通了，因为浮点运算的误差，-202014160这个结果是合理的。</p>
+<p>为什么合理呢？很正常，因为上面的p3x和p2y是两个float类型，虽然v321是double，但也是两个float类型计算完后再转成double的，<strong>float的精度本来也只有7位，所以，对于这个上亿的数，自然没有办法保证精度</strong>。</p>
+<p><strong>但是为什么修改CPU的type会有不同的效果？</strong>嗯，我们再试试C/C++。</p>
+<p><span id="more-11235"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include
+using namespace std;
+
+int main()
+{
+    float p3x = 80838.0f;
+    float p2y = -2499.0f;
+    double v321 = p3x * p2y;
+    std::cout.precision(15);
+    std::cout &lt;&lt; v321 &lt;&lt; std::endl;
+
+    return 0;
+}
+</pre>
+<p>上面这段C++代码在不同的平台下的结果如下：</p>
+<ul>
+<li>Windows 32/64位下：-202014160</li>
+<li>Linux 64位下（CentOS 6 gcc 4.4.7）-202014160，</li>
+<li>Linux 32位下（Ubuntu 12.04+ gcc 4.6.3）是：-202014162</li>
+</ul>
+<p><strong>合理的结果应该是-202014160，正确的运算结果是-202014162</strong>，合理性是浮点精度不够造成的（文后解释了合理性）。若是用两个double相乘可得正确且合理的运算结果（注：把上面C++的程序中的p3x和p2y的类型声明成double，就能得到正确的结果，因为double是双精度的，float是单精度，所以double有足够的位数存放更多的数位）。<strong>但是我们有点不明白，为什么Linux 32位下，居然能算出“正确”的数，而不是“合理”的数</strong>。</p>
+<p>与C++一样，C#在32位和64位（DEBUG下，这个后面会说）下没有得到一致的结果，那我们来看一下C++/C#的汇编代码（使用gdb的disassemble /m main 命令，另外下面只显示 float * float 然后转成double的那一行代码的汇编）</p>
+<p><strong>Linux平台下用G++编译</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C++ 32位系统下 Ubuntu 12.04
+8	    double v321 = p3x * p2y;
+   0x0804860f &lt;+27&gt;:	flds   0x18(%esp)
+   0x08048613 &lt;+31&gt;:	fmuls  0x1c(%esp)
+   0x08048617 &lt;+35&gt;:	fstpl  0x10(%esp)
+
+.......</pre>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C++ 64位系统下 CentOS 6
+9           double v321 = p3x * p2y;
+   0x000000000040083c &lt;+24&gt;:    movss  -0x20(%rbp),%xmm0
+   0x0000000000400841 &lt;+29&gt;:    mulss  -0x1c(%rbp),%xmm0
+   0x0000000000400846 &lt;+34&gt;:    unpcklps %xmm0,%xmm0
+   0x0000000000400849 &lt;+37&gt;:    cvtps2pd %xmm0,%xmm0
+   0x000000000040084c &lt;+40&gt;:    movsd  %xmm0,-0x18(%rbp)</pre>
+<p><strong>Windows平台下用Visual Studio编译</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C# AnyCPU编译，Windows VS2012
+double v321 = p3x * p2y;
+00000049  fld         dword ptr [ebp-40h]
+0000004c  fmul        dword ptr [ebp-44h]
+0000004f  fstp        qword ptr [ebp-4Ch]</pre>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C# X64位编译 Windows7 VS2012
+double v321 = p3x * p2y;&lt;/pre&gt;
+009B43B8 movss xmm0,dword ptr [p3x]
+009B43BD mulss xmm0,dword ptr [p2y]
+009B43C2 cvtss2sd xmm0,xmm0
+009B43C6 movsd mmword ptr [v321],xmm0</pre>
+<p>从上面的汇编代码可以看出，无论是Linux和Windows，C++或C# 32位和64对浮点数的汇编指令并不一样。 32位生成代码用的指令是fld/fmul/fstp等，而64位下的使用了movss/mulss/movsd/的指令。看下来，似乎这个事情和平台有关系。</p>
+<p>我们继续调查，我们发现，其中fld/fmul/fstp等指令是由<strong>FPU</strong>(float point unit)浮点运算处理器做的，准确的说，是FPU x87指令，FPU在进行浮点运算时，用了<strong>80位</strong>的寄存器做相关浮点运算，然后再根据是float/double截取成32位或64位，FPU默认上会尽量减少由于需要四舍五入带来的精度问题。可参看浮点运算标准<a href="https://en.wikipedia.org/wiki/IEEE_floating_point" target="_blank">IEEE-754</a> 推荐标准实现者提供浮点可扩展精度格式(<a href="https://en.wikipedia.org/wiki/Extended_precision" target="_blank">Extended precision</a>)，Intel x86处理器有FPU(float point unit)浮点运算处理器支持这种扩展。</p>
+<p>非FPU的情况是用了SSE中128位寄存器(float实际只用了其中的32位，计算时也是以32位计算的)，这就是导致上述问题产生的最终原因。详细分析见文末说明。</p>
+<p>知道了这一点，我们可以man g++ 看一下文档，我们可以找到一个编译选项叫：<strong>-mfpmath，在32位下，这个编译选项的默认值是：387，也就是x87 FPU指令，在64位下，这个编译选项的值是sse，也就是使用SSE的指令</strong>。所以，就这篇文章中的这个例子而言，如果你在64bits下加上如 -mfpmath=387，你会得到“正确的”结果，而不是“合理的”结果。</p>
+<p>而在VS2012中C++，<a href="http://msdn.microsoft.com/zh-cn/library/vstudio/e7s85ffb(v=vs.110).aspx" target="_blank">编译选项可以设置(代码生成中)</a>可选，/fp:[precise | fast | strict]，本例中Release 32位下用precise 或者 strict将得到合理的结果(-202014160)，fast将产生正确的结果(-202014162), fast debug/release下结果也不一样哦(release下才优化了)。64系统下各个结果可以大家自己去测试下(Debug/Release)，分别看看VS编译后产生的中间代码长什么样。（陈皓注：我的VS2012在debug编译下，无论你怎么设置/fp的参数值，汇编都是一样的，使用SSE指令，而Release就不一样了，但是我的release下看代码的汇编非常怪异和源代码对上号，多年不用Windows开发了，对VS的使用仅停留在VC6++/VC2005上）</p>
+<p>所以，我们在从x87 FPU指令向SSE指令做代码移植的时候，我们可能会遇到向这样的浮点数的精度问题，这个精度问题会多次科学计算中会更糟糕。<strong>这个问题并不简单的只是在32位和64位中的系统出算，这个问题主要还是看语言编译器的实现</strong>。在更为高级的语言中，如：C99或Fortran 2003中，引入了“long double”来做可扩展双精度（Extension Double），这样就可以消除更多的精度问题。</p>
+<p>下面我们把程序改成long double，（注：其中的类型变成long double）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include
+using namespace std;
+
+int main()
+{
+    long double p3x = 80838.0;
+    long double p2y = -2499.0;
+    long double v321 = p3x * p2y;
+    std::cout.precision(15);
+    std::cout &lt;&lt; v321 &lt;&lt; std::endl;
+
+    return 0;
+}</pre>
+<p>用gdb的disassemble /m main你会看到其中的运算的汇编如下（使用了fmlp指令）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//linux 32位系统
+8	    long double v321 = p3x * p2y;
+   0x08048633 &lt;+63&gt;:	fldt   0x10(%esp)
+   0x08048637 &lt;+67&gt;:	fldt   0x20(%esp)
+   0x0804863b &lt;+71&gt;:	fmulp  %st,%st(1)
+   0x0804863d &lt;+73&gt;:	fstpt  0x30(%esp)
+</pre>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//linux 64位系统
+8           long double v321 = p3x * p2y;
+   0x0000000000400818 &lt;+52&gt;:    fldt   -0x30(%rbp)
+   0x000000000040081b &lt;+55&gt;:    fldt   -0x20(%rbp)
+   0x000000000040081e &lt;+58&gt;:    fmulp  %st,%st(1)
+   0x0000000000400820 &lt;+60&gt;:    fstpt  -0x10(%rbp)
+</pre>
+<p><span style="line-height: 1.5em;">我们可以看到，32位系统和64位系统使用了同样的汇编指令（当然，我没有那么多物理机，我只是在VMWare Play的虚拟机上测试的，所以上面的示例并不一定适用于所有的地方，另外，C/C++语言和编译器和平台有非常大的关系） ，原因自然是我们用到了long double这个扩展双精度的数据类型。（注：如果你用double或float，在Linux上，32位用x87 FPU 指令编译，而64位用SSE指令编译）</span></p>
+<p>好了，我们再回到C#上来，<span style="line-height: 1.5em;">C#的浮点是支持该标准的，其中</span><a style="line-height: 1.5em;" href="http://msdn.microsoft.com/en-us/library/aa691146(v=vs.71).aspx">其官方文档</a><span style="line-height: 1.5em;">也提到了浮点运算可能会产生比返回类型更高精度的值（正如上面的返回值精度就超过了float的精度），并说明如果硬件支持可扩展浮点精度的话，那么</span><strong style="line-height: 1.5em;">所有的</strong><span style="line-height: 1.5em;">浮点运算都将用此精度进行以提高效率，举个例子x*y/z, x*y的值可能都在double的能力范围之外了，但真实情况可能除以z后又能把结果拉回到double范围内，这样的话，用了FPU的结果就会得到一个准确的double值，而非FPU的就是无穷大之类的了。</span></p>
+<p><span style="line-height: 1.5em;">所以，对于</span>C#来说，你显然无法找到一个像C/C++一样的利用编译器选项的来解决这个问题的“解决方案”（其实，用编译器参数是一个伪解决方案）<span style="line-height: 1.5em;">。</span></p>
+<p><span style="line-height: 1.5em;"><strong>而且，要解决这个问题也不是要修改编译器选项，因为这个问题明显不是FPU或是SSE的问题，FPU是个过时的技术，SSE才是合理的技术，所以，<span style="color: #cc0000;">如果你不想你的浮点数在计算上有什么问题，而且你需要精度准确，正确的解决方案不是搞编译参数，而是——你一定要使用精度更高字节数更多的数据类型，比如：double 或是long double</span>。</strong></span></p>
+<p>另外，大家在写代码的时候得保证实际运行环境/测试环境/开发环境的<strong>一致性(包括OS架构啊、编译选项等)</strong>啊（<strong>尤其是C/C++ 而且，编译器上的参数可能会有很多坑，而且有些坑可能会掩盖你程序中的问题</strong>），不然莫名其妙的问题会产生（本文就是开发环境与运行环境不一致导致的问题，纠结了好久才发现是这个原因）；遇到涉及浮点运算的时候别忘了有可能是这个原因产生的；<strong>float/double混用的情况得特别注意</strong>。</p>
+<p><strong>Reference：</strong></p>
+<p>[1] <a href="http://msdn.microsoft.com/en-us/library/aa691146(v=vs.71).aspx">C# Language Specification Floating point types</a><br/>
+[2] <a href="http://stackoverflow.com/questions/6683059/are-floating-point-numbers-consistent-in-c-can-they-be">Are floating-point numbers consistent in C#? Can they be? </a><br/>
+[3] <a href="http://www.plantation-productions.com/Webster/www.artofasm.com/Linux/HTML/RealArithmetica2.html">The FPU Instruction Set</a></p>
+<h4><strong>附录</strong></h4>
+<h5><strong>80838.0f * -2499.0f = -202014160.0浮点运算过程的说明</strong></h5>
+<p>32位浮点数在计算机中的表示方式为：1位符号位(s)-8位指数位(E)-23位有效数字(M)。<br/>
+32位Float = (-1)^s * (1+m) * 2^(e-127), 其中e是实际转换成1.xxxxx*2^e的指数,m是前面的xxxxx(节约1位)</p>
+<p>80838.0f = 1 0011 1011 1100 0110.0= 1.00111011110001100*2^16<br/>
+有效位M = 0011 1011 1100 0110 0000 000<br/>
+指数位E = 16 + 127 = 143 =  10001111<br/>
+内部表示 80838.0 =  0 [1000 1111] [0011 1011 1100 0110 0000 000]<br/>
+= 0100 0111 1001 1101 1110 0011 0000 0000<br/>
+= 47 9d e3 00 //实际调试时看到的内存值 可能是00 e3 9d 47是因为调试环境用了小端表示法法：低位字节排内存低地址端，高位排内存高地址</p>
+<p>-2499.0 = -100111000011.0 = -1.001110000110 * 2^11<br/>
+有效位M = 0011 1000 0110 0000 0000 000<br/>
+指数位E = 11+127=138= 10001010<br/>
+符号位s = 1<br/>
+内部表示-2499.0 = 1 [10001010] [0011 1000 0110 0000 0000 000]<br/>
+=1100 0101 0001 1100 0011 0000 0000 0000<br/>
+=c5 1c 30 00</p>
+<p>80838.0 * -2499.0 = ?</p>
+<p>首先是指数 e = 11+16 = 27<br/>
+指数位E = e + 127 = 154 = 10011010<br/>
+有效位相乘结果为 1.1000 0001 0100 1111 1011 1010 01 //可以自己动手实际算下<br/>
+实际中只能有23位，后面的被截断即1000 0001 0100 1111 1011 101<span style="text-decoration: line-through;">0 01 </span><br/>
+相乘结果内部表示=1[10011010][1000 0001 0100 1111 1011 101]<br/>
+= 1100 1101 0100 0000 1010 0111 1101 1101<br/>
+= cd 40 a7 dd</p>
+<p>结果 =  -1.1000 0001 0100 1111 1011 101 *2^27<br/>
+=  -11000 0001 0100 1111 1011 1010000<br/>
+=  -202014160<br/>
+再转成double后还是-202014160.</p>
+<p>如果是FPU的话，上面的有效位结果不会被截断，即<br/>
+FPU结果 = -1.1000 0001 0100 1111 1011 101<strong>001</strong> *2^27<br/>
+= -11000 0001 0100 1111 1011 101<strong>001</strong>0<br/>
+= -202014162</p>
+<p>全文完，若本文有纰漏之处欢迎指正。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11235-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">.NET编程</a>, <a href="javascript:void(0)" rel="category tag">C/C++语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">.NET</a>, <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">float</a>, <a href="javascript:void(0)" rel="tag">FPU</a>, <a href="javascript:void(0)" rel="tag">SSE</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>一个浮点数跨平台产生的问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1382757" class="comment even thread-even depth-1">
+<article id="div-comment-1382757" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3614c92d81e836fbc21a58cee2acabd9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3614c92d81e836fbc21a58cee2acabd9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Allen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1382757"><time datetime="2014-03-16T18:57:54+08:00">2014年03月16日 18:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当初在学校学习基础理论的时候就知道这个754标准，但是当初对它的理解还只停留在这个数据类型表示的是个近似值，判断相等要使用相减小于一个非常小的数。后来实际工作中很少用到浮点型，基本都是在用decimal这样的十进制类型。原来这里面坑还是很深啊，这样的问题也得对汇编，操作系统，编译原理这些底层的基础知识吃得很透才能找到解决问题的方向。从这个角度来说，大学那些计算机科学基础课程还是非常重要的，只是当初不了解它们的意义，学习的时候也算理解，但不够深入。有时间还是要把这些东西从头再过一遍。所谓温故而知新。</p>
+<p>BTW：这些厂商号称的一次编写，多处执行还是一个美好的远望，虽然解决的绝大多数问题，跟实际环境还是有一定的出入，不能迷信他们啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1382819" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1382819" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/644cb24b502069d7f9db6014c069a100?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/644cb24b502069d7f9db6014c069a100?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ProgramFan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1382819"><time datetime="2014-03-16T19:13:00+08:00">2014年03月16日 19:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在FeedlyReader中看到，特地过来拍砖。本文技术细节很清晰，逻辑也很严密，但结论有误导听众的嫌疑。首先，在Intel的指令集参考手册中明确表示，X87已经是过时的指令，不支持超标量和SIMD，推荐使用SSE代替；其次，该例子中，程序员的错误在于没有理解C语言的隐式类型转换规则，把两个单精度相乘赋给双精度，其过程是两个单精度按单精度乘法计算，得到单精度结果，然后隐式转化为双精度赋给目标地址。这个计算本身是损失精度的，只有7到位有效数字。标准解决方法是使用双精度进行计算，只需要把一个操作数强制转换为双精度即可。最后，文章Linux下64位反汇编用错了代码，已经全是双精度了，汇编也是molsd，SSE双精度乘法。事实上，只要硬件平台符合IEEE754浮点标准，软件按所需精度选择类型，其他的留给编译器，浮点精度就实现跨平台啦，GPU和一些FPGA都支持IEEE754了，X86系列CPU从引入SSE2后也完整支持，至于那个X87，历史遗留产物，由它去吧。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1383083" class="comment byuser comment-author-haoel even depth-2">
+<article id="div-comment-1383083" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1383083"><time datetime="2014-03-16T20:48:10+08:00">2014年03月16日 20:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1382819" rel="nofollow">@ProgramFan </a> 是的，这个本来就是程序代码的问题，而不应该用编译器选项来解决。本文是要想说的是，编译器参数中的坑。文中特意增强（加粗飘红）了一下结论，希望本文不会产生更多的误导。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1383182" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1383182" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a7d27de55743b8366da91a399c206f8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a7d27de55743b8366da91a399c206f8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Hallelujah</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1383182"><time datetime="2014-03-16T21:18:48+08:00">2014年03月16日 21:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一直规避使用float，由于涉及浮点运算的也少，暂时没出过问题；文章不错，再次学习了大学的知识，赞</p>
+</div>
+ </article>
+</li>
+<li id="comment-1383189" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1383189" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/644cb24b502069d7f9db6014c069a100?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/644cb24b502069d7f9db6014c069a100?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ProgramFan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1383189"><time datetime="2014-03-16T21:22:32+08:00">2014年03月16日 21:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞，终于改过来了。一直订阅你的博客，学到很多东西。CentOS下64位反汇编代码仍然有问题，阅读器里的版本是这样的：</p>
+<p>//C++ 64位系统下 CentOS 6<br/>
+……<br/>
+6 double p3x = 80838.0f;<br/>
+0x00000000004007ec : movabs $0x40f3bc6000000000,%rax<br/>
+0x00000000004007f6 : mov %rax,-0x18(%rbp)</p>
+<p>7 double p2y = -2499.0f;<br/>
+0x00000000004007fa : movabs $0xc0a3860000000000,%rax<br/>
+0x0000000000400804 : mov %rax,-0x10(%rbp)</p>
+<p>8 double v321 = p3x * p2y;<br/>
+0x0000000000400808 : movsd -0x18(%rbp),%xmm0<br/>
+0x000000000040080d : mulsd -0x10(%rbp),%xmm0<br/>
+0x0000000000400812 : movsd %xmm0,-0x8(%rbp)<br/>
+……</p>
+<p>其中 6，7行声明的是 double，第八行的汇编也是双精度操作，这应该是正确的程序，而不是文中出问题的版本，建议修正。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1383207" class="comment byuser comment-author-haoel odd alt thread-even depth-1">
+<article id="div-comment-1383207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1383207"><time datetime="2014-03-16T21:31:30+08:00">2014年03月16日 21:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1383189" rel="nofollow">@ProgramFan </a> 谢谢，代码搞乱了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1383646" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1383646" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/897876e21497af7faec26ff5db524a0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/897876e21497af7faec26ff5db524a0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liamlee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1383646"><time datetime="2014-03-17T00:18:21+08:00">2014年03月17日 00:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>竟然看到了同学（隔壁班）的名字。哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1383852" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1383852" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/08158b118182a72a6698eb5f18a4940a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/08158b118182a72a6698eb5f18a4940a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Dimtry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1383852"><time datetime="2014-03-17T01:26:05+08:00">2014年03月17日 01:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>奉劝楼主少玩windows，误终身的平台。</p>
+<p>数据类型选择错了，都去调整compiler 参数起来了。这是南辕北辙的节奏。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1384848" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/3687.html" class="url" rel="ugc external nofollow">一个浮点数跨平台产生的问题 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1385050" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1385050" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c76ab8f3846ee692af3841db4ccf3d93?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c76ab8f3846ee692af3841db4ccf3d93?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">夜阑听雨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1385050"><time datetime="2014-03-17T09:23:31+08:00">2014年03月17日 09:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不知道耗子叔有没有用过OpenCL，在分别使用CPU和GPU进行浮点数运算时精度损失特别明显。<a href="#comment-1383083" rel="nofollow">@陈皓 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1385784" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1385784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ef651e3c0e2c8e1448af5730bdc85ae1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ef651e3c0e2c8e1448af5730bdc85ae1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">simpledream</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1385784"><time datetime="2014-03-17T13:47:36+08:00">2014年03月17日 13:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>interesting</p>
+</div>
+ </article>
+</li>
+<li id="comment-1387346" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1387346" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9096a7d98b2c834ed5e133d59786aa16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9096a7d98b2c834ed5e133d59786aa16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tl3shi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1387346"><time datetime="2014-03-17T22:07:58+08:00">2014年03月17日 22:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里说的改编译参数是希望得到合理的结果(某种意义上讲有误差的结果才是正确的结果，默认情况下编译器自作多情给我了个精确的答案)，而不是说想通过编译参数来提高精度。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1387354" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1387354" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9096a7d98b2c834ed5e133d59786aa16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9096a7d98b2c834ed5e133d59786aa16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tl3shi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1387354"><time datetime="2014-03-17T22:11:27+08:00">2014年03月17日 22:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@Dimtry 这还挑起操作系统滴。。。你用linux写桌面游戏试试。。。就算你会写 也不见得有人用啊。<br/>
+另改编译参数是希望得到合理的结果而不是想用它提高精度。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1387366" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1387366" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9096a7d98b2c834ed5e133d59786aa16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9096a7d98b2c834ed5e133d59786aa16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tanglei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1387366"><time datetime="2014-03-17T22:14:05+08:00">2014年03月17日 22:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@Hallelujah float/double之类各有各的适用地方啊。自己应该在速度/精度上有一个权衡。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1390711" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1390711" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b94f62316126958c1a30030dde5a4fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b94f62316126958c1a30030dde5a4fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jwen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1390711"><time datetime="2014-03-18T14:25:04+08:00">2014年03月18日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>linux 还是很有游戏前途的 steam平台专门出了个游戏的linux发行版 移植了各种游戏过去 还准备打造成 xbox这类的动向 未来还是很有看头<a href="#comment-1387354" rel="nofollow">@tl3shi </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1395279" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1395279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d252c7d83ada718cda5299a8cabc17ed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d252c7d83ada718cda5299a8cabc17ed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">stevenxu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1395279"><time datetime="2014-03-19T12:19:44+08:00">2014年03月19日 12:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作为高级语言用户，不应该对浮点数的精度有过多假设。如果某个具体实现给我们提供了超出通常水平的浮点精度，我们可以接受它，而不应该依赖它。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1402402" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1402402" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c658e2b1cd28d79640d1ff40a42f1f3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c658e2b1cd28d79640d1ff40a42f1f3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/liigo" class="url" rel="ugc external nofollow">Liigo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1402402"><time datetime="2014-03-24T10:11:38+08:00">2014年03月24日 10:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>得出 float 小数“精度有限”的结论就足够了，再往后的分析就有点走火入魔了（入了偏门）。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1402745" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1402745" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c9da208d79e41dc4b70f8cfdf95575d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c9da208d79e41dc4b70f8cfdf95575d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/tietao" class="url" rel="ugc external nofollow">catch2000</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1402745"><time datetime="2014-03-24T19:09:53+08:00">2014年03月24日 19:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主分析的很好。<br/>
+博主的结论中如果再加上@ProgramFan 的评论，<br/>
+这篇博文就完美了。</p>
+<p>从代码安全的角度看，这里的问题和<br/>
+uint8_t test_a = 127;<br/>
+uint8_t test_b = 130;<br/>
+uint16_t test_result = test_a + test_b;（在这段代码在Cygwin运行正常）<br/>
+存在数据截断一样。<br/>
+根据MISRA-C 规定，对于隐式类型转换要慎用，尽量在同类型间操作。<br/>
+对于C语言未定义的，不予使用。就像char，不知道是有符号还是无符号的。所以还是用uint8_t或者int8_t。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1411399" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=931" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | zengine</a> </div>
+</li>
+<li id="comment-1415236" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://calleeblog.sinaapp.com/?p=28" class="url" rel="ugc external nofollow">callee个人博客 » c语言中的浮点数</a> </div>
+</li>
+<li id="comment-1422421" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=975" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | 星达红</a> </div>
+</li>
+<li id="comment-1443126" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1443126" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e1779a7e31ed579b63c6245bf1ce8b5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e1779a7e31ed579b63c6245bf1ce8b5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">饭中淹</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1443126"><time datetime="2014-04-22T17:49:01+08:00">2014年04月22日 17:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主的文章对我很有用。谢谢。</p>
+<p>不过我遇到的问题，精度解决不了的。</p>
+<p>float fVal = 0.69f;<br/>
+int a = (int)(fVal * 1000);</p>
+<p>在VS2010下，得到的a是689。<br/>
+double dVal = 0.69;<br/>
+int a = (int)(dVal*10000000);<br/>
+得到a是6899999。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1453562" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1453562" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhangyafeikimi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1453562"><time datetime="2014-05-05T09:48:31+08:00">2014年05月05日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我突然想起来这篇文章http://www.agner.org/optimize/<br/>
+有一些很细节的32位和64位的区别.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1534459" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1534459" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e824d2172a9a742d023de45be07917be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e824d2172a9a742d023de45be07917be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">三水</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11235.html#comment-1534459"><time datetime="2014-09-15T10:22:11+08:00">2014年09月15日 10:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1382819" rel="nofollow">@ProgramFan </a><br/>
+你说的很对，完全是程序的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370824" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xdicp.com/75790.html" class="url" rel="ugc external nofollow">关于浮点数的几个有意思的例子 | 编程案例分享</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,540 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go 编程模式：Functional Options | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21146 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21146" class="post-content post-21146 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-functional tag-functional-programming tag-go tag-golang tag-pattern tag-839 series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go 编程模式：Functional Options</span>
+<h1 class="entry-title">Go 编程模式：Functional Options</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21146.html" title="23:23" rel="bookmark"><time class="entry-date" datetime="2020-12-22T23:23:52+08:00" pubdate="">2020年12月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21146.html#comments" class="comments-link">15 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 49,861 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-21241" src="/uploads/2020/12/go.options-300x186.png" alt="" width="300" height="186" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>在本篇文章中，我们来讨论一下Functional Options这个编程模式。这是一个函数式编程的应用案例，编程技巧也很好，是目前在Go语言中最流行的一种编程模式。但是，在我们正式讨论这个模式之前，我们需要先来看看要解决什么样的问题。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第3 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go 编程模式：Functional Options</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21140.html" rel="prev" title="Go 编程模式：错误处理">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21214.html" rel="next" title="Go编程模式：委托和反转控制">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%85%8D%E7%BD%AE%E9%80%89%E9%A1%B9%E9%97%AE%E9%A2%98" title="配置选项问题">配置选项问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E9%85%8D%E7%BD%AE%E5%AF%B9%E8%B1%A1%E6%96%B9%E6%A1%88" title="配置对象方案">配置对象方案</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Builder%E6%A8%A1%E5%BC%8F" title="Builder模式">Builder模式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Functional_Options" title="Functional Options">Functional Options</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3" title="参考文档">参考文档</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%85%8D%E7%BD%AE%E9%80%89%E9%A1%B9%E9%97%AE%E9%A2%98"></span>配置选项问题<span class="ez-toc-section-end"></span></h4>
+<p>在我们编程中，我们会经常性的需要对一个对象（或是业务实体）进行相关的配置。比如下面这个业务实体（注意，这仅只是一个示例）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Server struct {
+    Addr     string
+    Port     int
+    Protocol string
+    Timeout  time.Duration
+    MaxConns int
+    TLS      *tls.Config
+}</pre>
+<p>在这个 <code>Server</code> 对象中，我们可以看到：</p>
+<p><span id="more-21146"></span></p>
+<ul>
+<li>要有侦听的IP地址 <code>Addr</code> 和端口号 <code>Port</code> ，这两个配置选项是必填的（当然，IP地址和端口号都可以有默认值，当这里我们用于举例认为是没有默认值，而且不能为空，需要必填的）。</li>
+<li>然后，还有协议 <code>Protocol</code> 、 <code>Timeout</code> 和<code>MaxConns</code> 字段，这几个字段是不能为空的，但是有默认值的，比如：协议是<code>tcp</code>, 超时<code>30</code>秒 和 最大链接数<code>1024</code>个。</li>
+<li>还有一个 <code>TLS</code> 这个是安全链接，需要配置相关的证书和私钥。这个是可以为空的。</li>
+</ul>
+<p>所以，针对于上述这样的配置，我们需要有多种不同的创建不同配置 <code>Server</code> 的函数签名，如下所示（代码比较宽，需要左右滚动浏览）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func NewDefaultServer(addr string, port int) (*Server, error) {
+  return &amp;Server{addr, port, &#34;tcp&#34;, 30 * time.Second, 100, nil}, nil
+}
+
+func NewTLSServer(addr string, port int, tls *tls.Config) (*Server, error) {
+  return &amp;Server{addr, port, &#34;tcp&#34;, 30 * time.Second, 100, tls}, nil
+}
+
+func NewServerWithTimeout(addr string, port int, timeout time.Duration) (*Server, error) {
+  return &amp;Server{addr, port, &#34;tcp&#34;, timeout, 100, nil}, nil
+}
+
+func NewTLSServerWithMaxConnAndTimeout(addr string, port int, maxconns int, timeout time.Duration, tls *tls.Config) (*Server, error) {
+  return &amp;Server{addr, port, &#34;tcp&#34;, 30 * time.Second, maxconns, tls}, nil
+}</pre>
+<p>因为Go语言不支持重载函数，所以，你得用不同的函数名来应对不同的配置选项。</p>
+<h4><span class="ez-toc-section" id="%E9%85%8D%E7%BD%AE%E5%AF%B9%E8%B1%A1%E6%96%B9%E6%A1%88"></span>配置对象方案<span class="ez-toc-section-end"></span></h4>
+<p>要解决这个问题，最常见的方式是使用一个配置对象，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">type Config struct {
+    Protocol string
+    Timeout  time.Duration
+    Maxconns int
+    TLS      *tls.Config
+}</pre>
+<p>我们把那些非必输的选项都移到一个结构体里，于是 <code>Server</code> 对象变成了：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">type Server struct {
+    Addr string
+    Port int
+    Conf *Config
+}</pre>
+<p>于是，我们只需要一个 <code>NewServer()</code> 的函数了，在使用前需要构造 <code>Config</code> 对象。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func NewServer(addr string, port int, conf *Config) (*Server, error) {
+    //...
+}
+
+//Using the default configuratrion
+srv1, _ := NewServer(&#34;localhost&#34;, 9000, nil) 
+
+conf := ServerConfig{Protocol:&#34;tcp&#34;, Timeout: 60*time.Duration}
+srv2, _ := NewServer(&#34;locahost&#34;, 9000, &amp;conf)</pre>
+<p>这段代码算是不错了，大多数情况下，我们可能就止步于此了。但是，对于有洁癖的有追求的程序员来说，他们能看到其中有一点不好的是，<code>Config</code> 并不是必需的，所以，你需要判断是否是 <code>nil</code> 或是 Empty – <code> Config{}</code>这让我们的代码感觉还是有点不是很干净。</p>
+<h4><span class="ez-toc-section" id="Builder%E6%A8%A1%E5%BC%8F"></span>Builder模式<span class="ez-toc-section-end"></span></h4>
+<p>如果你是一个Java程序员，熟悉设计模式的一定会很自然地使用上Builder模式。比如如下的代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="java">User user = new User.Builder()
+  .name(&#34;Hao Chen&#34;)
+  .email(&#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="432b222c262f032b2c372e222a2f6d202c2e">[email protected]</a>&#34;)
+  .nickname(&#34;左耳朵&#34;)
+  .build();</pre>
+<p>仿照上面这个模式，我们可以把上面代码改写成如下的代码（注：下面的代码没有考虑出错处理，其中关于出错处理的更多内容，请参看《<a title="GO 编程模式：错误处理" href="/articles/21140.html" target="_blank" rel="noopener">Go 编程模式：出错处理</a>》）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//使用一个builder类来做包装
+type ServerBuilder struct {
+  Server
+}
+
+func (sb *ServerBuilder) Create(addr string, port int) *ServerBuilder {
+  sb.Server.Addr = addr
+  sb.Server.Port = port
+  //其它代码设置其它成员的默认值
+  return sb
+}
+
+func (sb *ServerBuilder) WithProtocol(protocol string) *ServerBuilder {
+  sb.Server.Protocol = protocol 
+  return sb
+}
+
+func (sb *ServerBuilder) WithMaxConn( maxconn int) *ServerBuilder {
+  sb.Server.MaxConns = maxconn
+  return sb
+}
+
+func (sb *ServerBuilder) WithTimeOut( timeout time.Duration) *ServerBuilder {
+  sb.Server.Timeout = timeout
+  return sb
+}
+
+func (sb *ServerBuilder) WithTLS( tls *tls.Config) *ServerBuilder {
+  sb.Server.TLS = tls
+  return sb
+}
+
+func (sb *ServerBuilder) Build() (Server) {
+  return  sb.Server
+}
+</pre>
+<p>于是就可以以如下的方式来使用了</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">sb := ServerBuilder{}
+server, err := sb.Create(&#34;127.0.0.1&#34;, 8080).
+  WithProtocol(&#34;udp&#34;).
+  WithMaxConn(1024).
+  WithTimeOut(30*time.Second).
+  Build()</pre>
+<p>上面这样的方式也很清楚，不需要额外的Config类，使用链式的函数调用的方式来构造一个对象，只需要多加一个Builder类，这个Builder类似乎有点多余，我们似乎可以直接在<code>Server</code> 上进行这样的 Builder 构造，的确是这样的。但是在处理错误的时候可能就有点麻烦（需要为Server结构增加一个error 成员，破坏了Server结构体的“纯洁”），不如一个包装类更好一些。</p>
+<p>如果我们想省掉这个包装的结构体，那么就轮到我们的Functional Options上场了，函数式编程。</p>
+<h4><span class="ez-toc-section" id="Functional_Options"></span>Functional Options<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们先定义一个函数类型：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Option func(*Server)</pre>
+<p>然后，我们可以使用函数式的方式定义一组如下的函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func Protocol(p string) Option {
+    return func(s *Server) {
+        s.Protocol = p
+    }
+}
+func Timeout(timeout time.Duration) Option {
+    return func(s *Server) {
+        s.Timeout = timeout
+    }
+}
+func MaxConns(maxconns int) Option {
+    return func(s *Server) {
+        s.MaxConns = maxconns
+    }
+}
+func TLS(tls *tls.Config) Option {
+    return func(s *Server) {
+        s.TLS = tls
+    }
+}</pre>
+<p>上面这组代码传入一个参数，然后返回一个函数，返回的这个函数会设置自己的 <code>Server</code> 参数。例如：</p>
+<ul>
+<li>当我们调用其中的一个函数用 <code>MaxConns(30)</code> 时</li>
+<li>其返回值是一个 <code>func(s* Server) { s.MaxConns = 30 }</code> 的函数。</li>
+</ul>
+<p>这个叫高阶函数。在数学上，就好像这样的数学定义，计算长方形面积的公式为： <code>rect(width, height) = width * height;</code> 这个函数需要两个参数，我们包装一下，就可以变成计算正方形面积的公式：<code>square(width) = rect(width, width)</code> 也就是说，<code>squre(width)</code>返回了另外一个函数，这个函数就是<code>rect(w,h)</code> 只不过他的两个参数是一样的。即：<code>f(x)  = g(x, x)</code></p>
+<p>好了，现在我们再定一个 <code>NewServer()</code>的函数，其中，有一个可变参数 <code>options</code> 其可以传出多个上面上的函数，然后使用一个for-loop来设置我们的 <code>Server</code> 对象。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func NewServer(addr string, port int, options ...func(*Server)) (*Server, error) {
+
+  srv := Server{
+    Addr:     addr,
+    Port:     port,
+    Protocol: &#34;tcp&#34;,
+    Timeout:  30 * time.Second,
+    MaxConns: 1000,
+    TLS:      nil,
+  }
+  for _, option := range options {
+    option(&amp;srv)
+  }
+  //...
+  return &amp;srv, nil
+}</pre>
+<p>于是，我们在创建 <code>Server</code> 对象的时候，我们就可以这样来了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">s1, _ := NewServer(&#34;localhost&#34;, 1024)
+s2, _ := NewServer(&#34;localhost&#34;, 2048, Protocol(&#34;udp&#34;))
+s3, _ := NewServer(&#34;0.0.0.0&#34;, 8080, Timeout(300*time.Second), MaxConns(1000))</pre>
+<p>怎么样，是不是高度的整洁和优雅？不但解决了使用 <code>Config</code> 对象方式 的需要有一个config参数，但在不需要的时候，是放 <code>nil</code> 还是放 <code>Config{}</code>的选择困难，也不需要引用一个Builder的控制对象，直接使用函数式编程的试，在代码阅读上也很优雅。</p>
+<p>所以，以后，大家在要玩类似的代码时，强烈推荐使用Functional Options这种方式，这种方式至少带来了如下的好处：</p>
+<ul>
+<li>直觉式的编程</li>
+<li>高度的可配置化</li>
+<li>很容易维护和扩展</li>
+<li>自文档</li>
+<li>对于新来的人很容易上手</li>
+<li>没有什么令人困惑的事（是nil 还是空）</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"></span>参考文档<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><b>“Self referential functions and design” by Rob Pike<br/>
+</b><a href="http://commandcenter.blogspot.com.au/2014/01/self-referential-functions-and-design.html">http://commandcenter.blogspot.com.au/2014/01/self-referential-functions-and-design.html</a></li>
+</ul>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21146-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">functional</a>, <a href="javascript:void(0)" rel="tag">functional-programming</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">Pattern</a>, <a href="javascript:void(0)" rel="tag">函数式编程</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go 编程模式：Functional Options</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187508" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2187508" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.lilydjwg.me/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2187508"><time datetime="2020-12-26T17:03:25+08:00">2020年12月26日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这些 Option 函数被暴露出来，是不是可以用来创建不合法的对象呢？比如某个对象当一些选项被设置时，另外一些对象就不能被设置。或者要求一些选项满足某个条件。builder pattern 里可以在 build 这一步进行验证，但是这些 Option 函数，可以用于已经创建好的对象、强行在创建后再作改变并且不用经过验证？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2198073" class="comment odd alt depth-2">
+<article id="div-comment-2198073" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49d6fcc3fd0f0bbdb22068e4ca8c4822?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49d6fcc3fd0f0bbdb22068e4ca8c4822?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">carver</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2198073"><time datetime="2021-01-24T22:06:41+08:00">2021年01月24日 22:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可以在调用完所有的 Option 后，对创建好的对象进行验证，就像是在 build 这一步中做一样</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187582" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2187582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/637fe174e15e1258fa7baf9b7a8a8f7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/637fe174e15e1258fa7baf9b7a8a8f7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">johzzy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2187582"><time datetime="2020-12-26T20:58:59+08:00">2020年12月26日 20:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>尝试使用cxx实现类似写法</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">namespace go {
+using std::string;
+namespace time {
+    using Duration = int64_t;
+    constexpr auto Second = 1LL;
+} // namespace time
+namespace tls {
+    using Config = string;
+}
+
+struct Server {
+    string addr;
+    int port;
+    string protocol;
+    time::Duration timeout;
+    int max_conns;
+    tls::Config *tls_;
+};
+
+using Option = std::function&lt;void(Server &amp;s)&gt;;
+
+auto Protocol(string p) -&gt; Option
+{
+    return [p](Server &amp;s) { s.protocol = p; };
+}
+auto Timeout(time::Duration timeout) -&gt; Option
+{
+    return [timeout](Server &amp;s) { s.timeout = timeout; };
+}
+auto MaxConns(int max_conns) -&gt; Option
+{
+    return [max_conns](Server &amp;s) { s.max_conns = max_conns; };
+}
+auto TLS(tls::Config *tls_) -&gt; Option
+{
+    return [tls_](Server &amp;s) { s.tls_ = tls_; };
+}
+
+Server NewServer(string addr,
+                 int port,
+                 std::initializer_list options = {})
+{
+    Server s{ addr, port };
+    for (auto &amp;option : options) {
+        option(s);
+    }
+    return s;
+}
+
+void UsageServer()
+{
+    auto s1 = NewServer(&#34;localhost&#34;, 1024);
+    auto s2 = NewServer(&#34;localhost&#34;, 2048, { Protocol(&#34;udp&#34;) });
+    auto s3 = NewServer(&#34;0.0.0.0&#34;, 8080,
+                        { Timeout(300 * time::Second), MaxConns(1000) });
+}
+} // namespace go
+</pre>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2360310" class="comment odd alt depth-2">
+<article id="div-comment-2360310" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/acf809998db9d18f454494decdfa1e0a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/acf809998db9d18f454494decdfa1e0a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://dup4.cn" class="url" rel="ugc external nofollow">Dup4</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2360310"><time datetime="2022-01-19T22:15:18+08:00">2022年01月19日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是不是要写成 <code>std::initializer_list&lt;Option&gt; options = {})</code></p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187587" class="comment even thread-even depth-1">
+<article id="div-comment-2187587" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/637fe174e15e1258fa7baf9b7a8a8f7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/637fe174e15e1258fa7baf9b7a8a8f7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">johzzy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2187587"><time datetime="2020-12-26T21:04:54+08:00">2020年12月26日 21:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">// 忘记默认值了
+Server NewServer(string addr,
+                 int port,
+                 std::initializer_list options = {})
+{
+    Server s{ addr, port, &#34;tcp&#34;, 30 * time::Second, 1000, nullptr };
+    for (auto &amp;option : options) {
+        option(s);
+    }
+    return s;
+}
+</pre>
+</div>
+ </article>
+</li>
+<li id="comment-2188283" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2188283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b23e707ecc9507cc11b83453a48a1208?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b23e707ecc9507cc11b83453a48a1208?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Panda张向北</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2188283"><time datetime="2020-12-28T16:42:10+08:00">2020年12月28日 16:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Builder 模式一节 文章引用错别字了，正确应为“出错处理”</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188401" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2188401" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2188401"><time datetime="2020-12-28T23:19:31+08:00">2020年12月28日 23:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，已更正</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2188300" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2188300" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6bf79dbfa01f2b474e211bbfb7b053e3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6bf79dbfa01f2b474e211bbfb7b053e3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">abvic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2188300"><time datetime="2020-12-28T17:25:57+08:00">2020年12月28日 17:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问Haoel，这个算是匿名函数的终极玩法吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2193784" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2193784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5592ff2743b79fd788b37dd27ae371d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5592ff2743b79fd788b37dd27ae371d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.yuque.com/ksco" class="url" rel="ugc external nofollow">ksco</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2193784"><time datetime="2021-01-11T20:41:05+08:00">2021年01月11日 20:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>和 uber 推荐的不一样。<br/>
+<a href="https://github.com/xxjwxc/uber_go_guide_cn#%E5%8A%9F%E8%83%BD%E9%80%89%E9%A1%B9" rel="nofollow ugc">https://github.com/xxjwxc/uber_go_guide_cn#%E5%8A%9F%E8%83%BD%E9%80%89%E9%A1%B9</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2195600" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2195600" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e891dfe3a68356cd48e19069f3d96c68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e891dfe3a68356cd48e19069f3d96c68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yngwiewang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2195600"><time datetime="2021-01-17T17:06:42+08:00">2021年01月17日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚好看到 Prometheus 源码，discovery.NewManager() 使用了 Functional Options 这种模式：func NewManager(ctx context.Context, logger log.Logger, options …func(*Manager)) *Manager {…}</p>
+</div>
+ </article>
+</li>
+<li id="comment-2198322" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2198322" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8d789cd7b459f882f8259215cc51614?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8d789cd7b459f882f8259215cc51614?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ryan wu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2198322"><time datetime="2021-01-25T14:47:21+08:00">2021年01月25日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>配置对象方案，第二行，非必输。应该为非必须吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2203487" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2203487" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24ccb9abbf2dd67d50310f3e6aa6f6dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24ccb9abbf2dd67d50310f3e6aa6f6dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kelvin kuo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2203487"><time datetime="2021-02-07T14:01:44+08:00">2021年02月07日 14:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Functional Options模式讲解的很易懂，但是这个设计模式或者说技巧，是否还有更抽象的理解 或者 其他的使用场景呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2357838" class="comment even depth-2">
+<article id="div-comment-2357838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c7ec7980b7b29640b5e916f3369ba0b1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c7ec7980b7b29640b5e916f3369ba0b1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nvid</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2357838"><time datetime="2022-01-08T17:56:19+08:00">2022年01月08日 17:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我理解的：functional options本质上是把一系列行为作为可变参数传递进去，传递行为灵活性可以更好。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2280730" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2280730" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b61828249e26d1f836cf663023054119?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b61828249e26d1f836cf663023054119?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tgq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21146.html#comment-2280730"><time datetime="2021-07-29T17:10:02+08:00">2021年07月29日 17:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sb := ServerBuilder{}<br/>
+server, err := sb.Create(“127.0.0.1”, 8080).<br/>
+WithProtocol(“udp”).<br/>
+WithMaxConn(1024).<br/>
+WithTimeOut(30*time.Second).<br/>
+Build()<br/>
+按上文中给的方法，返回值只有server</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371017" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://homecpp.art/2007/26459/0154" class="url" rel="ugc external nofollow">GO 如何利用高阶函数写出优雅的代码 – Jacob的技术博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

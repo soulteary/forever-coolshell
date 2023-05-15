@@ -1,0 +1,402 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>酷壳 – CoolShell.cn - Part 16</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="home blog paged paged-16 group-blog">
+
+<div id="page" class="hfeed site">
+<header id="masthead" role="banner">
+
+<div id="cc_spacer"></div>
+<div class="site-header">
+
+<div class="site-branding">
+<a class="home-link" href="/" title="酷 壳 – CoolShell" rel="home">
+<h1 class="site-title">酷 壳 – CoolShell</h1>
+<h2 class="site-description">享受编程和技术所带来的快乐 – Coding Your Ambition</h2>
+</a>
+</div>
+</div>
+</header>
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" class="site-main" role="main">
+<article id="post-8239" class="post-content post-8239 post type-post status-publish format-standard hentry category-cplusplus category-progdesign tag-algorithm tag-c tag-performance tag-queue">
+<header class="entry-header">
+<span class="screen-reader-text">无锁队列的实现</span>
+<h2 class="entry-title">
+<a href="/articles/8239.html" rel="bookmark">无锁队列的实现</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8239.html" title="08:26" rel="bookmark"><time class="entry-date" datetime="2012-09-07T08:26:55+08:00" pubdate="">2012年09月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8239.html#comments" class="comments-link">241 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 274,102 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p style="text-align: center;"><strong><em>————注：本文于2019年11月4日更新————</em></strong></p>
+<p>关于无锁队列的实现，网上有很多文章，虽然本文可能和那些文章有所重复，但是我还是想以我自己的方式把这些文章中的重要的知识点串起来和大家讲一讲这个技术。下面开始正文。</p>
+<h4>关于CAS等原子操作</h4>
+<p><img decoding="async" class="alignright size-full wp-image-8245" title="lock free bicycle" src="/uploads/2012/09/lock_free_bicycle.jpg" alt="" width="350" height="261" srcset="" sizes="(max-width: 350px) 100vw, 350px"/>在开始说无锁队列之前，我们需要知道一个很重要的技术就是CAS操作——Compare &amp; Set，或是 Compare &amp; Swap，<strong>现在几乎所有的CPU指令都支持CAS的原子操作，X86下对应的是 <span style="color: #ff0000;">CMPXCHG </span>汇编指令。</strong>有了这个原子操作，我们就可以用其来实现各种无锁（lock free）的数据结构。</p>
+<p>这个操作用C语言来描述就是下面这个样子：（代码来自<a href="https://en.wikipedia.org/wiki/Compare-and-swap" target="_blank" rel="noopener noreferrer">Wikipedia的Compare And Swap</a>词条）意思就是说，看一看内存<code>*reg</code>里的值是不是<code>oldval</code>，如果是的话，则对其赋值<code>newval</code>。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int compare_and_swap (int* reg, int oldval, int newval)
+{
+  int old_reg_val = *reg;
+  if (old_reg_val == oldval) {
+     *reg = newval;
+  }
+  return old_reg_val;
+}
+</pre>
+<p>我们可以看到，<code>old_reg_val</code> 总是返回，于是，我们可以在 <code>compare_and_swap</code> 操作之后对其进行测试，以查看它是否与 <code>oldval</code>相匹配，因为它可能有所不同，这意味着另一个并发线程已成功地竞争到 <code>compare_and_swap</code> 并成功将 <code>reg</code> 值从 <code>oldval</code> 更改为别的值了。</p>
+<p>这个操作可以变种为返回bool值的形式（返回 bool值的好处在于，可以调用者知道有没有更新成功）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">bool compare_and_swap (int *addr, int oldval, int newval)
+{
+  if ( *addr != oldval ) {
+      return false;
+  }
+  *addr = newval;
+  return true;
+}</pre>
+<p>与CAS相似的还有下面的原子操作：（这些东西大家自己看Wikipedia，也没什么复杂的）</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Fetch-and-add" target="_blank" rel="noopener noreferrer">Fetch And Add</a>，一般用来对变量做 +1 的原子操作</li>
+<li><a title="Test-and-set" href="https://en.wikipedia.org/wiki/Test-and-set">Test-and-set</a>，写值到某个内存位置并传回其旧值。汇编指令BST</li>
+<li><a title="Test and Test-and-set" href="https://en.wikipedia.org/wiki/Test_and_Test-and-set">Test and Test-and-set</a>，用来低低Test-and-Set的资源争夺情况</li>
+</ul>
+<p><strong>注：</strong>在实际的C/C++程序中，CAS的各种实现版本如下：</p>
+<p> <a href="/articles/8239.html#more-8239" class="more-link">…</a></p><a href="/articles/8239.html#more-8239" class="more-link">
+</a><p class="read-more"><a href="/articles/8239.html#more-8239" class="more-link"></a><a class="btn btn-default" href="/articles/8239.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8239-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8209" class="post-content post-8209 post type-post status-publish format-standard hentry category-misc tag-agile tag-tdd tag-unit-test">
+<header class="entry-header">
+<span class="screen-reader-text">“单元测试要做多细？”</span>
+<h2 class="entry-title">
+<a href="/articles/8209.html" rel="bookmark">“单元测试要做多细？”</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8209.html" title="08:13" rel="bookmark"><time class="entry-date" datetime="2012-09-03T08:13:31+08:00" pubdate="">2012年09月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8209.html#comments" class="comments-link">101 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 74,622 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>这篇文章主要来源是StackOverflow上的一个回答——“<a title="How deep are your unit tests?" href="http://stackoverflow.com/questions/153234/how-deep-are-your-unit-tests" target="_blank">How deep are your unit tests?</a>”。一个有13.8K的分的人（<a href="http://stackoverflow.com/users/1116/john-nolan">John Nolan</a>）问了个关于TDD的问题，这个问题并不新鲜，最亮的是这个问题的Best Answer，这个问题是——</p>
+<p style="padding-left: 30px;">“TDD需要花时间写测试，而我们一般多少会写一些代码，而第一个测试是测试我的构造函数有没有把这个类的变量都设置对了，这会不会太过分了？那么，我们写单元测试的这个单元的粒度到底是什么样的？并且，是不是我们的测试测试得多了点？”</p>
+<h4>答案</h4>
+<p>StackOverflow上，这个问题的答案是这样的——</p>
+<p style="padding-left: 30px;">“I get paid for code that works, not for tests, so my philosophy is to test as little as possible to reach a given level of confidence (I suspect this level of confidence is high compared to industry standards, but that could just be hubris). If I don’t typically make a kind of mistake (like setting the wrong variables in a constructor), I don’t test for it. I do tend to make sense of test errors, so I’m extra careful when I have logic with complicated conditionals. When coding on a team, I modify my strategy to carefully test code that we, collectively, tend to get wrong.”</p>
+<p style="padding-left: 30px;"><strong>老板为我的代码付报酬，而不是测试，所以，我对此的价值观是——测试越少越好，少到你对你的代码质量达到了某种自信</strong>（我觉得这种的自信标准应该要高于业内的标准，当然，这种自信也可能是种自大）。如果我的编码生涯中不会犯这种典型的错误（如：在构造函数中设了个错误的值），那我就不会测试它。<strong>我倾向于去对那些有意义的错误做测试，所以，我对一些比较复杂的条件逻辑会异常地小心</strong>。当在一个团队中，我会非常小心的测试那些会让团队容易出错的代码。</p>
+<p>这个回答对TDD似乎有一种否定，<strong>最亮的是这个问题是由<a href="https://en.wikipedia.org/wiki/Kent_Beck" target="_blank">Kent Beck</a>，Kent是XP和TDD的创造者，是敏捷开发实践方法的奠基人</strong>。以致于还有人调侃到——</p>
+<p> <a href="/articles/8209.html#more-8209" class="more-link">…</a></p><a href="/articles/8209.html#more-8209" class="more-link">
+</a><p class="read-more"><a href="/articles/8209.html#more-8209" class="more-link"></a><a class="btn btn-default" href="/articles/8209.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8209-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8170" class="post-content post-8170 post type-post status-publish format-standard hentry category-ajaxdev category-webdev category-misc tag-ajax tag-ie tag-jquery tag-programmer tag-web tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">一次Ajax查错的经历</span>
+<h2 class="entry-title">
+<a href="/articles/8170.html" rel="bookmark">一次Ajax查错的经历</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8170.html" title="14:56" rel="bookmark"><time class="entry-date" datetime="2012-08-27T14:56:59+08:00" pubdate="">2012年08月27日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8170.html#comments" class="comments-link">93 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 58,651 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>先说故事，再说想法吧。</p>
+<p>我有一朋友做网站，用jQuery的Ajax方法从后端载入一段HTML代码然后动态插入到网页的Div元件中。这个东西太普遍了。jQuery强大的load方法可以完成这个事情。朋友的代码是这么写的：</p>
+<p>[javascript]var tab = jQuery(&#34;#dynamic_tab&#34;);<br/>
+var url = &#34;/list_ajax/&#34;;<br/>
+tab.load(url);[/javascript]</p>
+<p>简单到不能再简单了。在Chrome，Firefox，Safari下运行一点问题也没有，只有IE不行，不管是IE7，IE8，还是IE9。问题的症壮是，使用IE访问那个Ajax的链接，没有问题，但是在jQuery的Ajax方法返回了“undefined”的respons对象。没有任何报错！</p>
+<p>怎么搞也搞不定，只好Google了一下——“<a href="https://www.google.com/#hl=zh-CN&amp;newwindow=1&amp;site=&amp;source=hp&amp;q=jQuery+load+IE&amp;btnK=Google+%E6%90%9C%E7%B4%A2&amp;oq=jQuery+load+IE" target="_blank">jQuery load IE</a>”，一看，很多人都在问这个问题。于是开始了<a title="各种流行的编程风格" href="/articles/2058.html" target="_blank">散弹枪编程方式</a>。</p>
+<p>排在第一的就是StackOverflow被浏览了33K次的这个问题：<a href="http://stackoverflow.com/questions/1061525/jquerys-load-not-working-in-ie-but-fine-in-firefox-chrome-and-safari" target="_blank">jQuery’s .load() not working in IE – but fine in Firefox, Chrome and Safari</a>，答案没有被打勾（不靠谱），StackOverflow还有很多人问相似的问题，不过都没有答案。不管三七二十一，先试了一下，散弹枪嘛。试了半天都没有用。</p>
+<p>然后上Google查，又看到有人说的IE缓存的问题，什么，要把cache设置成false，或是用下面的方法来解决：</p>
+<p>[javascript]var tab = jQuery(&#34;#dynamic_tab&#34;);<br/>
+var fuckie = Math.random();<br/>
+var url = &#34;/list_ajax/&#34;+&#34;?fuckie=&#34;+fuckie;<br/>
+tab.load(url);[/javascript]</p>
+<p>反正还是一样，统统不Work，几乎所有的都试了，都不Work。搞了一天的朋友恼怒道：“Microsoft应该快点倒闭吧，产品太烂了”。IE的确是太烂了。</p>
+<p> <a href="/articles/8170.html#more-8170" class="more-link">…</a></p><a href="/articles/8170.html#more-8170" class="more-link">
+</a><p class="read-more"><a href="/articles/8170.html#more-8170" class="more-link"></a><a class="btn btn-default" href="/articles/8170.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8170-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8138" class="post-content post-8138 post type-post status-publish format-standard hentry category-process category-career tag-algorithm tag-programmer tag-58 tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">为什么我反对纯算法面试题</span>
+<h2 class="entry-title">
+<a href="/articles/8138.html" rel="bookmark">为什么我反对纯算法面试题</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8138.html" title="08:20" rel="bookmark"><time class="entry-date" datetime="2012-08-22T08:20:18+08:00" pubdate="">2012年08月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8138.html#comments" class="comments-link">181 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 138,019 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>算法面试可能是微软搞出来的面试方法，现在很多公司都在效仿，而且我们的程序员也乐于解算法题，我个人以为，这是应试教育的毒瘤！我在《<a title="再谈“我是怎么招聘程序员的”（上）" href="/articles/4506.html">再谈“我是怎么招程序员”</a>》中比较保守地说过，“<strong>问难的算法题并没有错，错的很多面试官只是在肤浅甚至错误地理解着面试算法题的目的</strong>。”，今天，我想加强一下这个观点——<strong>我反对纯算法题面试</strong>！（注意，我说的是纯算法题）</p>
+<figure id="attachment_8140" aria-describedby="caption-attachment-8140" style="width: 250px" class="wp-caption alignright"><a href="https://en.wikipedia.org/wiki/Sheldon_Cooper"><img decoding="async" loading="lazy" class="size-full wp-image-8140" title="Sheldon_Cooper" src="/uploads/2012/08/250px-Sheldon_Cooper.jpg" alt="" width="250" height="333" srcset="" sizes="(max-width: 250px) 100vw, 250px"/></a><figcaption id="caption-attachment-8140" class="wp-caption-text">图片源Wikipedia（点击图片查看词条）</figcaption></figure>
+<p>我再次引用我以前的一个观点——</p>
+<p style="padding-left: 30px;">能解算法题并不意味着这个人就有能力就能在工作中解决问题，你可以想想，小学奥数题可能比这些题更难，但并不意味着那些奥数能手就能解决实际问题。</p>
+<p>好了，让我们来看一个示例（这个示例是昨天在<a href="http://weibo.com/1401880315/yy9pvgNi2" target="_blank">微博上的一个讨论</a>），这个题是——“<strong>找出无序数组中第2大的数</strong>”，几乎所有的人都用了O(n)的算法，我相信对于我们这些应试教育出来的人来说，不用排序用O(n)算法是很正常的事，连我都不由自主地认为O(n)算法是这个题的标准答案。<strong>我们太习惯于标准答案了，这是我国教育最悲哀的地方</strong>。（广义的洗脑就是让你的意识依赖于某个标准答案，然后通过给你标准答案让你不会思考而控制你）</p>
+<h4>功能性需求分析</h4>
+<p>试想，如果我们在实际工作中得到这样一个题 我们会怎么做？我一定会分析这个需求，因为我害怕需求未来会改变，今天你叫我找一个第2大的数，明天你找我找一个第4大的数，后天叫我找一个第100大的数，我不搞死了。需求变化是很正常的事。分析完这个需求后，我会很自然地去写找第K大数的算法——难度一下子就增大了。</p>
+<p> <a href="/articles/8138.html#more-8138" class="more-link">…</a></p><a href="/articles/8138.html#more-8138" class="more-link">
+</a><p class="read-more"><a href="/articles/8138.html#more-8138" class="more-link"></a><a class="btn btn-default" href="/articles/8138.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8138-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8115" class="post-content post-8115 post type-post status-publish format-standard hentry category-misc category-tools tag-bootstrapping tag-c tag-compiler tag-gnu">
+<header class="entry-header">
+<span class="screen-reader-text">GCC 用 C++ 来编译</span>
+<h2 class="entry-title">
+<a href="/articles/8115.html" rel="bookmark">GCC 用 C++ 来编译</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8115.html" title="08:40" rel="bookmark"><time class="entry-date" datetime="2012-08-20T08:40:04+08:00" pubdate="">2012年08月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8115.html#comments" class="comments-link">41 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 34,561 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>GCC在2012年8月15日的时候，merge了一个patch – <a href="http://gcc.gnu.org/git/?p=gcc.git;a=commitdiff;h=2b15d2ba7eb3a25dfb15a7300f4ee7a141ee8539" target="_blank">Merge from cxx-conversion branch</a>，这意味着，以后在GCC的编译只能用C++的编译器了，也意味着，gcc的实现代码开始转向C++了。</p>
+<p>你可能会有两个问题，</p>
+<ul>
+<li>一个问题是为什么GCC要转成C++的实现？</li>
+</ul>
+<ul>
+<li>没有C++的编译器，我怎么编译C++编译器的代码？这不是“鸡生蛋还是蛋生鸡”的问题么？</li>
+</ul>
+<p>那，我们来看一看吧。</p>
+<h4>为什么要用C++</h4>
+<p>在<a href="http://gcc.gnu.org/wiki/cxx-conversion" target="_blank">GNU的C++ Conversion文档</a>中，我们可以在Background中看到这样的描述：</p>
+<blockquote><p>Whether we use C or C++, we need to try to ensure that interfaces are easy to understand, that the code is reasonably modular, that the internal documentation corresponds to the code, that it is possible for new developers to write new passes and to fix bugs. Those are the important issues for us to consider. The C++ features which are not present in C — features which are well documented in many books and many web sites — are not an important issue.</p></blockquote>
+<p>这句话的意思可以理解为，今天GCC在用C语言的实现已经有点hold不住了，因为，开发人员觉得，不管我们用C或C++，都需要努力确保接口是容易理解的，这样我们的代码是想当理性地被模块化的，这样内部文档和代码一致，这样可以更好地组织代码，这样有利于新人了fix-bug。而C++正好可以让他们更好的完成这些东西。</p>
+<p>GNU还给出了下面这些理由：</p>
+<p> <a href="/articles/8115.html#more-8115" class="more-link">…</a></p><a href="/articles/8115.html#more-8115" class="more-link">
+</a><p class="read-more"><a href="/articles/8115.html#more-8115" class="more-link"></a><a class="btn btn-default" href="/articles/8115.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8115-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8052" class="post-content post-8052 post type-post status-publish format-standard hentry category-misc category-progdesign tag-algorithm tag-data-mining tag-knn tag-max-heap">
+<header class="entry-header">
+<span class="screen-reader-text">K Nearest Neighbor 算法</span>
+<h2 class="entry-title">
+<a href="/articles/8052.html" rel="bookmark">K Nearest Neighbor 算法</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8052.html" title="08:15" rel="bookmark"><time class="entry-date" datetime="2012-08-17T08:15:30+08:00" pubdate="">2012年08月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8052.html#comments" class="comments-link">51 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 67,079 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>K Nearest Neighbor算法又叫KNN算法，这个算法是机器学习里面一个比较经典的算法， 总体来说KNN算法是相对比较容易理解的算法。其中的K表示最接近自己的K个数据样本。KNN算法和<a title="K-Means 算法" href="/articles/7779.html" target="_blank">K-Means算法</a>不同的是，K-Means算法用来聚类，用来判断哪些东西是一个比较相近的类型，而KNN算法是用来做归类的，也就是说，有一个样本空间里的样本分成很几个类型，然后，给定一个待分类的数据，通过计算接近自己最近的K个样本来判断这个待分类数据属于哪个分类。<strong>你可以简单的理解为由那离自己最近的K个点来投票决定待分类数据归为哪一类</strong>。</p>
+<p style="text-align: left;">Wikipedia上的<a href="https://en.wikipedia.org/wiki/K-nearest_neighbor_algorithm" target="_blank">KNN词条</a>中有一个比较经典的图如下：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="size-full wp-image-8053 aligncenter" title="KNN Classification" src="/uploads/2012/08/220px-KnnClassification.svg_.png" alt="" width="220" height="199" srcset=""/></p>
+<p style="text-align: left;">从上图中我们可以看到，图中的有两个类型的样本数据，一类是蓝色的正方形，另一类是红色的三角形。而那个绿色的圆形是我们待分类的数据。</p>
+<ul>
+<li>如果K=3，那么离绿色点最近的有2个红色三角形和1个蓝色的正方形，这3个点投票，于是绿色的这个待分类点属于红色的三角形。</li>
+</ul>
+<ul>
+<li>如果K=5，那么离绿色点最近的有2个红色三角形和3个蓝色的正方形，这5个点投票，于是绿色的这个待分类点属于蓝色的正方形。</li>
+</ul>
+<p>我们可以看到，机器学习的本质——<strong>是基于一种数据统计的方法</strong>！那么，这个算法有什么用呢？我们来看几个示例。</p>
+<p> <a href="/articles/8052.html#more-8052" class="more-link">…</a></p><a href="/articles/8052.html#more-8052" class="more-link">
+</a><p class="read-more"><a href="/articles/8052.html#more-8052" class="more-link"></a><a class="btn btn-default" href="/articles/8052.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8052-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8088" class="post-content post-8088 post type-post status-publish format-standard hentry category-misc category-proglanguage tag-c tag-java tag-linux tag-programmer tag-unix tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">对技术的态度</span>
+<h2 class="entry-title">
+<a href="/articles/8088.html" rel="bookmark">对技术的态度</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8088.html" title="23:50" rel="bookmark"><time class="entry-date" datetime="2012-08-16T23:50:25+08:00" pubdate="">2012年08月16日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8088.html#comments" class="comments-link">132 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 109,065 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>最近人品爆发，图灵社区，InfoQ，51CTO相继对我做了采访，前两天我把<a title="InfoQ的ArchSummit大会对我的采访" href="/articles/8031.html" target="_blank">InfoQ对我的采访张贴了出来</a>，今天，图灵社区和51CTO对我的采访发布了（<a title="图灵访谈之三十二：我的精神家园——陈皓（@左耳朵耗子）专访" href="http://www.ituring.com.cn/article/9174" target="_blank">图灵的访谈</a> ，<a title="专访陈皓：有关带队、沟通、成长与变化" href="http://developer.51cto.com/art/201208/353256.htm" target="_blank">51CTO的访谈</a>），我是一个有技术焦虑症的人，我的经历比较特殊，对大家来说可能也没有什么意思，这两个采都有一些重叠的部分，不过有些观点我想再加强一些，并放在这里和大家一起分享一下。</p>
+<h4>对于日新月异的新技术，你是什么态度？</h4>
+<p>遇到新技术我会去了解，但不会把很大的精力放在这些技术（如：NoSQL，Node.js，等）。这些技术尚不成熟，只需要跟得住就可以了。技术十年以上可能是一个门槛。有人说技术更新换代很快，我一点儿都不觉得是这样想。虽然有不成熟的技术不断地涌出，但是成熟的技术，比如Unix，40多年，C，40多年，C++，30多年，TCP/IP，20多年，Java也有将近20年了……，所以，如果你着眼成熟的技术，其实并不多。</p>
+<p>我的观点是——<strong>要了解技术就一定需要了解整个计算机的技术历史发展和进化路线。</strong>（这个观点，我在《<a title="程序员技术练级攻略" href="/articles/4990.html" target="_blank">程序员练级攻略</a>》和《<a title="C++的坑真的多吗？" href="/articles/7992.html" target="_blank">C++的坑多吗？</a>》中提到过多次了。）因为，<strong>你要朝着球运动的轨迹去，而不是朝着球的位置去，要知道球的运动轨迹，你就需要知道它历史上是怎么跑的</strong>。</p>
+<p>如果要捋一个技术的脉络，70年代Unix的出现，是软件发展方面的一个里程碑，那个时期的C语言，也是语言方面的里程碑。（当时）所有的项目都在Unix/C上，全世界人都在用这两样东西写软件。Linux跟随的是Unix, Windows下的开发也是 C/C++。这时候出现的C++很自然就被大家接受了，企业级的系统很自然就会迁移到这上面，C++虽然接过了C的接力棒，但是它的问题是它没有一个企业方面的架构，而且太随意了，否则也不会有今天的Java。C++和C非常接近，它只不过是C的一个扩展，长年没有一个企业架构的框架。而Java在被发明后，被IBM把企业架构这部分的需求接了过来，J2EE的出现让C/C++捉襟见肘了，在语言进化上，还有Python/Ruby，后面还有了.NET，但可惜的是这只局限在Windows平台上。这些就是企业级软件方面语言层面就是C -&gt; C++ -&gt; Java这条主干，操作系统是Unix -&gt; Linux/Windows这条主干，软件开发中需要了解的网络知识就是Ethernet -&gt; IP -&gt; TCP/UDP 这条主干。另外一条脉络就是互联网方面的（HTML/CSS/JS/LAMP…）。我是一个有技术忧虑症的人，这几条软件开发的主线一定不能放弃。</p>
+<p>另外，从架构上来说，我们可以看到，</p>
+<p> <a href="/articles/8088.html#more-8088" class="more-link">…</a></p><a href="/articles/8088.html#more-8088" class="more-link">
+</a><p class="read-more"><a href="/articles/8088.html#more-8088" class="more-link"></a><a class="btn btn-default" href="/articles/8088.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8088-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8031" class="post-content post-8031 post type-post status-publish format-standard hentry category-misc tag-blog tag-coolshell-cn tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">InfoQ的ArchSummit大会对我的采访</span>
+<h2 class="entry-title">
+<a href="/articles/8031.html" rel="bookmark">InfoQ的ArchSummit大会对我的采访</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8031.html" title="16:02" rel="bookmark"><time class="entry-date" datetime="2012-08-12T16:02:28+08:00" pubdate="">2012年08月12日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8031.html#comments" class="comments-link">66 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 26,780 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>偷个懒，做个更新，今天下午InfoQ的ArchSummit对我的一些采访。我整理了一下，算做是我个人写酷壳的一些想法和总结。不过问我的这些问题并不尖锐，呵呵，不像<a href="http://weibo.com/stonemama" target="_blank">@图灵谢工</a> 问我的问题：“你的价值观太过理想，根本不现实，你站在道德的高点拷问社会，是不是想炒作自己？”。</p>
+<p><strong>1) 作为酷壳的博主，请您大概介绍下酷壳是什么时候开始的，初衷是什么 ？</strong></p>
+<p>我写blog是从2002年开始（那时还没有blog这个词），当时对我来说，没有自己的电脑，上网很不方便，而我有写学习笔记的习惯，读书和工作中学到的一些东西需要保存在某个地方，我希望这个地方可以让我在任何地方都可以调出来看看（因为我当时的工作出差太多），正好当时的CSDN有个“专家专栏”的功能，也就是后来出现的blog。</p>
+<p>后来Blog出现后，CSDN把自己的“专家专栏”全部迁移到了blog.csdn.net上，07-08年这段时间，CSDN的blog基本上是不能使用，性能差得不能再差，每天宕机，上传图片，贴代码，都非常不好用。也许，这就是使用.NET/Windows平台的问题（开个玩笑）。</p>
+<p>我是从2009年3月开始创建酷壳的，创建的初衷如下：</p>
+<ul>
+<li>我需要一个更稳定，更方便的地方，我的博客的风格不会被大众的风格所掩盖的地方。</li>
+<li>我的从事新闻的老婆很不待见<a href="http://blog.csdn.net/haoel" target="_blank">我在CSDN的博客</a>，她觉得太技术，书呆子。</li>
+<li>我正好看到了煎蛋这个国外娱乐新闻文摘的blog，而我正好每天会有2个小时阅读国外社区的东西。</li>
+</ul>
+<p>基于上述三个原因，我自己花了4500元/年租了个主机，建了酷壳。所以，这也是你一开始看到酷壳基本上是娱乐性比较强的博客，我收集一些比较有意思的程序员中发生的事情，也收集一各式各样的程序员圈子里的各处观点。</p>
+<p>我当时的想法是，一些特别技术的东西，我会和CSDN同步，而一些轻松的话题，我会放在酷壳。我当时的初衷就是想说明程序员并不是一个木纳、书呆子、不食人间烟火、巨无趣的一个群体，程序员圈子里同样也有很多有趣的东西。所以，你可以看到11年初以前的东西我有很多网络恶搞式乱调侃的语言。</p>
+<p> <a href="/articles/8031.html#more-8031" class="more-link">…</a></p><a href="/articles/8031.html#more-8031" class="more-link">
+</a><p class="read-more"><a href="/articles/8031.html#more-8031" class="more-link"></a><a class="btn btn-default" href="/articles/8031.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8031-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-7992" class="post-content post-7992 post type-post status-publish format-standard hentry category-cplusplus category-misc category-proglanguage tag-c tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">C++的坑真的多吗？</span>
+<h2 class="entry-title">
+<a href="/articles/7992.html" rel="bookmark">C++的坑真的多吗？</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7992.html" title="08:12" rel="bookmark"><time class="entry-date" datetime="2012-08-06T08:12:05+08:00" pubdate="">2012年08月06日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7992.html#comments" class="comments-link">236 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 164,998 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>先说明一下，我不希望本文变成语言争论贴。希望下面的文章能让我们客观理性地了解C++这个语言。（另，我觉得技术争论不要停留在非黑即白的二元价值观上，这样争论无非就是比谁的嗓门大，比哪一方的观点强，毫无价值。我们应该多看看技术是怎么演进的，怎么取舍的。）</p>
+<h4>事由</h4>
+<p><img decoding="async" loading="lazy" class="alignright size-full wp-image-8014" title="C Plus Plus" src="/uploads/2012/08/cpp_small.jpg" alt="" width="300" height="240" srcset=""/>周五的时候，我在我的微博上发了一个贴说了一下一个网友给我发来的C++程序的规范和内存管理写的不是很好（后来我删除了，因为当事人要求），我并非批判，只是想说明其实程序员是需要一些“疫苗”的，并以此想开一个“程序员疫苗的网站”，结果，@简悦云风同学<a href="http://weibo.com/2388714105/yvqWKkcGV">直接回复到</a>：“<strong>不要用 C++ 直接用 C , 就没那么多坑了。</strong>”就把这个事带入了语言之争。</p>
+<p>我又<a href="http://weibo.com/1401880315/yvrMMsCuT" target="_blank">发了一条微博</a>：</p>
+<p style="padding-left: 30px;"><a title="左耳朵耗子" href="http://weibo.com/1401880315/profile">@左耳朵耗子</a> <a href="http://verified.weibo.com/verify" target="_blank"><img decoding="async" title="新浪个人认证 " src="http://img.t.sinajs.cn/t4/style/images/common/transparent.gif" alt="新浪个人认证 "/></a>： <span style="color: #800080;">说C++比C的坑更多的人我可以理解，但理性地思考一下。C语言的坑也不少啊，如果说C语言有90个坑，那么C++就是100个坑（另，<strong>我看很多人都把C语言上的坑也归到了C++上来</strong>），但是C++你得到的东西更多，封装，多态，继承扩展，泛型编程，智能指针，……，你得到了500%东西，但却只多了10%的坑，多值啊</span>。</p>
+<p>结果引来了更多的回复（只节选了一些言论）：</p>
+<ul>
+<li>@淘宝褚霸<a href="http://weibo.com/1915508822/yvshunX41">也在微博里说</a>：“<span style="color: #800080;">自从5年前果断扔掉C++，改用了ansi c后，我的生活质量大大提升，没有各种坑坑我。</span>”</li>
+</ul>
+<ul>
+<li>@Laruence<a href="http://weibo.com/1170999921/yvsgisAgB" target="_blank">在其微博里</a>说: “<span style="color: #800080;">我确实用不到, C语言灵活运用struct, 可以很好的满足这些需求.//@左耳朵耗子: 封装，继承，多态，模板，智能指针，这也用不到？这也学院派？//@Laruence: 问题是, 这些东西我都用不到… C语言是工程师搞的, C++是学院派搞的</span>”</li>
+</ul>
+<p><strong>那么，C++的坑真的多么？我还请大家理性地思考一下</strong>。</p>
+<p> <a href="/articles/7992.html#more-7992" class="more-link">…</a></p><a href="/articles/7992.html#more-7992" class="more-link">
+</a><p class="read-more"><a href="/articles/7992.html#more-7992" class="more-link"></a><a class="btn btn-default" href="/articles/7992.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-7992-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-7965" class="post-content post-7965 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-operatingsystem category-proglanguage category-funny tag-c tag-fork tag-puzzle tag-unix tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">一个fork的面试题</span>
+<h2 class="entry-title">
+<a href="/articles/7965.html" rel="bookmark">一个fork的面试题</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7965.html" title="08:20" rel="bookmark"><time class="entry-date" datetime="2012-08-01T08:20:46+08:00" pubdate="">2012年08月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7965.html#comments" class="comments-link">223 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 170,585 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>前两天有人问了个关于Unix的fork()系统调用的面试题，这个题正好是我大约十年前找工作时某公司问我的一个题，我觉得比较有趣，写篇文章与大家分享一下。这个题是这样的：</p>
+<p><strong>题目：请问下面的程序一共输出多少个“-”？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(void)
+{
+   int i;
+   for(i=0; i&lt;2; i++){
+      fork();
+      printf(&#34;-&#34;);
+   }
+
+   wait(NULL);
+   wait(NULL);
+
+   return 0;
+}
+</pre>
+<p>如果你对fork()的机制比较熟悉的话，这个题并不难，输出应该是6个“-”，但是，实际上这个程序会很tricky地输出8个“-”。</p>
+<p>要讲清这个题，我们首先需要知道fork()系统调用的特性，</p>
+<p> <a href="/articles/7965.html#more-7965" class="more-link">…</a></p><a href="/articles/7965.html#more-7965" class="more-link">
+</a><p class="read-more"><a href="/articles/7965.html#more-7965" class="more-link"></a><a class="btn btn-default" href="/articles/7965.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-7965-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+<div class="row">
+<div class="wp-pagenavi" role="navigation">
+<span class="pages">第 16 / 74 页</span><a class="first" aria-label="First Page" href="/">« 首页</a><a class="previouspostslink" rel="prev" aria-label="上一页" href="/page/15.html">«</a><span class="extend">...</span><a class="page smaller" title="第 12 页" href="/page/12.html">12</a><a class="page smaller" title="第 13 页" href="/page/13.html">13</a><a class="page smaller" title="第 14 页" href="/page/14.html">14</a><a class="page smaller" title="第 15 页" href="/page/15.html">15</a><span aria-current="page" class="current">16</span><a class="page larger" title="第 17 页" href="/page/17.html">17</a><a class="page larger" title="第 18 页" href="/page/18.html">18</a><a class="page larger" title="第 19 页" href="/page/19.html">19</a><a class="page larger" title="第 20 页" href="/page/20.html">20</a><a class="page larger" title="第 21 页" href="/page/21.html">21</a><span class="extend">...</span><a class="larger page" title="第 30 页" href="/page/30.html">30</a><a class="larger page" title="第 40 页" href="/page/40.html">40</a><a class="larger page" title="第 50 页" href="/page/50.html">50</a><a class="larger page" title="第 60 页" href="/page/60.html">60</a><a class="larger page" title="第 70 页" href="/page/70.html">70</a><span class="extend">...</span><a class="nextpostslink" rel="next" aria-label="下一页" href="/page/17.html">»</a><a class="last" aria-label="Last Page" href="/page/74.html">末页 »</a>
+</div>
+</div>
+</div>
+</nav>
+</main>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

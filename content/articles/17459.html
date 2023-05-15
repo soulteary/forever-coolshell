@@ -1,0 +1,437 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>关于高可用的系统 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17459 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17459" class="post-content post-17459 post type-post status-publish format-standard hentry category-550 category-progdesign category-602 tag-design tag-high-availability tag-paxos tag-programmer tag-704 tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">关于高可用的系统</span>
+<h1 class="entry-title">关于高可用的系统</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17459.html" title="12:34" rel="bookmark"><time class="entry-date" datetime="2016-08-21T12:34:53+08:00" pubdate="">2016年08月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17459.html#comments" class="comments-link">87 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 146,937 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-17475" src="/uploads/2016/08/HighAvailability-BK-300x300.png" alt="HighAvailability-BK" width="300" height="300" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>在《<a href="/articles/17446.html" target="_blank">这多年来我一直在钻研的技术</a>》这篇文章中，我讲述了一下，我这么多年来一直在关注的技术领域，其中我多次提到了工业级的软件，我还以为有很多人会问我怎么定义工业级？以及一个高可用性的软件系统应该要怎么干出来？这样我也可以顺理成章的写下这篇文章，但是没有人问，那么，我只好厚颜无耻的自己写下这篇文章了。哈哈。</p>
+<p>另外，我在一些讨论高可用系统的地方看到大家只讨论各个公司的技术方案，<strong>其实，高可用的系统并不简单的是技术方案，一个高可用的系统其实还包括很多别的东西，所以，我觉得大家对高可用的系统了解的还不全面，为了让大家的认识更全面，所以，我写下这篇文章</strong>。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%90%86%E8%A7%A3%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F" title="理解高可用系统">理解高可用系统</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%8A%80%E6%9C%AF%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88" title="高可用系统的技术解决方案">高可用系统的技术解决方案</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E9%AB%98%E5%8F%AF%E7%94%A8%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88%E7%9A%84%E7%A4%BA%E4%BE%8B" title="高可用技术方案的示例">高可用技术方案的示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E9%AB%98%E5%8F%AF%E7%94%A8%E6%80%A7%E7%9A%84SLA%E7%9A%84%E5%AE%9A%E4%B9%89" title="高可用性的SLA的定义">高可用性的SLA的定义</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%BD%B1%E5%93%8D%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84%E5%9B%A0%E7%B4%A0" title="影响高可用的因素">影响高可用的因素</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%97%A0%E8%AE%A1%E5%88%92%E7%9A%84%E5%AE%95%E6%9C%BA%E5%8E%9F%E5%9B%A0" title="无计划的宕机原因">无计划的宕机原因</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%9C%89%E8%AE%A1%E5%88%92%E7%9A%84%E5%AE%95%E6%9C%BA%E5%8E%9F%E5%9B%A0" title="有计划的宕机原因">有计划的宕机原因</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E7%9C%9F%E6%AD%A3%E5%86%B3%E5%AE%9A%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8E%9F%E5%9B%A0" title="真正决定高可用系统的本质原因">真正决定高可用系统的本质原因</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%85%B6%E5%AE%83" title="其它">其它</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%90%86%E8%A7%A3%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F"></span>理解高可用系统<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们需要理解什么是高可用，英文叫High Availability（<a href="https://en.wikipedia.org/wiki/High_availability">Wikipedia词条</a>），基本上来说，就是要让我们的计算环境（包括软硬件）做到full-time的可用性。在设计上一般来说，需要做好如下的设计：</p>
+<p><span id="more-17459"></span></p>
+<ol>
+<li>对软硬件的冗余，以消除单点故障。任何系统都会有一个或多个冗余系统做standby</li>
+<li>对故障的检测和恢复。检测故障以及用备份的结点接管故障点。这也就是failover</li>
+<li>需要很可靠的交汇点（CrossOver）。这是一些不容易冗余的结点，比如域名解析，负载均衡器等。</li>
+</ol>
+<p>听起似乎很简单吧，然而不是，细节之处全是魔鬼，冗余结点最大的难题就是对于有状态的结点的数据复制和数据一致性的保证（无状态结点的冗余相对比较简单）。冗余数据所带来的一致性问题是魔鬼中的魔鬼：</p>
+<ul>
+<li>如果系统的数据镜像到冗余结点是异步的，那么在failover的时候就会出现数据差异的情况。</li>
+</ul>
+<ul>
+<li>如果系统在数据镜像到冗余结点是同步的，那么就会导致冗余结点越多性能越慢。</li>
+</ul>
+<p>所以，很多高可用系统都是在做各种取舍，这需要比对着业务的特点来的，比如银行账号的余额是一个状态型的数据，那么，冗余时就必需做到强一致性，再比如说，订单记录属于追加性的数据，那么在failover的时候，就可以到备机上进行追加，这样就比较简单了（阿里目前所谓的异地双活其实根本做不到状态型数据的双活）。</p>
+<p>下面，总结一下高可用的设计原理：</p>
+<ul>
+<li>要做到数据不丢，就必需要持久化</li>
+<li>要做到服务高可用，就必需要有备用（复本），无论是应用结点还是数据结点</li>
+<li>要做到复制，就会有数据一致性的问题。</li>
+<li>我们不可能做到100%的高可用，也就是说，我们能做到几个9个的SLA。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%8A%80%E6%9C%AF%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"></span>高可用系统的技术解决方案<span class="ez-toc-section-end"></span></h4>
+<p>我在《<a href="/articles/10910.html" target="_blank">分布式系统的事务处理</a>》中引用过下面这个图：这个图来自来自：Google App Engine的co-founder Ryan Barrett在2009年的Google I/O上的演讲《<a href="http://snarfed.org/transactions_across_datacenters_io.html" target="_blank">Transaction Across DataCenter</a>》（视频： <a title="阿里旺旺无法确定该链接的安全性" href="https://www.youtube.com/watch?v=srOgpXECblk" target="_blank">http://www.youtube.com/watch?v=srOgpXECblk</a>）</p>
+<p><img decoding="async" loading="lazy" class="size-full wp-image-10942 aligncenter" src="/uploads/2014/01/Transaction-Across-DataCenter.jpg" alt="Transaction Across DataCenter" width="566" height="255" srcset="" sizes="(max-width: 566px) 100vw, 566px"/></p>
+<p>这个图基本上来说是目前高可用系统中能看得到的所有的解决方案的基础了。M/S、MM实现起来不难，但是会有很多问题，2PC的问题就是性能不行，而Paxos的问题就是太复杂，实现难度太大。</p>
+<p>总结一下各个高可用方案的的问题：</p>
+<ul>
+<li>对于最终一致性来说，在宕机的情况下，会出现数据没有完全同步完成，会出现数据差异性。</li>
+<li>对于强一致性来说，要么使用性能比较慢的<a href="https://en.wikipedia.org/wiki/X/Open_XA">XA系</a>的两阶段提交的方案，要么使用性能比较好，但是实现比较复杂的Paxos协议。</li>
+</ul>
+<p>注：这是软件方面的方案。当然，也可以使用造价比较高的硬件解决方案，不过本文不涉及硬件解决方案。</p>
+<p>另外，现今开源软件中，很多缓存，消息中间件或数据库都有持久化和Replication的设计，从而也都有高可用解决方案，但是开源软件一般都没有比较高的SLA，所以，如果我们使用开源软件的话，需要注意这一点。</p>
+<h4><span class="ez-toc-section" id="%E9%AB%98%E5%8F%AF%E7%94%A8%E6%8A%80%E6%9C%AF%E6%96%B9%E6%A1%88%E7%9A%84%E7%A4%BA%E4%BE%8B"></span>高可用技术方案的示例<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们来看一下MySQL的高可用的方案的SLA（下图下面红色的标识表示了这个方案有几个9）：</p>
+<p><a href="http://www.slideshare.net/andrewjamesmorgan/mysql-high-availability-solutions-feb-2015-webinar"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17461" src="/uploads/2016/08/mysql-high-availability-solutions-feb-2015-webinar-9-638.jpg" alt="mysql-high-availability-solutions-feb-2015-webinar-9-638" width="638" height="359" srcset="" sizes="(max-width: 638px) 100vw, 638px"/></a></p>
+<p style="text-align: center;">图片来源：<a href="http://www.slideshare.net/andrewjamesmorgan/mysql-high-availability-solutions-feb-2015-webinar">MySQL High Availability Solutions</a></p>
+<p>简单解释一下MySQL的这几个方案（主要是想表达一个越多的9就越复杂）</p>
+<ul>
+<li>MySQL Repleaction就是传统的异步数据同步或是半同步Semi-Sync（只要有一个slave收到更新就返回成功）这个方式本质上不到2个9。</li>
+<li>MySQL Fabric简单来说就是数据分片下的M/S的读写分离模式。这个方案的的可用性可以达到99%</li>
+<li>DRBD通过底层的磁盘同步技术来解决数据同步的问题，就是RAID 1——把两台以上的主机的硬盘镜像成一个。这个方案不到3个9</li>
+<li>Solaris Clustering/Oracle VM ，这个机制监控了包括硬件、操作系统、网络和数据库。这个方案一般会伴随着节点间的“心跳机制”，而且还会动用到SAN（Storage Area Network）或是本地的分布式存储系统，还会动用虚拟化技术来做虚拟机的迁移以降低宕机时间的概率。这个解决方案完全就是一个“全栈式的解决方案”。这个方案接近4个9。</li>
+<li>MySQL Cluster是官方的一个开源方案，其把MySQL的集群分成SQL Node 和Data Node，Data Node是一个自动化sharing和复制的集群NDB，为了更高的可用性，MySQL Cluster采用了“完全同步”的数据复制的机制来冗余数据结点。这个方案接近5个9。</li>
+</ul>
+<p>那么，这些2个9，3个9，4个9，5个9是什么意思呢？又是怎么来的呢？请往下看。</p>
+<h4><span class="ez-toc-section" id="%E9%AB%98%E5%8F%AF%E7%94%A8%E6%80%A7%E7%9A%84SLA%E7%9A%84%E5%AE%9A%E4%B9%89"></span>高可用性的SLA的定义<span class="ez-toc-section-end"></span></h4>
+<p><strong>上面那些都不是本文的重点，本文的重点现在开始，如何测量系统的高可用性</strong>。当然是SLA，全称<a href="https://en.wikipedia.org/wiki/Service-level_agreement" target="_blank">Service Level Agrement</a>，也就是有几个9的高可用性。</p>
+<p>工业界有两种方法来测量SLA，</p>
+<ul>
+<li>一个是故障发生到恢复的时间</li>
+<li>另一个是两次故障间的时间</li>
+</ul>
+<p>但大多数都采用第一种方法，也就是故障发生到恢复的时间，也就是服务不可用的时间，如下表所示：</p>
+<table class="wikitable" align="center">
+<tbody>
+<tr>
+<th>系统可用性%</th>
+<th>宕机时间/年</th>
+<th>宕机时间/月</th>
+<th>宕机时间/周</th>
+<th>宕机时间/天</th>
+</tr>
+<tr>
+<td align="left">90% (1个9)</td>
+<td>36.5 天</td>
+<td>72 小时</td>
+<td>16.8 小时</td>
+<td>2.4 小时</td>
+</tr>
+<tr>
+<td align="left">99% (2个9)</td>
+<td>3.65 天</td>
+<td>7.20 小时</td>
+<td>1.68 小时</td>
+<td>14.4 分</td>
+</tr>
+<tr>
+<td align="left">99.9% (3个9)</td>
+<td>8.76 小时</td>
+<td>43.8 分</td>
+<td>10.1 分钟</td>
+<td>1.44 分</td>
+</tr>
+<tr>
+<td align="left">99.99% (4个9)</td>
+<td>52.56 分</td>
+<td>4.38 分</td>
+<td>1.01 分钟</td>
+<td>8.66 秒</td>
+</tr>
+<tr>
+<td align="left">99.999% (5个9)</td>
+<td>5.26 分</td>
+<td>25.9 秒</td>
+<td>6.05 秒</td>
+<td>0.87 秒</td>
+</tr>
+</tbody>
+</table>
+<p>比如，99.999%的可用性，一年只能有5分半钟的服务不可用。感觉很难做到吧。</p>
+<p><strong>就算是3个9的可用性，一个月的宕机时间也只有40多分钟，看看那些设计和编码不认真的团队，把所有的期望寄托在人肉处理故障的运维团队， 一个故障就能处理1个多小时甚至2-3个小时，连个自动化的工具都没有，还好意思在官网上声明自己的SLA是3个9或是5个9，这不是欺骗大众吗？</strong>。</p>
+<h4><span class="ez-toc-section" id="%E5%BD%B1%E5%93%8D%E9%AB%98%E5%8F%AF%E7%94%A8%E7%9A%84%E5%9B%A0%E7%B4%A0"></span>影响高可用的因素<span class="ez-toc-section-end"></span></h4>
+<p>老实说，我们很难计算我们设计的系统有多少的可用性，因为影响一个系统的因素实在是太多了，除了软件设计，还有硬件，还有每三方的服务（如电信联通的宽带SLA），当然包括“建筑施工队的挖掘机”。所以，正如SLA的定义，<strong>这不仅仅只是一个技术指标，而是一种服务提供商和用户之间的contract或契约</strong>。<strong>这种工业级的玩法，就像飞机一样，并不是把飞机造出来就好了，还有大量的无比专业的配套设施、工具、流程、管理和运营</strong>。</p>
+<p>简而言之，SLA的几个9就是能持续提供可用服务的级别，不过，工业界中，会把服务不可用的因素分成两种：一种是有计划的，一种是无计划的。</p>
+<h5><span class="ez-toc-section" id="%E6%97%A0%E8%AE%A1%E5%88%92%E7%9A%84%E5%AE%95%E6%9C%BA%E5%8E%9F%E5%9B%A0"></span>无计划的宕机原因<span class="ez-toc-section-end"></span></h5>
+<p>下图来自Oracle的 《<a href="https://docs.oracle.com/cd/A91202_01/901_doc/rac.901/a89867/pshavdtl.htm">High Availability Concepts and Best Practices</a>》</p>
+<p> </p>
+<h5><span class="ez-toc-section" id="%E6%9C%89%E8%AE%A1%E5%88%92%E7%9A%84%E5%AE%95%E6%9C%BA%E5%8E%9F%E5%9B%A0"></span><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17467" src="/uploads/2016/08/unplaned_downtime.gif" alt="unplaned_downtime" width="600" height="602" srcset=""/>有计划的宕机原因<span class="ez-toc-section-end"></span></h5>
+<p>下图来自Oracle的 《<a href="https://docs.oracle.com/cd/A91202_01/901_doc/rac.901/a89867/pshavdtl.htm">High Availability Concepts and Best Practices</a>》</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17466" src="/uploads/2016/08/planned_downtime.gif" alt="planned_downtime" width="600" height="356" srcset=""/></p>
+<p> </p>
+<p>我们可以看到，上面的宕机原因包括如下：</p>
+<p>无计划的</p>
+<ul>
+<li>系统级的故障 –  包括主机、操作系统、中间件、数据库、网络、电源以及外围设备</li>
+<li>数据和中介的故障 – 包括人员误操作、硬盘故障、数据乱了</li>
+<li>还有：自然灾害、人为破坏、以及供电问题。</li>
+</ul>
+<p>有计划的</p>
+<ul>
+<li>日常任务：备份，容量规划，用户和安全管理，后台批处理应用</li>
+<li>运维相关：数据库维护、应用维护、中间件维护、操作系统维护、网络维护</li>
+<li>升级相关：数据库、应用、中间件、操作系统、网络、包括硬件升级</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E7%9C%9F%E6%AD%A3%E5%86%B3%E5%AE%9A%E9%AB%98%E5%8F%AF%E7%94%A8%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%9C%AC%E8%B4%A8%E5%8E%9F%E5%9B%A0"></span>真正决定高可用系统的本质原因<span class="ez-toc-section-end"></span></h4>
+<p>从上面这些会影响高可用的SLA的因素，你看到了什么？如果你还是只看到了技术方面或是软件设计的东西，那么你只看到了冰山一角。我们再仔细想一想，<strong>那个5个9的SLA在一年内只能是5分钟的不可用时间，5分钟啊，如果按一年只出1次故障，你也得在五分钟内恢复故障，让我们想想，这意味着什么？</strong></p>
+<p><strong>如果你没有一套科学的牛逼的软件工程的管理，没有牛逼先进的自动化的运维工具，没有技术能力很牛逼的工程师团队，怎么可能出现高可用的系统啊</strong>。</p>
+<p>是的，<strong>要干出高可用的系统，这TMD就是一套严谨科学的工程管理</strong>，其中包括但不限于了：</p>
+<ul>
+<li>软件的设计、编码、测试、上线和软件配置管理的水平</li>
+<li>工程师的人员技能水平</li>
+<li>运维的管理和技术水平</li>
+<li>数据中心的运营管理水平</li>
+<li>依赖于第三方服务的管理水平</li>
+</ul>
+<p>深层交的东西则是——对工程这门科学的尊重：</p>
+<ul>
+<li>对待技术的态度</li>
+<li>一个公司的工程文化</li>
+<li>领导者对工程的尊重</li>
+</ul>
+<p><strong>所以，以后有人在你面前提高可用，你要看的不是他的技术设计，而还要看看他们的工程能力，看看他们公司是否真正的尊重工程这门科学</strong>。</p>
+<h4><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83"></span>其它<span class="ez-toc-section-end"></span></h4>
+<p>有好些非技术甚至技术人员和我说过，做个APP做个网站，不就是找几个码农过来写写代码嘛。等系统不可用的时候，他们才会明白，要找技术能力比较强的人，但是，<strong>就算你和他们讲一万遍道理，他们也很难会明白写代码怎么就是一种工程了，而工程怎么就成了一门科学了。其实，很多做技术的人都不明白这个道理</strong>。</p>
+<p>包括很多技术人员也永远不会理解，为什么要做好多像Code Review、自动化运维、自动化测试、持续集成之类这样很无聊的东西。就像我在《<a href="/articles/11432.html" target="_blank">从Code Review 谈如何做技术</a>》中提到的，阿里很多的工程师，架构师/专家，甚至资深架构师都没有这个意识，当然，这不怪他们，因为经历决定思维方式，他们的经历的是民用级的系统，做的都是堆功能的工作，的确不需要。</p>
+<p>看完这些，最后让我们都扪心自问一下，你还敢说你的系统是高可用的了么？ ;-)</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17459-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术管理</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">High Availability</a>, <a href="javascript:void(0)" rel="tag">Paxos</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">分布式</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>关于高可用的系统</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1914355" class="comment even thread-even depth-1">
+<article id="div-comment-1914355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6a6ce89b65c4877546bcb861c00a1b1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6a6ce89b65c4877546bcb861c00a1b1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://d4ug" class="url" rel="ugc external nofollow">Meepo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17459.html/comment-page-2#comment-1914355"><time datetime="2017-06-18T17:40:53+08:00">2017年06月18日 17:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的真好，非常感谢博主的分享，我决定把博主收藏到我的bookmark bar了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914396" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qianpangzi.com/2016/07/27/%e7%bc%93%e5%ad%98%e6%9b%b4%e6%96%b0%e7%9a%84%e5%a5%97%e8%b7%af/" class="url" rel="ugc external nofollow">缓存更新的套路 - 钱胖子</a> </div>
+</li>
+<li id="comment-1914405" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qianpangzi.com/2016/12/28/%e6%8a%80%e6%9c%af%e4%ba%ba%e5%91%98%e7%9a%84%e5%8f%91%e5%b1%95%e4%b9%8b%e8%b7%af/" class="url" rel="ugc external nofollow">技术人员的发展之路 - 钱胖子</a> </div>
+</li>
+<li id="comment-1916968" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1916968" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/74b5fb85e8d3ee79644d3367cab7c3ba?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/74b5fb85e8d3ee79644d3367cab7c3ba?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fengpeiyuan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17459.html/comment-page-2#comment-1916968"><time datetime="2017-08-29T12:33:43+08:00">2017年08月29日 12:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Service Level Agrement，拼写错了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1918410" class="comment even thread-even depth-1">
+<article id="div-comment-1918410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/70b03db954aa45fc2559e85f5d5bd13e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/70b03db954aa45fc2559e85f5d5bd13e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ss.pythonic.life" class="url" rel="ugc external nofollow">A</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17459.html/comment-page-2#comment-1918410"><time datetime="2017-10-03T13:33:41+08:00">2017年10月03日 13:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益颇多</p>
+</div>
+ </article>
+</li>
+<li id="comment-1921024" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2016/12/%e6%8a%80%e6%9c%af%e4%ba%ba%e5%91%98%e7%9a%84%e5%8f%91%e5%b1%95%e4%b9%8b%e8%b7%af/" class="url" rel="ugc external nofollow">技术人员的发展之路 - 知乎精选</a> </div>
+</li>
+<li id="comment-1927912" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.danalonestudio.cn/?p=859" class="url" rel="ugc external nofollow">《后端架构师技术图谱》 | DaStudio</a> </div>
+</li>
+<li id="comment-1929498" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2018/05/29/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e7%a8%8b%e5%ba%8f%e5%91%98%e7%bb%83%e7%ba%a7%e6%94%bb%e7%95%a5%ef%bc%882018-%e4%b8%8e%e6%88%91%e7%9a%84%e4%b8%93%e6%a0%8f/" class="url" rel="ugc external nofollow">【酷壳】 程序员练级攻略（2018) 与我的专栏 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-1929515" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=1157" class="url" rel="ugc external nofollow">程序员练级攻略（2018) 与我的专栏 – IT文摘</a> </div>
+</li>
+<li id="comment-1929727" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://com-it.tech/archives/51705" class="url" rel="ugc external nofollow">Kylin 2.0 升級總結 - 程序員的後花園</a> </div>
+</li>
+<li id="comment-1933196" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lengfeng.xyz/index.php/2018/07/06/190/" class="url" rel="ugc external nofollow">后端架构师技术图谱 – Lengfeng&#39;s Blog</a> </div>
+</li>
+<li id="comment-1933704" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1933704" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45d73ff63e2099cb93587b51fe294e23?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45d73ff63e2099cb93587b51fe294e23?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">smallriver</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17459.html/comment-page-2#comment-1933704"><time datetime="2018-07-13T22:45:12+08:00">2018年07月13日 22:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>软件系统的高可用感觉就跟建筑工程中一栋建筑物的设计寿命一样，从图纸设计到施工到验收，到持续保养维护，都影响着整体的建筑物寿命，所以是一个涉及各方的综合性考量指标</p>
+</div>
+ </article>
+</li>
+<li id="comment-1942505" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/9699.html" class="url" rel="ugc external nofollow">API设计原则 – Qt官网的设计实践总结 – 西部IT科技</a> </div>
+</li>
+<li id="comment-1942700" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/9960.html" class="url" rel="ugc external nofollow">AWS 的 S3 故障回顾和思考 – 西部IT科技</a> </div>
+</li>
+<li id="comment-1987769" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://xbc.me/mysql/" class="url" rel="ugc external nofollow">MySQL必知必会 | 神秘极客</a> </div>
+</li>
+<li id="comment-2007218" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.5w5j.com/2019/07/22/%e6%b4%9e%e6%82%89paas%e5%b9%b3%e5%8f%b0%e7%9a%84%e6%9c%ac%e8%b4%a8/" class="url" rel="ugc external nofollow">洞悉PaaS平台的本质 |it资源 舞迹</a> </div>
+</li>
+<li id="comment-2031330" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weixinewm.com/35344.html" class="url" rel="ugc external nofollow">StackOverflow 2019 程序员调查 - 微信二维码!</a> </div>
+</li>
+<li id="comment-2041433" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wxhongbao.com/67521.html" class="url" rel="ugc external nofollow">程序员练级攻略（2018) 与我的专栏 - 微信红包网</a> </div>
+</li>
+<li id="comment-2042638" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/12/01/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e5%88%ab%e8%ae%a9%e8%87%aa%e5%b7%b1%e5%a2%99%e4%ba%86%e8%87%aa%e5%b7%b1/" class="url" rel="ugc external nofollow">【酷壳】 别让自己“墙”了自己 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2044081" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.saomahuodong.com/130784.html" class="url" rel="ugc external nofollow">“努力就会成功” - 扫码活动网!</a> </div>
+</li>
+<li id="comment-2072078" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaohuodong.cn/32879.html" class="url" rel="ugc external nofollow">别让自己“墙”了自己 - 微信红包网</a> </div>
+</li>
+<li id="comment-2072501" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2020/03/01/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e4%b8%8e%e7%a8%8b%e5%ba%8f%e5%91%98%e7%9b%b8%e5%85%b3%e7%9a%84cpu%e7%bc%93%e5%ad%98%e7%9f%a5%e8%af%86/" class="url" rel="ugc external nofollow">【酷壳】 与程序员相关的CPU缓存知识 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2108148" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaozixun.com/46564.html" class="url" rel="ugc external nofollow">StackOverflow 2019 程序员调查 - 微信红包网</a> </div>
+</li>
+<li id="comment-2111835" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2111835" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5f50a17886719254e5b70826ee786aff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5f50a17886719254e5b70826ee786aff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">phoenix</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17459.html/comment-page-2#comment-2111835"><time datetime="2020-05-28T17:10:29+08:00">2020年05月28日 17:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>国内大多数管理者都认为软件就是堆功能，尤其是优秀的程序员还要听从这些管理者指挥的时候，就感觉是一种悲哀</p>
+</div>
+ </article>
+</li>
+<li id="comment-2132533" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.stx8.com/%e4%bb%8egitlab%e8%af%af%e5%88%a0%e9%99%a4%e6%95%b0%e6%8d%ae%e5%ba%93%e6%83%b3%e5%88%b0%e7%9a%84/" class="url" rel="ugc external nofollow">从GITLAB误删除数据库想到的 – 时空主站</a> </div>
+</li>
+<li id="comment-2149407" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2020/08/11/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e7%a8%8b%e5%ba%8f%e5%91%98%e5%a6%82%e4%bd%95%e6%8a%8a%e6%8e%a7%e8%87%aa%e5%b7%b1%e7%9a%84%e8%81%8c%e4%b8%9a/" class="url" rel="ugc external nofollow">【酷壳】 程序员如何把控自己的职业 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2230675" class="comment even thread-even depth-1">
+<article id="div-comment-2230675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dde0b9bff23005fa9b297ea918876190?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dde0b9bff23005fa9b297ea918876190?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">夜是故乡明</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17459.html/comment-page-2#comment-2230675"><time datetime="2021-04-10T19:24:26+08:00">2021年04月10日 19:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>MySQL Cluster集群方案，似乎在国内没有什么公司在用？<br/>
+是因为其完全同步，性能不行的缘故嘛？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2288865" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/995160" class="url" rel="ugc external nofollow">系统设计：关于高可用系统的一些技术方案 - 算法网</a> </div>
+</li>
+<li id="comment-2294283" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1041935" class="url" rel="ugc external nofollow">从GITLAB误删除数据库想到的 - 算法网</a> </div>
+</li>
+<li id="comment-2350930" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21672.html" class="url" rel="ugc">我做系统架构的原则 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2361286" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://aivgg.com/whispering-how-do-you-explain-to-your-girlfriend-what-a-system-is/" class="url" rel="ugc external nofollow">Whispering How do you explain to your girlfriend what a system is? - Technology Blog</a> </div>
+</li>
+<li id="comment-2370394" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://mapcoding.cn/%e8%bd%ac%e8%bd%bd%e6%88%91%e5%81%9a%e7%b3%bb%e7%bb%9f%e6%9e%b6%e6%9e%84%e7%9a%84%e4%b8%80%e4%ba%9b%e5%8e%9f%e5%88%99/" class="url" rel="ugc external nofollow">[转载]我做系统架构的一些原则 - 程序员的自我修养</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/17459.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/17459.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">17459</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

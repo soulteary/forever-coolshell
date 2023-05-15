@@ -1,0 +1,797 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Cuckoo Filter：设计与实现 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17225 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17225" class="post-content post-17225 post type-post status-publish format-standard hentry category-cplusplus category-datebase category-progdesign category-funny tag-algorithm tag-filter tag-hashing tag-795">
+<header class="entry-header">
+<span class="screen-reader-text">Cuckoo Filter：设计与实现</span>
+<h1 class="entry-title">Cuckoo Filter：设计与实现</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17225.html" title="09:18" rel="bookmark"><time class="entry-date" datetime="2015-09-02T09:18:54+08:00" pubdate="">2015年09月02日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17225.html#comments" class="comments-link">37 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 68,787 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p><img decoding="async" class="alignright wp-image-17243 size-medium" src="/uploads/2015/08/cuckoo-300x164.jpg" alt="" width="300" height="164" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></p>
+<p>对于海量数据处理业务，我们通常需要一个索引数据结构，用来帮助查询，快速判断数据记录是否存在，这种数据结构通常又叫过滤器(filter)。考虑这样一个场景，上网的时候需要在浏览器上输入URL，这时浏览器需要去判断这是否一个恶意的网站，它将对本地缓存的成千上万的URL索引进行过滤，如果不存在，就放行，如果（可能）存在，则向远程服务端发起验证请求，并回馈客户端给出警告。</p>
+<p>索引的存储又分为有序和无序，前者使用关联式容器，比如B树，后者使用哈希算法。这两类算法各有优劣：比如，关联式容器时间复杂度稳定O(logN)，且支持范围查询；又比如哈希算法的查询、增删都比较快O(1)，但这是在理想状态下的情形，遇到碰撞严重的情况，哈希算法的时间复杂度会退化到O(n)。因此，选择一个好的哈希算法是很重要的。</p>
+<p>时下一个非常流行的哈希索引结构就是<strong><a href="https://en.wikipedia.org/wiki/Bloom_filter" target="_blank">bloom filter</a></strong>，它类似于bitmap这样的hashset，所以空间利用率很高。其独特的地方在于它使用多个哈希函数来避免哈希碰撞，如图所示（<a href="https://en.wikipedia.org/wiki/Bloom_filter" target="_blank">来源wikipedia</a>），bit数组初始化为全0，插入x时，x被3个哈希函数分别映射到3个不同的bit位上并置1，查询x时，只有被这3个函数映射到的bit位全部是1才能说明x可能存在，但凡至少出现一个0表示x肯定不存在。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17242" src="/uploads/2015/08/Bloom_filter.png" alt="Bloom_filter" width="649" height="233" srcset="" sizes="(max-width: 649px) 100vw, 649px"/></p>
+<p><span id="more-17225"></span></p>
+<p>但是，bloom filter的这种位图模式带来两个问题：一个是<strong>误报（false positives）</strong>，在查询时能提供“一定不存在”，但只能提供“可能存在”，因为存在其它元素被映射到部分相同bit位上，导致该位置1，那么一个不存在的元素可能会被误报成存在；另一个是<strong>漏报（false nagatives）</strong>，同样道理，如果删除了某个元素，导致该映射bit位被置0，那么本来存在的元素会被漏报成不存在。由于后者问题严重得多，所以bloom filter必须确保“definitely no”从而容忍“probably yes”，不允许元素的删除。</p>
+<p>关于元素删除的问题，一个改良方案是对bloom filter引入计数，但这样一来，原来每个bit空间就要扩张成一个计数值，空间效率上又降低了。</p>
+<h4>Cuckoo Hashing</h4>
+<p>为了解决这一问题，本文引入了一种新的哈希算法——<strong>cuckoo filter</strong>，它既可以确保该元素存在的必然性，又可以在不违背此前提下删除任意元素，仅仅比bitmap牺牲了微量空间效率。先说明一下，这个算法的思想来源是一篇<a href="http://www.cs.cmu.edu/~binfan/papers/conext14_cuckoofilter.pdf" target="_blank">CMU论文</a>，笔者按照其思路用C语言做了一个简单实现（<a href="https://github.com/begeekmyfriend/CuckooFilter" target="_blank">Github</a>），附上对一段文本数据进行导入导出的正确性测试。</p>
+<p>接下来我会结合自己的示例代码讲解哈希算法的实现。我们先来看看cuckoo hashing有什么特点，它的哈希函数是成对的（具体的实现可以根据需求设计），每一个元素都是两个，分别映射到两个位置，一个是记录的位置，另一个是备用位置。这个备用位置是处理碰撞时用的，这就要说到cuckoo这个名词的典故了，中文名叫布谷鸟，这种鸟有一种即狡猾又贪婪的习性，它不肯自己筑巢，而是把蛋下到别的鸟巢里，而且它的幼鸟又会比别的鸟早出生，布谷幼鸟天生有一种残忍的动作，幼鸟会拼命把未出生的其它鸟蛋挤出窝巢，今后以便独享“养父母”的食物。借助生物学上这一典故，cuckoo hashing处理碰撞的方法，就是把原来占用位置的这个元素踢走，不过被踢出去的元素还要比鸟蛋幸运，因为它还有一个备用位置可以安置，如果备用位置上还有人，再把它踢走，如此往复。直到被踢的次数达到一个上限，才确认哈希表已满，并执行rehash操作。如下图所示（<a href="http://codecapsule.com/2013/07/20/cuckoo-hashing/" target="_blank">图片来源</a>）：</p>
+<p><a href="http://codecapsule.com/2013/07/20/cuckoo-hashing/"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17244" src="/uploads/2015/08/cuckoo_preview.jpg" alt="cuckoo_preview" width="720" height="326" srcset="" sizes="(max-width: 720px) 100vw, 720px"/></a></p>
+<p> </p>
+<p>我们不禁要问发生哈希碰撞之前的空间利用率是多少呢？不幸地告诉你，一维数组的哈希表上跟其它哈希函数没什么区别，也就50%而已。但如果是二维的呢？</p>
+<p>一个改进的哈希表如下图所示，每个桶（bucket）有4路槽位（slot）。当哈希函数映射到同一个bucket中，在其它三路slot未被填满之前，是不会有元素被踢的，这大大缓冲了碰撞的几率。笔者自己的简单实现上测过，采用二维哈希表（4路slot）大约80%的占用率（CMU论文数据据说达到90%以上，应该是扩大了slot关联数目所致）。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-17241" src="/uploads/2015/08/cuckoo-hashing-1024x392.png" alt="cuckoo hashing" width="650" height="249" srcset="" sizes="(max-width: 650px) 100vw, 650px"/></p>
+<h4>Cuckoo Filter设计与实现</h4>
+<p>cuckoo hashing的原理介绍完了，下面就来演示一下笔者自己实现的一个cuckoo filter应用，简单易用为主，不到500行C代码。应用场景是这样的：假设有一段文本数据，我们把它通过cuckoo filter导入到一个虚拟的flash中，再把它导出到另一个文本文件中。flash存储的单元页面是一个log_entry，里面包含了一对key/value，value就是文本数据，key就是这段大小的数据的SHA1值（照理说SHA1是可以通过数据源生成，没必要存储到flash，但这里主要为了测试而故意设计的，万一key和value之间没有推导关系呢）。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#define SECTOR_SIZE    (1 &lt;&lt; 10)
+#define DAT_LEN        (SECTOR_SIZE - 20)  /* minus sha1 size */
+
+/* The log entries store key-value pairs on flash and the
+ * size of each entry is assumed just one sector fit.
+ */
+struct log_entry {
+        uint8_t sha1[20];
+        uint8_t data[DAT_LEN];
+};
+</pre>
+<p>顺便说明一下DAT_LEN设置，之前我们设计了一个虚拟flash（用malloc模拟出来），由于flash的单位是按页大小SECTOR_SIZE读写，这里假设每个log_entry正好一个页大小，当然可以根据实际情况调整。</p>
+<p>以上是flash的存储结构，至于哈希表里的slot有三个成员tag，status和offset，分别是哈希值，状态值和在flash的偏移位置。其中status有三个枚举值：AVAILIBLE，OCCUPIED，DELETED，分别表示这个slot是空闲的，占用的还是被删除的。至于tag，按理说应该有两个哈希值，对应两个哈希函数，但其中一个已经对应bucket的位置上了，所以我们只要保存另一个备用bucket的位置就行了，这样万一被踢，只要用这个tag就可以找到它的另一个安身之所。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">enum { AVAILIBLE, OCCUPIED, DELETED, };
+
+/* The in-memory hash bucket cache is to filter keys (which is assumed SHA1) via
+ * cuckoo hashing function and map keys to log entries stored on flash.
+ */
+struct hash_slot_cache {
+        uint32_t tag : 30;  /* summary of key */
+        uint32_t status : 2;  /* FSM */
+        uint32_t offset;  /* offset on flash memory */
+};
+</pre>
+<p>乍看之下size有点大是吗？没关系，你也可以根据情况调整数据类型大小，比如uint16_t，这里仅仅为了测试正确性。</p>
+<p>至于哈希表以及bucket和slot的创建见初始化代码。buckets是一个二级指针，每个bucket指向4个slot大小的缓存，即4路slot，那么bucket_num也就是slot_num的1/4。这里我们故意把slot_num调小了点，为的是测试rehash的发生。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#define ASSOC_WAY  (4)  /* 4-way association */
+
+struct hash_table {
+    struct hash_slot_cache **buckets;
+    struct hash_slot_cache *slots;
+    uint32_t slot_num;
+    uint32_t bucket_num;
+};
+
+int cuckoo_filter_init(size_t size)
+{
+    ...
+    /* Allocate hash slots */
+    hash_table.slot_num = nvrom_size / SECTOR_SIZE;
+    /* Make rehashing happen */
+    hash_table.slot_num /= 4;
+    hash_table.slots = calloc(hash_table.slot_num, sizeof(struct hash_slot_cache));
+    if (hash_table.slots == NULL) {
+        return -1;
+    }
+
+    /* Allocate hash buckets associated with slots */
+    hash_table.bucket_num = hash_table.slot_num / ASSOC_WAY;
+    hash_table.buckets = malloc(hash_table.bucket_num * sizeof(struct hash_slot_cache *));
+    if (hash_table.buckets == NULL) {
+        free(hash_table.slots);
+        return -1;
+    }
+    for (i = 0; i &lt; hash_table.bucket_num; i++) {
+        hash_table.buckets[i] = &amp;hash_table.slots[i * ASSOC_WAY];
+    }
+}
+</pre>
+<p>下面是哈希函数的设计，这里有两个，前面提到既然key是20字节的SHA1值，我们就可以分别是对key的低32位和高32位进行位运算，只要bucket_num满足2的幂次方，我们就可以将key的一部分同bucket_num – 1相与，就可以定位到相应的bucket位置上，注意bucket_num随着rehash而增大，哈希函数简单的好处是求哈希值十分快。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#define cuckoo_hash_lsb(key, count)  (((size_t *)(key))[0] &amp; (count - 1))
+#define cuckoo_hash_msb(key, count)  (((size_t *)(key))[1] &amp; (count - 1))
+</pre>
+<p>终于要讲解cuckoo filter最重要的三个操作了——查询、插入还有删除。查询操作是简单的，我们对传进来的参数key进行两次哈希求值tag[0]和tag[1]，并先用tag[0]定位到bucket的位置，从4路slot中再去对比tag[1]。只有比中了tag后，由于只是key的一部分，我们再去从flash中验证完整的key，并把数据在flash中的偏移值read_addr输出返回。相应的，如果bucket[tag[0]]的4路slot都没有比中，我们再去bucket[tag[1]]中比对（代码略），如果还比不中，可以肯定这个key不存在。<strong>这种设计的好处就是减少了不必要的flash读操作，每次比对的是内存中的tag而不需要完整的key。</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static int cuckoo_hash_get(struct hash_table *table, uint8_t *key, uint8_t **read_addr)
+{
+    int i, j;
+    uint8_t *addr;
+    uint32_t tag[2], offset;
+    struct hash_slot_cache *slot;
+
+    tag[0] = cuckoo_hash_lsb(key, table-&gt;bucket_num);
+    tag[1] = cuckoo_hash_msb(key, table-&gt;bucket_num);
+
+    /* Filter the key and verify if it exists. */
+    slot = table-&amp;gt;buckets[tag[0]];
+    for (i = 0; i bucket_num) == slot[i].tag) {
+        if (slot[i].status == OCCUPIED) {
+            offset = slot[i].offset;
+            addr = key_verify(key, offset);
+            if (addr != NULL) {
+                if (read_addr != NULL) {
+                    *read_addr = addr;
+                }
+                break;
+            }
+        } else if (slot[i].status == DELETED) {
+            return DELETED;
+        }
+    }
+    ...
+}</pre>
+<p>接下来先将简单的删除操作，之所以简单是因为delete除了将相应slot的状态值设置一下之外，其实什么都没有干，也就是说它不会真正到flash里面去把数据清除掉。为什么？很简单，没有必要。还有一个原因，flash的写操作之前需要擦除整个页面，这种擦除是会折寿的，<strong>所以很多flash支持随机读，但必须保持顺序写。</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static void cuckoo_hash_delete(struct hash_table *table, uint8_t *key)
+{
+    uint32_t i, j, tag[2];
+    struct hash_slot_cache *slot;
+
+    tag[0] = cuckoo_hash_lsb(key, table-&gt;bucket_num);
+    tag[1] = cuckoo_hash_msb(key, table-&gt;bucket_num);
+
+    slot = table-&gt;buckets[tag[0]];
+    for (i = 0; i bucket_num) == slot[i].tag) {
+        slot[i].status = DELETED;
+        return;
+    }
+    ...
+}</pre>
+<p>了解了flash的读写特性，你就知道为啥插入操作在flash层面要设计成append。不过我们这里不讨论过多flash细节，哈希表层面的插入逻辑其实跟查询差不多，我就不贴代码了。这里要贴的是如何判断并处理碰撞，其实这里也没啥玄机，就是用old_tag和old_offset保存一下临时变量，以便一个元素被踢出去之后还能找到备用的安身之所。但这里会有一个判断，每次踢人都会计数，当alt_cnt大于512时候表示哈希表真的快满了，这时候需要rehash了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static int cuckoo_hash_collide(struct hash_table *table, uint32_t *tag, uint32_t *p_offset)
+{
+    int i, j, k, alt_cnt;
+    uint32_t old_tag[2], offset, old_offset;
+    struct hash_slot_cache *slot;
+
+    /* Kick out the old bucket and move it to the alternative bucket. */
+    offset = *p_offset;
+    slot = table-&gt;buckets[tag[0]];
+    old_tag[0] = tag[0];
+    old_tag[1] = slot[0].tag;
+    old_offset = slot[0].offset;
+    slot[0].tag = tag[1];
+    slot[0].offset = offset;
+    i = 0 ^ 1;
+    k = 0;
+    alt_cnt = 0;
+
+KICK_OUT:
+    slot = table-&gt;buckets[old_tag[i]];
+    for (j = 0; j &lt; ASSOC_WAY; j++) {
+        if (offset == INVALID_OFFSET &amp;&amp; slot[j].status == DELETED) {
+            slot[j].status = OCCUPIED;
+            slot[j].tag = old_tag[i ^ 1];
+            *p_offset = offset = slot[j].offset;
+            break;
+        } else if (slot[j].status == AVAILIBLE) {
+            slot[j].status = OCCUPIED;
+            slot[j].tag = old_tag[i ^ 1];
+            slot[j].offset = old_offset;
+            break;
+        }
+    }
+
+    if (j == ASSOC_WAY) {
+        if (++alt_cnt &gt; 512) {
+            if (k == ASSOC_WAY - 1) {
+                /* Hash table is almost full and needs to be resized */
+                return 1;
+            } else {
+                k++;
+            }
+        }
+        uint32_t tmp_tag = slot[k].tag;
+        uint32_t tmp_offset = slot[k].offset;
+        slot[k].tag = old_tag[i ^ 1];
+        slot[k].offset = old_offset;
+        old_tag[i ^ 1] = tmp_tag;
+        old_offset = tmp_offset;
+        i ^= 1;
+        goto KICK_OUT;
+    }
+
+    return 0;
+}</pre>
+<p>rehash的逻辑也很简单，无非就是把哈希表中的buckets和slots重新realloc一下，空间扩展一倍，然后再从flash中的key重新插入到新的哈希表里去。这里有个陷阱要注意，<strong>千万不能有相同的key混进来！</strong>虽然cuckoo hashing不像开链法那样会退化成O(n)，但由于每个元素有两个哈希值，而且每次计算的哈希值随着哈希表rehash的规模而不同，相同的key并不能立即检测到冲突，但当相同的key达到一定规模后，噩梦就开始了，由于rehash里面有插入操作，一旦在这里触发碰撞，又会触发rehash，这时就是一个rehash不断递归的过程，由于其中老的内存没释放，新的内存不断重新分配，整个程序就如同陷入DoS攻击一般瘫痪了。<strong>所以每次插入操作前一定要判断一下key是否已经存在过，并且对rehash里的插入使用碰撞断言防止此类情况发生。</strong>笔者在测试中不幸中了这样的彩蛋，调试了大半天才搞清楚原因，搞IT的同学们记住一定要防小人啊~</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static void cuckoo_rehash(struct hash_table *table)
+{
+    ...
+    uint8_t *read_addr = nvrom_base_addr;
+    uint32_t entries = log_entries;
+    while (entries--) {
+        uint8_t key[20];
+        uint32_t offset = read_addr - nvrom_base_addr;
+        for (i = 0; i &amp;lt; 20; i++) {
+            key[i] = flash_read(read_addr);
+            read_addr++;
+        }
+        /* Duplicated keys in hash table which can cause eternal
+         * hashing collision! Be careful of that!
+         */
+        assert(!cuckoo_hash_put(table, key, &amp;offset));
+        if (cuckoo_hash_get(&amp;old_table, key, NULL) == DELETED) {
+            cuckoo_hash_delete(table, key);
+        }
+        read_addr += DAT_LEN;
+    }
+    ...
+}</pre>
+<p>到此为止代码的逻辑还是比较简单，使用效果如何呢？我来帮你找个大文件<a href="https://github.com/unqlite/unqlite/blob/master/unqlite.c" target="_blank">unqlite.c</a>测试一下，这是一个嵌入式数据库源代码，共59959行代码。作为需要导入的文件，编译我们的cuckoo filter，然后执行：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">./cuckoo_db unqlite.c output.c</code></p>
+<p>你会发现生成output.c正好也是59959行代码，一分不差，probably yes终于变成了definitely yes。同时也可以看到，cuckoo filter真的很快！如果你想看hashing的整个过程，可以参照<a href="https://github.com/begeekmyfriend/CuckooFilter/blob/master/README.md" target="_blank">README</a>里把调试宏打开。最后，欢迎给<a href="https://github.com/begeekmyfriend/CuckooFilter" target="_blank">这个小玩意</a>提交PR！</p>
+<h4>参考资料</h4>
+<p>Cuckoo Filter的<a href="http://www.cs.cmu.edu/~binfan/papers/conext14_cuckoofilter.pdf" target="_blank">论文</a>和<a href="http://www.cs.cmu.edu/~binfan/papers/conext14_cuckoofilter.pptx" target="_blank">PPT</a>：Cuckoo Filter: Practically Better Than Bloom</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17225-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">数据库</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">趣味问题</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">filter</a>, <a href="javascript:void(0)" rel="tag">hashing</a>, <a href="javascript:void(0)" rel="tag">海量数据</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Cuckoo Filter：设计与实现</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1752675" class="comment even thread-even depth-1">
+<article id="div-comment-1752675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec6c4d8998778478ced03cfbb25f55a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec6c4d8998778478ced03cfbb25f55a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">airekans</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1752675"><time datetime="2015-09-02T10:13:20+08:00">2015年09月02日 10:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>代码格式是不是可以代码的段来渲染，而不是用引用？这样代码会好看一些</p>
+</div>
+ </article>
+</li>
+<li id="comment-1752974" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1752974" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cd78d9a23bfbaf4b116aa52bd967cdcd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cd78d9a23bfbaf4b116aa52bd967cdcd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">陈靖一</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1752974"><time datetime="2015-09-02T17:36:24+08:00">2015年09月02日 17:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>难得抢到二楼！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1753028" class="comment even thread-even depth-1">
+<article id="div-comment-1753028" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6497d39689a9e6ef44749f76123e2e87?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6497d39689a9e6ef44749f76123e2e87?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nima</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1753028"><time datetime="2015-09-02T21:26:33+08:00">2015年09月02日 21:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Got to the third floor!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1753066" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1753066" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/733e454c5f41a7e1ecee2b181c2f0fd7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/733e454c5f41a7e1ecee2b181c2f0fd7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tom</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1753066"><time datetime="2015-09-03T00:56:44+08:00">2015年09月03日 00:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔，Great article!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1753614" class="comment even thread-even depth-1">
+<article id="div-comment-1753614" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fd8f80afaf4508c491480fce3a4340be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fd8f80afaf4508c491480fce3a4340be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jonmax</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1753614"><time datetime="2015-09-05T10:07:59+08:00">2015年09月05日 10:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cuckoo_rehash这个函数的第9行显示得不对</p>
+</div>
+ </article>
+</li>
+<li id="comment-1753624" class="comment byuser comment-author-full_of_bull bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1753624" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1753624"><time datetime="2015-09-05T10:49:08+08:00">2015年09月05日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1753614" rel="nofollow">@jonmax </a><br/>
+转义了，我没权限改了，源代码在github上</p>
+</div>
+ </article>
+</li>
+<li id="comment-1753634" class="comment even thread-even depth-1">
+<article id="div-comment-1753634" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f93f22f2c8e501a705f487692cb342a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f93f22f2c8e501a705f487692cb342a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wwwjfy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1753634"><time datetime="2015-09-05T11:19:59+08:00">2015年09月05日 11:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>相对于 bloom filter，增加了原始数据的一些信息进行比对来达到可以删除的效果。感觉是 hash 和 bloom filter 的结合，空间占用还是比 bloom filter 大一些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754015" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1754015" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3286b3b86f81d4ac951e6e8394469167?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3286b3b86f81d4ac951e6e8394469167?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yutian2011</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1754015"><time datetime="2015-09-06T10:14:43+08:00">2015年09月06日 10:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个文章 还没达到皓哥通熟易懂的境界……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754124" class="comment even thread-even depth-1">
+<article id="div-comment-1754124" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/Jack47/" class="url" rel="ugc external nofollow">Jack47</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1754124"><time datetime="2015-09-06T19:36:33+08:00">2015年09月06日 19:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我之前写了一篇关于bloom filter的文章，感兴趣的同学可以看看：<br/>
+<a href="http://www.cnblogs.com/Jack47/p/bloom_filter_intro.html" rel="nofollow ugc">http://www.cnblogs.com/Jack47/p/bloom_filter_intro.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1754340" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1754340" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da999f20f15681c8446d6a1d99ff7297?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da999f20f15681c8446d6a1d99ff7297?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cormen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1754340"><time datetime="2015-09-07T15:48:16+08:00">2015年09月07日 15:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔终于更新了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754411" class="comment even thread-even depth-1">
+<article id="div-comment-1754411" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8ff9e6143668a7c2589bd62a4e7915ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8ff9e6143668a7c2589bd62a4e7915ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zhoumobai.com/" class="url" rel="ugc external nofollow">周墨白博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1754411"><time datetime="2015-09-07T21:43:13+08:00">2015年09月07日 21:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>建议博主换个自适应的主题 小屏幕伤不起啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754438" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1754438" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4a3f3bfe74fa4ab2e69df150ecaac35?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4a3f3bfe74fa4ab2e69df150ecaac35?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zhidao91.com" class="url" rel="ugc external nofollow">知道91博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1754438"><time datetime="2015-09-08T00:17:16+08:00">2015年09月08日 00:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错啊，代码功底很强啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1760585" class="comment even thread-even depth-1">
+<article id="div-comment-1760585" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccfb1aaccfc2ad80122aaace163a9785?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccfb1aaccfc2ad80122aaace163a9785?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.jellythink.com" class="url" rel="ugc external nofollow">果冻想</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1760585"><time datetime="2015-09-20T23:23:12+08:00">2015年09月20日 23:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>强，收下学习。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1761304" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1761304" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22d77502d0f897cb5c845707591bb4ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22d77502d0f897cb5c845707591bb4ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小旋风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1761304"><time datetime="2015-09-22T16:25:34+08:00">2015年09月22日 16:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1760585"><p>
+<strong><a href="#comment-1760585" rel="nofollow">果冻想</a> :</strong><br/>
+强，收下学习。
+</p></blockquote>
+<p>收下了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1761308" class="comment even thread-even depth-1">
+<article id="div-comment-1761308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22d77502d0f897cb5c845707591bb4ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22d77502d0f897cb5c845707591bb4ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小旋风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1761308"><time datetime="2015-09-22T16:50:49+08:00">2015年09月22日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1761304"><p>
+<strong><a href="#comment-1761304" rel="nofollow">小旋风</a> :</strong></p>
+<blockquote cite="#commentbody-1760585"><p>
+<strong><a href="#comment-1760585" rel="nofollow">果冻想</a> :</strong><br/>
+强，收下学习。
+</p></blockquote>
+<p>收下了
+</p></blockquote>
+<p>代码很好用</p>
+</div>
+ </article>
+</li>
+<li id="comment-1763685" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1763685" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe97c78e609c7059304bcf1ee1c4cff7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe97c78e609c7059304bcf1ee1c4cff7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jasonxzh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1763685"><time datetime="2015-09-29T00:54:18+08:00">2015年09月29日 00:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分析的很细致，我说点这个数据结构瑕疵把<br/>
+这篇论文最大的亮点其实在于用异或运算将bucketed cuckoo hashing引入了fingerprint 然而其设计有几处漏洞：<br/>
+1. 异或运算带来的溢出问题 即filter得大小必须是2的整数次幂 不然异或运算的结果可能在filter的表示范围之外，这限制了它的应用<br/>
+2. bucketed cuckoo hashing 的load factor固然很高，但是引入fingerprint之后却使得false-positive极大提高（paper中使用4个entry为一个bucket，也就是说一次查找至少要查询8个entry），所以在没有进行排序优化过的cuckoo hashing实际上是远远不如bloom filter来得还用的。（排序优化在paper后半段有讲到，实现较为复杂）。<br/>
+所以综合来看目前cuckoo filter实用性并不大。<br/>
+我目前的论文正着眼于改进上述问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1766639" class="comment even thread-even depth-1">
+<article id="div-comment-1766639" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/56cc6562f26eaad0c637ff60ee05cb1a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/56cc6562f26eaad0c637ff60ee05cb1a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">howard</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1766639"><time datetime="2015-10-02T16:31:11+08:00">2015年10月02日 16:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1763685" rel="nofollow">@jasonxzh </a><br/>
+请问，你的论文题目是？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1767907" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1767907" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1c1a345b2b5cd9960d403febce47950?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1c1a345b2b5cd9960d403febce47950?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.linjunlong.com" class="url" rel="ugc external nofollow">小林博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1767907"><time datetime="2015-10-04T05:22:39+08:00">2015年10月04日 05:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个文章 还没达到皓哥通熟易懂的境界……</p>
+<p><a href="#comment-1754015" rel="nofollow">@yutian2011 </a><br/>
+…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1770580" class="comment even thread-even depth-1">
+<article id="div-comment-1770580" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/21831368b3ee299f5170543dc49d5587?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/21831368b3ee299f5170543dc49d5587?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nima</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1770580"><time datetime="2015-10-09T10:26:44+08:00">2015年10月09日 10:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Got to the third floor</p>
+</div>
+ </article>
+</li>
+<li id="comment-1772165" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1772165" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6200e7f2004a2e8ddcdd72472f3be473?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6200e7f2004a2e8ddcdd72472f3be473?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cdmaok</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1772165"><time datetime="2015-10-11T16:09:34+08:00">2015年10月11日 16:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>会不会有这种情况，发生冲突的时候，要被踢掉的元素也已经在他的备用位置上面了，如果把他挪走，就没有地方放了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1772443" class="comment byuser comment-author-full_of_bull bypostauthor even thread-even depth-1">
+<article id="div-comment-1772443" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1772443"><time datetime="2015-10-12T08:47:06+08:00">2015年10月12日 08:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1772165" rel="nofollow">@cdmaok </a><br/>
+备用位置是可以来回踢的，上文提到，发生冲突时踢的次数超过512时，表明哈希表真的满了，实际上内部出现了循环踢人的现象。就是A踢B，B踢C，C踢A。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1773099" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1773099" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e5a86246e389b85e37c9be17e069daf5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e5a86246e389b85e37c9be17e069daf5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haterh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1773099"><time datetime="2015-10-13T18:19:24+08:00">2015年10月13日 18:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这玩意和Bloom Filter是两码事吧，Bloom Filter每个slot只有一位，Cuckoo Filter里面每个slot都不知道要占多少位了</p>
+<p>Cuckoo Filter应该和其他常规的哈希策略比，比如算法导论里介绍的Double Hashing，我估计好不到哪去</p>
+</div>
+ </article>
+</li>
+<li id="comment-1778566" class="comment even thread-even depth-1">
+<article id="div-comment-1778566" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22d77502d0f897cb5c845707591bb4ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22d77502d0f897cb5c845707591bb4ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小旋风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1778566"><time datetime="2015-10-21T15:38:20+08:00">2015年10月21日 15:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1773099"><p>
+<strong><a href="#comment-1773099" rel="nofollow">haterh</a> :</strong><br/>
+这玩意和Bloom Filter是两码事吧，Bloom Filter每个slot只有一位，Cuckoo Filter里面每个slot都不知道要占多少位了<br/>
+Cuckoo Filter应该和其他常规的哈希策略比，比如算法导论里介绍的Double Hashing，我估计好不到哪去
+</p></blockquote>
+<p>啊啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1781268" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1781268" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2abcc291383f0468503b64a59d6db561?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2abcc291383f0468503b64a59d6db561?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hex55.com" class="url" rel="ugc external nofollow">shawge</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1781268"><time datetime="2015-10-26T09:25:27+08:00">2015年10月26日 09:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1779181" rel="nofollow">@ppp项目 </a><br/>
+举报拉圾评论，左耳朵耗子，哈哈。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1788204" class="comment even thread-even depth-1">
+<article id="div-comment-1788204" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/57e929d39fef91892484123ca4364237?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/57e929d39fef91892484123ca4364237?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">莫名其妙的小朋友</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1788204"><time datetime="2015-11-09T09:36:13+08:00">2015年11月09日 09:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1773099"><p>
+<strong><a href="#comment-1773099" rel="nofollow">haterh</a> :</strong><br/>
+这玩意和Bloom Filter是两码事吧，Bloom Filter每个slot只有一位，Cuckoo Filter里面每个slot都不知道要占多少位了<br/>
+Cuckoo Filter应该和其他常规的哈希策略比，比如算法导论里介绍的Double Hashing，我估计好不到哪去
+</p></blockquote>
+<p>多路Hash表根本不怎么省空间…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1788205" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1788205" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/357a20e8c56e69d6f9734d23ef9517e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/357a20e8c56e69d6f9734d23ef9517e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://1024ss.com" class="url" rel="ugc external nofollow">程序员难言之隐</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1788205"><time datetime="2015-11-09T09:38:00+08:00">2015年11月09日 09:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大家好，不好意思，我是来做广告的，1024ss.com 解决程序员的难言之隐！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1788219" class="comment even thread-even depth-1">
+<article id="div-comment-1788219" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c1d849b630800136533e8673e5931638?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c1d849b630800136533e8673e5931638?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1788219"><time datetime="2015-11-09T10:44:47+08:00">2015年11月09日 10:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子，借宝地发个招聘，希望能见谅哈。<br/>
+国内某知名跨境电商公司招php，25k及以上，五险一金都是全额缴纳，环境也高大上，觉得自己还不错的，然后还想学点东西的都可以加我qq：40850879 谢谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1789494" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1789494" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d1596c40b7702bc94557e63bfc16e620?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d1596c40b7702bc94557e63bfc16e620?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">apc999</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1789494"><time datetime="2015-11-14T01:59:07+08:00">2015年11月14日 01:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你好， 我是cuckoo filter的作者。刚才无意中看到你的文章， 非常感谢你的实现和精彩解读。关于你的文中这段：<br/>
+“采用二维哈希表（4路slot）大约80%的占用率（CMU论文数据据说达到90%以上，应该是扩大了slot关联数目所致）”我想解释一下。 我们是使用4路的哈希表达到的96%的存储效率。 一个重要的trick就是插入的时候使用500 的max retry， 另外使用足够好的哈希function</p>
+</div>
+ </article>
+</li>
+<li id="comment-1789593" class="comment byuser comment-author-full_of_bull bypostauthor even thread-even depth-1">
+<article id="div-comment-1789593" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1789593"><time datetime="2015-11-14T18:30:50+08:00">2015年11月14日 18:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1789494" rel="nofollow">@apc999 </a><br/>
+原作者你好，我是从您的论文中得到思路，自己实现了一个。但我并没有参考过您自己写的C++实现，所以有些地方可能有点臆断。<br/>
+另外我的一个问题是，rehash发生时跟其它哈希表不同，cuckoo hashing并没有保存完整的key（只有一个备用tag），而且经过500次kickout，原有的hashtable内容被打乱。此时我扩张了bucket数目，如果使用key % (bucket_num – 1)的hash function重定位，必须从flash中重新读取所有key再进行rehash，原有hashtable中的元素是无法使用realloc（重用）的么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1789637" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1789637" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f29cf8cb70099d958a8c057f8e27ce1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f29cf8cb70099d958a8c057f8e27ce1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hayabusa</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1789637"><time datetime="2015-11-15T03:52:10+08:00">2015年11月15日 03:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1800599" class="comment even thread-even depth-1">
+<article id="div-comment-1800599" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a09e198be5d6b92729b922a9c12e0d71?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a09e198be5d6b92729b922a9c12e0d71?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.bingzhilv.com/" class="url" rel="ugc external nofollow">郑州SEO优化</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1800599"><time datetime="2015-12-13T11:33:08+08:00">2015年12月13日 11:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主这里人气很旺啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1804505" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1804505" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7e4f70f57d7fa37a333f9048c8592c6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7e4f70f57d7fa37a333f9048c8592c6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.nbnkzy.com" class="url" rel="ugc external nofollow">宁波工作服</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1804505"><time datetime="2016-01-06T20:26:34+08:00">2016年01月06日 20:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢分享。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1865991" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.gslin.org/archives/2016/08/08/6718/cuckoo-filter%ef%bc%9a%e6%af%94-bloom-filter-%e5%a4%9a%e4%ba%86-delete/" class="url" rel="ugc external nofollow">Cuckoo Filter：比 Bloom Filter 多了 Delete | Gea-Suan Lin&#39;s BLOG</a> </div>
+</li>
+<li id="comment-1875855" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1875855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e44dee50d3cbe4d2388ca689cf0cc3cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e44dee50d3cbe4d2388ca689cf0cc3cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">梦流星</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-1875855"><time datetime="2016-09-01T14:37:31+08:00">2016年09月01日 14:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个地方 bloom filter 是一个 set 吧, 用于检索 key 是否存在, 给出两种可能, 一定不存在和可能存在<br/>
+而 cuckoo filter 怎么看都像是一个 hash_map, bloom filter 怎么做 kv 存储? 这个文章有点问题啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915607" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/07/23/%e8%81%8a%e4%b8%80%e8%81%8a%e5%93%88%e5%b8%8c%e8%a1%a8/" class="url" rel="ugc external nofollow">聊一聊哈希表 - 莹莹之色</a> </div>
+</li>
+<li id="comment-2006646" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2006646" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0d453ec8b817e4a897f6fa07bf59954b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0d453ec8b817e4a897f6fa07bf59954b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">飒然Hang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-2006646"><time datetime="2019-07-18T17:28:58+08:00">2019年07月18日 17:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大数据查重算法一般会选用bitmap,直接将待去重元素映射到bit数组的相应位置上。当然，在元素无法转换为唯一数字时此方案不合适。<br/>
+在元素无法转换为唯一数字时，经常的用法是取其hash值，此时由于有碰撞，经典的hashmap实现是用链表法解决。当接受误差的时候，可以选择Bloofilter。<br/>
+文章讲的算法是精确查重，在元素可以对应唯一数字时比bitmap没有任何优势。在元素无法对应唯一数字时，这个对比的应该是hashmap实现。但是本质上你还是要存储这么多元素。但真没看出这个对比其他经典的哈希碰撞解决方案有什么优势</p>
+</div>
+ </article>
+</li>
+<li id="comment-2104084" class="comment even thread-even depth-1">
+<article id="div-comment-2104084" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b70d763e1fd32cc9c301384888fb741?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b70d763e1fd32cc9c301384888fb741?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17225.html#comment-2104084"><time datetime="2020-05-13T15:51:03+08:00">2020年05月13日 15:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>hbase 上有bloom filter</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

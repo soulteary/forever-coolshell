@@ -1,0 +1,588 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>千万不要把 bool 设计成函数参数 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5444 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5444" class="post-content post-5444 post type-post status-publish format-standard hentry category-misc category-progdesign category-proglanguage tag-api tag-bool tag-coding tag-design tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">千万不要把 bool 设计成函数参数</span>
+<h1 class="entry-title">千万不要把 bool 设计成函数参数</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5444.html" title="15:35" rel="bookmark"><time class="entry-date" datetime="2011-09-08T15:35:18+08:00" pubdate="">2011年09月08日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5444.html#comments" class="comments-link">94 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 63,377 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>我们有很多Coding Style 或 代码规范。但这一条可能会经常被我们所遗忘，就是我们经常会在函数的参数里使用bool参数，这会大大地降低代码的可读性。不信？我们先来看看下面的代码。</p>
+<p>当你读到下面的代码，你会觉得这个代码是什么意思？</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">widget-&gt;repaint(false);</code></p>
+<p>是不要repaint吗？还是别的什么意思？看了文档后，我们才知道这个参数是immediate， 也就是说，false代表不立即重画，true代码立即重画。</p>
+<p>Windows API中也有这样一个函数：InvalidateRect，当你看到下面的代码，你会觉得是什么意思？</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">InvalidateRect(hwnd, lpRect,  false);</code></p>
+<p>我们先不说InvalidateRect这个函数名取得有多糟糕，我们先说一下那个false参数？invalidate意为“让XXX无效”，false是什么意思？双重否定？是肯定的意思？如果你看到这样的代码，你会相当的费解的。于是，你要去看一下文档，或是InvalidateRect的函数定义，你会看到那个参数是 <strong>BOOL</strong><em> bErase</em>，意思是，是否要重画背景。</p>
+<p>这样的事情有很多，再看下面的代码，想把str中的”%USER%”替换成真实的用户名：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">str.replace(&#34;%USER%&#34;, user, false); // Qt 3</code></p>
+<p>TNND，那个false是什么意思？不替换吗？还是别的什么意思，看了文档才知道，false代码大小写不敏感的替换。</p>
+<p>其实，如果你使用枚举变量/常量，而不是bool变量，你会让你的代码更易读，如：</p>
+<p><span id="more-5444"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">widget-&gt;repaint(PAINT::immediate);
+widget-&gt;repaint(PAINT::deffer);
+
+InvalidateRect(hwnd, lpRect,  !RepantBackground);
+
+str.replace(&#34;%USER%&#34;, user, Qt::CaseInsensitive); // Qt 4</pre>
+<p>如果对这个事不以为然的话，我们再来看一些别的示例，你不妨猜猜看看下面的代码：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">component.setCentered(true, false);</code></p>
+<p>这什么玩意儿啊？看了文档你才知道，这原来是 setCentered(centered, autoUpdate);</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">new Textbox(300, 100, false, true);</code></p>
+<p>这又是什么啊？看了文档才知道，这是创建一个文本框，第三个参数是是否要滚动条，第四个是是否要自动换行。TNND。</p>
+<p>上面的情况还不算最差，看看下面的双重否定。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">component.setDisabled(false);
+filter.setCaseInsensitive(false)</pre>
+<p>再来一个，如果你读到下面的代码，相信你会和我一样，要么石化了，要么凌乱了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">event.initKeyEvent(&#34;keypress&#34;, true, true, null, null,
+                    false, false, false, false, 9, 0); </pre>
+<p>看完这篇文章，我希望你再也不要把bool为作为函数参数了。除非两个原因：</p>
+<ol>
+<li>你100%确认不会带来阅读上的问题，比如Java的 setVisible (bool).</li>
+<li>你100%确认你想去<a title="如何写出无法维护的代码" href="/articles/4758.html" target="_blank">写出无法维护很难阅读的代码</a>。</li>
+</ol>
+<p>【更新2011/9/8】当然，别的参数也会有一样的问题，比如：<code>new Textbox(300, 100, false, true);</code>中的300 和 100，不知道是坐标还是长宽，只不过，一般长度或坐标这样的参数都不会被hard code，都会有变量名，而bool这种参数经常性地被传成true 和 false。 bool参数表现得更为明显一些罢了。</p>
+<p><span style="color: #cc0000;">所以，程序中不要出现magic number，true/false 也是一种 magic number。但是，我想告诉大家，从API设计的角度来说，你无法强制调用者用常量来取代true/false，定义成枚举类型是最好的选择</span>。</p>
+<p>最后，如果你想设计一个好的API，强烈推荐你读一下Nokia的Qt的《<a href="http://qt-project.org/wiki/API-Design-Principles" target="_blank">API Design Principles</a>》，本文就是其中的“<a href="http://developer.qt.nokia.com/wiki/API_Design_Principles#e7794937cba47d5e9c54d50a6a32328b" target="_blank">Boolean Trap</a>”。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5444-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">API</a>, <a href="javascript:void(0)" rel="tag">Bool</a>, <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>千万不要把 bool 设计成函数参数</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-82940" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://gecanhui.com/2011/09/20/some-links-and-a-lot-of-resourses/" class="url" rel="ugc external nofollow">一些链接和各种资源 web 开发 | 产品经理——葛灿辉的blog</a> </div>
+</li>
+<li id="comment-82957" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-82957" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e46c0b1f994d1360ae36056cd77316f0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e46c0b1f994d1360ae36056cd77316f0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">阿尔法</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-82957"><time datetime="2011-09-20T11:36:58+08:00">2011年09月20日 11:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>void repaint(bool immediate);<br/>
+有谁会看不懂? 至于调用API的人非要把代码写成别人看不明白的样子,关API提供者什么闲事啊.</p>
+<p>相反, 你调用API的时候, 是void repaint(bool immediate)更清楚还是<br/>
+void repaint(PAINT immediate)更明白?</p>
+</div>
+ </article>
+</li>
+<li id="comment-83228" class="comment even thread-even depth-1">
+<article id="div-comment-83228" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1678e48d99e205844d572708c85aac8c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1678e48d99e205844d572708c85aac8c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cs_liwei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-83228"><time datetime="2011-09-21T11:52:33+08:00">2011年09月21日 11:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-82957"><p>
+<strong><a href="#comment-82957" rel="nofollow">阿尔法 </a> :</strong>void repaint(bool immediate);有谁会看不懂? 至于调用API的人非要把代码写成别人看不明白的样子,关API提供者什么闲事啊.<br/>
+相反, 你调用API的时候, 是void repaint(bool immediate)更清楚还是void repaint(PAINT immediate)更明白?</p></blockquote>
+<p>实际上是枚举PAINT 的命名有问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-83238" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-83238" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a10573688a1d2caebd9ce64c63565cfc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a10573688a1d2caebd9ce64c63565cfc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">麦子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-83238"><time datetime="2011-09-21T12:25:39+08:00">2011年09月21日 12:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>枚举似乎太麻烦了，还好vs鼠标放上去就有提示 还是挺方便的。 不过我个人还是比较同意的 尽量别用bool</p>
+</div>
+ </article>
+</li>
+<li id="comment-83260" class="comment even thread-even depth-1">
+<article id="div-comment-83260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb29fd0a43a0446d17c61cdc50c9823e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb29fd0a43a0446d17c61cdc50c9823e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://v5wa.com" class="url" rel="ugc external nofollow">葫芦</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-83260"><time datetime="2011-09-21T14:23:37+08:00">2011年09月21日 14:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如此说来，跟软编码硬编码还有所牵扯</p>
+</div>
+ </article>
+</li>
+<li id="comment-83593" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://meglory.wordpress.com/2011/09/23/%e4%b8%80%e4%ba%9b%e6%96%87%e7%ab%a0%e5%92%8c%e5%90%84%e7%a7%8d%e8%b5%84%e6%ba%90/" class="url" rel="ugc external nofollow">一些文章和各种资源 « 10 years of endeavor</a> </div>
+</li>
+<li id="comment-84701" class="comment even thread-even depth-1">
+<article id="div-comment-84701" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba4833f0cb5eaf125c3f75947ec5c22b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba4833f0cb5eaf125c3f75947ec5c22b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dabenxiong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-84701"><time datetime="2011-09-28T07:58:22+08:00">2011年09月28日 07:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈哈， objC就木有这个问题，每个变量都有名字啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-87005" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-87005" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/263686cd55adb6bbaa2472071eade322?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/263686cd55adb6bbaa2472071eade322?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jimney</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-87005"><time datetime="2011-10-14T13:42:49+08:00">2011年10月14日 13:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-84701"><p>
+<strong><a href="#comment-84701" rel="nofollow">dabenxiong</a> :</strong><br/>
+哈哈哈， objC就木有这个问题，每个变量都有名字啊。
+</p></blockquote>
+<p>正解！</p>
+</div>
+ </article>
+</li>
+<li id="comment-87055" class="comment even thread-even depth-1">
+<article id="div-comment-87055" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b74dec58d6bc6d2cf31a0ea5011c4bde?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b74dec58d6bc6d2cf31a0ea5011c4bde?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.rebornix.com" class="url" rel="ugc external nofollow">Rebornix</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-87055"><time datetime="2011-10-14T23:09:01+08:00">2011年10月14日 23:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章让我在欢乐中又有收获哈～</p>
+</div>
+ </article>
+</li>
+<li id="comment-89098" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-89098" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6675849b67fff210ad8164b8dbb619cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6675849b67fff210ad8164b8dbb619cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mwxkingboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-89098"><time datetime="2011-10-25T10:48:12+08:00">2011年10月25日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>危言耸听了点吧。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-89500" class="comment even thread-even depth-1">
+<article id="div-comment-89500" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29d26a954327c6dba0f6bff6c92d5226?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29d26a954327c6dba0f6bff6c92d5226?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">慢步者</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-89500"><time datetime="2011-10-27T13:11:19+08:00">2011年10月27日 13:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>使用 VC 助手的无压力飘过</p>
+</div>
+ </article>
+</li>
+<li id="comment-90745" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-90745" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">幻の上帝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-90745"><time datetime="2011-10-31T21:25:34+08:00">2011年10月31日 21:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>标题党加上可读性的bad smell……以为这样就能逃过documentation hell &amp; naming resposibility么，太甜了。<br/>
+“看了文档才知道”——教育咱不看是活该233。<br/>
+算了。<br/>
+转个自己的旧吐槽：http://tieba.baidu.com/p/1150865423?pid=13331299045&amp;cid=0#13331299045，关于Qt的API Design Principles的The Convenience Trap一节。</p>
+</div>
+ </article>
+</li>
+<li id="comment-113918" class="comment even thread-even depth-1">
+<article id="div-comment-113918" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49bf9a0d3cc7f360d4639ad9ee287f8c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49bf9a0d3cc7f360d4639ad9ee287f8c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">straywithsmile</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-113918"><time datetime="2011-12-21T07:46:45+08:00">2011年12月21日 07:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉true,false作为参数并没有什么问题，事实上我个人也喜欢（无论是在C中或其他地方），不过python的做法似乎更好<br/>
+widget.repaint(immediate = True)<br/>
+这样就很好理解了</p>
+</div>
+ </article>
+</li>
+<li id="comment-115139" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-115139" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4c564c9b7fad37a790b560904df49c13?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4c564c9b7fad37a790b560904df49c13?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://php.js.cn" class="url" rel="ugc external nofollow">longbill</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-115139"><time datetime="2011-12-23T13:00:44+08:00">2011年12月23日 13:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以我还是喜欢传一个object作为参数。这样读起来方便多，用起来也很爽。比如JS: someFunction({ title:’a’,content:’b’ });</p>
+</div>
+ </article>
+</li>
+<li id="comment-123960" class="comment even thread-even depth-1">
+<article id="div-comment-123960" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/34dec5b73c6d2e95b45b860aa578da75?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/34dec5b73c6d2e95b45b860aa578da75?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Harry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-123960"><time datetime="2012-01-10T15:21:33+08:00">2012年01月10日 15:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实只要是用字面常量(literal const)而不是变量或命名常量作为实参调用方法, 不管是什么(基本的)数据类型, 都存在这个问题.</p>
+</div>
+ </article>
+</li>
+<li id="comment-124334" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-124334" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3434f69c0e6c088b1d5efc2ee73c6bf5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3434f69c0e6c088b1d5efc2ee73c6bf5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liuchaoju.net" class="url" rel="ugc external nofollow">深蓝的髹</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-124334"><time datetime="2012-01-11T09:48:35+08:00">2012年01月11日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一般习惯在setxxx的时候，可能会将bool设为参数…过多的标识符会带来极大的阅读不便~</p>
+</div>
+ </article>
+</li>
+<li id="comment-127388" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://h1ppy.com/archives/1796" class="url" rel="ugc external nofollow">由12306.cn谈谈网站性能技术 | 挨踢联播</a> </div>
+</li>
+<li id="comment-127637" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-127637" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/243fe779c743ffd24cfbc22ba15ea477?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/243fe779c743ffd24cfbc22ba15ea477?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ooxx.ooxx" class="url" rel="ugc external nofollow">右耳朵猫</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-127637"><time datetime="2012-01-18T15:12:22+08:00">2012年01月18日 15:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很大程度上论述的其实还是magic number的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-144786" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=2533" class="url" rel="ugc external nofollow">多版本并发控制(MVCC)在分布式系统中的应用</a> </div>
+</li>
+<li id="comment-147669" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-147669" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/42fdb21f19c9c21d5857c3f6a7f93f11?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/42fdb21f19c9c21d5857c3f6a7f93f11?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.agilecheetah.com" class="url" rel="ugc external nofollow">atusoft</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-147669"><time datetime="2012-03-21T04:09:06+08:00">2012年03月21日 04:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不能苛同楼上某些人说objc就完美解决了这个问题。一个函数就应该只做一件事。如果允许bool参数的话，显然要加一个if去判断，这样函数的行为就不可知了，很容易有副作用。 就象 ［self performSelector: onThread: withObject: waitUntilDone:］ 一个不小心就把waitUntilDone写成yes了，然后线程就锁住了。还不如另写一个函数明白些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-149605" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=3123" class="url" rel="ugc external nofollow">需求变化与IoC</a> </div>
+</li>
+<li id="comment-193446" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-193446" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e99dcf64cfb0ac75ae02b92113b2ed2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e99dcf64cfb0ac75ae02b92113b2ed2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cm2009.sinaapp.com/" class="url" rel="ugc external nofollow">月之轮回2009</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-193446"><time datetime="2012-05-20T15:46:17+08:00">2012年05月20日 15:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种用true和false来作参数的方式与汇编里面经常用到的“标志位”很类似，程序可读性对于程序员本身来说也是个头疼的问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197690" class="comment even thread-even depth-1">
+<article id="div-comment-197690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/30652bc82de16e3a971622b07e500fb8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/30652bc82de16e3a971622b07e500fb8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oneGeek</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-197690"><time datetime="2012-06-27T14:15:14+08:00">2012年06月27日 14:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>国内程序员基本上用IDE，所以这些问题不算大问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-209350" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-209350" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe17a9e88df72d172052c1ad91e7c851?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe17a9e88df72d172052c1ad91e7c851?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.seymourdev.com/" class="url" rel="ugc external nofollow">Alex</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-209350"><time datetime="2012-11-01T23:23:14+08:00">2012年11月01日 23:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那是你二逼了… = = <a href="#comment-147669" rel="nofollow">@atusoft </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-214740" class="comment even thread-even depth-1">
+<article id="div-comment-214740" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3dbde8f108101c2e03c3d7494f30bd28?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3dbde8f108101c2e03c3d7494f30bd28?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ccnyou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-214740"><time datetime="2012-11-12T22:49:16+08:00">2012年11月12日 22:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-84701" rel="nofollow">@dabenxiong </a><br/>
+正解+1</p>
+</div>
+ </article>
+</li>
+<li id="comment-216576" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-216576" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5c6a6ff46d47ba81a1af818edb6e529?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5c6a6ff46d47ba81a1af818edb6e529?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">funnuy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-216576"><time datetime="2012-11-16T20:49:08+08:00">2012年11月16日 20:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉是楼主读完这篇再用自己的话复述一遍，连代码都一样<br/>
+<a href="http://ariya.ofilabs.com/2011/08/hall-of-api-shame-boolean-trap.html" rel="nofollow ugc">http://ariya.ofilabs.com/2011/08/hall-of-api-shame-boolean-trap.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-218451" class="comment even thread-even depth-1">
+<article id="div-comment-218451" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f74efc07d8ae037b416234e6e627500?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f74efc07d8ae037b416234e6e627500?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/zzxiang1985" class="url" rel="ugc external nofollow">子子翔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-218451"><time datetime="2012-11-20T22:22:53+08:00">2012年11月20日 22:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-80574" rel="nofollow">@陈皓 </a><br/>
+这是因为immediate变量这个名字取得不好，改成bIsImmediate或isImmediate就会好些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-233061" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-233061" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23d67ad5d52828d7912bfc3b34948b18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23d67ad5d52828d7912bfc3b34948b18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://biergaizi.info" class="url" rel="ugc external nofollow">比尔盖子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-233061"><time datetime="2012-12-09T12:54:25+08:00">2012年12月09日 12:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>《写出可读代码的艺术》中建议，遇到这种特殊情况，Python 可以这么调用：<br/>
+connect(user, pass, encryption=True)</p>
+<p>C 类语言就这样<br/>
+connect(user, pass, /*encryption=*/ true)</p>
+</div>
+ </article>
+</li>
+<li id="comment-273508" class="comment even thread-even depth-1">
+<article id="div-comment-273508" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8bd9c131364e4dd7cac8442986af4383?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8bd9c131364e4dd7cac8442986af4383?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.diguage.com/" class="url" rel="ugc external nofollow">D瓜哥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-273508"><time datetime="2013-01-20T14:52:53+08:00">2013年01月20日 14:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前还没真没有注意到这个问题！！看来以后还是要多学东西啊！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-280757" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/1238" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » 一些文章和各种资源</a> </div>
+</li>
+<li id="comment-579244" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.pinklover.net/?p=44" class="url" rel="ugc external nofollow">需求变化与IoC | news snack</a> </div>
+</li>
+<li id="comment-1455970" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1455970" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/weishun" class="url" rel="ugc external nofollow">pythonwood</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-1455970"><time datetime="2014-05-08T19:44:55+08:00">2014年05月08日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>做期末大作业遇到过，坑了我半天吧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1748607" class="comment even thread-even depth-1">
+<article id="div-comment-1748607" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8687aea5a6251aa8a239d4ebbadfcc2f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8687aea5a6251aa8a239d4ebbadfcc2f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://flingfox63.vicp.net" class="url" rel="ugc external nofollow">test</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-1748607"><time datetime="2015-08-20T14:25:39+08:00">2015年08月20日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Nokia的Qt的《API Design Principles》 中的链接是: <a href="http://wiki.qt.io/API_Design_Principles" rel="nofollow ugc">http://wiki.qt.io/API_Design_Principles</a> ….</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750785" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1750785" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e5fa9c06b6d68ab49cc27f5ea90d565?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e5fa9c06b6d68ab49cc27f5ea90d565?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ts</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-1750785"><time datetime="2015-08-27T14:13:03+08:00">2015年08月27日 14:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说阅读代码困难，你只是需要一个能显示函数签名那个变量叫什么的 IDE 而已。<br/>
+没事别用 notepad.exe 写代码还抱怨看不懂，那活该看不懂。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1922297" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/18024.html" class="url" rel="ugc">API设计原则 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1923425" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1923425" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/402f53747cc7c10ba20a3e730c1044bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/402f53747cc7c10ba20a3e730c1044bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaomi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-1923425"><time datetime="2018-01-24T17:49:21+08:00">2018年01月24日 17:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>bool FuncClass::onDataCallBack( SocketClient &amp;client, bool dns,bool compleled )<br/>
+每天都在猜谜</p>
+</div>
+ </article>
+</li>
+<li id="comment-1941086" class="comment even thread-even depth-1">
+<article id="div-comment-1941086" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/28854aa7446b6a34e3087fee967a6f59?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/28854aa7446b6a34e3087fee967a6f59?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">DHclly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-1941086"><time datetime="2018-09-14T01:04:25+08:00">2018年09月14日 01:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>主要还是魔数问题，如果不是使用vs等ide，传参最好是传入变量即可解决这个问题<br/>
+var name=’tim’;<br/>
+var age =12;</p>
+<p>var p = new People(name,age);</p>
+</div>
+ </article>
+</li>
+<li id="comment-1942504" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/9699.html" class="url" rel="ugc external nofollow">API设计原则 – Qt官网的设计实践总结 – 西部IT科技</a> </div>
+</li>
+<li id="comment-2041441" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wxhongbao.com/67526.html" class="url" rel="ugc external nofollow">API设计原则 – Qt官网的设计实践总结 - 微信红包网</a> </div>
+</li>
+<li id="comment-2123314" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2123314" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e62a5cbd6910dcda954931551e126d5e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e62a5cbd6910dcda954931551e126d5e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/articles/5444.html" class="url" rel="ugc">UC Hr</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5444.html/comment-page-2#comment-2123314"><time datetime="2020-06-24T21:07:07+08:00">2020年06月24日 21:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这些东西你想那多少拿多少，明天来UC上班</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/5444.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/5444.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">5444</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

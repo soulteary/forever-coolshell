@@ -1,0 +1,281 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>纯文本配置还是注册表 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4077 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4077" class="post-content post-4077 post type-post status-publish format-standard hentry category-unixlinux category-mswindows category-progdesign tag-ini tag-linux tag-register tag-unix tag-windows">
+<header class="entry-header">
+<span class="screen-reader-text">纯文本配置还是注册表</span>
+<h1 class="entry-title">纯文本配置还是注册表</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4077.html" title="08:42" rel="bookmark"><time class="entry-date" datetime="2011-03-28T08:42:10+08:00" pubdate="">2011年03月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4077.html#comments" class="comments-link">62 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 31,289 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>我们知道Unix/Linux下的程序配置文件从来都是纯文本的，你可以自由地修改和查看，他们也没有什么什么XML之类的玩意（参看XML的这两篇文章：<a title="信XML，得永生！" href="/articles/2504.html" target="_blank">一</a>，<a title="信XML，得自信" href="/articles/3498.html" target="_blank">二</a>），这个最重要的Unix文化（参看<a title="Unix传奇(下篇)" href="/articles/2324.html" target="_blank">Unix传奇下篇</a>）40多年来就这么沿续下来了。我很佩服Microsoft的创新能力，一会儿用INI，一会儿用注册表，一会又是用XML，这就是<a title="Windows编程革命简史" href="/articles/3008.html" target="_blank">Windows的编程中那“强大”的创新</a>。在网上又看到有人在争论为什么用注册表而不是纯文本，所以，写下这篇文章。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%BC%95%E5%85%A5%E6%B3%A8%E5%86%8C%E8%A1%A8%E6%89%80%E8%B0%93%E7%9A%84%E5%8E%9F%E5%9B%A0" title="引入注册表所谓的原因">引入注册表所谓的原因</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%88%91%E7%9A%84%E8%A7%82%E7%82%B9" title="我的观点">我的观点</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%BA%AF%E6%96%87%E6%9C%AC%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E7%9A%84%E5%A5%BD%E5%A4%84" title="纯文本配置文件的好处">纯文本配置文件的好处</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%8E%9F%E5%9B%A0" title="真正的原因">真正的原因</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%BC%95%E5%85%A5%E6%B3%A8%E5%86%8C%E8%A1%A8%E6%89%80%E8%B0%93%E7%9A%84%E5%8E%9F%E5%9B%A0"></span>引入注册表所谓的原因<span class="ez-toc-section-end"></span></h4>
+<p>首先，让我们来看一下为什么微软觉得要使用注册表而不是ini文件，下面是一些其列出来的ini方面的毛病：</p>
+<ul>
+<li>ini文件不支持Unicode</li>
+<li>ini文件的安全权限不够</li>
+<li>ini文件在多进程下存取会有问题</li>
+<li>如果一个进程锁上了这个文件，另一个进程就无法获得，只能出错。</li>
+<li>ini文件只能包含字符串，无法使用二进制</li>
+<li>解析ini文件相对来说性能比较慢，第一次读写都需要把整个文件读入内存，然后再写回去。</li>
+<li>ini文件最大只有32K</li>
+<li>ini文件的默认目录在Windows系统目录下，只能这个目录只能Windows管理员才能访问</li>
+<li>ini只能包含了两层，对于多层不支持。</li>
+<li>把ini文件放在中央服务器上管理很困难。</li>
+</ul>
+<p>而微软说，注册表可以完美地解决这些问题。居然微软只说到了ini文件，但我觉得不单单是ini，所有的以纯文本方式保存配置文件的方法都会出现上述这样的问题。</p>
+<h4><span class="ez-toc-section" id="%E6%88%91%E7%9A%84%E8%A7%82%E7%82%B9"></span>我的观点<span class="ez-toc-section-end"></span></h4>
+<p>那么，当你在看到这些言论时，你是怎么想的？你有没有经过自己的独立思考？还是你觉得注册表完美地解决了所有的一切？下面是我的一些观点：</p>
+<p><span id="more-4077"></span></p>
+<ul>
+<li><span style="color: #800000;">首先，我们要知道没有任何一件事是完美的，凡事必然有好的一面，也有不好的一面。</span></li>
+<li><span style="color: #800000;">其次，当我们在改进一个东西时，不单单要解决其不好的东西，还要把其好的东西给传承下来。</span></li>
+</ul>
+<p>所以，当你看到一些只说好或是只说坏的东西时，这往往意味着“宗教”或“洗脑”，这正是需要你独立思考的时候。</p>
+<h4><span class="ez-toc-section" id="%E7%BA%AF%E6%96%87%E6%9C%AC%E9%85%8D%E7%BD%AE%E6%96%87%E4%BB%B6%E7%9A%84%E5%A5%BD%E5%A4%84"></span>纯文本配置文件的好处<span class="ez-toc-section-end"></span></h4>
+<p>下面，是我觉得纯文本配置文件的好处（我用Unix下的纯文本配置文件来举例）：</p>
+<ul>
+<li>很容易进行版本管理（配置文件和程序代码一样都需要版本控制）</li>
+<li>很容易移植到别的平台</li>
+<li>很容易自定义文本文件的格式和语法，已也有相关的库支持（ini只支持ANSI字符，只有32K，只支持两级，那是ini的问题，解决这些问题不需要引入注册表）</li>
+<li>可以在配置文本中写注释信息</li>
+<li>你要很容易的使用grep，awk，sed等等以及来和脚本集成。</li>
+<li>你可以很容易地拆分配置文件把其放到conf.d中，这样一来，你就非常灵活
+<ul>
+<li>你就不用整个文件都读入内存，</li>
+<li>你也可以分别设置上不同的存取权限，</li>
+<li>同样可以减小多个进程同时存取的问题</li>
+<li>同样可以引用别的二进制配置的文件</li>
+</ul>
+</li>
+<li>你可以很容易地产生备份或是在不同的配置中来回地切换配置文件以进行调试。</li>
+<li>你可以很容易地使用rsync来向中央服务器同步你的配置文件。或者使用NFS/NIS直接就把配置放在中央服务器上。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E7%9C%9F%E6%AD%A3%E7%9A%84%E5%8E%9F%E5%9B%A0"></span>真正的原因<span class="ez-toc-section-end"></span></h4>
+<p>可见，Windows 的注册表并没有把纯文本配置文件的这些好处都带过来，所以，经过这样的独立思考，我们可以知道，微软引入注册表的真正原因是——</p>
+<ul>
+<li>让你的程序不具移植性，让你的软件永远运行在Windows上。</li>
+<li>增加你编程的复杂度和你维护配置文件的复杂度，让你在痛苦之后，苦苦哀求微软再发布下一个“创新”。</li>
+</ul>
+<p>各位程序员——Windows是很危险的，你们还是回火星去吧。</p>
+<p>（<strong>全文完，转载时请注明作者和出处</strong>）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4077-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">Windows</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">InI</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Register</a>, <a href="javascript:void(0)" rel="tag">Unix</a>, <a href="javascript:void(0)" rel="tag">Windows</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>纯文本配置还是注册表</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-77104" class="comment even thread-even depth-1">
+<article id="div-comment-77104" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/37ac5f6fba452df32ecbacad4ba40c4b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/37ac5f6fba452df32ecbacad4ba40c4b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">油菜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-77104"><time datetime="2011-08-26T14:19:21+08:00">2011年08月26日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-76504" rel="nofollow">@manfeyn </a><br/>
+两层分层很容易：<br/>
+aaa:<br/>
+…..<br/>
+bbb:<br/>
+…..<br/>
+如果你真的需要多层，把它拆到不同文件里。</p>
+</div>
+ </article>
+</li>
+<li id="comment-77105" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-77105" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/37ac5f6fba452df32ecbacad4ba40c4b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/37ac5f6fba452df32ecbacad4ba40c4b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">油菜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-77105"><time datetime="2011-08-26T14:22:39+08:00">2011年08月26日 14:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-44394"><p>
+<strong><a href="#comment-44394" rel="nofollow">liuliu </a> :</strong>注册表就是win自带的小型数据库，win95那个年代就设计进去了，本文把文件跟数据库比，立论都错了。最近常看到喷子，以攻击MS为找到优越感的手段，这是很可笑的。这些都是SDE们的工具而已，什么情况用什么工具。把微软技术或者非微软技术或者视为唯一的神祗的人都逃离不了头顶码农的光环。</p></blockquote>
+<p>M$目前仍大量应用注册表，不然它怎么“肥”的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-79773" class="comment even thread-even depth-1">
+<article id="div-comment-79773" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49a51b092aee56cf18925f5c57bb378c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49a51b092aee56cf18925f5c57bb378c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">doocoo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-79773"><time datetime="2011-09-06T13:16:14+08:00">2011年09月06日 13:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用注册表并不禁止ini哦。你完全可以把所有的设置放到ini里面忽视注册表。这样你就可以移植了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-89478" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-89478" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">XXX</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-89478"><time datetime="2011-10-27T10:26:54+08:00">2011年10月27日 10:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>unix，linux中一个非常重要的原则是POSIX(可移植系统)，而windows从诞生那天起就是反POS的，在其还不是很壮大的时候，对第三方开发者和工具很友好，但是到了后来（似乎是从win95发布后）API从对外的一步步转化为对内，微软也开始大力提倡购买、使用微软内部的编程工具来开发，于是vs这个巨无霸随之诞生了，之后微软出现过的各种所谓的“新技术”都是其加强不可移植性的佐证，每次变化和外部，第三方开发者没有丝毫的交互，都是我提供什么，你们跟着学什么，用我提供的开发工具为我的平台服务，这个技术是不可移植的，是仅此一家的，是windows专用的。而实际上这些所谓的新技术在unix，linux是稳定不变持续繁衍的通用的技术，不会让你以前学过的东西过时。所以，注册表这个东西是微软反移植性目的的又一工具，文章的结论我完全赞成。</p>
+</div>
+ </article>
+</li>
+<li id="comment-89480" class="comment even thread-even depth-1">
+<article id="div-comment-89480" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">XXX</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-89480"><time datetime="2011-10-27T10:30:31+08:00">2011年10月27日 10:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最成功的OS不代表其是最完美(其实根本和完美没任何交集)，技术最强的OS，windows生逢其时，而那个年代unix根本没把PC和家用市场当作一回事<a href="#comment-40121" rel="nofollow">@meiosis </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-89483" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-89483" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2463f1bd85aea23703f320e67d33f349?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">XXX</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-89483"><time datetime="2011-10-27T10:38:03+08:00">2011年10月27日 10:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>另外这个最成功仅限于pc和桌面市场，真正最成功的OS是unix和linux，恰好是POSIX，导致它几乎可以在各种设备上运行，而事实的确如此，以前有个很有名的说法来说这一快速蔓延和极具”破坏力”的现象：“unix是病毒”。</p>
+</div>
+ </article>
+</li>
+<li id="comment-122073" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://flychen.com/article/how-to-learn-c-language.html" class="url" rel="ugc external nofollow">如何学好C语言 | 搜索引擎技术博客</a> </div>
+</li>
+<li id="comment-198832" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://winjiejie.com/xing-neng-diao-you-gong-lve-zi-dong-zhuan/" class="url" rel="ugc external nofollow">性能调优攻略 [自动转] | 胜利结界</a> </div>
+</li>
+<li id="comment-220131" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/you-may-not-know-the-shell.html" class="url" rel="ugc external nofollow">Definite Digest » 你可能不知道的Shell</a> </div>
+</li>
+<li id="comment-317701" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-317701" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce683c4836d5bb3ac7a226cc89d77d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce683c4836d5bb3ac7a226cc89d77d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://colaghost.net" class="url" rel="ugc external nofollow">colaghost</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-317701"><time datetime="2013-03-27T10:05:42+08:00">2013年03月27日 10:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-40181" rel="nofollow">@Kevin </a><br/>
+gconf本身还是纯文本配置的，它即提供了统一管理，又保持了纯文本配置的可读性，同时避免windows注册表那样子被破坏可能导致系统崩溃的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1644372" class="comment even thread-even depth-1">
+<article id="div-comment-1644372" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dd0c914691d1c7bfa285fea7454c0a4c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dd0c914691d1c7bfa285fea7454c0a4c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">doorn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4077.html/comment-page-2#comment-1644372"><time datetime="2015-01-13T15:14:16+08:00">2015年01月13日 15:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说到最后一句话”各位程序员——Windows是很危险的，你们还是回火星去吧。“</p>
+<p>我表示非常无奈，我无法回避Windows的危险</p>
+<p>因为我的用户们都是用的Windows</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/4077.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/4077.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">4077</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

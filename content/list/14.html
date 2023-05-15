@@ -1,0 +1,422 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>酷壳 – CoolShell.cn - Part 14</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="home blog paged paged-14 group-blog">
+
+<div id="page" class="hfeed site">
+<header id="masthead" role="banner">
+
+<div id="cc_spacer"></div>
+<div class="site-header">
+
+<div class="site-branding">
+<a class="home-link" href="/" title="酷 壳 – CoolShell" rel="home">
+<h1 class="site-title">酷 壳 – CoolShell</h1>
+<h2 class="site-description">享受编程和技术所带来的快乐 – Coding Your Ambition</h2>
+</a>
+</div>
+</div>
+</header>
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" class="site-main" role="main">
+<article id="post-9229" class="post-content post-9229 post type-post status-publish format-standard hentry category-javadev tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">实例分析Java Class的文件结构</span>
+<h2 class="entry-title">
+<a href="/articles/9229.html" rel="bookmark">实例分析Java Class的文件结构</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9229.html" title="23:28" rel="bookmark"><time class="entry-date" datetime="2013-03-05T23:28:51+08:00" pubdate="">2013年03月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/tiger-zhou" title="View all posts by tiger.zhou" rel="author">tiger.zhou</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9229.html#comments" class="comments-link">48 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 51,892 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>【感谢网友 @<a title="Krq_Tiger" href="http://weibo.com/xmuzyq" target="_blank">Krq_Tiger</a> 投稿】</strong></p>
+<p>今天把之前在Evernote中的笔记重新整理了一下，发上来供对java class 文件结构的有兴趣的同学参考一下。</p>
+<p>学习Java的朋友应该都知道Java从刚开始的时候就打着平台无关性的旗号，说“一次编写，到处运行”，其实说到无关性，Java平台还有另外一个无关 性那就是语言无关性，要实现语言无关性，那么Java体系中的class的文件结构或者说是字节码就显得相当重要了，其实Java从刚开始的时候就有两套 规范，一个是Java语言规范，另外一个是Java虚拟机规范，Java语言规范只是规定了Java语言相关的约束以及规则，而虚拟机规范则才是真正从跨 平台的角度去设计的。今天我们就以一个实际的例子来看看，到底Java中一个Class文件对应的字节码应该是什么样子。 这篇文章将首先总体上阐述一下Class到底由哪些内容构成，然后再用一个实际的Java类入手去分析class的文件结构。</p>
+<p>在继续之前，我们首先需要明确如下几点：</p>
+<p style="padding-left: 30px;">1）Class文件是有8个字节为基础的字节流构成的，这些字节流之间都严格按照规定的顺序排列，并且字节之间不存在任何空隙，对于超过8个字节的数据，将按 照Big-Endian的顺序存储的，也就是说高位字节存储在低的地址上面，而低位字节存储到高地址上面，其实这也是class文件要跨平台的关键，因为 PowerPC架构的处理采用Big-Endian的存储顺序，而x86系列的处理器则采用Little-Endian的存储顺序，因此为了Class文 件在各中处理器架构下保持统一的存储顺序，虚拟机规范必须对起进行统一。</p>
+<p style="padding-left: 30px;">2） Class文件结构采用类似C语言的结构体来存储数据的，主要有两类数据项，无符号数和表，无符号数用来表述数字，索引引用以及字符串等，比如 u1,u2,u4,u8分别代表1个字节，2个字节，4个字节，8个字节的无符号数，而表是有多个无符号数以及其它的表组成的复合结构。可能大家看到这里 对无符号数和表到底是上面也不是很清楚，不过不要紧，等下面实例的时候，我会再以实例来解释。</p>
+<p>明确了上面的两点以后，我们接下来后来看看Class文件中按照严格的顺序排列的字节流都具体包含些什么数据：</p>
+<p> <a href="/articles/9229.html#more-9229" class="more-link">…</a></p><a href="/articles/9229.html#more-9229" class="more-link">
+</a><p class="read-more"><a href="/articles/9229.html#more-9229" class="more-link"></a><a class="btn btn-default" href="/articles/9229.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9229-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9169" class="post-content post-9169 post type-post status-publish format-standard hentry category-javadev category-602 tag-disruptor tag-java tag-lmax tag-performance">
+<header class="entry-header">
+<span class="screen-reader-text">并发框架Disruptor译文</span>
+<h2 class="entry-title">
+<a href="/articles/9169.html" rel="bookmark">并发框架Disruptor译文</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9169.html" title="20:13" rel="bookmark"><time class="entry-date" datetime="2013-02-28T20:13:46+08:00" pubdate="">2013年02月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/kiral" title="View all posts by 方 腾飞" rel="author">方 腾飞</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9169.html#comments" class="comments-link">38 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 62,595 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢同事<a href="http://ifeve.com" target="_blank">方腾飞</a>投递本文）</strong></p>
+<p><img decoding="async" class="alignright size-medium wp-image-9188" alt="" src="/uploads/2013/02/Disruptor-300x144.png" width="300" height="144" srcset=""/>Martin Fowler在自己网站上写了一篇<a href="http://ifeve.com/lmax" target="_blank">LMAX架构</a>的文章，在文章中他介绍了LMAX是一种新型零售金融交易平台，它能够以很低的延迟产生大量交易。这个系统是建立在JVM平台上，其核心是一个业务逻辑处理器，它能够在一个线程里每秒处理6百万订单。业务逻辑处理器完全是运行在内存中，使用事件源驱动方式。业务逻辑处理器的核心是Disruptor。</p>
+<p>Disruptor它是一个开源的并发框架，并获得<a href="http://www.java.net/dukeschoice" target="_blank">2011 Duke’s </a>程序框架创新奖，能够在无锁的情况下实现网络的Queue并发操作。本文是<a href="https://code.google.com/p/disruptor/wiki/BlogsAndArticles" target="_blank">Disruptor官网</a>中发布的文章的译文（<a href="https://lmax-exchange.github.com/disruptor/" target="_blank">现在被移到了GitHub</a>）。</p>
+<h4><strong><span style="color: #008000">剖析Disruptor:为什么会这么快</span></strong></h4>
+<ul>
+<li><a href="http://ifeve.com/locks-are-bad/" target="_blank">剖析Disruptor:为什么会这么快？(一)锁的缺点</a></li>
+</ul>
+<ul>
+<li><a title="剖析Disruptor:为什么会这么快？（二）神奇的缓存行填充" href="http://ifeve.com/disruptor-cacheline-padding/" target="_blank">剖析Disruptor:为什么会这么快？(二)神奇的缓存行填充</a></li>
+</ul>
+<ul>
+<li><a title="伪共享(False Sharing)" href="http://ifeve.com/falsesharing/" target="_blank">剖析Disruptor:为什么会这么快？(三)伪共享</a></li>
+</ul>
+<ul>
+<li><a title="剖析Disruptor:为什么会这么快？(四)揭秘内存屏障" href="http://ifeve.com/disruptor-memory-barrier/" target="_blank">剖析Disruptor:为什么会这么快？(四)揭秘内存屏障</a></li>
+</ul>
+<h4><span style="color: #008000">Disruptor如何工作和使用</span></h4>
+<ul>
+<li><a title="剖析Disruptor:为什么会这么快？（一）Ringbuffer的特别之处" href="http://ifeve.com/dissecting-disruptor-whats-so-special/" target="_blank">如何使用Disruptor（一）Ringbuffer的特别之处</a></li>
+</ul>
+<ul>
+<li><a title="如何使用Disruptor（二）如何从Ringbuffer读取" href="http://ifeve.com/dissecting_the_disruptor_how_doi_read_from_the_ring_buffer/" target="_blank">如何使用Disruptor（二）如何从Ringbuffer读取</a></li>
+</ul>
+<ul>
+<li><a title="如何使用 Disruptor（三）写入 Ringbuffer" href="http://ifeve.com/disruptor-writing-ringbuffer/" target="_blank">如何使用Disruptor（三）写入Ringbuffer</a></li>
+</ul>
+<p> <a href="/articles/9169.html#more-9169" class="more-link">…</a></p><a href="/articles/9169.html#more-9169" class="more-link">
+</a><p class="read-more"><a href="/articles/9169.html#more-9169" class="more-link"></a><a class="btn btn-default" href="/articles/9169.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9169-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9104" class="post-content post-9104 post type-post status-publish format-standard hentry category-unixlinux category-tools tag-linux tag-sed tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">sed 简明教程</span>
+<h2 class="entry-title">
+<a href="/articles/9104.html" rel="bookmark">sed 简明教程</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9104.html" title="08:36" rel="bookmark"><time class="entry-date" datetime="2013-02-20T08:36:48+08:00" pubdate="">2013年02月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9104.html#comments" class="comments-link">209 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 380,057 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright wp-image-9126" src="/uploads/2013/02/sed-superman.png" alt="" width="216" height="216" srcset="" sizes="(max-width: 216px) 100vw, 216px"/>awk于1977年出生，今年36岁本命年，sed比awk大2-3岁，awk就像林妹妹，sed就是宝玉哥哥了。所以 <a title="AWK 简明教程" href="/articles/9070.html" target="_blank" rel="noopener noreferrer">林妹妹跳了个Topless</a>，他的哥哥sed坐不住了，也一定要出来抖一抖。</p>
+<p>sed全名叫stream editor，流编辑器，用程序的方式来编辑文本，相当的hacker啊。sed基本上就是玩正则模式匹配，所以，玩sed的人，正则表达式一般都比较强。</p>
+<p>同样，本篇文章不会说sed的全部东西，你可以参看<a href="http://www.gnu.org/software/sed/manual/sed.html" target="_blank" rel="noopener noreferrer">sed的手册</a>，我这里主要还是想和大家竞争一下那些从手机指缝间或马桶里流走的时间，用这些时间来学习一些东西。当然，接下来的还是要靠大家自己双手。</p>
+<h4>用s命令替换</h4>
+<p>我使用下面的这段文本做演示：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat pets.txt
+This is my cat
+  my cat&#39;s name is betty
+This is my dog
+  my dog&#39;s name is frank
+This is my fish
+  my fish&#39;s name is george
+This is my goat
+  my goat&#39;s name is adam</pre>
+<p>把其中的my字符串替换成Hao Chen’s，下面的语句应该很好理解（s表示替换命令，/my/表示匹配my，/Hao Chen’s/表示把匹配替换成Hao Chen’s，/g 表示一行上的替换所有的匹配）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sed &#34;s/my/Hao Chen&#39;s/g&#34; pets.txt
+This is Hao Chen&#39;s cat
+  Hao Chen&#39;s cat&#39;s name is betty
+This is Hao Chen&#39;s dog
+  Hao Chen&#39;s dog&#39;s name is frank
+This is Hao Chen&#39;s fish
+  Hao Chen&#39;s fish&#39;s name is george
+This is Hao Chen&#39;s goat
+  Hao Chen&#39;s goat&#39;s name is adam</pre>
+<p>注意：如果你要使用单引号，那么你没办法通过\’这样来转义，就有双引号就可以了，在双引号内可以用\”来转义。</p>
+<p> <a href="/articles/9104.html#more-9104" class="more-link">…</a></p><a href="/articles/9104.html#more-9104" class="more-link">
+</a><p class="read-more"><a href="/articles/9104.html#more-9104" class="more-link"></a><a class="btn btn-default" href="/articles/9104.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9104-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9070" class="post-content post-9070 post type-post status-publish format-standard hentry category-unixlinux category-misc category-tools tag-awk tag-gawk tag-linux tag-shell tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">AWK 简明教程</span>
+<h2 class="entry-title">
+<a href="/articles/9070.html" rel="bookmark">AWK 简明教程</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9070.html" title="08:38" rel="bookmark"><time class="entry-date" datetime="2013-02-17T08:38:29+08:00" pubdate="">2013年02月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9070.html#comments" class="comments-link">260 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 453,071 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright size-full wp-image-9093" alt="" src="/uploads/2013/02/awk.jpg" width="350" height="279" srcset="" sizes="(max-width: 350px) 100vw, 350px"/>有一些网友看了前两天的《<a title="应该知道的Linux技巧" href="/articles/8883.html" target="_blank">Linux下应该知道的技巧</a>》希望我能教教他们用awk和sed，所以，出现了这篇文章。我估计这些80后的年轻朋友可能对awk/sed这类上古神器有点陌生了，所以需要我这个老家伙来炒炒冷饭。<strong>况且，AWK是贝尔实验室1977年搞出来的文本出现神器，今年是蛇年，是AWK的本命年，而且年纪和我相仿，所以非常有必要为他写篇文章</strong>。</p>
+<p>之所以叫AWK是因为其取了三位创始人 <a title="Alfred Aho" href="https://en.wikipedia.org/wiki/Alfred_Aho">Alfred Aho</a>，<a title="Peter J. Weinberger" href="https://en.wikipedia.org/wiki/Peter_J._Weinberger">Peter Weinberger</a>, 和 <a title="Brian Kernighan" href="https://en.wikipedia.org/wiki/Brian_Kernighan">Brian Kernighan</a> 的Family Name的首字符。要学AWK，就得提一提AWK的一本相当经典的书《<a href="http://plan9.bell-labs.com/cm/cs/awkbook/" rel="nofollow">The AWK Programming Language</a>》，它在<a href="http://book.douban.com/subject/1876898/" target="_blank">豆瓣上的评分</a>是9.4分！在<a href="https://www.amazon.cn/mn/detailApp/?asin=020107981X" target="_blank">亚马逊上居然卖1022.30元</a>。</p>
+<p>我在这里的教程并不想面面俱到，本文和我之前的<a title="Go 语言简介（上）— 语法" href="/articles/8460.html" target="_blank">Go语言简介</a>一样，全是示例，基本无废话。</p>
+<p><strong>我只想达到两个目的：</strong></p>
+<p style="text-align: left; padding-left: 30px;"><strong>1）你可以在乘坐公交地铁上下班，或是在坐马桶拉大便时读完（保证是一泡大便的工夫）。</strong></p>
+<p style="text-align: left; padding-left: 30px;"><strong>2）我只想让这篇博文像一个火辣的脱衣舞女挑起你的兴趣，然后还要你自己去下工夫去撸。</strong></p>
+<p>废话少说，我们开始脱吧（注：这里只是topless）。</p>
+<h4>起步上台</h4>
+<p>我从netstat命令中提取了如下信息作为用例：</p>
+<p> <a href="/articles/9070.html#more-9070" class="more-link">…</a></p><a href="/articles/9070.html#more-9070" class="more-link">
+</a><p class="read-more"><a href="/articles/9070.html#more-9070" class="more-link"></a><a class="btn btn-default" href="/articles/9070.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9070-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8990" class="post-content post-8990 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux tag-c tag-coding tag-kernel tag-linus-torvalds tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">Linus：利用二级指针删除单向链表</span>
+<h2 class="entry-title">
+<a href="/articles/8990.html" rel="bookmark">Linus：利用二级指针删除单向链表</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8990.html" title="08:33" rel="bookmark"><time class="entry-date" datetime="2013-02-04T08:33:20+08:00" pubdate="">2013年02月04日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8990.html#comments" class="comments-link">194 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 114,038 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>感谢网友full_of_bull投递此文</strong>（注：此文最初发表在这个<a href="http://www.oldlinux.org/oldlinux/viewthread.php?tid=14575&amp;extra=page%3D1" target="_blank">这里</a>，我对原文后半段修改了许多，并加入了插图）</p>
+<p>Linus大婶在<a href="http://meta.slashdot.org/story/12/10/11/0030249/linus-torvalds-answers-your-questions" target="_blank">slashdot</a>上回答一些编程爱好者的提问，其中一个人问他什么样的代码是他所喜好的，大婶表述了自己一些观点之后，举了一个指针的例子，解释了什么才是<strong>core low-level coding</strong>。</p>
+<p>下面是Linus的教学原文及翻译——</p>
+<p style="padding-left: 30px;">“At the opposite end of the spectrum, I actually wish more people understood the really core low-level kind of coding. Not big, complex stuff like the lockless name lookup, but simply good use of pointers-to-pointers etc. For example, I’ve seen too many people who delete a singly-linked list entry by keeping track of the “prev” entry, and then to delete the entry, doing something like。（在这段话的最后，我实际上希望更多的人了解什么是真正的核心底层代码。这并不像无锁文件名查询（注：可能是git源码里的设计）那样庞大、复杂，只是仅仅像诸如使用二级指针那样简单的技术。例如，我见过很多人在删除一个单项链表的时候，维护了一个”prev”表项指针，然后删除当前表项，就像这样）”</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if (prev)
+    prev-&gt;next = entry-&gt;next;
+else
+    list_head = entry-&gt;next;</pre>
+<p style="padding-left: 30px;">and whenever I see code like that, I just go “This person doesn’t understand pointers”. And it’s sadly quite common.（当我看到这样的代码时，我就会想“这个人不了解指针”。令人难过的是这太常见了。）</p>
+<p> <a href="/articles/8990.html#more-8990" class="more-link">…</a></p><a href="/articles/8990.html#more-8990" class="more-link">
+</a><p class="read-more"><a href="/articles/8990.html#more-8990" class="more-link"></a><a class="btn btn-default" href="/articles/8990.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8990-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8961" class="post-content post-8961 post type-post status-publish format-standard hentry category-unixlinux category-misc category-progdesign tag-design tag-design-pattern tag-object-oriented tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">从面向对象的设计模式看软件设计</span>
+<h2 class="entry-title">
+<a href="/articles/8961.html" rel="bookmark">从面向对象的设计模式看软件设计</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8961.html" title="08:15" rel="bookmark"><time class="entry-date" datetime="2013-02-01T08:15:59+08:00" pubdate="">2013年02月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8961.html#comments" class="comments-link">92 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 91,180 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>前些天发了一篇《<a title="如此理解面向对象编程" href="/articles/8745.html" target="_blank" rel="bookmark">如此理解面向对象编程</a>》的文章，然后引起了大家的热议。然后我在<a href="http://weibo.com/1401880315/z9wWHrrVR" target="_blank">微博上说</a>了一句——“<strong>那23个经典的设计模式和OO半毛钱关系没有，只不过人家用OO来实现罢了……OO的设计模式思想和Unix的设计思想基本没什么差别</strong>”，结果引来了一点点争议。所以，我写下这篇文章把我的观点说明一下。我希望这样可以让大家更容易地理解什么是设计模式。<strong>我顺便帮OO和 Unix/Linux搞搞基</strong>。</p>
+<h4>什么是模式</h4>
+<p>在正式说明GoF的那23个经典的设计模式其实和OO关系不大并和Unix的设计思想很相似的这个观点之前，让我先来说说什么是模式？设计模式的英文是Design Pattern，模式是Pattern的汉译。所谓Pattern就是一种规则，或是一种模型，或是一种习惯。Pattern这个东西到处都是，并不只有技术圏子里才有。比如：</p>
+<ul>
+<li>文章有文章的Pattern。如新闻有新闻的Pattern（第一段话简述了整个新闻），诗歌总是抒情的，论文总是死板的，讲稿总是高谈的，漫画总是幽默的，……</li>
+<li><span style="line-height: 13px;">小说有小说的Pattern。比如，</span>
+<ul>
+<li><span style="line-height: 13px;">武侠小说必然要整个武林大会，整几个NB的武功和大师，分个正派和反派，还有一个或数个惊天阴谋，坏人总是要在一开始占尽优势，好人总是要力挽狂澜……</span></li>
+<li><span style="line-height: 13px;">言情小说总是要有第三者，总是要有负心人，里面的女子总是要哭得死去活来，但又痴心不改，……</span></li>
+</ul>
+</li>
+<li> 新闻联播的模式是：头10分钟领导很忙，中间10分钟人民很幸福，后10分钟国外很乱。中国政府官方宣传稿也模式也很明显，各种赞美，口号，胜利，总是要坚持个什么，团结个什么，迈向个什么，某某精神，某某思想，群众情绪稳定，不明真相，等等……</li>
+<li>春节的模式是，回家，吃饺子，放个鞭炮，给压岁钱，同学聚会…… 同学聚会的模式基本上都是在饭桌上回忆一下校园时光，比较一下各自的当前处境，调戏一下女同学……</li>
+<li>…… ……</li>
+</ul>
+<p>这就是Pattern，只要你细心观察，你会发现这世间有很多很多的Pattern。</p>
+<p> <a href="/articles/8961.html#more-8961" class="more-link">…</a></p><a href="/articles/8961.html#more-8961" class="more-link">
+</a><p class="read-more"><a href="/articles/8961.html#more-8961" class="more-link"></a><a class="btn btn-default" href="/articles/8961.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8961-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8883" class="post-content post-8883 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-misc tag-bash tag-linux tag-performance tag-shell tag-unix tag-vim">
+<header class="entry-header">
+<span class="screen-reader-text">应该知道的Linux技巧</span>
+<h2 class="entry-title">
+<a href="/articles/8883.html" rel="bookmark">应该知道的Linux技巧</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8883.html" title="08:24" rel="bookmark"><time class="entry-date" datetime="2013-01-09T08:24:29+08:00" pubdate="">2013年01月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8883.html#comments" class="comments-link">192 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 296,474 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright size-full wp-image-8899" alt="" src="/uploads/2013/01/linux-bash-300x225.jpg" width="300" height="225" srcset=""/>这篇文章来源于Quroa的一个问答《<a href="https://www.quora.com/Linux/What-are-some-time-saving-tips-that-every-Linux-user-should-know#" target="_blank">What are some time-saving tips that every Linux user should know?</a>》—— Linux用户有哪些应该知道的提高效率的技巧。我觉得挺好的，总结得比较好，把其转过来，并加了一些自己的理解。 首先，我想告诉大家，<strong>在Unix/Linux下，最有效率技巧的不是操作图形界面，而是命令行操作，因为命令行意味着自动化</strong>。如果你看过《<a title="你可能不知道的Shell" href="/articles/8619.html" target="_blank">你可能不知道的Shell</a>》以及《<a title="28个Unix/Linux的命令行神器" href="/articles/7829.html" target="_blank">28个Unix/Linux的命令行神器</a>》你就会知道Linux有多强大，这个强大完全来自于命令行，于是，就算你不知道怎么去<a title="做个环保主义的程序员" href="/articles/7186.html" target="_blank">做一个环保主义的程序员</a>，至少他们可以让你少熬点夜，从而有利于你的身体健康和性生活。下面是一个有点长的列表，正如作者所说，你并不需要知道所有的这些东西，但是如果你还在很沉重地在使用Linux的话，这些东西都值得你看一看。 （注：如果你想知道下面涉及到的命令的更多的用法，你一定要man一点。对于一些命令，你可以需要先yum或apt-get来安装一下，如果有什么问题，别忘了Google。如果你要Baidu的话，我仅代表这个地球上所有的生物包括微生物甚至细菌病毒和小强BS你到宇宙毁灭）</p>
+<h4>基础</h4>
+<ul>
+<li><strong>学习 <a href="https://www.quora.com/Bash-shell" target="_blank">Bash</a> </strong>。你可以man bash来看看bash的东西，并不复杂也并不长。你用别的shell也行，但是bash是很强大的并且也是系统默认的。（学习zsh或tsch只会让你在很多情况下受到限制）</li>
+</ul>
+<ul>
+<li><strong>学习 vim</strong> 。在Linux下，基本没有什么可与之竞争的编<del>译</del>辑器（就算你是一个Emacs或Eclipse的重度用户）。你可以看看《<a title="简明 Vim 练级攻略" href="/articles/5426.html" target="_blank">简明vim攻略</a>》和 《<a title="游戏：VIM大冒险" href="/articles/7166.html" target="_blank">Vim的冒险游戏</a>》以及《<a title="给程序员的VIM速查卡" href="/articles/5479.html" target="_blank">给程序员的Vim速查卡</a>》还有《<a title="将vim变得简单:如何在vim中得到你最喜爱的IDE特性" href="/articles/894.html" target="_blank">把Vim变成一个编程的IDE</a>》等等。</li>
+</ul>
+<ul>
+<li><strong>了解 ssh</strong>。明白不需要口令的用户认证（通过ssh-agent, ssh-add），学会用ssh翻墙，用scp而不是ftp传文件，等等。你知道吗？scp 远端的时候，你可以按tab键来查看远端的目录和文件（当然，需要无口令的用户认证），这都是bash的功劳。</li>
+</ul>
+<p> <a href="/articles/8883.html#more-8883" class="more-link">…</a></p><a href="/articles/8883.html#more-8883" class="more-link">
+</a><p class="read-more"><a href="/articles/8883.html#more-8883" class="more-link"></a><a class="btn btn-default" href="/articles/8883.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8883-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8790" class="post-content post-8790 post type-post status-publish format-standard hentry category-misc tag-algorithm tag-job tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">程序算法与人生选择</span>
+<h2 class="entry-title">
+<a href="/articles/8790.html" rel="bookmark">程序算法与人生选择</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8790.html" title="09:00" rel="bookmark"><time class="entry-date" datetime="2012-12-28T09:00:50+08:00" pubdate="">2012年12月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8790.html#comments" class="comments-link">220 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 167,712 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright  wp-image-8797" src="/uploads/2012/12/choice.jpg" alt="" width="281" height="207" srcset="" sizes="(max-width: 281px) 100vw, 281px"/>每年一到要找工作的时候，我就能收到很多人给我发来的邮件，总是问我怎么选择他们的offer，去腾讯还是去豆瓣，去外企还是去国内的企业，去创业还是去考研，来北京还是回老家，该不该去创新工场？该不该去thoughtworks？……等等，等等。今年从7月份到现在，我收到并回复了60多封这样的邮件。我更多帮他们整理思路，帮他们明白自己最想要的是什么。（注：我以后不再回复类似的邮件了）。</p>
+<p>我深深地发现，对于我国这样从小被父母和老师安排各种事情长大的人，当有一天，父母和老师都跟不上的时候，我们几乎完全不知道怎么去做选择。而我最近也离开了亚马逊，换了一个工作。又正值年底，就像去年的那篇《<a title="三个事和三个问题" href="/articles/6142.html" target="_blank">三个故事和三个问题</a>》一样，让我想到写一篇这样的文章。</p>
+<h4>几个例子</h4>
+<p>当我们在面对各种对选择的影响因子的时候，如：城市，公司规模，公司性质，薪水，项目，户口，技术，方向，眼界…… 你总会发现，你会在几个公司中纠结一些东西，举几个例子：</p>
+<ul>
+<li>某网友和我说，他们去上海腾讯，因为腾讯的规模很大，但却发现薪水待遇没有豆瓣高（低的还不是一点），如果以后要换工作的话，起薪点直接关系到了以后的高工资。我说那就去豆瓣吧，他说豆瓣在北京，污染那么严重，又没有户口，生存环境不好。我说去腾讯吧，他说腾讯最近组织调整，不稳定。我说那就去豆瓣吧，慢公司，发展很稳当。他说，豆瓣的盈利不清楚，而且用Python，自己不喜欢。我说，那就去腾讯吧，……</li>
+</ul>
+<ul>
+<li>还有一网友和我说，他想回老家，因为老家的人脉关系比较好，能混得好。但又想留在大城市，因为大城市可以开眼界。</li>
+</ul>
+<p> <a href="/articles/8790.html#more-8790" class="more-link">…</a></p><a href="/articles/8790.html#more-8790" class="more-link">
+</a><p class="read-more"><a href="/articles/8790.html#more-8790" class="more-link"></a><a class="btn btn-default" href="/articles/8790.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8790-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8767" class="post-content post-8767 post type-post status-publish format-standard hentry category-webdev category-misc category-tools tag-autotools tag-http tag-http-load tag-test tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">Web工程师的工具箱</span>
+<h2 class="entry-title">
+<a href="/articles/8767.html" rel="bookmark">Web工程师的工具箱</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8767.html" title="00:04" rel="bookmark"><time class="entry-date" datetime="2012-12-19T00:04:43+08:00" pubdate="">2012年12月19日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8767.html#comments" class="comments-link">41 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,461 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright  wp-image-8771" alt="Web Toolbox" src="/uploads/2012/12/webtoolbox.jpg" width="318" height="196" srcset="" sizes="(max-width: 318px) 100vw, 318px"/>本文出自<a href="http://ivanzuzak.info/" target="_blank">Ivan Zuzak</a> 的《<a href="http://ivanzuzak.info/2012/11/18/the-web-engineers-online-toolbox.html" target="_blank">The Web engineer’s online toolbox</a>》，作者给了一个各种可以用来进行开发、测试、调试以及文档编排的在线工具集。（注：我发现CSDN上已经有了这篇文章《<a href="http://www.csdn.net/article/2012-11-19/2811992" target="_blank">Web工程师必备的18款工具</a>》，但可惜的是这篇文章并不全（原文后来被更新到了33个工具），而且其中并没有包括原文评论中出现的所有工具，所以，我一并补全了更出来，一共40多个工具）</p>
+<h4><strong>Web工程师在线工具箱</strong></h4>
+<ul>
+<li><a href="http://requestb.in/" target="_blank"><strong>RequestBin</strong></a><strong>：</strong>允许你创建一个URL，利用这款工具进行收集请求，然后通过个性化方式进行检查。</li>
+</ul>
+<ul>
+<li><a href="http://hurl.it/" target="_blank"><strong>Hurl</strong></a><strong>：</strong>发出HTTP请求，输入URL，设置标题，查看响应，最后分享给其他人。类似的工具有：<a href="http://resttesttest.com/" target="_blank">REST test test</a>, <a href="https://apigee.com/console/others" target="_blank">Apigee console</a>.。</li>
+</ul>
+<ul>
+<li><a href="http://httpbin.org/" target="_blank"><strong>Httpbin</strong></a><strong>：</strong>HTTP请求&amp;响应服务，涵盖所有的HTTP方案（例如不同的HTTP verbs、状态代码和重定向）。类似工具：<a href="http://ivanzuzak.info/urlecho/">UrlEcho</a>。</li>
+</ul>
+<ul>
+<li><a href="http://redbot.org/" target="_blank"><strong>REDbot</strong></a><strong>：</strong>这是一个机器人工具，帮助用户检查HTTP资源，可查看它的操作情况，指出常见的问题并提出改进。类似工具：<a href="http://zamez.org/httplint">HTTP lint</a>。</li>
+</ul>
+<ul>
+<li><a href="http://webgun.io/" target="_blank"><strong>WebGun</strong></a><strong>：</strong>用于创建webhooks模板的API。类似工具：<a href="https://github.com/izuzak/urlreq">UrlReq</a>。</li>
+</ul>
+<ul>
+<li><strong><a href="https://www.webscript.io/">Webscript</a> </strong> 自选一个url，填一段Lua代码，就能对访问做各种respond，还可以主动运行任务，cron job等等…</li>
+</ul>
+<p> <a href="/articles/8767.html#more-8767" class="more-link">…</a></p><a href="/articles/8767.html#more-8767" class="more-link">
+</a><p class="read-more"><a href="/articles/8767.html#more-8767" class="more-link"></a><a class="btn btn-default" href="/articles/8767.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8767-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-8745" class="post-content post-8745 post type-post status-publish format-standard hentry category-javadev category-progdesign category-proglanguage category-story tag-coding tag-object-oriented tag-oop">
+<header class="entry-header">
+<span class="screen-reader-text">如此理解面向对象编程</span>
+<h2 class="entry-title">
+<a href="/articles/8745.html" rel="bookmark">如此理解面向对象编程</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8745.html" title="08:19" rel="bookmark"><time class="entry-date" datetime="2012-12-13T08:19:28+08:00" pubdate="">2012年12月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8745.html#comments" class="comments-link">185 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 157,676 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>从Rob Pike 的 Google+上的一个推看到了一篇叫《<a href="http://www.csis.pace.edu/~bergin/patterns/ppoop.html" target="_blank">Understanding Object Oriented Programming</a>》的文章，我先把这篇文章简述一下，然后再说说老牌黑客Rob Pike的评论。</p>
+<p>先看这篇教程是怎么来讲述OOP的。它先给了下面这个问题，这个问题需要输出一段关于操作系统的文字：假设Unix很不错，Windows很差。</p>
+<p>这个把下面这段代码描述成是<strong>Hacker Solution</strong>。（这帮人觉得下面这叫黑客？我估计这帮人真是没看过C语言的代码）</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class PrintOS
+{
+	public static void main(final String[] args)
+	{
+		String osName = System.getProperty(&#34;os.name&#34;) ;
+		if (osName.equals(&#34;SunOS&#34;) || osName.equals(&#34;Linux&#34;))
+		{
+			System.out.println(&#34;This is a UNIX box and therefore good.&#34;) ;
+		}
+		else if (osName.equals(&#34;Windows NT&#34;) || osName.equals(&#34;Windows 95&#34;))
+		{
+			System.out.println(&#34;This is a Windows box and therefore bad.&#34;) ;
+		}
+		else
+		{
+			System.out.println(&#34;This is not a box.&#34;) ;
+		}
+	}
+}</pre>
+<p>然后开始用面向对象的编程方式一步一步地进化这个代码。</p>
+<p>先是以过程化的思路来重构之。</p>
+<p> <a href="/articles/8745.html#more-8745" class="more-link">…</a></p><a href="/articles/8745.html#more-8745" class="more-link">
+</a><p class="read-more"><a href="/articles/8745.html#more-8745" class="more-link"></a><a class="btn btn-default" href="/articles/8745.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-8745-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+<div class="row">
+<div class="wp-pagenavi" role="navigation">
+<span class="pages">第 14 / 74 页</span><a class="first" aria-label="First Page" href="/">« 首页</a><a class="previouspostslink" rel="prev" aria-label="上一页" href="/page/13.html">«</a><span class="extend">...</span><a class="page smaller" title="第 10 页" href="/page/10.html">10</a><a class="page smaller" title="第 11 页" href="/page/11.html">11</a><a class="page smaller" title="第 12 页" href="/page/12.html">12</a><a class="page smaller" title="第 13 页" href="/page/13.html">13</a><span aria-current="page" class="current">14</span><a class="page larger" title="第 15 页" href="/page/15.html">15</a><a class="page larger" title="第 16 页" href="/page/16.html">16</a><a class="page larger" title="第 17 页" href="/page/17.html">17</a><a class="page larger" title="第 18 页" href="/page/18.html">18</a><a class="page larger" title="第 19 页" href="/page/19.html">19</a><span class="extend">...</span><a class="larger page" title="第 30 页" href="/page/30.html">30</a><a class="larger page" title="第 40 页" href="/page/40.html">40</a><a class="larger page" title="第 50 页" href="/page/50.html">50</a><a class="larger page" title="第 60 页" href="/page/60.html">60</a><a class="larger page" title="第 70 页" href="/page/70.html">70</a><span class="extend">...</span><a class="nextpostslink" rel="next" aria-label="下一页" href="/page/15.html">»</a><a class="last" aria-label="Last Page" href="/page/74.html">末页 »</a>
+</div>
+</div>
+</div>
+</nav>
+</main>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

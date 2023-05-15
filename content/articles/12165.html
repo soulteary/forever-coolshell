@@ -1,0 +1,790 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++ 虚函数表解析 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-12165 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-12165" class="post-content post-12165 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C++ 虚函数表解析</span>
+<h1 class="entry-title">C++ 虚函数表解析</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12165.html" title="09:08" rel="bookmark"><time class="entry-date" datetime="2007-12-18T09:08:02+08:00" pubdate="">2007年12月18日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12165.html#comments" class="comments-link">39 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 50,070 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>C++中的虚函数的作用主要是实现了多态的机制。关于多态，简而言之就是用父类型别的指针指向其子类的实例，然后通过父类的指针调用实际子类的成员函数。这种技术可以让父类的指针有“多种形态”，这是一种泛型技术。所谓泛型技术，说白了就是试图使用不变的代码来实现可变的算法。比如：模板技术，RTTI技术，虚函数技术，要么是试图做到在编译时决议，要么试图做到运行时决议。</p>
+<p>关于虚函数的使用方法，我在这里不做过多的阐述。大家可以看看相关的C++的书籍。在这篇文章中，我只想从虚函数的实现机制上面为大家 一个清晰的剖析。</p>
+<p>当然，相同的文章在网上也出现过一些了，但我总感觉这些文章不是很容易阅读，大段大段的代码，没有图片，没有详细的说明，没有比较，没有举一反三。不利于学习和阅读，所以这是我想写下这篇文章的原因。也希望大家多给我提意见。</p>
+<p>言归正传，让我们一起进入虚函数的世界。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8" title="虚函数表">虚函数表</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E4%B8%80%E8%88%AC%E7%BB%A7%E6%89%BF%EF%BC%88%E6%97%A0%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89" title="一般继承（无虚函数覆盖）">一般继承（无虚函数覆盖）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E4%B8%80%E8%88%AC%E7%BB%A7%E6%89%BF%EF%BC%88%E6%9C%89%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89" title="一般继承（有虚函数覆盖）">一般继承（有虚函数覆盖）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF%EF%BC%88%E6%97%A0%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89" title="多重继承（无虚函数覆盖）">多重继承（无虚函数覆盖）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF%EF%BC%88%E6%9C%89%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89" title="多重继承（有虚函数覆盖）">多重继承（有虚函数覆盖）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%AE%89%E5%85%A8%E6%80%A7" title="安全性">安全性</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E4%B8%80%E3%80%81%E9%80%9A%E8%BF%87%E7%88%B6%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%8C%87%E9%92%88%E8%AE%BF%E9%97%AE%E5%AD%90%E7%B1%BB%E8%87%AA%E5%B7%B1%E7%9A%84%E8%99%9A%E5%87%BD%E6%95%B0" title="一、通过父类型的指针访问子类自己的虚函数">一、通过父类型的指针访问子类自己的虚函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E4%BA%8C%E3%80%81%E8%AE%BF%E9%97%AEnon-public%E7%9A%84%E8%99%9A%E5%87%BD%E6%95%B0" title="二、访问non-public的虚函数">二、访问non-public的虚函数</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E7%BB%93%E6%9D%9F%E8%AF%AD" title="结束语">结束语</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#%E9%99%84%E5%BD%95%E4%B8%80%EF%BC%9AVC%E4%B8%AD%E6%9F%A5%E7%9C%8B%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8" title="附录一：VC中查看虚函数表">附录一：VC中查看虚函数表</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#%E9%99%84%E5%BD%95_%E4%BA%8C%EF%BC%9A%E4%BE%8B%E7%A8%8B" title="附录 二：例程">附录 二：例程</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8"></span>虚函数表<span class="ez-toc-section-end"></span></h4>
+<p>对C++ 了解的人都应该知道虚函数（Virtual Function）是通过一张虚函数表（Virtual Table）来实现的。简称为V-Table。在这个表中，主是要一个类的虚函数的地址表，这张表解决了继承、覆盖的问题，保证其容真实反应实际的函数。这样，在有虚函数的类的实例中这个表被分配在了这个实例的内存中，所以，当我们用父类的指针来操作一个子类的时候，这张虚函数表就显得由为重要了，它就像一个地图一样，指明了实际所应该调用的函数。</p>
+<p>这里我们着重看一下这张虚函数表。C++的编译器应该是保证虚函数表的指针存在于对象实例中最前面的位置（这是为了保证取到虚函数表的有最高的性能——如果有多层继承或是多重继承的情况下）。 这意味着我们通过对象实例的地址得到这张虚函数表，然后就可以遍历其中函数指针，并调用相应的函数。</p>
+<p>听我扯了那么多，我可以感觉出来你现在可能比以前更加晕头转向了。 没关系，下面就是实际的例子，相信聪明的你一看就明白了。</p>
+<p><span id="more-12165"></span></p>
+<p>假设我们有这样的一个类：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class Base {
+     public:
+            virtual void f() { cout &lt;&lt; &#34;Base::f&#34; &lt;&lt; endl; }
+            virtual void g() { cout &lt;&lt; &#34;Base::g&#34; &lt;&lt; endl; }
+            virtual void h() { cout &lt;&lt; &#34;Base::h&#34; &lt;&lt; endl; }
+
+};</pre>
+<p>按照上面的说法，我们可以通过Base的实例来得到虚函数表。 下面是实际例程：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">typedef void(*Fun)(void);
+
+Base b;
+
+Fun pFun = NULL;
+
+cout &lt;&lt; &#34;虚函数表地址：&#34; &lt;&lt; (int*)(&amp;b) &lt;&lt; endl;
+cout &lt;&lt; &#34;虚函数表 — 第一个函数地址：&#34; &lt;&lt; (int*)*(int*)(&amp;b) &lt;&lt; endl;
+
+// Invoke the first virtual function
+pFun = (Fun)*((int*)*(int*)(&amp;b));
+pFun();</pre>
+<p>实际运行经果如下：(Windows XP+VS2003, Linux 2.6.22 + GCC 4.1.3)</p>
+<p style="padding-left: 30px;">虚函数表地址：0012FED4<br/>
+虚函数表 — 第一个函数地址：0044F148<br/>
+Base::f</p>
+<p>通过这个示例，我们可以看到，我们可以通过强行把&amp;b转成int *，取得虚函数表的地址，然后，再次取址就可以得到第一个虚函数的地址了，也就是Base::f()，这在上面的程序中得到了验证（把int* 强制转成了函数指针）。通过这个示例，我们就可以知道如果要调用Base::g()和Base::h()，其代码如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">(Fun)*((int*)*(int*)(&amp;b)+0);  // Base::f()
+(Fun)*((int*)*(int*)(&amp;b)+1);  // Base::g()
+(Fun)*((int*)*(int*)(&amp;b)+2);  // Base::h()</pre>
+<p>这个时候你应该懂了吧。什么？还是有点晕。也是，这样的代码看着太乱了。没问题，让我画个图解释一下。如下所示：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-12166" src="/uploads/2014/12/01.jpg" alt="01" width="331" height="129" srcset="" sizes="(max-width: 331px) 100vw, 331px"/></p>
+<p>注意：在上面这个图中，我在虚函数表的最后多加了一个结点，这是虚函数表的结束结点，就像字符串的结束符“/0”一样，其标志了虚函数表的结束。这个结束标志的值在不同的编译器下是不同的。在WinXP+VS2003下，这个值是NULL。而在Ubuntu 7.10 + Linux 2.6.22 + GCC 4.1.3下，这个值是如果1，表示还有下一个虚函数表，如果值是0，表示是最后一个虚函数表。</p>
+<p>下面，我将分别说明“无覆盖”和“有覆盖”时的虚函数表的样子。没有覆盖父类的虚函数是毫无意义的。我之所以要讲述没有覆盖的情况，主要目的是为了给一个对比。在比较之下，我们可以更加清楚地知道其内部的具体实现。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E8%88%AC%E7%BB%A7%E6%89%BF%EF%BC%88%E6%97%A0%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89"></span>一般继承（无虚函数覆盖）<span class="ez-toc-section-end"></span></h4>
+<p>下面，再让我们来看看继承时的虚函数表是什么样的。假设有如下所示的一个继承关系：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12167" src="/uploads/2014/12/02.jpg" alt="02" width="78" height="194" srcset=""/></p>
+<p>请注意，在这个继承关系中，子类没有重载任何父类的函数。那么，在派生类的实例中，其虚函数表如下所示：</p>
+<p>对于实例：Derive d; 的虚函数表如下：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12168" src="/uploads/2014/12/03.jpg" alt="03" width="551" height="124" srcset="" sizes="(max-width: 551px) 100vw, 551px"/></p>
+<p>我们可以看到下面几点：<br/>
+1）虚函数按照其声明顺序放于表中。<br/>
+2）父类的虚函数在子类的虚函数前面。</p>
+<p>我相信聪明的你一定可以参考前面的那个程序，来编写一段程序来验证。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E8%88%AC%E7%BB%A7%E6%89%BF%EF%BC%88%E6%9C%89%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89"></span>一般继承（有虚函数覆盖）<span class="ez-toc-section-end"></span></h4>
+<p>覆盖父类的虚函数是很显然的事情，不然，虚函数就变得毫无意义。下面，我们来看一下，如果子类中有虚函数重载了父类的虚函数，会是一个什么样子？假设，我们有下面这样的一个继承关系。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12169" src="/uploads/2014/12/04.jpg" alt="04" width="78" height="194" srcset=""/></p>
+<p>为了让大家看到被继承过后的效果，在这个类的设计中，我只覆盖了父类的一个函数：f()。那么，对于派生类的实例，其虚函数表会是下面的一个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12170" src="/uploads/2014/12/05.jpg" alt="05" width="500" height="124" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>我们从表中可以看到下面几点，<br/>
+1）覆盖的f()函数被放到了虚表中原来父类虚函数的位置。<br/>
+2）没有被覆盖的函数依旧。</p>
+<p>这样，我们就可以看到对于下面这样的程序，</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Base *b = new Derive();
+
+b-&gt;f();</pre>
+<p>由b所指的内存中的虚函数表的f()的位置已经被Derive::f()函数地址所取代，于是在实际调用发生时，是Derive::f()被调用了。这就实现了多态。</p>
+<h4><span class="ez-toc-section" id="%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF%EF%BC%88%E6%97%A0%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89"></span>多重继承（无虚函数覆盖）<span class="ez-toc-section-end"></span></h4>
+<p>下面，再让我们来看看多重继承中的情况，假设有下面这样一个类的继承关系。注意：子类并没有覆盖父类的函数。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12171" src="/uploads/2014/12/06.jpg" alt="06" width="282" height="192" srcset=""/></p>
+<p>对于子类实例中的虚函数表，是下面这个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12172" src="/uploads/2014/12/07.jpg" alt="07" width="493" height="173" srcset="" sizes="(max-width: 493px) 100vw, 493px"/></p>
+<p>我们可以看到：<br/>
+1） 每个父类都有自己的虚表。<br/>
+2） 子类的成员函数被放到了第一个父类的表中。（所谓的第一个父类是按照声明顺序来判断的）</p>
+<p>这样做就是为了解决不同的父类类型的指针指向同一个子类实例，而能够调用到实际的函数。</p>
+<h4><span class="ez-toc-section" id="%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF%EF%BC%88%E6%9C%89%E8%99%9A%E5%87%BD%E6%95%B0%E8%A6%86%E7%9B%96%EF%BC%89"></span>多重继承（有虚函数覆盖）<span class="ez-toc-section-end"></span></h4>
+<p>下面我们再来看看，如果发生虚函数覆盖的情况。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12173" src="/uploads/2014/12/08.jpg" alt="08" width="282" height="192" srcset=""/></p>
+<p>下图中，我们在子类中覆盖了父类的f()函数。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12174" src="/uploads/2014/12/09.jpg" alt="09" width="420" height="173" srcset="" sizes="(max-width: 420px) 100vw, 420px"/></p>
+<p>下面是对于子类实例中的虚函数表的图：</p>
+<p>我们可以看见，三个父类虚函数表中的f()的位置被替换成了子类的函数指针。这样，我们就可以任一静态类型的父类来指向子类，并调用子类的f()了。如：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Derive d;
+Base1 *b1 = &amp;d;
+Base2 *b2 = &amp;d;
+Base3 *b3 = &amp;d;
+b1-&gt;f(); //Derive::f()
+b2-&gt;f(); //Derive::f()
+b3-&gt;f(); //Derive::f()
+
+b1-&gt;g(); //Base1::g()
+b2-&gt;g(); //Base2::g()
+b3-&gt;g(); //Base3::g()</pre>
+<h4><span class="ez-toc-section" id="%E5%AE%89%E5%85%A8%E6%80%A7"></span>安全性<span class="ez-toc-section-end"></span></h4>
+<p>每次写C++的文章，总免不了要批判一下C++。这篇文章也不例外。通过上面的讲述，相信我们对虚函数表有一个比较细致的了解了。水可载舟，亦可覆舟。下面，让我们来看看我们可以用虚函数表来干点什么坏事吧。</p>
+<h5><span class="ez-toc-section" id="%E4%B8%80%E3%80%81%E9%80%9A%E8%BF%87%E7%88%B6%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%8C%87%E9%92%88%E8%AE%BF%E9%97%AE%E5%AD%90%E7%B1%BB%E8%87%AA%E5%B7%B1%E7%9A%84%E8%99%9A%E5%87%BD%E6%95%B0"></span>一、通过父类型的指针访问子类自己的虚函数<span class="ez-toc-section-end"></span></h5>
+<p>我们知道，子类没有重载父类的虚函数是一件毫无意义的事情。因为多态也是要基于函数重载的。虽然在上面的图中我们可以看到Base1的虚表中有Derive的虚函数，但我们根本不可能使用下面的语句来调用子类的自有虚函数：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Base1 *b1 = new Derive();
+b1-&gt;f1();  //编译出错</pre>
+<p>任何妄图使用父类指针想调用子类中的<strong>未覆盖父类的成员函数</strong>的行为都会被编译器视为非法，所以，这样的程序根本无法编译通过。但在运行时，我们可以通过指针的方式访问虚函数表来达到违反C++语义的行为。（关于这方面的尝试，通过阅读后面附录的代码，相信你可以做到这一点）</p>
+<h5><span class="ez-toc-section" id="%E4%BA%8C%E3%80%81%E8%AE%BF%E9%97%AEnon-public%E7%9A%84%E8%99%9A%E5%87%BD%E6%95%B0"></span>二、访问non-public的虚函数<span class="ez-toc-section-end"></span></h5>
+<p>另外，如果父类的虚函数是private或是protected的，但这些非public的虚函数同样会存在于虚函数表中，所以，我们同样可以使用访问虚函数表的方式来访问这些non-public的虚函数，这是很容易做到的。</p>
+<p>如：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class Base {
+    private:
+            virtual void f() { cout &lt;&lt; &#34;Base::f&#34; &lt;&lt; endl; }
+
+};
+
+class Derive : public Base{
+
+};
+
+typedef void(*Fun)(void);
+
+void main() {
+    Derive d;
+    Fun  pFun = (Fun)*((int*)*(int*)(&amp;d)+0);
+    pFun();
+}</pre>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9D%9F%E8%AF%AD"></span>结束语<span class="ez-toc-section-end"></span></h4>
+<p>C++这门语言是一门Magic的语言，对于程序员来说，我们似乎永远摸不清楚这门语言背着我们在干了什么。需要熟悉这门语言，我们就必需要了解C++里面的那些东西，需要去了解C++中那些危险的东西。不然，这是一种搬起石头砸自己脚的编程语言。</p>
+<h5><span class="ez-toc-section" id="%E9%99%84%E5%BD%95%E4%B8%80%EF%BC%9AVC%E4%B8%AD%E6%9F%A5%E7%9C%8B%E8%99%9A%E5%87%BD%E6%95%B0%E8%A1%A8"></span>附录一：VC中查看虚函数表<span class="ez-toc-section-end"></span></h5>
+<p>我们可以在VC的IDE环境中的Debug状态下展开类的实例就可以看到虚函数表了（并不是很完整的）</p>
+<h5><span class="ez-toc-section" id="%E9%99%84%E5%BD%95_%E4%BA%8C%EF%BC%9A%E4%BE%8B%E7%A8%8B"></span>附录 二：例程<span class="ez-toc-section-end"></span></h5>
+<p>下面是一个关于多重继承的虚函数表访问的例程：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;iostream&gt;
+using namespace std;
+
+class Base1 {
+public:
+            virtual void f() { cout &lt;&lt; &#34;Base1::f&#34; &lt;&lt; endl; }
+            virtual void g() { cout &lt;&lt; &#34;Base1::g&#34; &lt;&lt; endl; }
+            virtual void h() { cout &lt;&lt; &#34;Base1::h&#34; &lt;&lt; endl; }
+
+};
+
+class Base2 {
+public:
+            virtual void f() { cout &lt;&lt; &#34;Base2::f&#34; &lt;&lt; endl; }
+            virtual void g() { cout &lt;&lt; &#34;Base2::g&#34; &lt;&lt; endl; }
+            virtual void h() { cout &lt;&lt; &#34;Base2::h&#34; &lt;&lt; endl; }
+};
+
+class Base3 {
+public:
+            virtual void f() { cout &lt;&lt; &#34;Base3::f&#34; &lt;&lt; endl; }
+            virtual void g() { cout &lt;&lt; &#34;Base3::g&#34; &lt;&lt; endl; }
+            virtual void h() { cout &lt;&lt; &#34;Base3::h&#34; &lt;&lt; endl; }
+};
+
+class Derive : public Base1, public Base2, public Base3 {
+public:
+            virtual void f() { cout &lt;&lt; &#34;Derive::f&#34; &lt;&lt; endl; }
+            virtual void g1() { cout &lt;&lt; &#34;Derive::g1&#34; &lt;&lt; endl; }
+};
+
+typedef void(*Fun)(void);
+
+int main()
+{
+            Fun pFun = NULL;
+
+            Derive d;
+            int** pVtab = (int**)&amp;d;
+
+            //Base1&#39;s vtable
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+0)+0);
+            pFun = (Fun)pVtab[0][0];
+            pFun();
+
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+0)+1);
+            pFun = (Fun)pVtab[0][1];
+            pFun();
+
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+0)+2);
+            pFun = (Fun)pVtab[0][2];
+            pFun();
+
+            //Derive&#39;s vtable
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+0)+3);
+            pFun = (Fun)pVtab[0][3];
+            pFun();
+
+            //The tail of the vtable
+            pFun = (Fun)pVtab[0][4];
+            cout&lt;&lt;pFun&lt;&lt;endl;
+
+            //Base2&#39;s vtable
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+1)+0);
+            pFun = (Fun)pVtab[1][0];
+            pFun();
+
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+1)+1);
+            pFun = (Fun)pVtab[1][1];
+            pFun();
+
+            pFun = (Fun)pVtab[1][2];
+            pFun();
+
+            //The tail of the vtable
+            pFun = (Fun)pVtab[1][3];
+            cout&lt;&lt;pFun&lt;&lt;endl;
+
+            //Base3&#39;s vtable
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+1)+0);
+            pFun = (Fun)pVtab[2][0];
+            pFun();
+
+            //pFun = (Fun)*((int*)*(int*)((int*)&amp;d+1)+1);
+            pFun = (Fun)pVtab[2][1];
+            pFun();
+
+            pFun = (Fun)pVtab[2][2];
+            pFun();
+
+            //The tail of the vtable
+            pFun = (Fun)pVtab[2][3];
+            cout&lt;&lt;pFun&lt;&lt;endl;
+
+            return 0;
+}</pre>
+<p><strong>注：本文年代久远，所有的示例都是在32位机上跑的。</strong></p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-12165-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++ 虚函数表解析</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1620767" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/12176.html" class="url" rel="ugc">C++ 对象的内存布局 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1620773" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/4119.html" class="url" rel="ugc">如何学好C++语言 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1620784" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/4990.html" class="url" rel="ugc">程序员技术练级攻略 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1641664" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1641664" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e8704c4f1002851279c935de047c2499?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e8704c4f1002851279c935de047c2499?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sunshinewong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1641664"><time datetime="2015-01-07T16:55:39+08:00">2015年01月07日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您这篇文章里的安全性部分的一、通过父类型的指针访问子类自己的虚函数，是不是说法不严谨。若按照您文章中说的，这种说法应该是不正确的，若是纯虚函数则就正确了。还望斧正！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1653748" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1angxi.cn/?p=33" class="url" rel="ugc external nofollow">C++的虚函数表是什么？ | 1angxi的小黑屋</a> </div>
+</li>
+<li id="comment-1655566" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1655566" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59053ddc384bbc1484cecc89f5c183a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59053ddc384bbc1484cecc89f5c183a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wtz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1655566"><time datetime="2015-02-04T14:04:06+08:00">2015年02月04日 14:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cout &lt;&lt; &#34;虚函数表地址：&#34; &lt;&lt; (int*)(&amp;b) &lt;&lt; endl;<br/>
+这里明显有问题，这应该是虚函数表指针的地址，*(int*)(&amp;b) 这样才是函数表的地址；<br/>
+(int*)*(int*)(&amp;b)，这个应该是指向虚函数表第一个元素(元素的值是虚函数地址)的指针，*(int*)*(int*)(&amp;b)这才是第一个虚函数的地址</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1916910" class="comment even depth-2 parent">
+<article id="div-comment-1916910" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eb99e6fedf0ce8f2ab49afe9540f0f83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eb99e6fedf0ce8f2ab49afe9540f0f83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李班</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1916910"><time datetime="2017-08-28T09:44:28+08:00">2017年08月28日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得没问题.看看数组名退化成指针时和数组第一个元素的地址.函数名的字段可以代表一个函数指针</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1921919" class="comment odd alt depth-3 parent">
+<article id="div-comment-1921919" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b0f1df6437fc47373cc1050ba4e27e5c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b0f1df6437fc47373cc1050ba4e27e5c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hhhhhhhh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1921919"><time datetime="2017-12-13T12:04:31+08:00">2017年12月13日 12:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得是虚函数表指针的地址，在类的内存分布，第一个是一个指针，指向v-table，并不是指向v-table的首元素，而是指向这个数组，所以是指向数组的指针，对其求地址，求的自然是虚函数表指针的地址。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2250721" class="comment even depth-4">
+<article id="div-comment-2250721" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6dc07974645a7a4b3e355c546dcb184?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6dc07974645a7a4b3e355c546dcb184?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JachinYang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2250721"><time datetime="2021-05-21T18:58:47+08:00">2021年05月21日 18:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cout &lt;&lt; “虚函数表地址：” &lt;&lt; (int<em>)(&amp;b) &lt;&lt; endl;这里确实表述有问题，首先我们实例化了一个对象b，那么存放b的内存空间的起始位置处应该存放的是指向虚函数表的指针，所以要想访问虚函数表的地址就需要解引用 cout &lt;&lt; “虚函数表地址：” &lt;&lt; *(int</em>)(&amp;b) &lt;&lt; endl;</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1655572" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1655572" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e40f2825346395213c89a7cf188c8a7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e40f2825346395213c89a7cf188c8a7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wtz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1655572"><time datetime="2015-02-04T14:17:43+08:00">2015年02月04日 14:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看这篇文章的人注意，博主没写清楚，实际上对象的内存起始空间存放的是虚函数表的地址值，但不等同于说对象的起始地址就是虚函数表的地址；<br/>
+博主如果说明虚函数表指针这个概念，应该会更容易让人理解。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2250722" class="comment even depth-2">
+<article id="div-comment-2250722" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6dc07974645a7a4b3e355c546dcb184?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6dc07974645a7a4b3e355c546dcb184?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JachinYang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2250722"><time datetime="2021-05-21T19:00:04+08:00">2021年05月21日 19:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实是这样</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1679479" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1679479" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fad4bdc57f64b63d30e4f20f7cc96de5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fad4bdc57f64b63d30e4f20f7cc96de5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jiangchuan.info" class="url" rel="ugc external nofollow">jiang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1679479"><time datetime="2015-03-24T10:46:11+08:00">2015年03月24日 10:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第二张代码图里面 这行<br/>
+pFun = (Fun)*((int*)*(int*)(&amp;b));<br/>
+好像不对，应该改成<br/>
+pFun = (Fun)*((int**)*(int**)(&amp;b));</p>
+<p>我用的是mac上的clang编译器。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1680270" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://youngershen.com/2015/03/25/%e7%a8%8b%e5%ba%8f%e5%91%98%e6%8a%80%e6%9c%af%e7%bb%83%e7%ba%a7%e6%94%bb%e7%95%a5-2.html" class="url" rel="ugc external nofollow">Coding in a deep » 程序员技术练级攻略</a> </div>
+</li>
+<li id="comment-1684285" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1684285" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d7466becc2de6d320e27156c0952863?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d7466becc2de6d320e27156c0952863?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hawkcoder</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1684285"><time datetime="2015-04-01T15:50:50+08:00">2015年04月01日 15:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@jiang说的对，在Mac OS上是64位，而楼主用的是32位机，这会导致上述代码在64位系统运行失败。<br/>
+*(int*)(&amp;b)表示将b的地址转换成指向int型的指针，然后再取出其指针的值，这个值是32位int型。而在MAC系统64位中，取出的值应该要是64位才对，所以此时不能用*(int*)(&amp;b) 而应该用*(long*)(&amp;b)或者用一个指向指针的类型来转换比如*(int**)(&amp;b),*(void**)(&amp;b))…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754304" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fcwalkers.info/201509/1435.html" class="url" rel="ugc external nofollow">程序员技术练级攻略 | 风尘♂每个人的心里都有一扇窗!</a> </div>
+</li>
+<li id="comment-1761675" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1761675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6746e9684d7687732bb0ab4817348d2a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6746e9684d7687732bb0ab4817348d2a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tutuge.me" class="url" rel="ugc external nofollow">土土哥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1761675"><time datetime="2015-09-23T16:00:12+08:00">2015年09月23日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个问题，就是在子类已经覆盖了父类的虚函数的情况下，为什么子类还是可以调用“被覆盖”的父类的虚函数呢？<br/>
+代码如下：</p>
+<p>#include </p>
+<p>using namespace std;</p>
+<p>class Base {<br/>
+public:<br/>
+virtual void func() {<br/>
+cout&lt;&lt;&#34;Base func\n&#34;;<br/>
+}<br/>
+};</p>
+<p>class Son : public Base {<br/>
+public:<br/>
+void func() {<br/>
+Base::func();<br/>
+cout&lt;func();<br/>
+delete b;<br/>
+return 0;<br/>
+}</p>
+<p>输出：<br/>
+Base func<br/>
+Son func</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1916911" class="comment even depth-2 parent">
+<article id="div-comment-1916911" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eb99e6fedf0ce8f2ab49afe9540f0f83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eb99e6fedf0ce8f2ab49afe9540f0f83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李班</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1916911"><time datetime="2017-08-28T09:48:46+08:00">2017年08月28日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你可以看看193页,可以静态的使用父类的开放的实体.而虚函数是动态的晚绑定.</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1916912" class="comment odd alt depth-3">
+<article id="div-comment-1916912" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eb99e6fedf0ce8f2ab49afe9540f0f83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eb99e6fedf0ce8f2ab49afe9540f0f83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李班</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1916912"><time datetime="2017-08-28T09:49:37+08:00">2017年08月28日 09:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>深入探索c++对象模型…</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1762377" class="comment even thread-even depth-1">
+<article id="div-comment-1762377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04f76a77e5fa79e892a7c6a218204158?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04f76a77e5fa79e892a7c6a218204158?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Pounds</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1762377"><time datetime="2015-09-25T02:28:53+08:00">2015年09月25日 02:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1761675" rel="nofollow">@土土哥 </a><br/>
+这是C++提供的一个回避虚函数的机制<br/>
+通过加作用域（正如你所尝试的），使得函数在编译时就绑定。<br/>
+你也可以查看 C++ primer 5th P539页</p>
+</div>
+ </article>
+</li>
+<li id="comment-1762378" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1762378" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04f76a77e5fa79e892a7c6a218204158?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04f76a77e5fa79e892a7c6a218204158?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Pounds</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1762378"><time datetime="2015-09-25T02:31:59+08:00">2015年09月25日 02:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个问题就是如果子类没有覆写的虚函数真的会保存在后面么？<br/>
+再保存次没有覆写的地址没意义啊，都指向同一个地方。<br/>
+而且用visual studio ，在debug里显示vtable一直只有固定个数，和<br/>
+博主图解有点出入哈？:-D<br/>
+请教一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1794348" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.holahola.club/?p=171" class="url" rel="ugc external nofollow">程序员技术练级攻略 | Zane&#39;s Blog</a> </div>
+</li>
+<li id="comment-1819906" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jimmiez.cn/index.php/2016/04/16/c_cpp_memory_layout/" class="url" rel="ugc external nofollow">CC++内存布局之自审 – JimmieZ的小站</a> </div>
+</li>
+<li id="comment-1916923" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.1024do.com/?p=5289" class="url" rel="ugc external nofollow">转载：C++虚函数表解析 | 术与道的分享</a> </div>
+</li>
+<li id="comment-1926471" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1926471" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63d008e7014ccdcb66e8b64c0f3efc83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63d008e7014ccdcb66e8b64c0f3efc83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">albumcover</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1926471"><time datetime="2018-04-06T00:48:56+08:00">2018年04月06日 00:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如@wtz所说，博主的代码说明有误。修改如下：</p>
+<p><code>cout &lt;&lt; &#34;对象地址：&#34; &lt;&lt; &amp;b &lt;&lt; endl;<br/>
+cout &lt;&lt; &#34;虚函数表地址：&#34; &lt;&lt; (int*)*(int*)(&amp;b) &lt;&lt; endl;<br/>
+cout &lt;&lt; &#34;虚函数表 — 第一个函数地址：&#34; &lt;&lt; (int*)*(int*)*(int*)(&amp;b) &lt;&lt; endl;</code></p><code>
+</code><p><code>// Invoke the first virtual function<br/>
+pFun = (Fun)*((int*)*(int*)(&amp;b));<br/>
+cout &lt;&lt; &#34;虚函数表 — 第一个函数地址(via pFun)：&#34; &lt;&lt; (int *)pFun &lt;&lt; endl;<br/>
+</code></p>
+</div>
+ </article>
+</li>
+<li id="comment-1955068" class="comment even thread-even depth-1">
+<article id="div-comment-1955068" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3965513fa29e16f4ff6597876304bb5b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3965513fa29e16f4ff6597876304bb5b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fengfengdiandian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-1955068"><time datetime="2019-01-28T17:39:35+08:00">2019年01月28日 17:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我使用vs2013、vs2017和GCC 6.3版本，虚函数表第一个地址是虚析构函数的，第二个地址才是对应的虚函数的地址</p>
+</div>
+ </article>
+</li>
+<li id="comment-1988492" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://isroot.cn/c/cduotaihexuhanshudelijie/" class="url" rel="ugc external nofollow">C++ 多态和 虚函数的理解 - 吴晓宁博客</a> </div>
+</li>
+<li id="comment-2000808" class="comment even thread-even depth-1">
+<article id="div-comment-2000808" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f28600f6e4ec1de0abe736e4cf56e1e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f28600f6e4ec1de0abe736e4cf56e1e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Y先森0.0</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2000808"><time datetime="2019-06-07T10:03:03+08:00">2019年06月07日 10:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这句话：‘在有虚函数的类的实例中这个表被分配在了这个实例的内存中‘，虚函数表不是存在于类中的吗？然后类的所有实例对象共享这个类的虚函数表</p>
+</div>
+ </article>
+</li>
+<li id="comment-2001280" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://pintouge.online/?p=1803" class="url" rel="ugc external nofollow">程序员技术练级攻略（皓哥） – 平头哥个人博客</a> </div>
+</li>
+<li id="comment-2012476" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2012476" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/58f0f1674c9cc9f9cb3e78bcd50d411f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/58f0f1674c9cc9f9cb3e78bcd50d411f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wahaha</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2012476"><time datetime="2019-08-22T15:54:32+08:00">2019年08月22日 15:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>实在不明白，大家都指明了错误，而博主却不修改错误。虽然博主的文章很好。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2250723" class="comment odd alt depth-2">
+<article id="div-comment-2250723" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6dc07974645a7a4b3e355c546dcb184?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6dc07974645a7a4b3e355c546dcb184?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JachinYang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2250723"><time datetime="2021-05-21T19:12:41+08:00">2021年05月21日 19:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实错了 但文章写的也确实好。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2023429" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2023429" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54b9b26bb260e355dfc555b5e063b0fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54b9b26bb260e355dfc555b5e063b0fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘曦光</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2023429"><time datetime="2019-09-23T20:18:13+08:00">2019年09月23日 20:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>64位机器代码，编译命令 g++ derive.cpp<br/>
+#include </p>
+<p>using namespace std;</p>
+<p>class Base1 {<br/>
+public:<br/>
+virtual void f() { cout &lt;&lt; “Base1:f” &lt;&lt; endl;}<br/>
+virtual void g() { cout &lt;&lt; “Base1::g” &lt;&lt; endl;}<br/>
+};</p>
+<p>class Base2 {<br/>
+public:<br/>
+virtual void f() { cout &lt;&lt; “Base2:f” &lt;&lt; endl;}<br/>
+virtual void g() { cout &lt;&lt; “Base2::g” &lt;&lt; endl;}<br/>
+};</p>
+<p>class Base3 {<br/>
+public:<br/>
+virtual void f() { cout &lt;&lt; “Base3:f” &lt;&lt; endl;}<br/>
+virtual void g() { cout &lt;&lt; “Base3::g” &lt;&lt; endl;}<br/>
+};</p>
+<p>class Derive : public Base1, public Base2, public Base3 {<br/>
+public:<br/>
+virtual void f() { cout &lt;&lt; “Derive::f” &lt;&lt; endl;}<br/>
+virtual void g1() { cout &lt;&lt; “Derive::g1” &lt;&lt; endl;}<br/>
+};</p>
+<p>typedef void(*Func)(void);</p>
+<p>int main() {<br/>
+Func pFun = NULL;<br/>
+Derive d;<br/>
+long <strong>pVtab = (long</strong>)&amp;d;</p>
+<p><code>// first virtual func table<br/>
+pFun = (Func)pVtab[0][0];<br/>
+pFun();</code></p><code>
+<p>pFun = (Func)pVtab[0][1];<br/>
+pFun();</p>
+<p>pFun = (Func)pVtab[0][2];<br/>
+pFun();</p>
+<p>pFun = (Func)pVtab[1][0];<br/>
+pFun();</p>
+<p>pFun = (Func)pVtab[1][1];<br/>
+pFun();</p>
+<p>pFun = (Func)pVtab[2][0];<br/>
+pFun();</p>
+<p>pFun = (Func)pVtab[2][1];<br/>
+pFun();</p>
+</code><p><code>return 0;<br/>
+</code></p>
+<p>}</p>
+</div>
+ </article>
+</li>
+<li id="comment-2085681" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/20845.html" class="url" rel="ugc">Rust语言的编程范式 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2085695" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weixinewm.com/73573.html" class="url" rel="ugc external nofollow">Rust语言的编程范式 - 微信二维码!</a> </div>
+</li>
+<li id="comment-2085697" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2020/04/04/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-rust%e8%af%ad%e8%a8%80%e7%9a%84%e7%bc%96%e7%a8%8b%e8%8c%83%e5%bc%8f/" class="url" rel="ugc external nofollow">【酷壳】 Rust语言的编程范式 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2085811" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaohuodong.cn/73523.html" class="url" rel="ugc external nofollow">Rust语言的编程范式 - 微信红包网</a> </div>
+</li>
+<li id="comment-2164808" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2164808" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0e4495032e2b2d42a6b3ff5ee4962bea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0e4495032e2b2d42a6b3ff5ee4962bea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qinbei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2164808"><time datetime="2020-10-22T20:30:39+08:00">2020年10月22日 20:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作者使用的机器应该是32位的机器，64位的机器应该使用long,以下代码再64位ubuntu18.04可以使用。<br/>
+<code><br/>
+#include <iostream><br/>
+using namespace std;</iostream></code></p><code>
+<p>class Base<br/>
+{<br/>
+public:<br/>
+virtual void f(){ cout &lt;&lt; &#34;Base::f&#34; &lt;&lt; endl;}<br/>
+virtual void g(){ cout &lt;&lt; &#34;Base::g&#34; &lt;&lt; endl;}<br/>
+virtual void h(){ cout &lt;&lt; &#34;Base::h&#34; &lt;&lt; endl;}<br/>
+};</p>
+<p>int main(int argc, char const <em>argv[])<br/>
+{<br/>
+typedef void(</em>Fun) (void);</p>
+<p>Base b;<br/>
+Fun pfun;</p>
+<p>cout &lt;&lt; &#34;class address: \t&#34; &lt;&lt; &amp;b &lt;&lt; endl;<br/>
+cout &lt;&lt; &#34;virtual table address: \t&#34; &lt;&lt; <em>(long</em>)(&amp;b) &lt;&lt;; endl;<br/>
+cout &lt;&lt; &#34;virtual table - first function address: \t&#34; &lt;&lt; <em>(long</em>)<em>(long</em>)(&amp;b) &lt;&lt; endl;</p>
+<p>pfun = (Fun)(<em>(long</em>)<em>(long</em>)(&amp;amp;b));<br/>
+pfun();<br/>
+return 0;</p>
+</code><p><code>}<br/>
+</code></p>
+</div>
+ </article>
+</li>
+<li id="comment-2206793" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2206793" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/acd6e5836d90a79dacc0dd1f3d5950f0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/acd6e5836d90a79dacc0dd1f3d5950f0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aixi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12165.html#comment-2206793"><time datetime="2021-02-14T23:30:49+08:00">2021年02月14日 23:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前学虚函数表都是死记硬背，后来学C语言，读了一点Python虚拟机的代码，看到PyObject*，学习了PyTypeObject *ob_type这个结构之后，就有一种豁然开朗的感觉，原来虚函数表，虚函数表指针就是这么一种东西</p>
+</div>
+ </article>
+</li>
+<li id="comment-2365102" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lucq.fun/83/" class="url" rel="ugc external nofollow">基础知识总结-C++ – 佳小姐老公的笔记</a> </div>
+</li>
+<li id="comment-2371152" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/275142" class="url" rel="ugc external nofollow">【C++ 继承 | 虚函数表 01】C++虚函数表剖析 ① | 高性能架构探索</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

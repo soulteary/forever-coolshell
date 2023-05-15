@@ -1,0 +1,215 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>二叉树迭代器算法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9886 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9886" class="post-content post-9886 post type-post status-publish format-standard hentry category-cplusplus category-pythondev category-misc category-progdesign category-proglanguage tag-algorithm tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">二叉树迭代器算法</span>
+<h1 class="entry-title">二叉树迭代器算法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9886.html" title="11:08" rel="bookmark"><time class="entry-date" datetime="2013-07-14T11:08:23+08:00" pubdate="">2013年07月14日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9886.html#comments" class="comments-link">54 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 41,699 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 </strong><a href="http://weibo.com/weidagang" target="_blank">@文艺复兴记</a><strong>（todd） 投递此文）</strong></p>
+<p>二叉树(Binary Tree)的前序、中序和后续遍历是算法和数据结构中的基本问题，基于递归的二叉树遍历算法更是递归的经典应用。</p>
+<p>假设二叉树结点定义如下：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// C++
+struct Node {
+    int value;
+    Node *left;
+    Node *right;
+}
+</pre>
+<p>中序递归遍历算法：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// C++
+void inorder_traverse(Node *node) {
+    if (NULL != node-&gt;left) {
+        inorder_traverse(node-&gt;left);
+    }
+    do_something(node);
+    if (NULL != node-&gt;right) {
+        inorder_traverse(node-&gt;right);
+    }
+}
+</pre>
+<p>前序和后序遍历算法类似。</p>
+<p>但是，仅有遍历算法是不够的，在许多应用中，我们还需要对遍历本身进行抽象。假如有一个求和的函数sum，我们希望它能应用于链表，数组，二叉树等等不同的数据结构。这时，我们可以抽象出迭代器(Iterator)的概念，通过<strong>迭代器把算法和数据结构解耦了</strong>，使得通用算法能应用于不同类型的数据结构。我们可以把sum函数定义为：</p>
+<p><span id="more-9886"></span></p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">int sum(Iterator it)
+</pre>
+<p>链表作为一种线性结构，它的迭代器实现非常简单和直观，而二叉树的迭代器实现则不那么容易，我们不能直接将递归遍历转换为迭代器。究其原因，这是因为二叉树递归遍历过程是编译器在调用栈上自动进行的，程序员对这个过程缺乏足够的控制。既然如此，那么我们如果可以自己来控制整个调用栈的进栈和出栈不是就达到控制的目的了吗？我们先来看看二叉树遍历的非递归算法：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// C++
+void inorder_traverse_nonrecursive(Node *node) {
+    Stack stack;
+    do {
+        // node代表当前准备处理的子树，层层向下把左孩子压栈，对应递归算法的左子树递归
+        while (NULL != node) {
+            stack.push(node);
+            node = node-&gt;left;
+        }
+        do {
+            Node *top = stack.top();
+            stack.pop(); //弹出栈顶，对应递归算法的函数返回
+            do_something(top);
+            if (NULL != top-&gt;right) {
+                node = top-&gt;right; //将当前子树置为刚刚遍历过的结点的右孩子，对应递归算法的右子树递归
+                break;
+            }
+        }
+        while (!stack.empty());
+    }
+    while (!stack.empty());
+}
+</pre>
+<p>通过基于栈的非递归算法我们获得了对于遍历过程的控制，下面我们考虑如何将其封装为迭代器呢？ 这里关键在于理解遍历的过程是由栈的状态来表示的，所以显然迭代器内部应该包含一个栈结构，每次迭代的过程就是对栈的操作。假设迭代器的接口为：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">// C++
+class Iterator {
+    public:
+        virtual Node* next() = 0;
+};
+</pre>
+<p>下面是一个二叉树中序遍历迭代器的实现：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">//C++
+class InorderIterator : public Iterator {
+    public:
+        InorderIterator(Node *node) {
+            Node *current = node;
+            while (NULL != current) {
+                mStack.push(current);
+                current = current-&gt;left;
+            }
+        }
+        virtual Node* next() {
+            if (mStack.empty()) {
+                return NULL;
+            }
+            Node *top = mStack.top();
+            mStack.pop();
+            if (NULL != top-&gt;right) {
+                Node *current = top-&gt;right;
+                while (NULL != current) {
+                    mStack.push(current);
+                    current = current-&gt;left;
+                }
+            }
+            return top;
+         }
+    private:
+        std::stack&lt;Node*&gt; mStack;
+};
+</pre>
+<p>下面我们再来考察一下这个迭代器实现的时间和空间复杂度。很显然，由于栈中最多需要保存所有的结点，所以其空间复杂度是O(n)的。那么时间复杂度呢？一次next()调用也最多会进行n次栈操作，而整个遍历过程需要调用n次next()，那么是不是整个迭代器的时间复杂度就是O(n^2)呢？答案是否定的！因为每个结点只会进栈和出栈一次，所以整个迭代过程的时间复杂度依然为O(n)。其实，这和递归遍历的时空复杂度完全一样。</p>
+<p>除了上面显式利用栈控制代码执行顺序外，在支持yield语义的语言（C#, Python等)中，还有更为直接的做法。下面基于yield的二叉树中序遍历的Python实现：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">// Python
+def inorder(t):
+    if t:
+        for x in inorder(t.left):
+            yield x
+        yield t.label
+        for x in inorder(t.right):
+            yield x
+</pre>
+<p>yield与return区别的一种通俗解释是yield返回时系统会保留函数调用的状态，下次该函数被调用时会接着从上次的执行点继续执行，这是一种与栈语义所完全不同的流程控制语义。我们知道Python的解释器是C写的，但是C并不支持yield语义，那么解释器是如何做到对yield的支持的呢？ 有了上面把递归遍历变换为迭代遍历的经验，相信你已经猜到Python解释器一定是对yield代码进行了某种变换。如果你已经能够实现递归变非递归，不妨尝试一下能否写一段编译程序将yield代码变换为非yield代码。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9886-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Python</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>二叉树迭代器算法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1753031" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1075" class="url" rel="ugc external nofollow">Cuckoo Filter：设计与实现 | 星达红</a> </div>
+</li>
+<li id="comment-1825404" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e7%b1%bb%e5%9e%8b%e7%9a%84%e6%9c%ac%e8%b4%a8%e5%92%8c%e5%87%bd%e6%95%b0%e5%bc%8f%e5%ae%9e%e7%8e%b0-codeba-cc.html" class="url" rel="ugc external nofollow">类型的本质和函数式实现 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1890975" class="comment even thread-even depth-1">
+<article id="div-comment-1890975" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1fa986fbe86fe143dde9f53be61f1b86?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1fa986fbe86fe143dde9f53be61f1b86?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jason</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9886.html/comment-page-2#comment-1890975"><time datetime="2016-10-08T16:29:19+08:00">2016年10月08日 16:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>中序遍历可以用一层while搞定</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9886.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9886.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">9886</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

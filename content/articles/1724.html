@@ -1,0 +1,151 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>恐怖的C++语言 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1724 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1724" class="post-content post-1724 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage category-story tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">恐怖的C++语言</span>
+<h1 class="entry-title">恐怖的C++语言</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1724.html" title="12:06" rel="bookmark"><time class="entry-date" datetime="2009-11-11T12:06:25+08:00" pubdate="">2009年11月11日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1724.html#comments" class="comments-link">102 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 31,917 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://coolshell.cn/wp-content/uploads/2009/11/cpp.jpg"><img decoding="async" class="alignright size-medium wp-image-1740" title="我爱C++" src="/uploads/2009/11/cpp-300x216.jpg" alt="我爱C++" width="200" height="144" srcset=""/></a> Linus曾经(2007年9月)在新闻组<a href="http://news.gmane.org/gmane.comp.version-control.git" target="_top">gmane.comp.version-control.git</a>里和一个微软的工程师（Dmitry Kakurin）争执过用C还是用C++，当时的那个微软的工程师主要是在做Git的Windows版，但他却发现Git的源码居然是C语言写的，而不是C++，于是他（Dmitry Kakurin）在Linux社区里发贴表示对Linux的不满，语言很直接：</p>
+<blockquote>
+<p style="padding-left: 30px;">Pure C as opposed to C++. No idea why. Please don’t talk about portability, it’s BS. （<span style="color: #008000;">纯C写的，而不是C++，不知道为什么，请别告诉我是为了移植性，这完全是胡扯</span>。）</p>
+</blockquote>
+<p>Linux之父Linus Torvalds马上跟贴，在贴子中，Linus言辞很直接，直接表明C++是一个很恐怖的语言，他在<a href="http://thread.gmane.org/gmane.comp.version-control.git/57643/focus=57918" target="_blank"><strong>贴子</strong></a>中说：</p>
+<blockquote>
+<p style="padding-left: 30px;"><strong>*YOU*</strong> are full of bullshit. C++ is a horrible language. It’s made more horrible by the fact that a lot of substandard programmers use it. （<span style="color: #008000;">你才是完全在胡扯。C++是一门很恐怖的语言，而比它更恐怖的是很多不合格的程序员在使用着它</span>）</p>
+</blockquote>
+<p>Linus的这个观点我是比较同意的，我个人也在几年前的《<a href="http://blog.csdn.net/haoel/archive/2004/06/23/24058.aspx" target="_blank">STL String类的写时才拷贝</a>》以及以后的一些文章中表达过C++的确并不是一个很成熟的语言，这种观点一直都围绕着我。这是因为它的学习成本实在是太高了，编译器和类背着你做了很多你不知道的事，而且，C++非常容易地出错和发生很多意想不到的问题。</p>
+<p>当然，这篇文章并不是要继续声讨C++，也不是回顾以前的某个事件。我们这里只谈技术。昨天，我在网上看到一个邪恶的C++的示例，在这里给大家share一下，让大家看看C++这种编程语言的恐怖和邪恶的一面。下面的这个例子，比那个“#define  private  public”还更加邪恶。</p>
+<p><span id="more-1724"></span></p>
+<p>请看下面这段代码，你能告诉我它会输出什么吗？（注意main函数中高亮的那一行）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="28">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+
+typedef int UINT4;
+using namespace std;
+class Hack
+{
+};
+
+Hack&amp; operator&lt; (Hack &amp;a , Hack &amp;b)
+{
+    std::cerr &lt;&lt; &#34;小于操作符\n&#34;;
+    return a;
+}
+
+Hack&amp; operator&gt; (Hack &amp;a, Hack &amp;b)
+{
+    std::cerr &lt;&lt;  &#34;大于操作符\n&#34;;
+    return a;
+}
+
+int main(int argc, char ** argv)
+{
+    Hack vector;
+    Hack UINT4;
+    Hack foo;
+
+    vector&lt;UINT4&gt; foo;
+
+return(0);
+}</pre>
+<p style="text-align: left;"><img decoding="async" loading="lazy" class="alignleft" title="不是吧" src="/uploads/2009/11/bushiba-150x150.jpg" alt="不是吧" width="98" height="96" srcset=""/>是的，上面这段代码如果只看main函数中的那句“vector&lt;UINT4&gt; foo”，你会觉得很眼熟，然而，事情并非那么简单，我们可以看到vector, UINT4和foo都是Hack类的实例，这就是邪恶的开始，那两个尖括号&lt; &gt;则成了两个运算符，大于和小于，这两个运算符却又被重载了。其实，真正的语句是：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">vector.operator&lt;(UNIT4).operator&gt;(foo);</code></p>
+<p>所以，所有的一切都符合我们的C++的规范和语法，自然程序也能被顺利编译通过（至少，在我的G++上是没有问题的）。而整个程序的运行结果自然是：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">$ ./horror
+小于操作符
+大于操作符</pre>
+<p>是的，如果你通晓C++的一切的一切，你自然不会对这段程序感到惊奇。这样的事情在C/C++的世界中并不少见，要搞乱C/C++的代码并不是一件难事，花样多得数不胜数，只要看看《<a title="6个变态的C语言Hello World程序 - 4,749 次浏览" href="/articles/914.html">6个变态的C语言Hello World程序</a>》你就知道了，而且，还有一个简单的教程《<a title="如何加密/混乱C源代码 - 2,420 次浏览" href="/articles/933.html">如何加密/混乱C源代码</a>》告诉你一些简单的做法。</p>
+<p>那么，如果你有一天在读程序中看到“vector&lt;UINT4&gt; foo”，你会觉得那只是一个幻觉吗？</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1724-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>恐怖的C++语言</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2371109" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/223918" class="url" rel="ugc external nofollow">C++与linus | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/1724.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/1724.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/1724.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">1724</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

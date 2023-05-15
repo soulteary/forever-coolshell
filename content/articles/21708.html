@@ -1,0 +1,366 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>网络数字身份认证术 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21708 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21708" class="post-content post-21708 post type-post status-publish format-standard hentry category-progdesign category-netsecurity tag-mtls tag-security tag-tls tag-318 tag-863">
+<header class="entry-header">
+<span class="screen-reader-text">网络数字身份认证术</span>
+<h1 class="entry-title">网络数字身份认证术</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21708.html" title="16:38" rel="bookmark"><time class="entry-date" datetime="2022-01-02T16:38:13+08:00" pubdate="">2022年01月02日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21708.html#comments" class="comments-link">14 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,972 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-21716" src="/uploads/2022/01/iStock-1175502114-300x201.png" alt="" width="300" height="201" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>这篇文章是《<a title="HTTP API 认证授权术" href="/articles/19395.html" target="_blank" rel="noopener">HTTP API 认证授权术</a>》的姊妹篇，在那篇文章中，主要介绍了 HTTP API 认证和授权技术中用到的 HTTP Basic, Digest Access, HMAC, OAuth, JWT 等各种方式，主要是 API 上用到的一些技术，这篇文章主要想说的是另一个话题——身份认证。也就是说，怎么确认这个数据就是这个人发出来的？</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%94%A8%E6%88%B7%E5%AF%86%E7%A0%81" title="用户密码">用户密码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%AF%86%E9%92%A5%E5%AF%B9%E5%92%8C%E8%AF%81%E4%B9%A6" title="密钥对和证书">密钥对和证书</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E8%AF%81%E4%B9%A6%E7%94%9F%E6%88%90%E8%BF%87%E7%A8%8B%E6%BC%94%E7%A4%BA" title="证书生成过程演示">证书生成过程演示</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81_mTLS" title="双向认证 mTLS">双向认证 mTLS</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%94%A8%E6%88%B7%E5%AF%86%E7%A0%81"></span>用户密码<span class="ez-toc-section-end"></span></h4>
+<p>要解决这个问题，我们先来看一个最简单的解——使用密码，通常来说，在网络上要证明一个人的身份的话，都需要这个人的一些私密而唯一的东西。比如，像密码这样的东西，很多地方，只要你提供了你的用户名+密码，就可以确定这个人是你（注明：关于密码管理，强密码设定，密码泄漏，密码破解以及密码哄骗不在这篇文章的话题中），也就是说，这个密码是非常私密的事，我们可以假设，这个事全世界只能有当事人一个人知道，所以，当事人得供正确的密码，我们就可以认证这个人了。</p>
+<p>为了加强密码的安全程度，一般会使用 2FA（Two-factor authentication）或 MFA（Multi-factor authentication），双因认证或多因认证，这需要用户提供一个唯一的可信设备，比如用户的手机，然后通过验证手机短信，或是像 <a href="https://en.wikipedia.org/wiki/Google_Authenticator" target="_blank" rel="noopener">Google Authenticator</a>  这样的动态口令来完成。这样的安全级别已经算是比较高了。如果能够再加上经常性的变更密码，那么安全级别就更好了。</p>
+<p><span id="more-21708"></span></p>
+<p>另外，一些公司还使用了生物密码来进行用户的身份验证，比如人脸识别。但是，我个人觉得人脸识别或是生物识别是比较糟糕的方式，因为：</p>
+<ul>
+<li>目前能被验证的生物信息（如人脸和指纹）太容易被别人获得和伪造了。</li>
+<li>这样东西不能被变更和吊销，密码可以被吊销和重置，人脸则不能。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%AF%86%E9%92%A5%E5%AF%B9%E5%92%8C%E8%AF%81%E4%B9%A6"></span>密钥对和证书<span class="ez-toc-section-end"></span></h4>
+<p>密码可以解决身证认证的问题有很多问题，最重要的一个问题就是，你要把你的密码提供给对方，对方才能验证你的身份。你不可能把你的密码提供给全世界的人吧，这样的话，全世界的人都有你的密码了，那么任何人都能变成你了。所以，用户密码这个事只能存在于权威机构和普通用户之间，不能存在于普遍应用中。所以，这里需要使用更好的解决方案。</p>
+<p>使用 ECC（<a title="Elliptic-Curve Cryptography" href="https://en.wikipedia.org/wiki/Elliptic-curve_cryptography" target="_blank" rel="noopener">Elliptic-Curve Cryptography</a>）椭圆曲线密码术，可以通过一个“密钥对”进行非对称加密。这种技术，在对信息进行加密和解密时，使用两个不同的密钥，其中一个用来做加密，另一个做解密。这样一来，我们就可以把其中一个密钥公布出去，称之为公钥，另一个密钥私密地保管好，称之为私钥。</p>
+<p>比如，我用我的私钥加密信息，然后，我把这个私钥所配对的公钥发布给所有人，大家都用公钥解密信息，不用我的公钥你解密不了这个信息。这样一来，就可以保证这个信息是我发出来的，不但保证了信息安全，还完成了身份认证。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21710" src="/uploads/2022/01/key.pair_-1024x390.png" alt="" width="640" height="244" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>这样的现实案例一般用于网站，也就是用户得要知道我访问的这个网站是真实的，不是别人做的。因为 DNS 很容易被 hack，你连上一个不可信的网络，这个网络里的 DNS 把这个网站的 IP 地址解析成什么 就是什么了。但是有了这个加密的机制后，网站把自己的信息加密后连同公钥给到访问者，访问解密后就知道是不是这个网站了。</p>
+<p>但是，这里还是会有一个很严重的问题，那就是中间人攻击。如下图所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-21712 size-full" src="/uploads/2022/01/middle.man_-e1641105543137.png" alt="" width="600" height="252" srcset=""/></p>
+<p>中间人 Chad 把自己伪装成 Bob 向 Alice 要信息，然后，再伪装成 Alice 对 Bob 说，这就是 Alice 的公钥，于是 Bob 也无法验证是不是 Alice 的公钥，因为公钥里就是一堆乱七八糟的数据，我们完全不能分辨哪个公钥属于 Alice 的。试想，如果我们收到声称属于银行的密钥。我们怎么知道它确实属于你的银行？</p>
+<p>这里的答案就是<strong>使用数字证书</strong>。证书跟我们的身份证非常类似，其需要一个可信机构来颁发和验证的。这个证书机构 CA（Certificate Authority）是一个是大家都相信的权威机构，他用他的人品保证（当然一般会被严格管理和审计），CA 机构同样使用这样的非对称加密的技术来完成颁发和验证的事。下图展示了这一过程。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21713" src="/uploads/2022/01/certificate-1024x532.png" alt="" width="640" height="333" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>说明一下上面这个图：</p>
+<ol>
+<li>为了解决公钥认证的问题的，我们需要一个权威的CA 机构。</li>
+<li>Alice 把自己的信息（姓名、组织，地址，电邮，网址等）和自己的公钥打包成一个 CSR 的文件，发给 CA 机构，</li>
+<li>CA 机构会来找 Alice 做物理世界的认证，如果通过后，就会用自己的机构私钥，把CSR 变成一个签名证书。</li>
+<li>Bob 同学拿到 Alice 的证书，用 CA 机构的公钥解密后，得到 Alice 的公钥</li>
+<li>后面就可以签证 信息是否来自 Alice 了。</li>
+</ol>
+<p>是的，这个过程就是在“套娃”，这种证书机构还可以给下级的证书机构发证，于是就会一层套一层地，形成一个证书链，顶层的叫根证书，你得绝对信任之。对于验证证书真实性的客户端，它需要能够验证链中所有 CA 的签名，这意味着客户端需要访问链中所有 CA 的证书。</p>
+<h4><span class="ez-toc-section" id="%E8%AF%81%E4%B9%A6%E7%94%9F%E6%88%90%E8%BF%87%E7%A8%8B%E6%BC%94%E7%A4%BA"></span>证书生成过程演示<span class="ez-toc-section-end"></span></h4>
+<p>并不是所有的场景都需要向这些大型的 CA 机构申请公钥证书，在任何一个企业，组织或是团体内都可以自己形这样的“小王国”，也就是说，你可以自行生成这样的证书，只需要你自己保证自己的生成证书的私钥的安全，以及不需要扩散到整个互联网。下面，我们用 <code>openssl</code>命令来演示这个过程。</p>
+<p>1）生成 CA 的证书（公钥） <code>ca.crt</code> 和私钥 <code>ca.key</code></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">openssl req -newkey rsa:2048 \
+    -new -nodes -x509 \
+    -days 365 \
+    -out ca.crt \
+    -keyout ca.key \
+    -subj &#34;/C=SO/ST=Earth/L=Mountain/O=CoolShell/OU=HQ/CN=localhost&#34;</pre>
+<p>2)  生成 alice 的私钥</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">openssl genrsa -out alice.key 2048</pre>
+<p>3）生成 Alice 的 CSR – Certificate Signing Request</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">openssl req -new -key alice.key 365 -out alice.csr \
+    -subj &#34;/C=CN/ST=Beijing/L=Haidian/O=CoolShell/OU=Test/CN=localhost.alice&#34;</pre>
+<p>4）使用 CA 给 Alice 签名证书</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">openssl x509  -req -in alice.csr \
+    -extfile &lt;(printf &#34;subjectAltName=DNS:localhost.alice&#34;) \ 
+    -CA ca.crt -CAkey ca.key  \
+    -days 365 -sha256 -CAcreateserial \
+    -out alice.crt</pre>
+<h4><span class="ez-toc-section" id="%E5%8F%8C%E5%90%91%E8%AE%A4%E8%AF%81_mTLS"></span>双向认证 mTLS<span class="ez-toc-section-end"></span></h4>
+<p>上面，我们说的基本上都是单向认证，大量的场景都是确保用户方访问的是真正的服务方，如：银行，电商网站，等。这样可以保证用户不会被钓鱼网站或是中间人攻击。但是，很多时候，我们也是需要双向认证的。下面是一个典型的场景——微信支付和商户间交互</p>
+<ul>
+<li>用户到商家那边买东西，商家要求用户进行支付。</li>
+<li>用户选择了微信支付，于是，界面从商户侧切到了微信侧</li>
+<li>微信那边支付完成后，商户这边收到微信那边支付完成的通知，于是开始发货。</li>
+</ul>
+<p>这个过程中有件事非常重要——就是微信通知商户支付完成的时候。</p>
+<ul>
+<li>微信得确保通知到的就是用户所支付商户，而不是别个。</li>
+<li>商户也得要能确认，来通知我的就是微信，不是别人。</li>
+</ul>
+<p>一般来说，微信会给商户一个 AppID和一个 AppSerct，用这个来确保是我认证过的商户来调用我，然后，需要商户在自己的系统里填一个回调的 URL，并通过平台设置的 key来做 MD5/HMAC的签名来确保是官方的回调。这都是在《<a title="HTTP API 认证授权术" href="/articles/19395.html" target="_blank" rel="noopener">HTTP API 认证授权术</a>》中提到过的技术，是相对传统的技术。</p>
+<p>如今，<b>mTLS是</b>确保云原生应用程序中服务之间的通信安全的首选协议。 也就是双向认证。</p>
+<p>传统的 TLS 认证过程是：</p>
+<ol dir="auto">
+<li>客户端连接到服务器</li>
+<li>服务器提供其 TLS 证书</li>
+<li>客户端验证服务器的证书</li>
+<li>客户端和服务器通过加密的 TLS 连接交换信息</li>
+</ol>
+<p dir="auto">在 mTLS 中，客户端和服务器都有一个证书，双方都使用他们的公钥/私钥对进行身份验证。与常规 TLS 相比，mTLS 中有额外的步骤来验证双方（以<strong>粗体显示的</strong>额外步骤）：</p>
+<ol dir="auto">
+<li>客户端连接到服务器</li>
+<li>服务器提供其 TLS 证书</li>
+<li>客户端验证服务器的证书</li>
+<li><strong>客户端出示其 TLS 证书</strong></li>
+<li><strong>服务器验证客户端的证书</strong></li>
+<li><strong>服务器授予访问权限</strong></li>
+<li>客户端和服务器通过加密的 TLS 连接交换信息</li>
+</ol>
+<p>mTLS 需要“根”TLS 证书；这我们自己来完成证书颁发机构的职责。授权客户端和服务器使用的证书必须与此根证书相对应。根证书是自签名的，这意味着我们需要自己创建它。（注：此方法不适用于公共 Internet 上的单向 TLS，因为外部证书颁发机构必须颁发这些证书）</p>
+<p>那么，为什么整个互联网上都用了 TLS 了，为什么 不升级一下使用 mTLS？这里有两方面的原因：</p>
+<ul>
+<li>公共互联网上要解决的问题是：A) 确保用户访问到的是正确的网站，而不是钓鱼网站。B）网站传输的内容是安全和私密且不会被篡改的。</li>
+<li>将 TLS 证书分发到所有最终用户设备将非常困难。生成、管理和验证为此所需的数十亿个证书几乎是不可能的任务。</li>
+</ul>
+<p>在较小的范围内，mTLS 对于单个组织非常有用且非常实用，尤其是当这些组织采用零信任方法来确保网络安全时。由于默认情况下零信任方法不信任任何用户、设备或请求，因此组织必须能够在每次尝试访问网络中的任何点时对每个用户、设备和请求进行身份验证。mTLS 通过对用户进行身份验证和设备验证来帮助实现这一目标。</p>
+<p>关于 mTLS，这里有一个我用 Golang 写的示例 – <a href="https://github.com/haoel/mTLS" target="_blank" rel="noopener">https://github.com/haoel/mTLS</a>，大家可以参考一下。</p>
+<p>P.S. 本文图版中的卡司来自安全圈的标准 Cast，参看<a href="https://en.wikipedia.org/wiki/Alice_and_Bob" target="_blank" rel="noopener"> Alice and Bob</a>。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21708-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">mTLS</a>, <a href="javascript:void(0)" rel="tag">Security</a>, <a href="javascript:void(0)" rel="tag">TLS</a>, <a href="javascript:void(0)" rel="tag">安全</a>, <a href="javascript:void(0)" rel="tag">网络安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>网络数字身份认证术</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2356230" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2356230" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/befd7a6dba2bc94f75032eba1f1ca87c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/befd7a6dba2bc94f75032eba1f1ca87c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">a180285</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2356230"><time datetime="2022-01-02T17:53:12+08:00">2022年01月02日 17:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>公网上 TLS 依赖了 CA 机构。因此偶尔还是会出一些问题。比如前段时间 Let’s Encrypt 的根证书过期问题。<br/>
+所以偶尔也在思考，有没有可能实现一种更加可靠，或者不需要第三方，而实现自己证明是自己的方式</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2357817" class="comment odd alt depth-2">
+<article id="div-comment-2357817" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ced157a8cfbcb01d5b357e78eae3ef3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ced157a8cfbcb01d5b357e78eae3ef3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2357817"><time datetime="2022-01-08T00:22:04+08:00">2022年01月08日 00:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>目前已经有了不依赖三方CA的一些技术，必须是完全的分布式架构（也可称之为去中心化，但是个人不喜欢这个名称），比如区块链。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2357818" class="comment even depth-2">
+<article id="div-comment-2357818" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ced157a8cfbcb01d5b357e78eae3ef3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ced157a8cfbcb01d5b357e78eae3ef3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2357818"><time datetime="2022-01-08T00:23:25+08:00">2022年01月08日 00:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不过缺点也非常明显，就是非常低效，且安全性受各种证明方式的不同影响较大，比如著名的51%算力攻击。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2356272" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2356272" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8770854a9222b6bf1ee195220793bcf1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8770854a9222b6bf1ee195220793bcf1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Dallas</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2356272"><time datetime="2022-01-02T19:46:33+08:00">2022年01月02日 19:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>StartCom 支持 mTLS 认证。银行、支付类网站的客户端证书也使用了 mTLS 认证技术吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356357" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2356357" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d1d4d0f7e0a43cec77ced1d5c61ebfb2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d1d4d0f7e0a43cec77ced1d5c61ebfb2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tranch</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2356357"><time datetime="2022-01-02T23:36:03+08:00">2022年01月02日 23:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+中间人 Chad 把 伪装成 Bob 向 Alice 要信息
+</p></blockquote>
+<p>这句看起来漏了些东西</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2356428" class="comment odd alt depth-2">
+<article id="div-comment-2356428" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7968a61bea13ff77a16fd19e9db05842?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7968a61bea13ff77a16fd19e9db05842?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Thundear</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2356428"><time datetime="2022-01-03T05:40:40+08:00">2022年01月03日 05:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该是多了一个“把”</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2356828" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2356828" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/623488e5c73fe2bb6c4dd9c94e55c048?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/623488e5c73fe2bb6c4dd9c94e55c048?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">beihai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2356828"><time datetime="2022-01-04T10:51:51+08:00">2022年01月04日 10:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该是「中间人 Chad 先伪装成 Bob 向 Alice 要信息，然后，再伪装成 Alice 对 Bob 说」</p>
+</div>
+ </article>
+</li>
+<li id="comment-2358476" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2358476" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/201bd950e3fe5ed4831644e8070b1044?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/201bd950e3fe5ed4831644e8070b1044?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://tie.pub" class="url" rel="ugc external nofollow">吳</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2358476"><time datetime="2022-01-11T09:39:16+08:00">2022年01月11日 09:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>基础文章，我得去了解下对称非对称加密</p>
+</div>
+ </article>
+</li>
+<li id="comment-2358726" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2358726" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/049d6a670d204f3e157b3715f7c31826?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/049d6a670d204f3e157b3715f7c31826?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">amadis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2358726"><time datetime="2022-01-12T09:58:15+08:00">2022年01月12日 09:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“我用我的私钥加密信息” 私钥之间有个乱码。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2359377" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2359377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64b495c1aaa51748768a5d50c49ae88c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64b495c1aaa51748768a5d50c49ae88c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">疯狂星期四</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2359377"><time datetime="2022-01-14T16:54:32+08:00">2022年01月14日 16:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>似乎搞混了加解密 (ECIES) 和签名 (ECDSA)。from wikipedia “Public-key cryptography”: In such a system, any person can encrypt a message using the intended receiver’s public key, but that encrypted message can only be decrypted with the receiver’s private key.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2360225" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2360225" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/449b666d6868a3aae523a862aee047bb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/449b666d6868a3aae523a862aee047bb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lanser-z</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2360225"><time datetime="2022-01-19T09:31:53+08:00">2022年01月19日 09:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2) 生成 alice 的私钥<br/>
+openssl genrsa -out alice.key 2048</p>
+<p>3）生成 Alice 的 CSR – Certificate Signing Request<br/>
+openssl req -new -key alice.key 365 -out alice.csr \<br/>
+-subj “/C=CN/ST=Beijing/L=Haidian/O=CoolShell/OU=Test/CN=localhost.alice”</p>
+<p>按原理解说，第3步应该用alice的公钥，但代码中却用了第2步生成的私钥，是不是文字写错了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2361071" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2361071" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8934ef4126288e2ca39c8be87466cf78?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8934ef4126288e2ca39c8be87466cf78?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.cnblogs.com/bruceChan0018/" class="url" rel="ugc external nofollow">长江同学</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2361071"><time datetime="2022-01-24T13:15:07+08:00">2022年01月24日 13:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当当事人得供正确的密码–&gt;当当事人提供正确的密码。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370573" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://hwb0307.com/2022/07/02/docker%e7%b3%bb%e5%88%97-%e6%90%ad%e5%bb%ba%e5%af%86%e7%a0%81%e7%ae%a1%e7%90%86%e5%ba%94%e7%94%a8bitwarden/" class="url" rel="ugc external nofollow">Docker系列 搭建密码管理应用bitwarden – hwb0307.com</a> </div>
+</li>
+<li id="comment-2371207" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e1ead338362fa2f6cb8ef8acdcfcfdd3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e1ead338362fa2f6cb8ef8acdcfcfdd3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cdkfsq.com" class="url" rel="ugc external nofollow">成都空放水钱网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21708.html#comment-2371207"><time datetime="2023-04-27T10:32:12+08:00">2023年04月27日 10:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写得不错，学习了。我也在学相关技术，可以多交流</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

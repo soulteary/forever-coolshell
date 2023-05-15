@@ -1,0 +1,395 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>面向对象的Shell脚本 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5035 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5035" class="post-content post-5035 post type-post status-publish format-standard hentry category-unixlinux category-misc category-story tag-oop tag-shell">
+<header class="entry-header">
+<span class="screen-reader-text">面向对象的Shell脚本</span>
+<h1 class="entry-title">面向对象的Shell脚本</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5035.html" title="12:39" rel="bookmark"><time class="entry-date" datetime="2011-07-21T12:39:11+08:00" pubdate="">2011年07月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5035.html#comments" class="comments-link">17 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 29,375 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>还记得以前那个用<a title="检查素数的正则表达式" href="/articles/2704.html" target="_blank">算素数的正则表达式</a>吗？编程这个世界太有趣了，总是能看到一些即别出心裁的东西。你有没有想过在写Shell脚本的时候可以把你的变量和函数放到一个类中？不要以为这不可能，这不，我在<a href="http://lab.madscience.nl/oo.sh.txt" target="_blank">网上</a>又看到了一个把Shell脚本整成面向对象的东西。Shell本来是不支持的，需要自己做点东西，能搞出这个事事的人真的是hacker啊。</p>
+<p>当然，这里并不是真正的面向对象，因为其只是封装罢了，还没有支持继承和多态。最变态的是他居然还支持typeid，靠！</p>
+<p>下面让我们看看他是怎么来做的。下面的脚本可能会有点费解。本想解释一下，后来想想，还是大家自己专研一下吧，其实看懂也不难，给大家提几个点吧。</p>
+<ol>
+<li>我们可以看到，下面的这个脚本定义了class,  func, var, new 等函数，其实这些就是所谓的关键字。</li>
+<li>class是一个函数，主要是记录类名。</li>
+<li>func和var实际上是把成员函数名和成员变量记成有相同前缀的各种变量。</li>
+<li>new方法主要是记录实例。大家重点看看new函数里的那个for循环，最核心的就在那里了。</li>
+</ol>
+<div>脚本如下所示：</div>
+<div><span id="more-5035"></span></div>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#!/bin/bash
+
+# -------------------------------------------------------------------
+# OO support functions
+# Kludged by Pim van Riezen &lt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="42322b022f232631212b272c21276c2c2e">[email protected]</a>&gt;
+# -------------------------------------------------------------------
+DEFCLASS=&#34;&#34;
+CLASS=&#34;&#34;
+THIS=0
+
+class() {
+  DEFCLASS=&#34;$1&#34;
+  eval CLASS_${DEFCLASS}_VARS=&#34;&#34;
+  eval CLASS_${DEFCLASS}_FUNCTIONS=&#34;&#34;
+}
+
+static() {
+  return 0
+}
+
+func() {
+  local varname=&#34;CLASS_${DEFCLASS}_FUNCTIONS&#34;
+  eval &#34;$varname=\&#34;\${$varname}$1 \&#34;&#34;
+}
+
+var() {
+  local varname=&#34;CLASS_${DEFCLASS}_VARS&#34;
+  eval $varname=&#34;\&#34;\${$varname}$1 \&#34;&#34;
+}
+
+loadvar() {
+  eval &#34;varlist=\&#34;\$CLASS_${CLASS}_VARS\&#34;&#34;
+  for var in $varlist; do
+    eval &#34;$var=\&#34;\$INSTANCE_${THIS}_$var\&#34;&#34;
+  done
+}
+
+loadfunc() {
+  eval &#34;funclist=\&#34;\$CLASS_${CLASS}_FUNCTIONS\&#34;&#34;
+  for func in $funclist; do
+    eval &#34;${func}() { ${CLASS}::${func} \&#34;\$*\&#34;; return \$?; }&#34;
+  done
+}
+
+savevar() {
+  eval &#34;varlist=\&#34;\$CLASS_${CLASS}_VARS\&#34;&#34;
+  for var in $varlist; do
+    eval &#34;INSTANCE_${THIS}_$var=\&#34;\$$var\&#34;&#34;
+  done
+}
+
+typeof() {
+  eval echo \$TYPEOF_$1
+}
+
+new() {
+  local
+  local cvar=&#34;$2&#34;
+  shift
+  shift
+  local id=$(uuidgen | tr A-F a-f | sed -e &#34;s/-//g&#34;)
+  eval TYPEOF_${id}=$class
+  eval $cvar=$id
+  local funclist
+  eval &#34;funclist=\&#34;\$CLASS_${class}_FUNCTIONS\&#34;&#34;
+  for func in $funclist; do
+    eval &#34;${cvar}.${func}() {
+      local t=\$THIS; THIS=$id; local c=\$CLASS; CLASS=$class; loadvar;
+      loadfunc; ${class}::${func} \&#34;\$*\&#34;; rt=\$?; savevar; CLASS=\$c;
+      THIS=\$t; return $rt;
+    }&#34;
+
+  done
+  eval &#34;${cvar}.${class} \&#34;\$*\&#34; || true&#34;
+}</pre>
+<p>下面，让我们来看看例程吧。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># -------------------------------------------------------------------
+# Example code
+# -------------------------------------------------------------------
+
+# class definition
+class Storpel
+  func Storpel
+  func setName
+  func setQuality
+  func print
+  var name
+  var quality
+
+# class implementation
+Storpel::Storpel() {
+  setName &#34;$1&#34;
+  setQuality &#34;$2&#34;
+  if [ -z &#34;$name&#34; ]; then setName &#34;Generic&#34;; fi
+  if [ -z &#34;$quality&#34; ]; then setQuality &#34;Normal&#34;; fi
+}
+
+Storpel::setName() { name=&#34;$1&#34;; }
+Storpel::setQuality() { quality=&#34;$1&#34;; }
+Storpel::print() { echo &#34;$name ($quality)&#34;; }
+
+# usage
+new Storpel one &#34;Storpilator 1000&#34; Medium
+new Storpel two
+new Storpel three
+
+two.setName &#34;Storpilator 2000&#34;
+two.setQuality &#34;Strong&#34;
+
+one.print
+two.print
+three.print
+
+echo &#34;&#34;
+
+echo &#34;one: $one ($(typeof $one))&#34;
+echo &#34;two: $two ($(typeof $two))&#34;
+echo &#34;three: $three ($(typeof $two))&#34;</pre>
+<p> </p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5035-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">OOP</a>, <a href="javascript:void(0)" rel="tag">Shell</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>面向对象的Shell脚本</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-66716" class="comment even thread-even depth-1">
+<article id="div-comment-66716" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2ff96171545059f3aa5960022c5bf198?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2ff96171545059f3aa5960022c5bf198?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">KPX</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-66716"><time datetime="2011-07-21T12:50:33+08:00">2011年07月21日 12:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://student.vub.ac.be/~dvandeun/batcoll.all" rel="nofollow ugc">http://student.vub.ac.be/~dvandeun/batcoll.all</a><br/>
+《BATCH PROGRAMMING ELEMENTS》 Dirk van Deun<br/>
+9. Object Oriented Programming</p>
+<p>一个win下批处理的实现，没shel版那么多功能。</p>
+</div>
+ </article>
+</li>
+<li id="comment-66725" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-66725" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2833e560cdc5b886106a813454dcc20f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2833e560cdc5b886106a813454dcc20f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Belleve Invis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-66725"><time datetime="2011-07-21T13:27:51+08:00">2011年07月21日 13:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Powershell 支持 add-type 定义类</p>
+</div>
+ </article>
+</li>
+<li id="comment-66905" class="comment even thread-even depth-1">
+<article id="div-comment-66905" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c61ac69c4e474cf60a2889ffe2a0f25e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c61ac69c4e474cf60a2889ffe2a0f25e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.coderplusplus.com/" class="url" rel="ugc external nofollow">nash635</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-66905"><time datetime="2011-07-21T23:16:59+08:00">2011年07月21日 23:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用shell搞面向对象显然是用自己的短处和人家拼长处啊，只能说作者是个geek了！ 不过还是要膜拜下！</p>
+</div>
+ </article>
+</li>
+<li id="comment-67232" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-67232" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a18b030114c9ae63e711d37a12fd699?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a18b030114c9ae63e711d37a12fd699?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://None" class="url" rel="ugc external nofollow">祥哥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-67232"><time datetime="2011-07-22T17:58:10+08:00">2011年07月22日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>牛逼！</p>
+</div>
+ </article>
+</li>
+<li id="comment-67454" class="comment even thread-even depth-1">
+<article id="div-comment-67454" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7abbf8b4333920bc2686eb06c3923caa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7abbf8b4333920bc2686eb06c3923caa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://iregex.org" class="url" rel="ugc external nofollow">rex</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-67454"><time datetime="2011-07-23T09:42:40+08:00">2011年07月23日 09:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-66905" rel="nofollow">@nash635 </a><br/>
+同意。</p>
+</div>
+ </article>
+</li>
+<li id="comment-68286" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jaceju.net/blog/archives/1833" class="url" rel="ugc external nofollow">網站製作學習誌 » [Web] 連結分享</a> </div>
+</li>
+<li id="comment-68857" class="comment even thread-even depth-1">
+<article id="div-comment-68857" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0516651e43c16cb9e64777bb38c4aa3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0516651e43c16cb9e64777bb38c4aa3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-68857"><time datetime="2011-07-28T09:45:37+08:00">2011年07月28日 09:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>他要干嘛</p>
+</div>
+ </article>
+</li>
+<li id="comment-69666" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-69666" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a9a101a641997978daec14524f1e86b5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a9a101a641997978daec14524f1e86b5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jialrs</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-69666"><time datetime="2011-07-31T18:51:36+08:00">2011年07月31日 18:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>膜拜下…总要有些疯狂的人给世界创造亮点…</p>
+</div>
+ </article>
+</li>
+<li id="comment-71549" class="comment even thread-even depth-1">
+<article id="div-comment-71549" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/97564fb31678346aa563368bcdc1e820?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/97564fb31678346aa563368bcdc1e820?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tusooa.tk/" class="url" rel="ugc external nofollow">tusooa</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-71549"><time datetime="2011-08-08T13:08:57+08:00">2011年08月08日 13:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://github.com/tusooa/tusooa/blob/master/Apps/Libraries/Scripts/sm-LibObject" rel="nofollow ugc">https://github.com/tusooa/tusooa/blob/master/Apps/Libraries/Scripts/sm-LibObject</a><br/>
+简单构想。无继承。无变态的调用方式。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73126" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73126" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c21a64f9c312cc53ac578a276c18b665?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c21a64f9c312cc53ac578a276c18b665?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mengalong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-73126"><time datetime="2011-08-13T12:47:21+08:00">2011年08月13日 12:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>new()<br/>
+这个方法中少了一点儿：<br/>
+local class=$1<br/>
+local cvar=”$2″</p>
+</div>
+ </article>
+</li>
+<li id="comment-73690" class="comment even thread-even depth-1">
+<article id="div-comment-73690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5a357558cabca9148f376f490b932903?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5a357558cabca9148f376f490b932903?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ricepig</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-73690"><time datetime="2011-08-15T07:02:55+08:00">2011年08月15日 07:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从博主陈述的情况来看。。。这叫“基于对象”，而还谈不上“面向对象“</p>
+</div>
+ </article>
+</li>
+<li id="comment-86903" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-86903" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3303464acb81596896a8975427b114e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3303464acb81596896a8975427b114e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mupeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-86903"><time datetime="2011-10-13T23:27:13+08:00">2011年10月13日 23:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问，在博客（如：163）里粘贴代码时如何能使得代码的排版风格与在IDE里的一样？</p>
+</div>
+ </article>
+</li>
+<li id="comment-141295" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=1629" class="url" rel="ugc external nofollow">再谈javascript面向对象编程</a> </div>
+</li>
+<li id="comment-143310" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.penghou.net/blog/2012/03/06/%e7%90%86%e8%a7%a3javascript%e7%9a%84%e9%97%ad%e5%8c%85/" class="url" rel="ugc external nofollow">理解Javascript的闭包 | 侯三儿</a> </div>
+</li>
+<li id="comment-143612" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2012/03/%e5%86%8d%e8%b0%88javascript%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">Google Reader分享 » 再谈javascript面向对象编程</a> </div>
+</li>
+<li id="comment-159162" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-159162" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b9d1c8f86d2e02a943ba4201cafb8b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b9d1c8f86d2e02a943ba4201cafb8b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mm.mm.mm" class="url" rel="ugc external nofollow">svs</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5035.html#comment-159162"><time datetime="2012-04-17T14:45:11+08:00">2012年04月17日 14:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>powershell用来干嘛</p>
+</div>
+ </article>
+</li>
+<li id="comment-280693" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/1228" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » 你可能不知道的Shell</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

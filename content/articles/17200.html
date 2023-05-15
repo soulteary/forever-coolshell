@@ -1,0 +1,577 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Docker基础技术：DeviceMapper | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17200 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17200" class="post-content post-17200 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-misc tag-device-mapper tag-docker tag-linux tag-thin-provisioning">
+<header class="entry-header">
+<span class="screen-reader-text">Docker基础技术：DeviceMapper</span>
+<h1 class="entry-title">Docker基础技术：DeviceMapper</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17200.html" title="08:21" rel="bookmark"><time class="entry-date" datetime="2015-08-26T08:21:09+08:00" pubdate="">2015年08月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17200.html#comments" class="comments-link">25 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 73,801 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-17217" src="/uploads/2015/08/how_to_set_up_an_iSCSI_LUN_with_thin-300x150.jpg" alt="how_to_set_up_an_iSCSI_LUN_with_thin" width="300" height="150" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>在上一篇<a href="/articles/17061.html" target="_blank">介绍AUFS的文章</a>中，大家可以看到，Docker的分层镜像是怎么通过UnionFS这种文件系统做到的，但是，因为Docker首选的AUFS并不在Linux的内核主干里，所以，对于非Ubuntu的Linux分发包，比如CentOS，就无法使用AUFS作为Docker的文件系统了。于是作为第二优先级的DeviceMapper就被拿出来做分层镜像的一个实现。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Device_Mapper_%E7%AE%80%E4%BB%8B" title="Device Mapper 简介">Device Mapper 简介</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Thin_Provisioning_%E7%AE%80%E4%BB%8B" title="Thin Provisioning 简介">Thin Provisioning 简介</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Thin_Provisioning_Snapshot_%E6%BC%94%E7%A4%BA" title="Thin Provisioning Snapshot 演示">Thin Provisioning Snapshot 演示</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Docker%E7%9A%84DeviceMapper" title="Docker的DeviceMapper">Docker的DeviceMapper</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#Device_Mapper_%E8%A1%8C%E4%B8%8D%E8%A1%8C%EF%BC%9F" title="Device Mapper 行不行？">Device Mapper 行不行？</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Device_Mapper_%E7%AE%80%E4%BB%8B"></span>Device Mapper 简介<span class="ez-toc-section-end"></span></h4>
+<p>DeviceMapper自Linux 2.6被引入成为了Linux最重要的一个技术。它在内核中支持逻辑卷管理的通用设备映射机制，它为实现用于存储资源管理的块设备驱动提供了一个高度模块化的内核架构，它包含三个重要的对象概念，Mapped Device、Mapping Table、Target device。</p>
+<p>Mapped Device 是一个逻辑抽象，可以理解成为内核向外提供的逻辑设备，它通过Mapping Table描述的映射关系和 Target Device 建立映射。Target device 表示的是 Mapped Device 所映射的物理空间段，对 Mapped Device 所表示的逻辑设备来说，就是该逻辑设备映射到的一个物理设备。</p>
+<p>Mapping Table里有 Mapped Device 逻辑的起始地址、范围、和表示在 Target Device 所在物理设备的地址偏移量以及Target 类型等信息（注：这些地址和偏移量都是以磁盘的扇区为单位的，即 512 个字节大小，所以，当你看到128的时候，其实表示的是128*512=64K）。</p>
+<p><span id="more-17200"></span></p>
+<p>DeviceMapper 中的逻辑设备Mapped Device不但可以映射一个或多个物理设备Target Device，还可以映射另一个Mapped Device，于是，就是构成了一个迭代或递归的情况，就像文件系统中的目录里除了文件还可以有目录，理论上可以无限嵌套下去。</p>
+<p>DeviceMapper在内核中通过一个一个模块化的 Target Driver 插件实现对 IO 请求的过滤或者重新定向等工作，当前已经实现的插件包括软 Raid、加密、多路径、镜像、快照等，这体现了在 Linux 内核设计中策略和机制分离的原则。如下图所示。从图中，我们可以<strong>看到DeviceMapper只是一个框架，在这个框架上，我们可以插入各种各样的策略</strong>（让我不自然地想到了面向对象中的策略模式），在这诸多“插件”中，<strong>有一个东西叫Thin Provisioning Snapshot，这是Docker使用DeviceMapper中最重要的模块</strong>。</p>
+<figure id="attachment_17204" aria-describedby="caption-attachment-17204" style="width: 640px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-17204" src="/uploads/2015/08/device.mapper.2.gif" alt="图片来源：http://people.redhat.com/agk/talks/FOSDEM_2005/" width="640" height="494" srcset=""/><figcaption id="caption-attachment-17204" class="wp-caption-text">图片来源：<a href="http://people.redhat.com/agk/talks/FOSDEM_2005/" target="_blank">http://people.redhat.com/agk/talks/FOSDEM_2005/</a></figcaption></figure>
+<h4><span class="ez-toc-section" id="Thin_Provisioning_%E7%AE%80%E4%BB%8B"></span><strong>Thin Provisioning 简介</strong><span class="ez-toc-section-end"></span></h4>
+<p>Thin Provisioning要怎么翻译成中文，真是一件令人头痛的事，我就不翻译了。这个技术是虚拟化技术中的一种。它是什么意思呢？<strong>你可以联想一下我们计算机中的内存管理中用到的——“虚拟内存技术”</strong>——操作系统给每个进程N多N多用不完的内址地址（32位下，每个进程可以有最多2GB的内存空间），但是呢，我们知道，物理内存是没有那么多的，如果按照进程内存和物理内存一一映射来玩的话，那么，我们得要多少的物理内存啊。所以，操作系统引入了虚拟内存的设计，<strong>意思是，我逻辑上给你无限多的内存，但是实际上是实报实销</strong>，因为我知道你一定用不了那么多，于是，达到了内存使用率提高的效果。（今天云计算中很多所谓的虚拟化其实完全都是在用和“虚拟内存”相似的Thin Provisioning的技术，所谓的超配，或是超卖）</p>
+<p> </p>
+<p>好了，话题拉回来，我们这里说的是存储。看下面两个图（<a href="http://www.architecting.it/2009/06/04/enterprise-computing-why-thin-provisioning-is-not-the-holy-grail-for-utilisation/" target="_blank">图片来源</a>），第一个是Fat Provisioning，第二个是Thin Provisioning，其很好的说明了是个怎么一回事（和虚拟内存是一个概念）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17206" src="/uploads/2015/08/thin-provisioning-1.jpg" alt="thin-provisioning-1" width="606" height="399" srcset="" sizes="(max-width: 606px) 100vw, 606px"/> <img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17207" src="/uploads/2015/08/thin-provisioning-2.jpg" alt="thin-provisioning-2" width="606" height="389" srcset="" sizes="(max-width: 606px) 100vw, 606px"/></p>
+<p>那么，Docker是怎么使用Thin Provisioning这个技术做到像UnionFS那样的分层镜像的呢？答案是，Docker使用了Thin Provisioning的Snapshot的技术。下面我们来介绍一下Thin Provisioning的Snapshot。</p>
+<h4><span class="ez-toc-section" id="Thin_Provisioning_Snapshot_%E6%BC%94%E7%A4%BA"></span>Thin Provisioning Snapshot 演示<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们用一系列的命令来演示一下Device Mapper的Thin Provisioning Snapshot是怎么玩的。</p>
+<p>首先，我们需要先建两个文件，一个是data.img，一个是meta.data.img：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo dd if=/dev/zero of=/tmp/data.img bs=1K count=1 seek=10M
+1+0 records in
+1+0 records out
+1024 bytes (1.0 kB) copied, 0.000621428 s, 1.6 MB/s
+
+~hchen$ sudo dd if=/dev/zero of=/tmp/meta.data.img bs=1K count=1 seek=1G
+1+0 records in
+1+0 records out
+1024 bytes (1.0 kB) copied, 0.000140858 s, 7.3 MB/s</pre>
+<p>注意命令中<code>seek</code>选项，其表示为略过<code>of</code>选项指定的输出文件的前10G个output的bloksize的空间后再写入内容。因为bs是1个字节，所以也就是10G的尺寸，但其实在硬盘上是没有占有空间的，占有空间只有1k的内容。当向其写入内容时，才会在硬盘上为其分配空间。我们可以用ls命令看一下，实际分配了12K和4K。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo ls -lsh /tmp/data.img
+12K -rw-r--r--. 1 root root 11G Aug 25 23:01 /tmp/data.img
+
+~hchen$ sudo ls -slh /tmp/meta.data.img
+4.0K -rw-r--r--. 1 root root 101M Aug 25 23:17 /tmp/meta.data.img</pre>
+<p>然后，我们为这个文件创建一个loopback设备。（loop2015和loop2016是我乱取的两个名字）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo losetup /dev/loop2015 /tmp/data.img
+~hchen$ sudo losetup /dev/loop2016 /tmp/meta.data.img
+
+~hchen$ sudo losetup -a
+/dev/loop2015: [64768]:103991768 (/tmp/data.img)
+/dev/loop2016: [64768]:103991765 (/tmp/meta.data.img)</pre>
+<p>现在，我们为这个设备建一个Thin Provisioning的Pool，用dmsetup命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo dmsetup create hchen-thin-pool \
+                  --table &#34;0 20971522 thin-pool /dev/loop2016 /dev/loop2015 \
+                           128 65536 1 skip_block_zeroing&#34;</pre>
+<p>其中的参数解释如下（更多信息可参看<a href="https://github.com/torvalds/linux/blob/master/Documentation/device-mapper/thin-provisioning.txt" target="_blank">Thin Provisioning的man page</a>）：</p>
+<ul>
+<li>dmsetup create是用来创建thin pool的命令</li>
+<li>hchen-thin-pool 是自定义的一个pool名，不冲突就好。</li>
+<li>–table是这个pool的参数设置
+<ul>
+<li>0代表起的sector位置</li>
+<li>20971522代码结句的sector号，前面说过，一个sector是512字节，所以，20971522个正好是10GB</li>
+<li>/dev/loop2016是meta文件的设备（前面我们建好了）</li>
+<li>/dev/loop2015是data文件的设备（前面我们建好了）</li>
+<li>128是最小的可分配的sector数</li>
+<li>65536是最少可用sector的water mark，也就是一个threshold</li>
+<li>1 代表有一个附加参数</li>
+<li>skip_block_zeroing是个附加参数，表示略过用0填充的块</li>
+</ul>
+</li>
+</ul>
+<p>然后，我们就可以看到一个Device Mapper的设备了：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo ll /dev/mapper/hchen-thin-pool
+lrwxrwxrwx. 1 root root 7 Aug 25 23:24 /dev/mapper/hchen-thin-pool -&gt; ../dm-4</pre>
+<p>接下来，我们的初始还没有完成，还要创建一个Thin Provisioning 的 Volume：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo dmsetup message /dev/mapper/hchen-thin-pool 0 &#34;create_thin 0&#34;
+~hchen$ sudo dmsetup create hchen-thin-volumn-001 \
+            --table &#34;0 2097152 thin /dev/mapper/hchen-thin-pool 0&#34;</pre>
+<p>其中：</p>
+<ul>
+<li>第一个命令中的create_thin是关键字，后面的0表示这个Volume的device 的 id</li>
+<li>第二个命令，是真正的为这个Volumn创建一个可以mount的设备，名字叫hchen-thin-volumn-001。2097152只有1GB</li>
+</ul>
+<p>好了，在mount前，我们还要格式化一下：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo mkfs.ext4 /dev/mapper/hchen-thin-volumn-001
+mke2fs 1.42.9 (28-Dec-2013)
+Discarding device blocks: done
+Filesystem label=
+OS type: Linux
+Block size=4096 (log=2)
+Fragment size=4096 (log=2)
+Stride=16 blocks, Stripe width=16 blocks
+65536 inodes, 262144 blocks
+13107 blocks (5.00%) reserved for the super user
+First data block=0
+Maximum filesystem blocks=268435456
+8 block groups
+32768 blocks per group, 32768 fragments per group
+8192 inodes per group
+Superblock backups stored on blocks:
+32768, 98304, 163840, 229376
+
+Allocating group tables: done
+Writing inode tables: done
+Creating journal (8192 blocks): done
+Writing superblocks and filesystem accounting information: done</pre>
+<p>好了，我们可以mount了（下面的命令中，我还创建了一个文件）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo mkdir -p /mnt/base
+~hchen$ sudo mount /dev/mapper/hchen-thin-volumn-001 /mnt/base
+~hchen$ sudo echo &#34;hello world, I am a base&#34; &gt; /mnt/base/id.txt
+~hchen$ sudo cat /mnt/base/id.txt
+hello world, I am a base</pre>
+<p>好了，接下来，我们来看看snapshot怎么搞：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo dmsetup message /dev/mapper/hchen-thin-pool 0 &#34;create_snap 1 0&#34;
+~hchen$ sudo dmsetup create mysnap1 \
+                   --table &#34;0 2097152 thin /dev/mapper/hchen-thin-pool 1&#34;
+
+~hchen$ sudo ll /dev/mapper/mysnap1
+lrwxrwxrwx. 1 root root 7 Aug 25 23:49 /dev/mapper/mysnap1 -&gt; ../dm-5</pre>
+<p>上面的命令中：</p>
+<ul>
+<li>第一条命令是向hchen-thin-pool发一个create_snap的消息，后面跟两个id，第一个是新的dev id，第二个是要从哪个已有的dev id上做snapshot（0这个dev id是我们前面就创建了了）</li>
+</ul>
+<ul>
+<li>第二条命令是创建一个mysnap1的device，并可以被mount。</li>
+</ul>
+<p>下面我们来看看：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo mkdir -p /mnt/mysnap1
+~hchen$ sudo mount /dev/mapper/mysnap1 /mnt/mysnap1
+
+~hchen$ sudo ll /mnt/mysnap1/
+total 20
+-rw-r--r--. 1 root root 25 Aug 25 23:46 id.txt
+drwx------. 2 root root 16384 Aug 25 23:43 lost+found
+
+~hchen$ sudo cat /mnt/mysnap1/id.txt
+hello world, I am a base</pre>
+<p>我们来修改一下/mnt/mysnap1/id.txt，并加上一个snap1.txt的文件：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo echo &#34;I am snap1&#34; &gt;&gt; /mnt/mysnap1/id.txt
+~hchen$ sudo echo &#34;I am snap1&#34; &gt; /mnt/mysnap1/snap1.txt
+
+~hchen$ sudo cat /mnt/mysnap1/id.txt
+hello world, I am a base
+I am snap1
+
+~hchen$ sudo cat /mnt/mysnap1/snap1.txt
+I am snap1</pre>
+<p>我们再看一下/mnt/base，你会发现没有什么变化：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo ls /mnt/base
+id.txt      lost+found
+~hchen$ sudo cat /mnt/base/id.txt
+hello world, I am a base</pre>
+<p>你是不是已经看到了分层镜像的样子了？</p>
+<p>你还要吧继续在刚才的snapshot上再建一个snapshot</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo dmsetup message /dev/mapper/hchen-thin-pool 0 &#34;create_snap 2 1&#34;
+~hchen$ sudo dmsetup create mysnap2 \
+                   --table &#34;0 2097152 thin /dev/mapper/hchen-thin-pool 2&#34;
+
+~hchen$ sudo ll /dev/mapper/mysnap2
+lrwxrwxrwx. 1 root root 7 Aug 25 23:52 /dev/mapper/mysnap1 -&gt; ../dm-7
+
+~hchen$ sudo mkdir -p /mnt/mysnap2
+~hchen$ sudo mount /dev/mapper/mysnap2 /mnt/mysnap2
+~hchen$ sudo  ls /mnt/mysnap2
+id.txt  lost+found  snap1.txt </pre>
+<p>好了，我相信你看到了分层镜像的样子了。</p>
+<p>看完演示，我们再来补点理论知识吧：</p>
+<ul>
+<li>Snapshot来自LVM（Logic Volumn Manager），它可以在不中断服务的情况下为某个device打一个快照。</li>
+<li>Snapshot是Copy-On-Write的，也就是说，只有发生了修改，才会对对应的内存进行拷贝。</li>
+</ul>
+<p>另外，这里有篇文章<a href="http://searchstorage.techtarget.com/tip/Storage-thin-provisioning-benefits-and-challenges" target="_blank">Storage thin provisioning benefits and challenges</a>可以前往一读。</p>
+<h4><span class="ez-toc-section" id="Docker%E7%9A%84DeviceMapper"></span>Docker的DeviceMapper<span class="ez-toc-section-end"></span></h4>
+<p>上面基本上就是Docker的玩法了，我们可以看一下docker的loopback设备：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen $ sudo losetup -a
+/dev/loop0: [64768]:38050288 (/var/lib/docker/devicemapper/devicemapper/data)
+/dev/loop1: [64768]:38050289 (/var/lib/docker/devicemapper/devicemapper/metadata)</pre>
+<p>其中data 100GB，metadata 2.0GB</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen $ sudo ls -alhs /var/lib/docker/devicemapper/devicemapper
+506M -rw-------. 1 root root 100G Sep 10 20:15 data
+1.1M -rw-------. 1 root root 2.0G Sep 10 20:15 metadata </pre>
+<p>下面是相关的thin-pool。其中，有个当一大串hash串的device是正在启动的容器：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen $ sudo ll /dev/mapper/dock*
+lrwxrwxrwx. 1 root root 7 Aug 25 07:57 /dev/mapper/docker-253:0-104108535-pool -&gt; ../dm-2
+lrwxrwxrwx. 1 root root 7 Aug 25 11:13 /dev/mapper/docker-253:0-104108535-deefcd630a60aa5ad3e69249f58a68e717324be4258296653406ff062f605edf -&gt; ../dm-3</pre>
+<p>我们可以看一下它的device id（Docker都把它们记下来了）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen $ sudo cat /var/lib/docker/devicemapper/metadata/deefcd630a60aa5ad3e69249f58a68e717324be4258296653406ff062f605edf
+{&#34;device_id&#34;:24,&#34;size&#34;:10737418240,&#34;transaction_id&#34;:26,&#34;initialized&#34;:false}</pre>
+<p>device_id是24，size是10737418240，除以512，就是20971520 个 sector，我们用这些信息来做个snapshot看看（注：我用了一个比较大的dev id – 1024）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">~hchen$ sudo dmsetup message &#34;/dev/mapper/docker-253:0-104108535-pool&#34; 0 \
+                                    &#34;create_snap 1024 24&#34;
+~hchen$ sudo dmsetup create dockersnap --table \
+                    &#34;0 20971520 thin /dev/mapper/docker-253:0-104108535-pool 1024&#34;
+~hchen$ sudo mkdir /mnt/docker
+~hchen$ sudo mount /dev/mapper/dockersnap /mnt/docker/
+~hchen$ sudo ls /mnt/docker/
+id lost+found rootfs
+~hchen$ sudo ls /mnt/docker/rootfs/
+bin dev etc home lib lib64 lost+found media mnt opt proc root run sbin srv sys tmp usr var</pre>
+<p>我们在docker的容器里用findmnt命令也可以看到相关的mount的情况（因为太长，下面只是摘要）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># findmnt
+TARGET                SOURCE               
+/                 /dev/mapper/docker-253:0-104108535-deefcd630a60[/rootfs]
+/etc/resolv.conf  /dev/mapper/centos-root[/var/lib/docker/containers/deefcd630a60/resolv.conf]
+/etc/hostname     /dev/mapper/centos-root[/var/lib/docker/containers/deefcd630a60/hostname]
+/etc/hosts        /dev/mapper/centos-root[/var/lib/docker/containers/deefcd630a60/hosts]</pre>
+<h4><span class="ez-toc-section" id="Device_Mapper_%E8%A1%8C%E4%B8%8D%E8%A1%8C%EF%BC%9F"></span>Device Mapper 行不行？<span class="ez-toc-section-end"></span></h4>
+<p>Thin Provisioning的文档中说，这还处理实验阶段，不要上Production.</p>
+<blockquote><p>These targets are very much still in the EXPERIMENTAL state. Please do not yet rely on them in production.</p></blockquote>
+<p>另外，Jeff Atwood在Twitter上发过这样的一推</p>
+<p><a href="https://twitter.com/codinghorror/status/604096348682485760"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17214" src="/uploads/2015/08/Jeff.Atwood.DeviceMapper.png" alt="Jeff.Atwood.DeviceMapper" width="607" height="311" srcset="" sizes="(max-width: 607px) 100vw, 607px"/></a></p>
+<p>这个推指向的<a href="https://forums.docker.com/t/rmi-not-freeing-disk-space-in-devicemapper-sparse-file-centos-6-6/1640/3" target="_blank">这个讨论</a>中，其中指向了这个<a href="https://github.com/discourse/discourse_docker/commit/48f22d14f39496c8df446cbc65ee04b258c5a1a0" target="_blank">code diff</a>，基本上就是说，DeviceMapper这种东西问题太多了，我们应该把其加入黑名单。Doker的Founder也这样回复到：</p>
+<p><a href="https://twitter.com/solomonstre/status/604055267303636992"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17215" src="/uploads/2015/08/Solomon.Hykeys.DeviceMapper.png" alt="" width="620" height="229" srcset="" sizes="(max-width: 620px) 100vw, 620px"/></a></p>
+<p>所以，如果你在使用loopback的devicemapper的话，当你的存储出现了问题后，正确的解决方案是：</p>
+<p style="text-align: center;">rm -rf /var/lib/docker</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17200-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Device Mapper</a>, <a href="javascript:void(0)" rel="tag">Docker</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Thin Provisioning</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Docker基础技术：DeviceMapper</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1750442" class="comment even thread-even depth-1">
+<article id="div-comment-1750442" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a390bb20981176325c394f8cae0abacd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a390bb20981176325c394f8cae0abacd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.yundaren.com" class="url" rel="ugc external nofollow">云达人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750442"><time datetime="2015-08-26T08:44:49+08:00">2015年08月26日 08:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>终于又见陈老师更新文章，最近在研究Rancher，希望后续有相关文章出来啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750446" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1750446" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9046943d03a5d41827ff251bfbff1d6c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9046943d03a5d41827ff251bfbff1d6c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://int64ago.org" class="url" rel="ugc external nofollow">int64ago</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750446"><time datetime="2015-08-26T08:56:54+08:00">2015年08月26日 08:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>终于更新了！<br/>
+这是要出 Docker 的一个系列？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750448" class="comment even thread-even depth-1">
+<article id="div-comment-1750448" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce566dd959c5d20231f8290da9dbbb84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce566dd959c5d20231f8290da9dbbb84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xy2401.com" class="url" rel="ugc external nofollow">xy2401</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750448"><time datetime="2015-08-26T09:01:12+08:00">2015年08月26日 09:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看完了这几篇，水平/知识 不够看不懂，下次再多看几遍来</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750515" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1750515" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e84275c3e0a2347d4cf9735f56b8f26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e84275c3e0a2347d4cf9735f56b8f26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lisux.me/lishuai/" class="url" rel="ugc external nofollow">lisux</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750515"><time datetime="2015-08-26T14:51:43+08:00">2015年08月26日 14:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>~hchen$ sudo losetup /dev/loop2015 /tmp/data.img<br/>
+~hchen$ sudo losetup /dev/loop2015 /tmp/meta.data.img<br/>
+这里是不是写错了？一个是2016？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1750731" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1750731" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750731"><time datetime="2015-08-27T09:10:53+08:00">2015年08月27日 09:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，是手误。已修正。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1750526" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1750526" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f90f8363ed6abf83c3d9f98ede57739?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f90f8363ed6abf83c3d9f98ede57739?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">itwesley</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750526"><time datetime="2015-08-26T14:58:13+08:00">2015年08月26日 14:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>每次拜讀完您的文章後總是獲益匪淺, 讓自己更了解 docker 基礎知識了 Orz.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750543" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1750543" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11e3633aeb5136eae0121b9bffc59e6f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11e3633aeb5136eae0121b9bffc59e6f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xxx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750543"><time datetime="2015-08-26T15:15:37+08:00">2015年08月26日 15:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sudo losetup /dev/loop2015 /tmp/meta.data.img<br/>
+这里是2016吧</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1750732" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-1750732" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750732"><time datetime="2015-08-27T09:11:11+08:00">2015年08月27日 09:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢查错，已修正！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1750651" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1750651" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f662c04f31a41a56f6580bc1b8f90788?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f662c04f31a41a56f6580bc1b8f90788?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhuang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750651"><time datetime="2015-08-26T20:06:27+08:00">2015年08月26日 20:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>device-mapper 主要是太复杂了，虽然 docker 只用了 thinp target 一部分，但是这部分依赖会造成编译和运行时的双重复杂。</p>
+<p>device-mapper 的技术问题是它是工作在 block 级别的，所以没法像 overlay/aufs 那样做文件级别的 diff 之类的操作。</p>
+<p>实际用过之后感觉 device-mapper 的性能略悲剧，docker 实际会使用 dm 分配的 sparse 文件，然后才会写入存储系统，这两层的性能损失比较严重。</p>
+<p>即使是把 dm 放到物理硬盘上，改善也不明显。由于 docker 不了解 block 层面的信息，反复创建某个容器会反复读取物理 block 信息，很容易受到 io 的影响。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1917565" class="comment odd alt depth-2">
+<article id="div-comment-1917565" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a5eb6652e4ed8a6dd4e6c7f6edab1020?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a5eb6652e4ed8a6dd4e6c7f6edab1020?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ryan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1917565"><time datetime="2017-09-12T19:42:51+08:00">2017年09月12日 19:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sparse file的问题不是DM，其实是因为用了loopback。DM setup完全可以直接裸block直接上。thin target的snapshot已经做到了diff；overlay这种fs级别的反而会有inode占用过多带来的麻烦。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1750668" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1750668" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43964f0ed03e915aef7fc679b29f7a01?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43964f0ed03e915aef7fc679b29f7a01?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liangck</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1750668"><time datetime="2015-08-26T23:56:41+08:00">2015年08月26日 23:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>终于又更新了。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754400" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1754400" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/78ed79535132be6f95b85950d3323129?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/78ed79535132be6f95b85950d3323129?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://sealinger.com" class="url" rel="ugc external nofollow">sealinger</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1754400"><time datetime="2015-09-07T20:23:11+08:00">2015年09月07日 20:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>要生成 ls -lsh 显示的 101M 的 meta.data.img 文件，这条命令好像也对不上：<br/>
+“dd if=/dev/zero of=/tmp/meta.data.img bs=1K count=1 seek=1G”</p>
+<p>应该是：dd if=/dev/zero of=/tmp/meta.data.img bs=1K count=1 seek=100K<br/>
+吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1810222" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://chattool.sinaapp.com/?p=1159" class="url" rel="ugc external nofollow">探索在Docker上运行PHP项目 | phper</a> </div>
+</li>
+<li id="comment-1810420" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1810420" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f9c68e2ef50cff8ba47f119f827aa56b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f9c68e2ef50cff8ba47f119f827aa56b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">code</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1810420"><time datetime="2016-02-26T23:13:55+08:00">2016年02月26日 23:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>珠三角地区关注Java开发技术的可加腾讯QQ群479189837，大家一起交流讨论下</p>
+</div>
+ </article>
+</li>
+<li id="comment-1830325" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1830325" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76fd62bdbb0637ba602b559d5a1f43a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76fd62bdbb0637ba602b559d5a1f43a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xyjk1002</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1830325"><time datetime="2016-05-11T13:15:54+08:00">2016年05月11日 13:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1750651" rel="nofollow">@zhuang </a><br/>
+那就上SSD</p>
+</div>
+ </article>
+</li>
+<li id="comment-1849722" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://phpor.net/blog/post/3577" class="url" rel="ugc external nofollow">Docker 存储 | PHPor 的Blog</a> </div>
+</li>
+<li id="comment-1868441" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1868441" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ca088d9c9fb94923ffe58ab0e1754d11?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ca088d9c9fb94923ffe58ab0e1754d11?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rhinocero</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-1868441"><time datetime="2016-08-13T16:01:56+08:00">2016年08月13日 16:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1754400" rel="nofollow">@sealinger </a><br/>
+确实，1G的话出来就是1.1T了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1893904" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jingyuyun.com/article/12590.html" class="url" rel="ugc external nofollow">DeviceMapper与docker-鲸鱼云</a> </div>
+</li>
+<li id="comment-1893925" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.adocker.cn/archives/1408" class="url" rel="ugc external nofollow">DeviceMapper与docker - 未分类 - Adocker</a> </div>
+</li>
+<li id="comment-1946995" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2018/12/08/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e8%ae%b0%e4%b8%80%e6%ac%a1kubernetes-docker%e7%bd%91%e7%bb%9c%e6%8e%92%e9%9a%9c/" class="url" rel="ugc external nofollow">【酷壳】 记一次Kubernetes/Docker网络排障 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2050978" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2050978" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83be14ff22c57d2f7ee3f3fec7238011?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83be14ff22c57d2f7ee3f3fec7238011?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xflying</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-2050978"><time datetime="2019-12-27T10:54:24+08:00">2019年12月27日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实应该是 dd if=/dev/zero of=./tmp-2.img bs=1K count=1 seek=100K</p>
+</div>
+ </article>
+</li>
+<li id="comment-2108362" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaozixun.com/46568.html" class="url" rel="ugc external nofollow">记一次Kubernetes/Docker网络排障 - 微信红包网</a> </div>
+</li>
+<li id="comment-2152438" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2152438" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/94d87e874e963a9e13ce0d2871b6c112?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/94d87e874e963a9e13ce0d2871b6c112?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tim</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-2152438"><time datetime="2020-09-11T14:41:56+08:00">2020年09月11日 14:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这还处“理”实验阶段<br/>
+–&gt;<br/>
+处”于”实验阶段</p>
+</div>
+ </article>
+</li>
+<li id="comment-2156387" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/a/25102890.html" class="url" rel="ugc external nofollow">对PHP项目在Docker上运行的一些探索 – FIXBBS</a> </div>
+</li>
+<li id="comment-2361862" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2361862" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1087f6b334b1a34aa957e2ad59591029?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1087f6b334b1a34aa957e2ad59591029?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pzxy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17200.html#comment-2361862"><time datetime="2022-01-27T17:33:10+08:00">2022年01月27日 17:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>越看越膜拜，感叹作者内功深厚，何时才能望其项背。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

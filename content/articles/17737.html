@@ -1,0 +1,816 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>AWS 的 S3 故障回顾和思考 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17737 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17737" class="post-content post-17737 post type-post status-publish format-standard hentry category-itnews category-misc category-progdesign tag-amazon-s3 tag-aws tag-design tag-high-availability">
+<header class="entry-header">
+<span class="screen-reader-text">AWS 的 S3 故障回顾和思考</span>
+<h1 class="entry-title">AWS 的 S3 故障回顾和思考</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17737.html" title="14:20" rel="bookmark"><time class="entry-date" datetime="2017-03-03T14:20:03+08:00" pubdate="">2017年03月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17737.html#comments" class="comments-link">56 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 66,208 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-17738" src="/uploads/2017/03/Amazon-Web-Services-Down.png" width="360" height="197" srcset="" sizes="(max-width: 360px) 100vw, 360px"/>继<a href="/articles/17680.html" target="_blank">Gitlab的误删除数据事件</a>没几天，“不沉航母” AWS S3 （Simple Storage Service）几天前也“沉”了4个小时，墙外的半个互联网也跟着挂了。如约，按 AWS 惯例，AWS今天给出了一个简单的故障报告《<span class="s1"><a href="https://aws.amazon.com/cn/message/41926/" target="_blank">Summary of the Amazon S3 Service Disruption in the Northern Virginia (US-EAST-1) Region</a>》。这个故障和简单来说和Gitlab一样，也是人员误操作。先简单的说一下这份报中说了什么。</span></p>
+<h4>故障原因</h4>
+<p>简单来说，这天，有一个 AWS 工程师在调查 <span class="s1">Northern Virginia (US-EAST-1) Region 上 S3 的一个和账务系统相关的问题，这个问题是S3的账务系统变慢了（我估计这个故障在Amazon里可能是Sev2级，Sev2级的故障在Amazon算是比较大的故障，需要很快解决），Oncall的开发工程师（注：Amazon的运维都是由开发工程师来干的，所以Amazon内部嬉称SDE-Software Developer Engineer 为 Someone Do Everything）想移除一个账务系统里的一个子系统下的一些少量的服务器（估计这些服务器上有问题，所以想移掉后重新部署），结果呢，有一条命令搞错了，导致了移除了大量的S3的控制系统。包括两个很重要的子系统：</span></p>
+<p><span id="more-17737"></span></p>
+<p style="padding-left: 30px;">1）<strong>一个是S3的对象索引服务（Index）</strong>，其中存储了S3对象的metadata和位置信息。这个服务也提供了所有的 GET，LIST，PUT 和DELETE请求。</p>
+<p style="padding-left: 30px;">2）<strong>一个是S3的位置服务系统（Placement）</strong>，这个服务提供对象的存储位置和索引服务的系统。这个系统主要是用于处理PUT新对象请求。</p>
+<p>这就是为什么S3不可访问的原因。</p>
+<p>在后面，AWS也说明了一下故障恢复的过程，其中重点提到了这点——</p>
+<p style="padding-left: 30px;">虽然整个S3的是做过充分的故障设计的（注：AWS的七大Design Principle 之一 Design for Failure）—— 就算是最核心的组件或服务出问题了，系统也能恢复。但是，可能是在过去的日子里 S3 太稳定了，所以，AWS 在很长很长一段时间内都没有重启过 S3 的核心服务，而过去这几年，S3 的数据对象存储级数级的成长（S3存了什么样数量级的对象，因为在Amazon工作过，所以多大概知道是个什么数量级，这里不能说，不过，老实说，很惊人的），所以，这两个核心服务在启动时要重建并校验对象索引元数据的完整性，这个过程没想到花了这么长的时候。而Placement服务系统依赖于Index 服务，所以花了更长的时间。</p>
+<p>了解过系统底层的技术人员应该都知道这两个服务有多重要，简而言之，这两个系统就像是Unix/Linux文件系统中的inode，或是像HDFS里的node name，如果这些元数据丢失，那么，用户的所有数据基本上来说就等于全丢了。</p>
+<p>而要恢复索引系统，就像你的操作系统从异常关机后启动，文件系统要做系统自检那样，硬盘越大，文件越多，这个过程就越慢。</p>
+<p>另外，这次，AWS没有使用像以前那样 Outage 的故障名称，用的是 “Increased Error Rate” 这样的东西。我估计是没有把所有这两个服务删除完，估计有些用户是可以用的，有的用户是则不行了。</p>
+<h4>后续改进</h4>
+<p>在这篇故障简报中，AWS 也提到了下面的这些改进措施——</p>
+<p>1）<strong>改进运维操作工具</strong>。对于此次故障的运维工具，有下面改进：</p>
+<ul>
+<li><strong>让删除服务这个操作变慢一些</strong>（陈皓注：这样错了也可以有时间反悔，相对于一个大规模的分布式系统，这招还是很不错的，至少在系统报警时有也可以挽救）</li>
+</ul>
+<ul>
+<li><strong>加上一个最小资源数限制的SafeGuard</strong>（陈皓注：就是说，任何服务在运行时都应该有一个最小资源数，分布式集群控制系统会强行维护服务正常运行的最小的一个资源数）</li>
+</ul>
+<ul>
+<li>举一反三，Review所有和其它的运维工具，保证他们也相关的检查。</li>
+</ul>
+<p>2）<strong>改进恢复过程。</strong>对于恢复时间过长的问题，有如下改进：</p>
+<ul>
+<li><strong>分解现有厚重的重要服务成更小的单元</strong>（在 AWS，Service是大服务，小服务被称之为 Cell），AWS 会把这几个重要的服务重构成 Cell服务。（陈皓注：这应该就是所谓的“微服务”了吧）。这样，服务粒度变小，重启也会快一些，而且还可以减少故障面（原文：blast radius – 爆炸半径）</li>
+</ul>
+<ul>
+<li><strong>今年内完成对 Index 索引服务的分区计划</strong>。</li>
+</ul>
+<p> </p>
+<h4>相关思考</h4>
+<p>下面是我对这一故障的相关思考——</p>
+<p>0）<strong>太喜欢像Gitlab和AWS这样的故障公开了</strong>，那怕是一个自己人为的低级错误。不掩盖，不文过饰非，透明且诚恳。Cool!</p>
+<p>1）这次事件，还好没有丢失这么重要的数据，不然的话，将是灾难性的。</p>
+<p>2）另外，面对在 US-EASE-1 这个老牌 Region 上的海量的对象，而且能在几个小时内恢复，很不容易了。</p>
+<p>3）这个事件，再次映证了我在《<a href="/articles/17459.html">关于高可用的系统</a>》中提到的观点：<strong>一个系统的高可用的因素很多，不仅仅只是系统架构，更重要的是——高可用运维</strong>。</p>
+<p>4）<strong>对于高可用的运维，平时的故障演习是很重要的。</strong>AWS 平时应该没有相应的故障演习，所以导致要么长期不出故障，一出就出个大的让你措手不及。这点，Facebook就好一些，他们每个季度扔个骰子，随机关掉一个IDC一天。Netflix 也有相关的 Chaos Monkey，我以前在的路透每年也会做一次大规模的故障演练——灾难演习。</p>
+<p>5）AWS对于后续的改进可以看出他的技术范儿。可以看到其改进方案是用技术让自己的系统更为的高可用。然后，对比国内的公司对于这样的故障，基本上会是下面这样的画风：</p>
+<p style="padding-left: 30px;">a）加上更多更为严格的变更和审批流程，</p>
+<p style="padding-left: 30px;">b）使用限制更多的权限系统和审批系统</p>
+<p style="padding-left: 30px;">c）使用更多的人来干活（一个人干事，另一个人在旁边看）</p>
+<p style="padding-left: 30px;">d）使用更为厚重的测试和发布过程</p>
+<p style="padding-left: 30px;">e）惩罚故障人，用价值观教育工程师。</p>
+<p>这还是我老生长谈的那句话——<strong>如果你是一个技术公司，你就会更多的相信技术而不是管理。相信技术会用技术来解决问题，相信管理，那就只会有制度、流程和价值观来解决问题</strong>。（注意：这里我并没有隔离技术和管理，只是更为倾向于用技术解决问题）</p>
+<p><strong>最后，你是要建一个 “高可用的技术系统” ，还是一个 “高用的管理系统”？ ;-)</strong></p>
+<p>（全文完）</p>
+<p> </p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17737-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">业界新闻</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Amazon S3</a>, <a href="javascript:void(0)" rel="tag">AWS</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">High Availability</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>AWS 的 S3 故障回顾和思考</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1913343" class="comment even thread-even depth-1">
+<article id="div-comment-1913343" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/17e6b73e5ce1b47dc7dbeee9bbb9284c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/17e6b73e5ce1b47dc7dbeee9bbb9284c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">哈士奇</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913343"><time datetime="2017-03-03T14:44:13+08:00">2017年03月03日 14:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>沙发</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913344" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1913344" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d0483a943cf314295e5befb699f8c209?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d0483a943cf314295e5befb699f8c209?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">康斯坦丁</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913344"><time datetime="2017-03-03T14:47:22+08:00">2017年03月03日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2楼</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913345" class="comment even thread-even depth-1">
+<article id="div-comment-1913345" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2cfa61cc1d2c953fbfcd11017fad1db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2cfa61cc1d2c953fbfcd11017fad1db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chunyang-wen.github.io" class="url" rel="ugc external nofollow">Chunyang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913345"><time datetime="2017-03-03T14:50:14+08:00">2017年03月03日 14:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞公开解决过程。不掩饰自己的缺点。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913346" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1913346" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4f9fdbb466e8a7e2bbee919471f4990d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4f9fdbb466e8a7e2bbee919471f4990d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Weizw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913346"><time datetime="2017-03-03T14:51:20+08:00">2017年03月03日 14:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>深刻</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913347" class="comment even thread-even depth-1">
+<article id="div-comment-1913347" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8516a464b88c35c188a560e86015943?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8516a464b88c35c188a560e86015943?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.fengyingsheng.com" class="url" rel="ugc external nofollow">eason</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913347"><time datetime="2017-03-03T14:56:19+08:00">2017年03月03日 14:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>高可用赞！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913348" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1913348" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/530b37acd57b7ab5bd199e56da5a1a6d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/530b37acd57b7ab5bd199e56da5a1a6d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/xusiwei" class="url" rel="ugc external nofollow">观象士</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913348"><time datetime="2017-03-03T14:58:09+08:00">2017年03月03日 14:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后一句亮了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913349" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1913349" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2aae63de978b6ae4abff9c9ff4ee32e1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2aae63de978b6ae4abff9c9ff4ee32e1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jim</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913349"><time datetime="2017-03-03T15:01:54+08:00">2017年03月03日 15:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>技术管理人。这里有个错别字。<br/>
+所以导致要么长其不出故障</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913361" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-1913361" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913361"><time datetime="2017-03-03T19:06:57+08:00">2017年03月03日 19:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢！马上更正！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1913350" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1913350" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4756056ab15d1d88233bbeaacb190d35?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4756056ab15d1d88233bbeaacb190d35?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">MT</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913350"><time datetime="2017-03-03T15:24:45+08:00">2017年03月03日 15:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于第五点，你确定AWS内部不是按照你说的五点执行的？</p>
+<p>亚马逊在美帝的口碑可是比阿里在中国的口碑差很多很多很多的。。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913351" class="comment odd alt depth-2">
+<article id="div-comment-1913351" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4340566638a7b8f573b272e70f41c1f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4340566638a7b8f573b272e70f41c1f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Malloc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913351"><time datetime="2017-03-03T16:00:31+08:00">2017年03月03日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Amazon内部会写COE（Correction of Error），写COE的时候都是对事不对人，所有做错的人都称为The engineer。COE会对整个大组甚至全公司开放，COE里面的Action Item也是对全组来说的。现在S3整个大组氛围不错，应该跟前几年不一样了… </p>
+<p>另外，我实在想不出公司还有什么办法惩罚人，能比连续一周oncall，天天半夜三点被page醒更折磨人了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913352" class="comment even depth-2 parent">
+<article id="div-comment-1913352" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4340566638a7b8f573b272e70f41c1f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4340566638a7b8f573b272e70f41c1f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Malloc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913352"><time datetime="2017-03-03T16:33:52+08:00">2017年03月03日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实还想提一句，虽然不清楚AWS总体，但是org内部普遍认为惩罚事故责任人基本完全没有意义。系统的错误往往来自于团队的工程错误，比如一个设计糟糕的没有design for failure的系统，过短的开发周期导致的short cuts，为什么运维没有足够的自动化措施而需要人肉运维导致犯错；如果是新人那么oncall training是不是没有做好。即使是这个工程师就是个蠢蛋，也要想想hiring bar怎么搞的，为什么招聘的时候没有按照高标准来招聘。其实事故责任人反而是最无辜的。</p>
+<p>我觉得喜欢问责事故责任人的公司最后会变成“大家谁也不做事怕犯错，一旦出问题就开始责备别人”的文化。这样的科技公司最后注定会走下坡路的吧。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913356" class="comment odd alt depth-3">
+<article id="div-comment-1913356" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54d1511344cbdffcd7fcc67c87827c3b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54d1511344cbdffcd7fcc67c87827c3b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">SizeOf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913356"><time datetime="2017-03-03T17:51:08+08:00">2017年03月03日 17:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不能评论了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913358" class="comment even depth-3 parent">
+<article id="div-comment-1913358" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54d1511344cbdffcd7fcc67c87827c3b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54d1511344cbdffcd7fcc67c87827c3b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">SizeOf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913358"><time datetime="2017-03-03T17:53:08+08:00">2017年03月03日 17:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不会写代码，就可以去亚马，亚马的招聘门槛那么低，毕竟美帝著名xue han工厂。前一段时间出现了线上笔试两轮直接发offer的情况。题目就是9选3，所以哪怕不会编程，你把9题背下来也是有机会进去的。。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913370" class="comment odd alt depth-4 parent">
+<article id="div-comment-1913370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4340566638a7b8f573b272e70f41c1f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4340566638a7b8f573b272e70f41c1f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Malloc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913370"><time datetime="2017-03-04T02:01:41+08:00">2017年03月04日 02:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>两轮OA给offer现在已经叫停了… 确实是去年的bar太奇怪</p>
+<p>最近中文论坛有人给HR举报了群面泄题的事，好像offer也收回了</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913377" class="comment even depth-5">
+<article id="div-comment-1913377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d096d2bab0b0e25a27bcee6d7aaa8df4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d096d2bab0b0e25a27bcee6d7aaa8df4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://YsY5" class="url" rel="ugc external nofollow">猪猪侠</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913377"><time datetime="2017-03-04T23:17:58+08:00">2017年03月04日 23:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>亚马逊现在都有35W员工了，需要招很多人做人肉automation啊，所以要求肯定低，很多人都想进亚马逊做云计算，但是95%的人写了主业务代码，而是负责onCall的devops了。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1913359" class="comment odd alt depth-3">
+<article id="div-comment-1913359" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54d1511344cbdffcd7fcc67c87827c3b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54d1511344cbdffcd7fcc67c87827c3b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">SizeOf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913359"><time datetime="2017-03-03T17:54:36+08:00">2017年03月03日 17:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>评论不能出现 亚X马X逊关键词？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1913353" class="comment even thread-even depth-1">
+<article id="div-comment-1913353" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2893c2d8819302028f65d92dcb486a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2893c2d8819302028f65d92dcb486a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">。</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913353"><time datetime="2017-03-03T16:55:24+08:00">2017年03月03日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞！<br/>
+“我觉得喜欢问责事故责任人的公司最后会变成“大家谁也不做事怕犯错，一旦出问题就开始责备别人”的文化。这样的科技公司最后注定会走下坡路的吧。”<br/>
+特别认同这点。<br/>
+而且，文末对国内公司的一般做法，真是说的很到位，我老板也是这样，出了问题从来不从技术上来规避，反而限制大家发布，或者发布流程更繁琐。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913363" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1913363" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40098661c62be321232c633a25521925?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40098661c62be321232c633a25521925?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.fungenomics.com" class="url" rel="ugc external nofollow">YellowTree</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913363"><time datetime="2017-03-03T19:29:23+08:00">2017年03月03日 19:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913364" class="comment even thread-even depth-1">
+<article id="div-comment-1913364" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/58fea9bafeec92036193853c4787464f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/58fea9bafeec92036193853c4787464f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Solomon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913364"><time datetime="2017-03-03T19:37:56+08:00">2017年03月03日 19:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只有这样的心态才能接受住考验，也给其他宝贵的经验分享。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913367" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1913367" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a9320eed1d45ba111293999ea7ca8110?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a9320eed1d45ba111293999ea7ca8110?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">michael</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913367"><time datetime="2017-03-03T22:30:28+08:00">2017年03月03日 22:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子哥的酷壳开始接广告了？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913368" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1913368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913368"><time datetime="2017-03-03T22:55:52+08:00">2017年03月03日 22:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>广告费捐Wikipedia</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1913374" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913374" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f3f42923e22667d82242e6d26724efa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f3f42923e22667d82242e6d26724efa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ricks</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913374"><time datetime="2017-03-04T10:48:23+08:00">2017年03月04日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>up</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913384" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913384" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.catscarlet.com/" class="url" rel="ugc external nofollow">石樱灯笼</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913384"><time datetime="2017-03-05T22:31:50+08:00">2017年03月05日 22:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果你是一个技术公司”<br/>
+我觉得这一点应该很难达到……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913387" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913387" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/597acdddb5237a98e4934c03f4dcb355?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/597acdddb5237a98e4934c03f4dcb355?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ThinkingQuest</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913387"><time datetime="2017-03-06T10:39:15+08:00">2017年03月06日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的非常赞！<br/>
+一个小瑕疵：hadoop里那个好像叫 name node。 文中两个单词写反了。 其他的错别字缺字都无所谓。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913388" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913388" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4d73adf9011353cd98e097213589837?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4d73adf9011353cd98e097213589837?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.jicker.cn" class="url" rel="ugc external nofollow">文武双全</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913388"><time datetime="2017-03-06T10:50:49+08:00">2017年03月06日 10:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好久没更新了，一更新了还是跟故障有关，哈哈。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913390" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xcx.njoy.cn/p/22984.html" class="url" rel="ugc external nofollow">中山小程序:从AWS宕机事件说开去，热闹看完该学会什么？-微信小程序|中山小程序开发|中山微信开发|中山公众号</a> </div>
+</li>
+<li id="comment-1913392" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://xcheblog.wordpress.com/2017/03/06/lessons-learned-004-aws-%e5%a4%a7%e7%95%b6%e6%a9%9f/" class="url" rel="ugc external nofollow">Lessons Learned #004 — AWS 大當機 – xc — quan</a> </div>
+</li>
+<li id="comment-1913393" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://whathappen.today/2017/03/06/%e4%bb%8eaws%e5%ae%95%e6%9c%ba%e4%ba%8b%e4%bb%b6%e8%af%b4%e5%bc%80%e5%8e%bb%ef%bc%8c%e7%83%ad%e9%97%b9%e7%9c%8b%e5%ae%8c%e8%af%a5%e5%ad%a6%e4%bc%9a%e4%bb%80%e4%b9%88" class="url" rel="ugc external nofollow">从AWS宕机事件说开去，热闹看完该学会什么？ – What Happened Today?!?</a> </div>
+</li>
+<li id="comment-1913401" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913401" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/239110d47cab696aaf02a1beab5711ae?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/239110d47cab696aaf02a1beab5711ae?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">戊子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913401"><time datetime="2017-03-07T09:37:29+08:00">2017年03月07日 09:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>公开故障不能再赞了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913402" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913402" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/01fdf71d970c10954199dbda99d2b699?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/01fdf71d970c10954199dbda99d2b699?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://16163.co" class="url" rel="ugc external nofollow">16163.co</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913402"><time datetime="2017-03-07T12:20:18+08:00">2017年03月07日 12:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>本公司的运维真的是low的一个B；这和别人的差距不是一星半点。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913417" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913417" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b651d804e84a10d66dea8bb8ac4e39b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b651d804e84a10d66dea8bb8ac4e39b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">企业越大越容易烂</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913417"><time datetime="2017-03-08T11:17:23+08:00">2017年03月08日 11:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>AWS 平时估计肯定有相应的故障演习，<br/>
+但估计也和国内某些企业一样从实战演习进化到ppt报告演习了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913434" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913434" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0cdadf488169697a6293dcbf1f9e9356?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0cdadf488169697a6293dcbf1f9e9356?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://weibomiaopai.com/" class="url" rel="ugc external nofollow">weibomiaopai</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913434"><time datetime="2017-03-09T00:13:01+08:00">2017年03月09日 00:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没用过AWS,一直用的是 Vultr 和 Linode</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913483" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913483" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f81086beca7fe4452fa24e2a37f3cc9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f81086beca7fe4452fa24e2a37f3cc9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Alf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913483"><time datetime="2017-03-11T18:26:48+08:00">2017年03月11日 18:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>然后，对比国内的公司对于这样的故障，基本上会是下面这样的画风：</p>
+<p>a）加上更多更为严格的变更和审批流程，</p>
+<p>b）使用限制更多的权限系统和审批系统</p>
+<p>c）使用更多的人来干活（一个人干事，另一个人在旁边看）</p>
+<p>d）使用更为厚重的测试和发布过程</p>
+<p>e）惩罚故障人，用价值观教育工程师。</p>
+<p>好露骨==</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913552" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913552" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9e0d4e6ed331cce37e2dfdd941ca67a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9e0d4e6ed331cce37e2dfdd941ca67a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liujianqiao.com" class="url" rel="ugc external nofollow">JIANQIAO LIU</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913552"><time datetime="2017-03-19T20:39:33+08:00">2017年03月19日 20:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不得不说，管理的方式是更容易被人类想到的方式。技术的方式更难想到一些，然而更容易得到一劳永逸的效果（至少能够比管理逸更长的时间）。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913608" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913608" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/887fce82a00a37281d094263cc16098e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/887fce82a00a37281d094263cc16098e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://jiazibaike.github.io/" class="url" rel="ugc external nofollow">甲子百科</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913608"><time datetime="2017-03-26T19:02:06+08:00">2017年03月26日 19:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还是国外的公司好，对事不对人</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913626" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913626" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f7e959d17cd25463a072bbfb394d02b5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f7e959d17cd25463a072bbfb394d02b5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">foven</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913626"><time datetime="2017-03-29T15:26:32+08:00">2017年03月29日 15:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我在aws的网站上看见介绍说他们的持久性有99.999999999%，请教博主，这个指标是什么作用呢？并且是如何得出这个数值的呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913669" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hbuck.com/archives/8" class="url" rel="ugc external nofollow">AWS 的 S3 故障回顾和思考 – Run! Buck</a> </div>
+</li>
+<li id="comment-1913676" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/04/05/%e5%bd%93node-js%e9%81%87%e8%a7%81docker-2/" class="url" rel="ugc external nofollow">当Node.js遇见Docker - 莹莹之色</a> </div>
+</li>
+<li id="comment-1913705" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913705" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9061d1700494b6f4642ff27b332909ea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9061d1700494b6f4642ff27b332909ea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.yunweipai.com" class="url" rel="ugc external nofollow">运维派</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913705"><time datetime="2017-04-08T17:23:16+08:00">2017年04月08日 17:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很多人云计算时代下，运维会被淘汰，其实云化以后对系统的“可维护性”的诉求越来越高，就像陈老师提到“高可用运维”。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913723" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913723" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f81086beca7fe4452fa24e2a37f3cc9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f81086beca7fe4452fa24e2a37f3cc9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">AlfredSun</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913723"><time datetime="2017-04-10T16:45:54+08:00">2017年04月10日 16:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>什么叫做用价值观教育工程师？有什么例子吗？</p>
+<p><a href="https://www.zhihu.com/question/58293664" rel="nofollow ugc">https://www.zhihu.com/question/58293664</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1913890" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913890" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/508ee3ed3ad697118bf44e6026d29907?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/508ee3ed3ad697118bf44e6026d29907?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.yazhuanji.cn" class="url" rel="ugc external nofollow">电动螺旋压力机</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913890"><time datetime="2017-04-21T11:47:13+08:00">2017年04月21日 11:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，您的网站做的很不错，很漂亮，我已经收藏了，方便我随时访问.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913891" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913891" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6bc0dac9ca79e091be037b3a49e6e0f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6bc0dac9ca79e091be037b3a49e6e0f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Josh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913891"><time datetime="2017-04-21T16:24:20+08:00">2017年04月21日 16:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>US-EASE-1 应该是 US-EAST-1 笔误</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913934" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913934" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c3f3905af31a804810c38595402eb58?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c3f3905af31a804810c38595402eb58?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">贾茹</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913934"><time datetime="2017-04-28T10:48:59+08:00">2017年04月28日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>棒棒哒！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913952" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913952" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad8be41bf1c7ba09c18d9964e57e1992?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad8be41bf1c7ba09c18d9964e57e1992?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zxstar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1913952"><time datetime="2017-05-02T17:20:08+08:00">2017年05月02日 17:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>然后，对比国内的公司对于这样的故障，基本上会是下面这样的画风：</p>
+<p>a）加上更多更为严格的变更和审批流程，</p>
+<p>b）使用限制更多的权限系统和审批系统</p>
+<p>c）使用更多的人来干活（一个人干事，另一个人在旁边看）</p>
+<p>d）使用更为厚重的测试和发布过程</p>
+<p>e）惩罚故障人，用价值观教育工程师。<br/>
+对这点深有感触，2016年过年前一个星期，系统被hacked,然后公司处理流程和上面的几乎一模一样。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914411" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qianpangzi.com/2017/02/02/%e4%bb%8egitlab%e8%af%af%e5%88%a0%e9%99%a4%e6%95%b0%e6%8d%ae%e5%ba%93%e6%83%b3%e5%88%b0%e7%9a%84/" class="url" rel="ugc external nofollow">从Gitlab误删除数据库想到的 - 钱胖子</a> </div>
+</li>
+<li id="comment-1915167" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1915167" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b23101b74e8b52c4af302d53c6059a83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b23101b74e8b52c4af302d53c6059a83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">不好玩</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1915167"><time datetime="2017-07-11T14:41:05+08:00">2017年07月11日 14:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天经理了一次所谓的复盘，对象是上周两次攻击事件在应急响应的过程中出现的种种问题。会上，对复盘最终的结论是定义一个几年前就已经定义过但从未真正执行过应急响应流程，罗列了问题，明确了责任。但是，没有挖掘在流程中会左右工程师操作方案的正确的和误导的信息，没有归纳导致响应效率降低的本质原因。没有站在一线工程师的角度去回顾和反思，有的只是站在上帝视角，对表面上的结果一刀切式的所谓的“改进”。特意回来看这篇文章，感受颇深。差距，真的不是技术上的落后。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915168" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1915168" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b23101b74e8b52c4af302d53c6059a83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b23101b74e8b52c4af302d53c6059a83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">不好玩</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1915168"><time datetime="2017-07-11T14:43:52+08:00">2017年07月11日 14:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>再补充一句。耗子叔叔是最实在的技术明星，真正将自己的经理提炼成经验，并且输出价值的人。偶像！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915818" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://codingtrek.com/?p=153" class="url" rel="ugc external nofollow">[转发]做正确的事，等着被开除 – Coding Trek</a> </div>
+</li>
+<li id="comment-1916774" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1916774" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7cdbf2c21f81e539c01deb00bddb8d2b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7cdbf2c21f81e539c01deb00bddb8d2b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">龙小哲</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1916774"><time datetime="2017-08-25T16:05:25+08:00">2017年08月25日 16:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>S3 的数据对象存储级数级的成长】是不是有错别字？<br/>
+指数级的增长？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917773" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=310" class="url" rel="ugc external nofollow">关于Facebook 的 React 专利许可证 – IT文摘</a> </div>
+</li>
+<li id="comment-1920843" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1920843" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/376b9aaf18759ac1406aa8393b93e7c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/376b9aaf18759ac1406aa8393b93e7c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.mimvp.com" class="url" rel="ugc external nofollow">米扑博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1920843"><time datetime="2017-11-17T10:37:44+08:00">2017年11月17日 10:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>AWS在国内能运行起来就好<br/>
+阿里在美国也接受监管就好</p>
+</div>
+ </article>
+</li>
+<li id="comment-1920909" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1920909" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/369ed3d9326f5e9ab9d9fed7bcdf9a0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/369ed3d9326f5e9ab9d9fed7bcdf9a0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">winf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1920909"><time datetime="2017-11-20T15:31:24+08:00">2017年11月20日 15:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>后面这段话说得太好了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1922791" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1922791" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aeb7de4e8a7ab334f937b38050731855?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aeb7de4e8a7ab334f937b38050731855?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/FingerLiu" class="url" rel="ugc external nofollow">刘鹏</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1922791"><time datetime="2018-01-08T10:16:45+08:00">2018年01月08日 10:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于国内的那段吐槽，很深刻。国内管理部门普遍的思路是，如果问题不是很好解决，那就解决出现问题的人，再不行，就把可能出现问题的人也解决掉。严格意义上讲，这一套路，企业都是从国家机关学习来的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1936032" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1936032" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da6f85c6c5b5b6163acf12e4afeaafbd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da6f85c6c5b5b6163acf12e4afeaafbd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">王科玮</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1936032"><time datetime="2018-07-30T19:16:38+08:00">2018年07月30日 19:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>指出一个术语错误：<br/>
+-或是像HDFS里的node name<br/>
++或是像HDFS里的NameNode</p>
+</div>
+ </article>
+</li>
+<li id="comment-1952867" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1952867" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1dad064f28e9be939054aacb6d4f2a0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1dad064f28e9be939054aacb6d4f2a0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haha</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17737.html#comment-1952867"><time datetime="2019-01-25T10:54:04+08:00">2019年01月25日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>aws有定期的故障演习，俗称game day</p>
+</div>
+ </article>
+</li>
+<li id="comment-2157614" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/a/25130331.html" class="url" rel="ugc external nofollow">当Node.js遇见Docker – FIXBBS</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

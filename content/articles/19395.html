@@ -1,0 +1,475 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>HTTP API 认证授权术 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-19395 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-19395" class="post-content post-19395 post type-post status-publish format-standard hentry category-progdesign category-netsecurity tag-hmac tag-https tag-jwt tag-oauth tag-security tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">HTTP API 认证授权术</span>
+<h1 class="entry-title">HTTP API 认证授权术</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/19395.html" title="21:37" rel="bookmark"><time class="entry-date" datetime="2019-05-09T21:37:29+08:00" pubdate="">2019年05月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/19395.html#comments" class="comments-link">70 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 100,594 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-sup_wechat_big " src="/uploads/2019/05/Authorization-360x200.png" alt="" width="360" height="200" srcset=""/>我们知道，HTTP是无状态的，所以，当我们需要获得用户是否在登录的状态时，我们需要检查用户的登录状态，一般来说，用户的登录成功后，服务器会发一个登录凭证（又被叫作Token），就像你去访问某个公司，在前台被认证过合法后，这个公司的前台会给你的一个访客卡一样，之后，你在这个公司内去到哪都用这个访客卡来开门，而不再校验你是哪一个人。在计算机的世界里，这个登录凭证的相关数据会放在两种地方，一个地方在用户端，以Cookie的方式（一般不会放在浏览器的Local Storage，因为这很容易出现登录凭证被XSS攻击），另一个地方是放在服务器端，又叫Session的方式（SessonID存于Cookie）。</p>
+<p>但是，这个世界还是比较复杂的，除了用户访问，还有用户委托的第三方的应用，还有企业和企业间的调用，这里，我想把业内常用的一些 API认证技术相对系统地总结归纳一下，这样可以让大家更为全面的了解这些技术。<strong>注意，这是一篇长文！</strong></p>
+<p>本篇文章会覆盖如下技术：</p>
+<ul>
+<li>HTTP Basic</li>
+<li>Digest Access</li>
+<li>App Secret Key + HMAC</li>
+<li>JWT – JSON Web Tokens</li>
+<li>OAuth 1.0 – 3 legged &amp; 2 legged</li>
+<li>OAuth 2.0 – Authentication Code &amp; Client Credential</li>
+</ul>
+<p><span id="more-19395"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#HTTP_Basic" title="HTTP Basic">HTTP Basic</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Digest_Access" title="Digest Access">Digest Access</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#App_Secret_Key_HMAC" title="App Secret Key + HMAC">App Secret Key + HMAC</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#JWT_%E2%80%93_JSON_Web_Tokens" title="JWT – JSON Web Tokens">JWT – JSON Web Tokens</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#OAuth_10" title="OAuth 1.0">OAuth 1.0</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#OAuth_20" title="OAuth 2.0">OAuth 2.0</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#Authorization_Code_Flow" title="Authorization Code Flow">Authorization Code Flow</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#_Client_Credential_Flow" title=" Client Credential Flow"> Client Credential Flow</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%B0%8F%E7%BB%93" title="小结">小结</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#%E4%B8%A4%E4%B8%AA%E6%9C%AF%E8%AF%AD%E5%92%8C%E4%B8%89%E4%B8%AA%E6%A6%82%E5%BF%B5" title="两个术语和三个概念">两个术语和三个概念</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#%E6%98%8E%E7%99%BD%E4%B8%80%E4%BA%9B%E5%88%9D%E8%A1%B7" title="明白一些初衷">明白一些初衷</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-12" href="#%E7%9B%B8%E5%85%B3%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9" title="相关的注意事项">相关的注意事项</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="HTTP_Basic"></span>HTTP Basic<span class="ez-toc-section-end"></span></h4>
+<p>HTTP Basic 是一个非常传统的API认证技术，也是一个比较简单的技术。这个技术也就是使用 <code>username</code>和 <code>password</code> 来进行登录。整个过程被定义在了 <a href="http://tools.ietf.org/html/rfc2617" target="_blank" rel="noopener noreferrer">RFC 2617</a> 中，也被描述在了 <a href="https://en.wikipedia.org/wiki/Basic_access_authentication" target="_blank" rel="noopener noreferrer">Wikipedia: Basic Access Authentication</a> 词条中，同时也可以参看 <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Authentication" target="_blank" rel="noopener noreferrer">MDN HTTP Authentication</a></p>
+<p>其技术原理如下：</p>
+<ol>
+<li>把 <code>username</code>和 <code>password</code> 做成  <code>username:password</code> 的样子（用冒号分隔）</li>
+<li>进行Base64编码。<code>Base64(&#34;username:password&#34;)</code> 得到一个字符串（如：把 <code>haoel:coolshell</code> 进行base64 后可以得到 <code>aGFvZW86Y29vbHNoZWxsCg</code> ）</li>
+<li>把 <code>aGFvZW86Y29vbHNoZWxsCg</code>放到HTTP头中 <a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization" target="_blank" rel="noopener noreferrer"><code>Authorization</code></a> 字段中，形成 <code>Authorization: Basic aGFvZW86Y29vbHNoZWxsCg</code>，然后发送到服务端。</li>
+<li>服务端如果没有在头里看到认证字段，则返回401错，以及一个个<code><code></code></code><a href="https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/WWW-Authenticate" target="_blank" rel="noopener noreferrer">WWW-Authenticate</a><code>: Basic Realm=&#39;HelloWorld&#39;</code> 之类的头要求客户端进行认证。之后如果没有认证通过，则返回一个401错。如果服务端认证通过，那么会返回200。</li>
+</ol>
+<p>我们可以看到，使用Base64的目的无非就是为了把一些特殊的字符给搞掉，这样就可以放在HTTP协议里传输了。而这种方式的问题最大的问题就是把用户名和口令放在网络上传，所以，一般要配合TLS/SSL的安全加密方式来使用。我们可以看到 <a href="https://developer.atlassian.com/cloud/jira/platform/jira-rest-api-basic-authentication/" target="_blank" rel="noopener noreferrer">JIRA Cloud 的API认证</a>支持HTTP Basic 这样的方式。</p>
+<p>但我们还是要知道，这种把用户名和密码同时放在公网上传输的方式有点不太好，因为Base64不是加密协议，而是编码协议，所以就算是有HTTPS作为安全保护，给人的感觉还是不放心。</p>
+<h4><span class="ez-toc-section" id="Digest_Access"></span>Digest Access<span class="ez-toc-section-end"></span></h4>
+<p>中文称“HTTP 摘要认证”，最初被定义在了 <a href="https://tools.ietf.org/html/rfc2069" target="_blank" rel="noopener noreferrer">RFC 2069</a> 文档中（后来被 <a class="external mw-magiclink-rfc" href="https://tools.ietf.org/html/rfc2617" target="_blank" rel="nofollow noopener noreferrer">RFC 2617</a> 引入了一系列安全增强的选项；“保护质量”(qop)、随机数计数器由客户端增加、以及客户生成的随机数）。</p>
+<p>其基本思路是，请求方把用户名口令和域做一个MD5 –  <code>MD5(username:realm:password)</code> 然后传给服务器，这样就不会在网上传用户名和口令了，但是，因为用户名和口令基本不会变，所以，这个MD5的字符串也是比较固定的，因此，这个认证过程在其中加入了两个事，一个是 <code>nonce</code> 另一个是 <code>qop</code></p>
+<ul>
+<li>首先，调用方发起一个普通的HTTP请求。比如：<code>GET /coolshell/admin/ HTTP/1.1</code></li>
+<li>服务端自然不能认证能过，服务端返回401错误，并且在HTTP头里的 <code>WWW-Authenticate</code> 包含如下信息：</li>
+</ul>
+<pre style="padding-left: 40px;"> WWW-Authenticate: Digest realm=&#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="47332234333522262b2a072f2834336924282a">[email protected]</a>&#34;,
+                        qop=&#34;auth,auth-int&#34;,
+                        nonce=&#34;dcd98b7102dd2f0e8b11d0f600bfb0c093&#34;,
+                        opaque=&#34;5ccc069c403ebaf9f0171e9517f40e41&#34;</pre>
+<ul>
+<li>其中的 <code>nonce</code> 为服务器端生成的随机数，然后，客户端做 <code>HASH1=MD5(MD5(username:realm:password):nonce:cnonce)</code> ，其中的 <code>cnonce</code> 为客户端生成的随机数，这样就可以使得整个MD5的结果是不一样的。</li>
+<li>如果 <code>qop</code> 中包含了 <code>auth</code> ，那么还得做  <code>HASH2=MD5(method:digestURI)</code> 其中的 <code>method</code> 就是HTTP的请求方法（GET/POST…），<code>digestURI</code> 是请求的URL。</li>
+<li>如果 <code>qop</code> 中包含了 <code>auth-init</code> ，那么，得做  <code>HASH2=MD5(method:digestURI:MD5(entityBody))</code> 其中的 <code>entityBody</code> 就是HTTP请求的整个数据体。</li>
+<li>然后，得到 <code>response = MD5(HASH1:nonce:nonceCount:cnonce:qop:HASH2)</code> 如果没有 <code>qop</code>则 <code>response = MD5(HA1:nonce:HA2)</code></li>
+<li>最后，我们的客户端对服务端发起如下请求—— 注意HTTP头的 <code>Authorization: Digest ...</code></li>
+</ul>
+<pre style="padding-left: 40px;">GET /dir/index.html HTTP/1.0
+Host: localhost
+Authorization: Digest username=&#34;Mufasa&#34;,
+                     realm=&#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="53273620272136323f3e133b3c20277d303c3e">[email protected]</a>&#34;,
+                     nonce=&#34;dcd98b7102dd2f0e8b11d0f600bfb0c093&#34;,
+                     uri=&#34;%2Fcoolshell%2Fadmin&#34;,
+                     qop=auth,
+                     nc=00000001,
+                     cnonce=&#34;0a4f113b&#34;,
+                     response=&#34;6629fae49393a05397450978507c4ef1&#34;,
+                     opaque=&#34;5ccc069c403ebaf9f0171e9517f40e41&#34;</pre>
+<p>维基百科上的 <a href="https://en.wikipedia.org/wiki/Digest_access_authentication" target="_blank" rel="noopener noreferrer">Wikipedia: Digest access authentication</a> 词条非常详细地描述了这个细节。</p>
+<p>摘要认证这个方式会比之前的方式要好一些，因为没有在网上传递用户的密码，而只是把密码的MD5传送过去，相对会比较安全，而且，其并不需要是否TLS/SSL的安全链接。但是，<strong>别看这个算法这么复杂，最后你可以发现，整个过程其实关键是用户的password，这个password如果不够得杂，其实是可以被暴力破解的，而且，整个过程是非常容易受到中间人攻击</strong>——比如一个中间人告诉客户端需要的 Basic 的认证方式 或是 老旧签名认证方式（RFC2069）。</p>
+<h4><span class="ez-toc-section" id="App_Secret_Key_HMAC"></span>App Secret Key + HMAC<span class="ez-toc-section-end"></span></h4>
+<p>先说HMAC技术，这个东西来自于MAC – <a href="https://en.wikipedia.org/wiki/Message_authentication_code" target="_blank" rel="noopener noreferrer">Message Authentication Code</a>，是一种用于给消息签名的技术，也就是说，我们怕消息在传递的过程中被人修改，所以，我们需要用对消息进行一个MAC算法，得到一个摘要字串，然后，接收方得到消息后，进行同样的计算，然后比较这个MAC字符串，如果一致，则表明没有被修改过（整个过程参看下图）。而HMAC – <a href="https://en.wikipedia.org/wiki/HMAC" target="_blank" rel="noopener noreferrer">Hash-based Authenticsation Code</a>，指的是利用Hash技术完成这一工作，比如：SHA-256算法。</p>
+<p> </p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large" src="/uploads/2019/05/MAC-1024x634.png" alt="" width="640" height="396" srcset=""/></p>
+<p style="text-align: center;">（图片来自 <a href="https://en.wikipedia.org/wiki/Message_authentication_code" target="_blank" rel="noopener noreferrer">Wikipedia – MAC 词条</a> ）</p>
+<p>我们再来说App ID，这个东西跟验证没有关系，只是用来区分，是谁来调用API的，就像我们每个人的身份证一样，只是用来标注不同的人，不是用来做身份认证的。与前面的不同之处是，这里，我们需要用App ID 来映射一个用于加密的密钥，这样一来，我们就可以在服务器端进行相关的管理，我们可以生成若干个密钥对（AppID, AppSecret），并可以有更细粒度的操作权限管理。</p>
+<p>把AppID和HMAC用于API认证，目前来说，玩得最好最专业的应该是AWS了，我们可以通过<a href="https://docs.aws.amazon.com/zh_cn/general/latest/gr/sigv4-create-canonical-request.html" target="_blank" rel="noopener noreferrer">S3的API请求签名文档</a>看到AWS是怎么玩的。整个过程还是非常复杂的，可以通过下面的图片流程看个大概。基本上来说，分成如下几个步骤：</p>
+<ol>
+<li>把HTTP的请求（方法、URI、查询字串、头、签名头，body）打个包叫 <code>CanonicalRequest</code>，作个SHA-256的签名，然后再做一个base16的编码</li>
+<li>把上面的这个签名和签名算法 <code>AWS4-HMAC-SHA256</code>、时间戳、Scop，再打一个包，叫 <code>StringToSign</code>。</li>
+<li>准备签名，用 <code>AWSSecretAccessKey</code>来对日期签一个 <code>DataKey</code>，再用 <code>DataKey</code> 对要操作的Region签一个 <code>DataRegionKey</code> ，再对相关的服务签一个<code>DataRegionServiceKey</code> ，最后得到 <code>SigningKey</code>.</li>
+<li>用第三步的 <code>SigningKey</code>来对第二步的 <code>StringToSign</code> 签名。</li>
+</ol>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2019/05/sigV4-using-query-params.png" alt="" width="653" height="599" srcset=""/></p>
+<p> </p>
+<p>最后，发出HTTP Request时，在HTTP头的 <code>Authorization</code>字段中放入如下的信息：</p>
+<pre class="programlisting" style="padding-left: 40px;">Authorization: AWS4-HMAC-SHA256 
+               Credential=AKIDEXAMPLE/20150830/us-east-1/iam/aws4_request, 
+               SignedHeaders=content-type;host;x-amz-date, 
+               Signature=5d672d79c15b13162d9279b0855cfba6789a8edb4c82c400e06b5924a6f2b5d7
+</pre>
+<p> </p>
+<p>其中的  <code>AKIDEXAMPLE</code> 是 AWS Access Key ID， 也就是所谓的 AppID，服务器端会根据这个AppID来查相关的 Secret Access Key，然后再验证签名。如果，你对这个过程有点没看懂的话，你可以读一读这篇文章——《<a href="https://czak.pl/2015/09/15/s3-rest-api-with-curl.html" target="_blank" rel="noopener noreferrer">Amazon S3 Rest API with curl</a>》这篇文章里有好些代码，代码应该是最有细节也是最准确的了。</p>
+<p>这种认证的方式好处在于，AppID和AppSecretKey，是由服务器的系统开出的，所以，是可以被管理的，AWS的IAM就是相关的管理，其管理了用户、权限和其对应的AppID和AppSecretKey。但是不好的地方在于，这个东西没有标准 ，所以，各家的实现很不一致。比如： <a href="https://github.com/acquia/http-hmac-spec" target="_blank" rel="noopener noreferrer">Acquia 的 HMAC</a>，<a href="https://pay.weixin.qq.com/wiki/doc/api/jsapi.php?chapter=4_3" target="_blank" rel="noopener noreferrer">微信的签名算法</a> （这里，我们需要说明一下，微信的API没有遵循HTTP协议的标准，把认证信息放在HTTP 头的 <code>Authorization</code> 里，而是放在body里）</p>
+<h4><span class="ez-toc-section" id="JWT_%E2%80%93_JSON_Web_Tokens"></span>JWT – JSON Web Tokens<span class="ez-toc-section-end"></span></h4>
+<p>JWT是一个比较标准的认证解决方案，这个技术在Java圈里应该用的是非常普遍的。JWT签名也是一种MAC（<a href="https://en.wikipedia.org/wiki/Message_authentication_code" target="_blank" rel="noopener noreferrer">Message Authentication Code</a>）的方法。JWT的签名流程一般是下面这个样子：</p>
+<ol>
+<li>用户使用用户名和口令到认证服务器上请求认证。</li>
+<li>认证服务器验证用户名和口令后，以服务器端生成JWT Token，这个token的生成过程如下：
+<ul>
+<li>认证服务器还会生成一个 Secret Key（密钥）</li>
+<li>对JWT Header和 JWT Payload分别求Base64。在Payload可能包括了用户的抽象ID和的过期时间。</li>
+<li>用密钥对JWT签名 <code>HMAC-SHA256(SecertKey, Base64UrlEncode(JWT-Header)+&#39;.&#39;+Base64UrlEncode(JWT-Payload));</code></li>
+</ul>
+</li>
+<li>然后把 <code>base64(header).base64(payload).signature</code> 作为 JWT token返回客户端。</li>
+<li>客户端使用JWT Token向应用服务器发送相关的请求。这个JWT Token就像一个临时用户权证一样。</li>
+</ol>
+<p>当应用服务器收到请求后：</p>
+<ol>
+<li>应用服务会检查 JWT  Token，确认签名是正确的。</li>
+<li>然而，因为只有认证服务器有这个用户的Secret Key（密钥），所以，应用服务器得把JWT Token传给认证服务器。</li>
+<li>认证服务器通过JWT Payload 解出用户的抽象ID，然后通过抽象ID查到登录时生成的Secret Key，然后再来检查一下签名。</li>
+<li>认证服务器检查通过后，应用服务就可以认为这是合法请求了。</li>
+</ol>
+<p>我们可以看以，上面的这个过程，是在认证服务器上为用户动态生成 Secret Key的，应用服务在验签的时候，需要到认证服务器上去签，这个过程增加了一些网络调用，所以，JWT除了支持HMAC-SHA256的算法外，还支持RSA的非对称加密的算法。</p>
+<p>使用RSA非对称算法，在认证服务器这边放一个私钥，在应用服务器那边放一个公钥，认证服务器使用私钥加密，应用服务器使用公钥解密，这样一来，就不需要应用服务器向认证服务器请求了，但是，RSA是一个很慢的算法，所以，虽然你省了网络调用，但是却费了CPU，尤其是Header和Payload比较长的时候。所以，一种比较好的玩法是，如果我们把header 和 payload简单地做SHA256，这会很快，然后，我们用RSA加密这个SHA256出来的字符串，这样一来，RSA算法就比较快了，而我们也做到了使用RSA签名的目的。</p>
+<p>最后，我们只需要使用一个机制在认证服务器和应用服务器之间定期地换一下公钥私钥对就好了。</p>
+<p>这里强烈建议全文阅读 Anglar 大学的 《<a href="https://blog.angular-university.io/angular-jwt/" target="_blank" rel="noopener noreferrer">JSW：The Complete Guide to JSON Web Tokens</a>》</p>
+<h4><span class="ez-toc-section" id="OAuth_10"></span>OAuth 1.0<span class="ez-toc-section-end"></span></h4>
+<p>OAuth也是一个API认证的协议，这个协议最初在2006年由Twitter的工程师在开发OpenID实现的时候和社交书签网站Ma.gnolia时发现，没有一种好的委托授权协议，后来在2007年成立了一个OAuth小组，知道这个消息后，Google员工也加入进来，并完善有善了这个协议，在2007年底发布草案，过一年后，在2008年将OAuth放进了IETF作进一步的标准化工作，最后在2010年4月，正式发布OAuth 1.0，即：<a href="https://tools.ietf.org/html/rfc5849" target="_blank" rel="noopener noreferrer">RFC 5849</a> （这个RFC比起TCP的那些来说读起来还是很轻松的），不过，如果你想了解其前身的草案，可以读一下 <a href="http://oauth.net/core/1.0a/" target="_blank" rel="noopener noreferrer">OAuth Core 1.0 Revision A</a> ，我在下面做个大概的描述。</p>
+<p>根据RFC 5849，可以看到 OAuth 的出现，目的是为了，用户为了想使用一个第三方的网络打印服务来打印他在某网站上的照片，但是，用户不想把自己的用户名和口令交给那个第三方的网络打印服务，但又想让那个第三方的网络打印服务来访问自己的照片，为了解决这个授权的问题，OAuth这个协议就出来了。</p>
+<ul>
+<li>这个协议有三个角色：
+<ul>
+<li><strong>User（照片所有者-用户）</strong></li>
+<li><strong>Consumer（第三方照片打印服务）</strong></li>
+<li><strong>Service Provider（照片存储服务）</strong></li>
+</ul>
+</li>
+<li>这个协义有三个阶段：
+<ul>
+<li><strong>Consumer获取Request Token</strong></li>
+<li><strong>Service Provider 认证用户并授权Consumer</strong></li>
+<li><strong>Consumer获取Access Token调用API访问用户的照片</strong></li>
+</ul>
+</li>
+</ul>
+<p>整个授权过程是这样的：</p>
+<ol>
+<li>Consumer（第三方照片打印服务）需要先上Service Provider获得开发的 Consumer Key 和 Consumer Secret</li>
+<li>当 User 访问 Consumer 时，Consumer 向 Service Provide 发起请求请求Request Token （需要对HTTP请求签名）</li>
+<li>Service Provide 验明 Consumer 是注册过的第三方服务商后，返回 Request Token（<code>oauth_token</code>）和 Request Token Secret （<code>oauth_token_secret</code>）</li>
+<li>Consumer 收到 Request Token 后，使用HTTP GET 请求把 User 切到 Service Provide 的认证页上（其中带上Request Token），让用户输入他的用户和口令。</li>
+<li>Service Provider 认证 User 成功后，跳回 Consumer，并返回 Request Token （<code>oauth_token</code>）和 Verification Code（<code>oauth_verifier</code>）</li>
+<li>接下来就是签名请求，用Request Token 和 Verification Code 换取 Access Token （<code>oauth_token</code>）和 Access Token Secret (<code>oauth_token_secret</code>)</li>
+<li>最后使用Access Token 访问用户授权访问的资源。</li>
+</ol>
+<p>下图附上一个Yahoo!的流程图可以看到整个过程的相关细节。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2019/05/oauth_graph.gif" alt="" width="660" height="992" srcset=""/></p>
+<p>因为上面这个流程有三方：User，Consumer 和 Service Provide，所以，又叫 3-legged flow，三脚流程。OAuth 1.0 也有不需要用户参与的，只有Consumer 和 Service Provider 的， 也就是 2-legged flow 两脚流程，其中省掉了用户认证的事。整个过程如下所示：</p>
+<ol>
+<li>Consumer（第三方照片打印服务）需要先上Service Provider获得开发的 Consumer Key 和 Consumer Secret</li>
+<li>Consumer 向 Service Provide 发起请求请求Request Token （需要对HTTP请求签名）</li>
+<li>Service Provide 验明 Consumer 是注册过的第三方服务商后，返回 Request Token（<code>oauth_token</code>）和 Request Token Secret （<code>oauth_token_secret</code>）</li>
+<li>Consumer 收到 Request Token 后，直接换取 Access Token （<code>oauth_token</code>）和 Access Token Secret (<code>oauth_token_secret</code>)</li>
+<li>最后使用Access Token 访问用户授权访问的资源。</li>
+</ol>
+<p>最后，再来说一说OAuth中的签名。</p>
+<ul>
+<li>我们可以看到，有两个密钥，一个是Consumer注册Service Provider时由Provider颁发的 Consumer Secret，另一个是 Token Secret。</li>
+<li>签名密钥就是由这两具密钥拼接而成的，其中用 <code>&amp;</code>作连接符。假设 Consumer Secret 为 <code>j49sk3j29djd</code> 而 Token Secret 为<code>dh893hdasih9</code>那个，签名密钥为：<code>j49sk3j29djd&amp;dh893hdasih9</code></li>
+<li>在请求Request/Access Token的时候需要对整个HTTP请求进行签名（使用HMAC-SHA1和HMAC-RSA1签名算法），请求头中需要包括一些OAuth需要的字段，如：
+<ul>
+<li><strong>Consumer Key</strong> ： 也就是所谓的AppID</li>
+<li><strong>Token</strong>： Request Token 或 Access Token</li>
+<li><strong>Signature Method</strong> ：签名算法比如：HMAC-SHA1</li>
+<li><strong>Timestamp</strong>：过期时间</li>
+<li><strong>Nonce</strong>：随机字符串</li>
+<li><strong>Call Back</strong>：回调URL</li>
+</ul>
+</li>
+</ul>
+<p>下图是整个签名的示意图：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2019/05/oauth_singature.png" alt="" width="715" height="877" srcset=""/></p>
+<p>图片还是比较直观的，我就不多解释了。</p>
+<h4><span class="ez-toc-section" id="OAuth_20"></span>OAuth 2.0<span class="ez-toc-section-end"></span></h4>
+<p>在前面，我们可以看到，从Digest Access， 到AppID+HMAC，再到JWT，再到OAuth 1.0，这些个API认证都是要向Client发一个密钥（或是用密码）然后用HASH或是RSA来签HTTP的请求，<strong>这其中有个主要的原因是，以前的HTTP是明文传输，所以，在传输过程中很容易被篡改，于是才搞出来一套的安全签名机制</strong>，所以，这些个认证的玩法是可以在HTTP明文协议下玩的。</p>
+<p>这种使用签名方式大家可以看到是比较复杂的，所以，对于开发者来说，也是很不友好的，在组织签名的那些HTTP报文的时候，各种，URLEncode和Base64，还要对Query的参数进行排序，然后有的方法还要层层签名，非常容易出错，另外，这种认证的安全粒度比较粗，授权也比较单一，对于有终端用户参与的移动端来说也有点不够。所以，在2012年的时候，OAuth 2.0 的 <a href="https://tools.ietf.org/html/rfc6749" target="_blank" rel="noopener noreferrer">RFC 6749</a> 正式放出。</p>
+<p><strong>OAuth 2.0依赖于TLS/SSL的链路加密技术（HTTPS），完全放弃了签名的方式，认证服务器再也不返回什么 token secret 的密钥了，所以，OAuth 2.0是完全不同于1.0 的，也是不兼容的</strong>。目前，Facebook 的 Graph API 只支持OAuth 2.0协议，Google 和 Microsoft Azure 也支持Auth 2.0，国内的微信和支付宝也支持使用OAuth 2.0。</p>
+<p>下面，我们来重点看一下OAuth 2.0的两个主要的Flow：</p>
+<ul>
+<li>一个是Authorization Code Flow， 这个是 3 legged 的</li>
+<li>一个是Client Credential Flow，这个是 2 legged 的。</li>
+</ul>
+<h5><span class="ez-toc-section" id="Authorization_Code_Flow"></span><strong>Authorization Code Flow</strong><span class="ez-toc-section-end"></span></h5>
+<p>Authorization Code 是最常使用的OAuth 2.0的授权许可类型，它适用于用户给第三方应用授权访问自己信息的场景。这个Flow也是OAuth 2.0四个Flow中我个人觉得最完整的一个Flow，其流程图如下所示。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full " src="/uploads/2019/05/auth_code_flow.png" alt="" width="621" height="505" srcset=""/></p>
+<p> </p>
+<p>下面是对这个流程的一个细节上的解释：</p>
+<p>1）当用户（Resource Owner）访问第三方应用（Client）的时候，第三方应用会把用户带到认证服务器（Authorization Server）上去，主要请求的是 <code>/authorize</code> API，其中的请求方式如下所示。</p>
+<pre style="padding-left: 40px;">https://login.authorization-server.com/authorize?
+        client_id=6731de76-14a6-49ae-97bc-6eba6914391e
+        &amp;response_type=code
+        &amp;redirect_uri=http%3A%2F%2Fexample-client.com%2Fcallback%2F
+        &amp;scope=read
+        &amp;state=xcoiv98CoolShell3kch</pre>
+<p style="padding-left: 40px;">其中：</p>
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><code>client_id</code>为第三方应用的App ID</li>
+<li><code>response_type=code</code>为告诉认证服务器，我要走Authorization Code Flow。</li>
+<li><code>redirect_uri</code>意思是我跳转回第三方应用的URL</li>
+<li><code>scope</code>意是相关的权限</li>
+<li><code>state</code> 是一个随机的字符串，主要用于防CSRF攻击。</li>
+</ul>
+</li>
+</ul>
+<p>2）当Authorization Server收到这个URL请求后，其会通过 <code>client_id</code>来检查 <code>redirect_uri</code>和 <code>scope</code>是否合法，如果合法，则弹出一个页面，让用户授权（如果用户没有登录，则先让用户登录，登录完成后，出现授权访问页面）。</p>
+<p>3）当用户授权同意访问以后，Authorization Server 会跳转回 Client ，并以其中加入一个 Authorization Code。 如下所示：</p>
+<pre style="padding-left: 40px;">https://example-client.com/callback?
+        code=Yzk5ZDczMzRlNDEwYlrEqdFSBzjqfTG
+        &amp;state=xcoiv98CoolShell3kch</pre>
+<p style="padding-left: 40px;">我们可以看到，</p>
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li>请流动的链接是第 1）步中的 <code>redirect_uri</code></li>
+<li>其中的 <code>state</code> 的值也和第 1）步的 <code>state</code>一样。</li>
+</ul>
+</li>
+</ul>
+<p>4）接下来，Client 就可以使用 Authorization Code 获得 Access Token。其需要向 Authorization Server 发出如下请求。</p>
+<pre style="padding-left: 40px;">POST /oauth/token HTTP/1.1
+Host: authorization-server.com
+ 
+code=Yzk5ZDczMzRlNDEwYlrEqdFSBzjqfTG
+&amp;grant_type=code
+&amp;redirect_uri=https%3A%2F%2Fexample-client.com%2Fcallback%2F
+&amp;client_id=6731de76-14a6-49ae-97bc-6eba6914391e
+&amp;client_secret=JqQX2PNo9bpM0uEihUPzyrh</pre>
+<p>5）如果没什么问题，Authorization 会返回如下信息。</p>
+<pre style="padding-left: 40px;">{
+  &#34;access_token&#34;: &#34;iJKV1QiLCJhbGciOiJSUzI1NiI&#34;,
+  &#34;refresh_token&#34;: &#34;1KaPlrEqdFSBzjqfTGAMxZGU&#34;,
+  &#34;token_type&#34;: &#34;bearer&#34;,
+  &#34;expires&#34;: 3600,
+  &#34;id_token&#34;: &#34;eyJ0eXAiOiJKV1QiLCJhbGciO.eyJhdWQiOiIyZDRkM...&#34;
+}</pre>
+<p style="padding-left: 40px;">其中，</p>
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><code>access_token</code>就是访问请求令牌了</li>
+<li><code>refresh_token</code>用于刷新 <code>access_token</code></li>
+<li><code>id_token</code> 是JWT的token，其中一般会包含用户的OpenID</li>
+</ul>
+</li>
+</ul>
+<p>6）接下来就是用 Access Token 请求用户的资源了。</p>
+<pre style="padding-left: 40px;">GET /v1/user/pictures
+Host: https://example.resource.com
+
+Authorization: Bearer iJKV1QiLCJhbGciOiJSUzI1NiI</pre>
+<p> </p>
+<h5><span class="ez-toc-section" id="_Client_Credential_Flow"></span> Client Credential Flow<span class="ez-toc-section-end"></span></h5>
+<p>Client Credential 是一个简化版的API认证，主要是用于认证服务器到服务器的调用，也就是没有用户参与的的认证流程。下面是相关的流程图。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2019/05/client_credentials_flow.png" alt="" width="549" height="414" srcset=""/></p>
+<p>这个过程非常简单，本质上就是Client用自己的 <code>client_id</code>和 <code>client_secret</code>向Authorization Server 要一个 Access Token，然后使用Access Token访问相关的资源。</p>
+<p>请求示例</p>
+<pre style="padding-left: 40px;">POST /token HTTP/1.1
+Host: server.example.com
+Content-Type: application/x-www-form-urlencoded
+
+grant_type=client_credentials
+&amp;client_id=czZCaGRSa3F0Mzpn
+&amp;client_secret=7Fjfp0ZBr1KtDRbnfVdmIw</pre>
+<p>返回示例</p>
+<pre style="padding-left: 40px;">{
+  &#34;access_token&#34;:&#34;MTQ0NjJkZmQ5OTM2NDE1ZTZjNGZmZjI3&#34;,
+  &#34;token_type&#34;:&#34;bearer&#34;,
+  &#34;expires_in&#34;:3600,
+  &#34;refresh_token&#34;:&#34;IwOGYzYTlmM2YxOTQ5MGE3YmNmMDFkNTVk&#34;,
+  &#34;scope&#34;:&#34;create&#34;
+}</pre>
+<p>这里，容我多扯一句，微信公从平台的开发文档中，使用了OAuth 2.0 的 Client Credentials的方式（参看文档“<a href="https://mp.weixin.qq.com/wiki?t=resource/res_main&amp;id=mp1421140183" target="_blank" rel="noopener noreferrer">微信公众号获取access token</a>”），我截了个图如下所谓。我们可以看到，<strong>微信公众号使用的是GET方式的请求，把AppID和AppSecret放在了URL中，虽然这也符合OAuth 2.0，但是并不好，因为大多数网关代理会把整个URI请求记到日志中。我们只要脑补一下腾讯的网关的Access Log，里面的日志一定会有很多的各个用户的AppID和AppSecret……</strong></p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large" src="/uploads/2019/05/wechat.dev_-1024x876.png" alt="" width="640" height="548" srcset=""/></p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E5%B0%8F%E7%BB%93"></span>小结<span class="ez-toc-section-end"></span></h4>
+<p>讲了这么多，我们来小结一下（下面的小结可能会有点散）</p>
+<h5><span class="ez-toc-section" id="%E4%B8%A4%E4%B8%AA%E6%9C%AF%E8%AF%AD%E5%92%8C%E4%B8%89%E4%B8%AA%E6%A6%82%E5%BF%B5"></span>两个术语和三个概念<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>区分两个术语：Authentication（认证） 和 Authorization （授权），前者是证明请求者是身份，就像身份证一样，后者是为了获得权限。身份是区别于别人的证明，而权限是证明自己的特权。Authentication为了证明操作的这个人就是他本人，需要提供密码、短信验证码，甚至人脸识别。Authorization 则是不需要在所有的请求都需要验人，是在经过Authorization后得到一个Token，这就是Authorization。就像护照和签证一样。</li>
+<li>区分三个概念：编码Base64Encode、签名HMAC、加密RSA。Base64编码是为了更好的传输（没有怪异的字符，可以传输二进制文件），等同于明文，HMAC签名是为了信息不能被篡改，RSA加密是为了不让别人看到是什么信息。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E6%98%8E%E7%99%BD%E4%B8%80%E4%BA%9B%E5%88%9D%E8%A1%B7"></span>明白一些初衷<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>使用复杂地HMAC哈希签名方式主要是应对当年没有TLS/SSL加密链路的情况。</li>
+<li>JWT把 <code>uid</code> 放在 Token中目的是为了去掉状态，但不能让用户修改，所以需要签名。</li>
+<li>OAuth 1.0区分了两个事，一个是第三方的Client，一个是真正的用户，其先拿Request Token，再换Access Token的方法主要是为了把第三方应用和用户区分开来。</li>
+<li>用户的Password是用户自己设置的，复杂度不可控，服务端颁发的Serect会很复杂，但主要目的是为了容易管理，可以随时注销掉。</li>
+<li>OAuth 协议有比所有认证协议有更为灵活完善的配置，如果使用AppID/AppSecret签名的方式，又需要做到可以有不同的权限和可以随时注销，那么你得开发一个像AWS的IAM这样的账号和密钥对管理的系统。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E7%9B%B8%E5%85%B3%E7%9A%84%E6%B3%A8%E6%84%8F%E4%BA%8B%E9%A1%B9"></span>相关的注意事项<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>无论是哪种方式，我们都应该遵循HTTP的规范，把认证信息放在 <code>Authorization</code> HTTP 头中。</li>
+<li>不要使用GET的方式在URL中放入secret之类的东西，因为很多proxy或gateway的软件会把整个URL记在Access Log文件中。</li>
+<li>密钥Secret相当于Password，但他是用来加密的，最好不要在网络上传输，如果要传输，最好使用TLS/SSL的安全链路。</li>
+<li>HMAC中无论是MD5还是SHA1/SHA2，其计算都是非常快的，RSA的非对称加密是比较耗CPU的，尤其是要加密的字符串很长的时候。</li>
+<li>最好不要在程序中hard code 你的 Secret，因为在github上有很多黑客的软件在监视各种Secret，千万小心！这类的东西应该放在你的配置系统或是部署系统中，在程序启动时设置在配置文件或是环境变量中。</li>
+<li>使用AppID/AppSecret，还是使用OAuth1.0a，还是OAuth2.0，还是使用JWT，我个人建议使用TLS/SSL下的OAuth 2.0。</li>
+<li>密钥是需要被管理的，管理就是可以新增可以撤销，可以设置账户和相关的权限。最好密钥是可以被自动更换的。</li>
+<li>认证授权服务器（Authorization Server）和应用服务器（App Server）最好分开。</li>
+</ul>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-19395-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">HMAC</a>, <a href="javascript:void(0)" rel="tag">HTTPS</a>, <a href="javascript:void(0)" rel="tag">JWT</a>, <a href="javascript:void(0)" rel="tag">OAuth</a>, <a href="javascript:void(0)" rel="tag">Security</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>HTTP API 认证授权术</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2204402" class="comment even thread-even depth-1">
+<article id="div-comment-2204402" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a5ee35e9db9df303c1086aecd6fab629?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a5ee35e9db9df303c1086aecd6fab629?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">peter_jjh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19395.html/comment-page-2#comment-2204402"><time datetime="2021-02-09T10:30:24+08:00">2021年02月09日 10:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>干货！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2212632" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2212632" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.jsonformatting.com/" class="url" rel="ugc external nofollow">json formatter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19395.html/comment-page-2#comment-2212632"><time datetime="2021-03-01T10:22:13+08:00">2021年03月01日 10:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-2275910" class="comment even thread-even depth-1">
+<article id="div-comment-2275910" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b398fb583935e3f408363fb0affdd50?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b398fb583935e3f408363fb0affdd50?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://stdworkflow.com" class="url" rel="ugc external nofollow">stdworkflow</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19395.html/comment-page-2#comment-2275910"><time datetime="2021-07-13T04:55:47+08:00">2021年07月13日 04:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可以的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2290039" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2290039" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b686b7613f880570fa9288ac173255fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b686b7613f880570fa9288ac173255fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://adoncn.com/" class="url" rel="ugc external nofollow">Adoncn</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19395.html/comment-page-2#comment-2290039"><time datetime="2021-08-20T11:18:47+08:00">2021年08月20日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>支持，不错的文章</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356198" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21708.html" class="url" rel="ugc">网络数字身份认证术 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2370475" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.littlebill.me/2013/04/23/technology.html" class="url" rel="ugc external nofollow">【转载】大牛文章 – LittleBill</a> </div>
+</li>
+<li id="comment-2371034" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://jkboy.com/archives/20472.html" class="url" rel="ugc external nofollow">认证鉴权也可以如此简单—使用API网关保护你的API安全 - 随风的博客</a> </div>
+</li>
+<li id="comment-2371063" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/22173.html" class="url" rel="ugc">“一把梭：REST API 全用 POST” | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2371117" class="comment even thread-even depth-1">
+<article id="div-comment-2371117" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/deeca5c79942dad2d37a68dca5a38798?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/deeca5c79942dad2d37a68dca5a38798?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">苏宇</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19395.html/comment-page-2#comment-2371117"><time datetime="2023-02-15T11:12:54+08:00">2023年02月15日 11:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>彻底搞清楚了编码，签名，加密的区别，有收获。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371217" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.victorblog.plus/index.php/2022/12/21/%e5%86%af%e7%bb%8d%e5%b3%b0%e8%af%b4/" class="url" rel="ugc external nofollow">认证和授权：怎么确认这个数据就是这个人发出来的？ – victor‘ blog</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/19395.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/19395.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">19395</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

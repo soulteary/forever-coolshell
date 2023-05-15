@@ -1,0 +1,436 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>用Unix的设计思想来应对多变的需求 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7236 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7236" class="post-content post-7236 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-progdesign tag-design tag-design-pattern tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">用Unix的设计思想来应对多变的需求</span>
+<h1 class="entry-title">用Unix的设计思想来应对多变的需求</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7236.html" title="08:14" rel="bookmark"><time class="entry-date" datetime="2012-05-03T08:14:20+08:00" pubdate="">2012年05月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7236.html#comments" class="comments-link">90 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,041 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>之前，@<a title="风枫峰" href="http://weibo.com/hfcc?source=webim" target="_blank">风枫峰</a> 在“<a title="这到底是谁之错？" href="/articles/7126.html" target="_blank">这是谁的错？</a>”中说过开发团队对需求来者不拒，而@<a title="weidagang" href="http://weibo.com/weidagang" target="_blank">weidagang</a> 也在“<a title="需求变化与IoC" href="/articles/6950.html" target="_blank">需求变更和IoC</a>”中说过用IoC来最大程度地解决需求变更。今天我也想从Unix设计思想的角度来说说什么是好的软件设计，什么样的设计可以把需求变更对开发的影响降低。（<strong>注意</strong>：这并不能解决用户或是PM的无理需求，面对无理需求，需要仔细分析需求，而用技术的手段无法搞定这个事，但是可以减轻需求变更带来的痛苦） 我曾经在<a href="/articles/2324.html" target="_blank">《Unix传奇》的下篇</a>中写过一些Unix的设计哲学和思想（这里重点推荐大家看一下《<em><a href="http://product.china-pub.com/197413" target="_blank">The Art of Unix Programming</a></em>》，我推荐过多次了），以前也发过一篇《<a title="一些软件设计的原则" href="/articles/4535.html" target="_blank">一些软件设计的原则</a>》，不过，这些东西都太多了，记不住。其实，这么多年来，我的经验告诉我，<strong>无论是Unix设计，还是面向对象设计，还是别的什么如SOA，ECB，消息，事件，MVC，网络七层模型，数据库设计，等等，他们都在干三件事——<span style="color: #cc0000;">解耦，解耦，还是解耦</span>！</strong>所谓解耦，就是让软件的模块和模块间尽量少地依赖起来。</p>
+<p style="text-align: center;"><img decoding="async" class="aligncenter" title="Unix" src="/uploads/2012/05/Bannière-Unix-linux.jpg" alt="" width="448" height="173" srcset=""/></p>
+<h4>现实当中的例子</h4>
+<p>让我先举几个现实生活中的例子：</p>
+<p style="padding-left: 30px;">1、现实社会中，制造灯具的工厂完全不关心制造灯泡的工厂，制造灯泡的工厂完全不关心制造灯具的工厂，但是，灯泡和灯饰可以很完美地组合成用户所喜欢的样子（这和@<a title="weidagang" href="http://weibo.com/weidagang" target="_blank">weidagang</a> 在“<a title="需求变化与IoC" href="/articles/6950.html" target="_blank">需求变更和IoC</a>”说到的那个PC的例子相仿）。他们是怎么做到的？</p>
+<p style="padding-left: 30px;">2、互联网上，做网站的人完全不用关心用户在用什么样的操作系统，什么样的客户端浏览器（当然事实上，浏览器的不标准让网站那边很头痛，这里只是举个例），反过来，上网的人也不关心做网站的人在用什么的技术开发网站。但是大家在完全不关心对方的情况下，可以很正常地协同工作在一起。为什么？</p>
+<p><span id="more-7236"></span> 这样的例子太多了。为什么可以做成这样呢？因为大家依赖的是一个接口，灯具和灯泡并不互相依赖，他们依赖的是一个接口，做网站的人和浏览网站的人依赖的还是接口——HTTP协议。这就是面向对象的核心思想——依赖于接口而不是实现，这就是解耦。<strong>当你看过这两个例子以后，我希望你以后设计的软件至少不能比我们现实社会中的这些方法要差</strong>。不然，你就是在让社会倒退了，呵呵。 你会说，这和Unix，和应对需求变化有什么关系？好让我们再来看一下Unix的设计。</p>
+<h4>Unix设计的例子</h4>
+<p>下面是几个Unix下的例子：</p>
+<p style="padding-left: 30px;">1、Unix下，所有的硬件都可以通过文件的方式存取。其统统在/dev下。于是，软件和硬件的耦合被解开了，操作系统只需要把硬件统统变成文件，而程序只需要使用三个东西，一个是fd，一个是read()，一个是write()，就可以来操作任意的硬件了，这就是抽象，简单到不行。</p>
+<p style="padding-left: 30px;">2、Unix下，所有的命令都可以用管道串起来（管道绝对是个伟大的发明），这样，所有的命令间的交互全部解耦到只依赖于STD_IN, STD_OUT设备上。最酷的是，用户可以使用管道任意地拼装那些命令，以完成各式各样的功能。管道这个设计思想可以映射为今天的Web Service，你可以任意地拼装各种Web Service。</p>
+<p>看到这里，你会发现，这还是解耦，本质上来说，也是一种依赖倒置——OOD的精髓。但是，Unix还不仅仅是这些。我们再来看几个例子：</p>
+<p style="padding-left: 30px;">1、Unix下，软件都是绿色地安装。在iOS上更明显——各个程序间基本上互不干扰，这个程序产生的垃圾文件不会影响到另一个程序。你删掉一个程序不会让另一个程序不举，各是各的空间。你可以删除这些程序，只要把内核心留着，系统照样可以启动。</p>
+<p style="padding-left: 30px;">2、Unix下，你可以通过设置一些环境变量，让多种环境同时存在，比如：某个LAMP用的是Apache 2.0, Mysql 4.0, PHP 4.0，某个LAMP用的是Apache 2.2, Mysql 5.0，PHP5.3，你不但可以方便地在系统中切换这两个环境，你甚至还可以同时启动他们。</p>
+<p style="padding-left: 30px;">3、Unix下，你可以随意地替换你想要的程序。比如，你不喜欢bash，你可以替换成ksh/csh等，你不喜欢awk ，你可以替换成 gawk ，所有的东西都像零件一样，你不喜欢什么，你就可以替换什么。</p>
+<p>这三个例子告诉了我们——<strong>当你把你的软件设计地耦合度非常地低时，你可以随意地组合，随意地安排你的系统</strong>。相当的灵活，灵活到Windows到今天都学不会。</p>
+<h4>应对需求变化</h4>
+<p>看到这里，你可能明白我想说的是什么了，你可能开始觉得怎么样的系统设计会更有效了。如果你还记得《<a title="SteveY对Amazon和Google平台的长篇大论" href="/articles/5701.html" target="_blank">Steve Y 对平台的长篇大论</a>》，你就会知道我想说什么了。是的，我想说的就是，<strong>当你真正了解了Unix的设计思想后，你会觉得今天的很多东西都是对Unix设计思想的一种传承或是变种</strong>。这种东西就是：</p>
+<p style="padding-left: 30px;">1）<strong>解耦，解耦，解耦</strong>。尽量地让你的模块不要在实现上耦合，而是耦合某个规范，某个标准。</p>
+<p style="padding-left: 30px;">2）<strong>KISS，KISS，KISS</strong>。要做到高度解耦，你的模块就一定要很简单，当然不是说简单到只有几行代码，而是简单到只干一件事，并把这件事干到极致。然后通过某个标准拼装起来。</p>
+<p style="padding-left: 30px;">3）<strong>拼装，拼装，拼装。</strong>我想不起来是谁说的了，这句话是这样的，当我想用一个模块的时候，我直接调用就好了，没有必要像C或Java一样，还要编译。是的，拼装需要一个框架，需要一种标准协议，然后让所有的系统都耦合在这种规范上，各自独立运行，就像一个机器上的各个部件一样，当我觉得这个部件不爽，换了就是了。（例如，当我们在尝试不同的算法的时候）</p>
+<p>想想建材和家俱市场，无论用户过来想装修什么，我都可以满足用户的不同需求，只要你是和家装相关，我基本上都能满足你，不是吗？无论你怎么变，只要不变态，我基本上都可以满足你。这就是解耦，拼装带来的好处。 你可能会说我说得太简单了，另一方面，你可能觉得有一些系统这样做没必要，我承认，不过，你可以有选择的或多或少地试试。（其实，我相信你已经在不自觉得或多或少地使用这种方式开发软件了） （全文完）</p>
+<div></div>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7236-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">design pattern</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>用Unix的设计思想来应对多变的需求</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-189871" class="comment even thread-even depth-1">
+<article id="div-comment-189871" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87aa8c7de26f5a889a9e909f06102afd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87aa8c7de26f5a889a9e909f06102afd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">LEo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-189871"><time datetime="2012-05-14T21:03:12+08:00">2012年05月14日 21:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-189809" rel="nofollow">@chen-xiao </a><br/>
+是的，*nix系统的依赖关系如同微软一些痼疾一样难以解决。不去重新发明轮子的代价就是选择越来越少</p>
+</div>
+ </article>
+</li>
+<li id="comment-190257" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-190257" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dcd77d3ff6ea31718004464133652a12?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dcd77d3ff6ea31718004464133652a12?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://thepast.me" class="url" rel="ugc external nofollow">laiwei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-190257"><time datetime="2012-05-15T10:59:43+08:00">2012年05月15日 10:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>的确，没有“银弹”<br/>
+解耦是很好的设计思想，在做设计，写代码的时候，把解耦作为一个重要的指导思想是很不错的。</p>
+<p>不过现实是很残酷的，解耦带来了灵活性，自由度，对需求的应变能力有了很大的提高。</p>
+<p>不过我们不要忘了，为什么要大谈“解耦”，那是因为有耦合的存在且很多。存在即合理，为什么会存在这么多的耦合呢，正如前面有人举例 iPhone 的体验好，因为耦合在牺牲了灵活度的同时，对具体问题，具体对待，提升了体验，提高了性能。</p>
+<p>所以，在设计的时候，不要太过纠结，在解耦作为指导思想的同时，把握一个”度”，同时一定程度上具体问题具体分析。</p>
+</div>
+ </article>
+</li>
+<li id="comment-190272" class="comment even thread-even depth-1">
+<article id="div-comment-190272" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ae7f77f3cf4f2cc8cb9f082d79cc06c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ae7f77f3cf4f2cc8cb9f082d79cc06c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Chao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-190272"><time datetime="2012-05-15T11:39:53+08:00">2012年05月15日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>It is easy to add a layer of indirect. The hard part is how to reduce the overhead.</p>
+</div>
+ </article>
+</li>
+<li id="comment-191579" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-191579" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed9fdddc50bbe588003cdcc317f892c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed9fdddc50bbe588003cdcc317f892c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.kuaiping.org" class="url" rel="ugc external nofollow">无处不点评</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-191579"><time datetime="2012-05-17T11:31:32+08:00">2012年05月17日 11:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>UNIX 重构了多少钱才实现稳定的？对于单一应用来说，过多考虑兼容性，灵活性，会极大的影响开发进度，而且灵活的设计需要一个完善的前期系统设计，大部分团队在开发应用前都没有能力做到</p>
+</div>
+ </article>
+</li>
+<li id="comment-192189" class="comment even thread-even depth-1">
+<article id="div-comment-192189" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4add6ccf315ba974b3fe23fc5ec46419?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4add6ccf315ba974b3fe23fc5ec46419?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://null" class="url" rel="ugc external nofollow">Anana</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-192189"><time datetime="2012-05-18T15:50:14+08:00">2012年05月18日 15:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你对Unix的崇拜已经达到了一种意识形态的地步<br/>
+这很危险<br/>
+当然 我也喜欢Unix<br/>
+只是没你那么狂热</p>
+</div>
+ </article>
+</li>
+<li id="comment-194034" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-194034" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5351e13d8b76304136d86d23a42f58b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5351e13d8b76304136d86d23a42f58b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">CodeMan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-194034"><time datetime="2012-05-21T17:36:35+08:00">2012年05月21日 17:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>解耦，解耦，还是解耦.</p>
+</div>
+ </article>
+</li>
+<li id="comment-195093" class="comment even thread-even depth-1">
+<article id="div-comment-195093" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b453fa3b0c43f6825d52de2a9d7b2deb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b453fa3b0c43f6825d52de2a9d7b2deb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://log4d.com/" class="url" rel="ugc external nofollow">alswl</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-195093"><time datetime="2012-05-23T09:44:48+08:00">2012年05月23日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>「解耦，解耦，还是解耦」，这个真是太赞了。<br/>
+我和同事讨论前端，动辄就提模块化模块化，希望他们能 HTML / JS / CSS 模块化，不要存在相同或者类似的代码，他们都不是很理解，感觉复制粘帖很轻松。<br/>
+也许是因为他们不用 *NIX 吧～</p>
+</div>
+ </article>
+</li>
+<li id="comment-195355" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4f34129d1d5d6be5731952757f503c2d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4f34129d1d5d6be5731952757f503c2d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zg</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-195355"><time datetime="2012-05-23T19:34:25+08:00">2012年05月23日 19:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天遇到行业信息化整合的讨论，我提接口，互访问性，接着第一想到的是你翻译的那篇《Steve Y 对平台的长篇大论》，过来后又看到这篇文章……</p>
+</div>
+ </article>
+</li>
+<li id="comment-198093" class="comment even thread-even depth-1">
+<article id="div-comment-198093" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df7eedd26ae92403ecdc4be586121862?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df7eedd26ae92403ecdc4be586121862?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://..." class="url" rel="ugc external nofollow">小龙</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-198093"><time datetime="2012-07-02T11:57:34+08:00">2012年07月02日 11:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195093" rel="nofollow">@alswl </a><br/>
+给出充分的理由出来，相同你同事也会接受的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-200185" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.xlinblog.sinaapp.com/?p=24" class="url" rel="ugc external nofollow">小小说网站 » 少即是极多</a> </div>
+</li>
+<li id="comment-202367" class="comment even thread-even depth-1">
+<article id="div-comment-202367" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c38264b2ffb55312854668827204ab9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c38264b2ffb55312854668827204ab9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">linbc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-202367"><time datetime="2012-09-05T09:44:19+08:00">2012年09月05日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-192189" rel="nofollow">@Anana </a><br/>
+这关unix什么事，这只是一种思想，把unix只是使用了这种思想而已，什么设计模式，数据抽象等等无非也是类似的的一种思想</p>
+</div>
+ </article>
+</li>
+<li id="comment-262795" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-262795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31efb9fc1e3aa03af1703bec887a3234?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31efb9fc1e3aa03af1703bec887a3234?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fdipzone</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-262795"><time datetime="2013-01-10T21:12:50+08:00">2013年01月10日 21:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很好，学习了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-268746" class="comment even thread-even depth-1">
+<article id="div-comment-268746" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/325438c0ceacb2e064234c7a3756a88d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/325438c0ceacb2e064234c7a3756a88d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://demi-panda.com" class="url" rel="ugc external nofollow">熊猫家族</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-268746"><time datetime="2013-01-16T09:32:42+08:00">2013年01月16日 09:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Unix思想太深奥了，只能一点点的去啃</p>
+</div>
+ </article>
+</li>
+<li id="comment-283994" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.5zuiai.com/?p=33" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 | 吾最爱</a> </div>
+</li>
+<li id="comment-284160" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/cong-mian-xiang-dui-xiang-di-she-ji-mo-shi-kan-ruan-jian-she-ji.html" class="url" rel="ugc external nofollow">Definite Digest » 从面向对象的设计模式看软件设计</a> </div>
+</li>
+<li id="comment-285652" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/8961.html" class="url" rel="ugc">从面向对象的设计模式看软件设计 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-286751" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://caihexi.sinaapp.com/?p=4099" class="url" rel="ugc external nofollow">CaiHeXi &#39;s blog » 从面向对象的设计模式看软件设计</a> </div>
+</li>
+<li id="comment-648260" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-648260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f9a97c80993ae3e4ca7eb7431f7ec21?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f9a97c80993ae3e4ca7eb7431f7ec21?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jimshao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-648260"><time datetime="2013-08-10T12:47:34+08:00">2013年08月10日 12:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里一个提法忽视了一个问题域的本质问题，解耦到底是目的还是手段？我很赞同解耦的重要性，但是我认为强调解耦并不能帮助看官们如何解决问题，一定会问我怎么才能解耦，如何解耦才是合适的。纯个人观点，对事务的抽象，对需求的高层次抽象是非常重要的手段。所以我认为抽象能为解耦做出最有力保障。反观unix中一些完美的解耦方案是如何获得的，我想也不难理解抽象的重要性。</p>
+</div>
+ </article>
+</li>
+<li id="comment-709056" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhanghaohao.cn/archives/306" class="url" rel="ugc external nofollow">IoC/DIP其实是一种管理思想 | 张浩浩博客</a> </div>
+</li>
+<li id="comment-914202" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/archives/2279" class="url" rel="ugc external nofollow">IoC/DIP其实是一种管理思想Multiprocess | Multiprocess</a> </div>
+</li>
+<li id="comment-1132744" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.markdream.com/reshare/soft-design-for-pattern.shtml" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 | markdream</a> </div>
+</li>
+<li id="comment-1141195" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1141195" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8d05478322433bd572fe5eff982d8da4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8d05478322433bd572fe5eff982d8da4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://daoluan.net" class="url" rel="ugc external nofollow">捣乱</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-1141195"><time datetime="2014-01-04T16:05:46+08:00">2014年01月04日 16:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好棒的思想</p>
+</div>
+ </article>
+</li>
+<li id="comment-1208116" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=666" class="url" rel="ugc external nofollow">分布式系统的事务处理 | 星达红</a> </div>
+</li>
+<li id="comment-1231207" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1231207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f009d72559f51e7e454b16e5d0687a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f009d72559f51e7e454b16e5d0687a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">abc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-1231207"><time datetime="2014-01-27T17:19:58+08:00">2014年01月27日 17:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>似乎是挖坟了。不过这个文章说得太偏颇了。<br/>
+“任何灵活性都是有代价的”，这句话时刻需要记住。<br/>
+就用文中的例子：<br/>
+LAMP体系可以用各种组合——那么应用程序就不能用PHP新版本的新特性，比如lambda，静态迟绑定，等等。在PHP4下完全无法启动。为了能够适应各种组合，就要在编写应用程序的时候付出大量的代价，而在很多情况下，这种代价完全没意义，比如开发某个项目，一般来说控制服务器环境的成本远低于在程序中提供适应多种服务器环境的成本。<br/>
+文件概念。文件概念看起来很方便，但是实际使用的时候会碰到很多问题，因为它把一些不同的东西包装的看似相同，但是却并没有能够封装隔离掉他们的不同。比如说读写一个远程文件需要考虑延迟，读写本地文件一般不太需要，那么还要写一些代码去尝试探测…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1344129" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cmsidea.net/web/?p=213" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 | CMSIDEA</a> </div>
+</li>
+<li id="comment-1413653" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=287" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | skynetdoc</a> </div>
+</li>
+<li id="comment-1421280" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11432.html" class="url" rel="ugc">从Code Review 谈如何做技术 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1422392" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1422392" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cale</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-1422392"><time datetime="2014-04-13T19:11:11+08:00">2014年04月13日 19:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当你把你的软件设计地耦合度非常地低时，你可以随意地组合，随意地安排你的系统。相当的灵活，灵活到Windows到今天都学不会。</p>
+<p>学不会是不是说明这个技术太复杂了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1442935" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kaixuan.me/?p=140" class="url" rel="ugc external nofollow">从Code Review 谈如何做技术 / 蔡凯旋的博客</a> </div>
+</li>
+<li id="comment-1454717" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.momobest.net/2014/05/06/%e5%85%b3%e4%ba%8ecode-review/" class="url" rel="ugc external nofollow">关于Code Review | Andy-攻城狮的荣耀</a> </div>
+</li>
+<li id="comment-1529885" class="comment even thread-even depth-1">
+<article id="div-comment-1529885" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e87d6021f081fe31d4a0e02479316696?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e87d6021f081fe31d4a0e02479316696?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qq405165798</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-1529885"><time datetime="2014-09-09T21:54:38+08:00">2014年09月09日 21:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>解耦也需要权衡,不能无限的解耦. 也有度的问题. 不能看到一个东西好就无限的扩大化.<br/>
+解耦过多,会使部件太零碎,组合时就会变成一个大问题.<br/>
+这就是为什么很多人喜欢一键安装包,而不是许多零件单独安装. 这就是你的汽车是分成外壳,发动机,车轮什么的而不是螺丝螺母, 这就是为什么你的电脑分成主板CPU显卡硬盘电源,而不是分成电容电阻电线啥.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1808113" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://peimin.org/?p=137" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | peimin</a> </div>
+</li>
+<li id="comment-2084474" class="comment even thread-even depth-1">
+<article id="div-comment-2084474" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b34c0a48674d33571581bb95822e316?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b34c0a48674d33571581bb95822e316?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/charygao" class="url" rel="ugc external nofollow">charygao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7236.html/comment-page-2#comment-2084474"><time datetime="2020-04-01T17:52:26+08:00">2020年04月01日 17:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>也是一种依赖倒置——OOD的精髓 ?<br/>
+OOD？还是 IOC？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2267749" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://onebyone.icu/archives/2784" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 — OneByOne DotNet</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/7236.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/7236.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">7236</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

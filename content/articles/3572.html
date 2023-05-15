@@ -1,0 +1,424 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C语言函数实现的另类方法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3572 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3572" class="post-content post-3572 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage category-story tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C语言函数实现的另类方法</span>
+<h1 class="entry-title">C语言函数实现的另类方法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3572.html" title="13:38" rel="bookmark"><time class="entry-date" datetime="2011-01-26T13:38:20+08:00" pubdate="">2011年01月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3572.html#comments" class="comments-link">21 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 12,559 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>在前面看过那个<a href="/articles/3540.html" target="_blank">BT的Javascript程序</a>后，我们来看一个C语言的，相信大家还记得<a title="输出从1到1000的数" href="/articles/3445.html" target="_blank">输出从1到1000的数</a>最后的那个示例，本站还有很多这样的示例，如：<a href="/articles/914.html" target="_blank">变态的hello word</a>，<a href="/articles/2420.html" target="_blank">如何教新手编程</a>，<a href="/articles/1724.html" target="_blank">还有恐怖的C++</a>，在下面这个示例面前，神马都是浮云。</p>
+<p>下面这个示例向你展示了如何写一个swap()函数（把两个值交换），这段代码在我的Linux下的 gcc v4.1.1下可以正确编译通过，连一个Warning都没有，而且可以正确工作。我能说什么？！C语言并不疯狂，疯狂的是程序员。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+void(*swap)() = (void(*)()) &#34;\x8b\x44\x24\x04\x8b\x5c\x24\x08\x8b\x00\x8b\x1b\x31\xc3\x31\xd8\x31\xc3\x8b\x4c\x24\x04\x89\x01\x8b\x4c\x24\x08\x89\x19\xc3&#34;;
+
+int main(){ // works on GCC 3+4
+        int a = 37, b = 13;
+        swap(&amp;a, &amp;b);
+
+        printf(&#34;%d %d\n&#34;,a,b);
+}</pre>
+<p>其实，这种<strong>用字符串来实现函数的方法</strong>，在原理上是很好理解的。</p>
+<p><span id="more-3572"></span></p>
+<p>字符串就是一段内存空间，把一个字符串指针强转成函数指针，那么这个指针所指向的内容就是各种指令，因此，那堆乱七八糟的东西说白了就是汇编。8086的汇编。你可以使用<span style="font-family: Consolas, Monaco, &#39;Courier New&#39;, Courier, monospace; line-height: 18px; font-size: 12px; white-space: pre;">ndisasm</span>来看看。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># ruby -e &#34;print \&#34;\x8b\x44\x24\x04\x8b\x5c\x24\x08\x8b\x00\x8b\x1b\x31\xc3\x31\xd8\x31\xc3\x8b\x4c\x24\x04\x89\x01\x8b\x4c\x24\x08\x89\x19\xc3\&#34;&#34; | ndisasm -u -
+
+00000000  8B442404          mov eax,[esp+0x4]       ; load pointers to two parameters into eax, ebx
+00000004  8B5C2408          mov ebx,[esp+0x8]
+
+00000008  8B00              mov eax,[eax]           ; load values of two parameters from pointers (*eax, *ebx) into eax, ebx
+0000000A  8B1B              mov ebx,[ebx]
+
+0000000C  31C3              xor ebx,eax             ; swap two values (eax, ebx) using xor trick
+0000000E  31D8              xor eax,ebx
+00000010  31C3              xor ebx,eax
+
+00000012  8B4C2404          mov ecx,[esp+0x4]       ; load pointer to param 1 into ecx
+00000016  8901              mov [ecx],eax           ; store swapped value 1 (eax) into param 1 (*ecx)
+
+00000018  8B4C2408          mov ecx,[esp+0x8]       ; load pointer to param 2 into ecx
+0000001C  8919              mov [ecx],ebx           ; store swapped value 2 (ebx) into param 2 (*ecx)
+
+0000001E  C3                ret</pre>
+<p>注意：这段汇编中使用了XOR而不是引入第三个变量来完成了变量值的交换。</p>
+<p>关于XOR的方式，参看下面的示例：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">a = a^b;
+b=a^b;
+a=b^a; </pre>
+<p>或者更为简单的：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">a^=b^=a^=b;</code></p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3572-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C语言函数实现的另类方法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-25233" class="comment even thread-even depth-1">
+<article id="div-comment-25233" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d87ee844f80057416671dd8ee904b349?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d87ee844f80057416671dd8ee904b349?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.kissuki.com/" class="url" rel="ugc external nofollow">Iven</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25233"><time datetime="2011-01-26T13:49:36+08:00">2011年01月26日 13:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>换成 64 位还能编译吗？哈哈～</p>
+</div>
+ </article>
+</li>
+<li id="comment-25237" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25237" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db6068696ae1d17f9e031e920f73e206?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db6068696ae1d17f9e031e920f73e206?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sssssss</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25237"><time datetime="2011-01-26T13:56:48+08:00">2011年01月26日 13:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>shellcode<br/>
+xchg eax,ebx</p>
+</div>
+ </article>
+</li>
+<li id="comment-25248" class="comment even thread-even depth-1">
+<article id="div-comment-25248" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f247d8655d123db884e99aee8dd7421d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f247d8655d123db884e99aee8dd7421d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://git.iforeach.com" class="url" rel="ugc external nofollow">Ryan Jobs</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25248"><time datetime="2011-01-26T15:08:07+08:00">2011年01月26日 15:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学不好C呀</p>
+</div>
+ </article>
+</li>
+<li id="comment-25252" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25252" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0f836f209597052ba1309bafb3f702f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0f836f209597052ba1309bafb3f702f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oldrev</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25252"><time datetime="2011-01-26T15:44:15+08:00">2011年01月26日 15:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一开始还以为 ruby 什么时候可以反汇编了，结果拖到后面，华丽丽的 ndisasm</p>
+</div>
+ </article>
+</li>
+<li id="comment-25260" class="comment even thread-even depth-1">
+<article id="div-comment-25260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7326f3a2a234f0ded980e1e8d6084949?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7326f3a2a234f0ded980e1e8d6084949?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haipapa</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25260"><time datetime="2011-01-26T16:48:36+08:00">2011年01月26日 16:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>让我想起了一句话GCD：<br/>
+while (b) b ^= a ^= b ^= a %= b;</p>
+</div>
+ </article>
+</li>
+<li id="comment-25266" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25266" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c7638c505037a4e6f5e9b3d9b6165ae5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c7638c505037a4e6f5e9b3d9b6165ae5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杭州-木风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25266"><time datetime="2011-01-26T17:06:05+08:00">2011年01月26日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“那堆乱七八糟的东西说白了就是汇编。” — 这个描述有点不科学！<br/>
+“那堆乱七八糟的东西说白了就是机器码。” — 这样才对吧？<br/>
+和thunk有点类似么，数据和代码本无界限～</p>
+<p>不过linux内核不是有保护的么？数据页的内容不让执行，代码页的不让修改！<br/>
+哪位大侠知道这种保护linux上怎么去设置，也就是说表现为代码侧是怎么样的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-25268" class="comment even thread-even depth-1">
+<article id="div-comment-25268" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c7638c505037a4e6f5e9b3d9b6165ae5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c7638c505037a4e6f5e9b3d9b6165ae5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杭州-木风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25268"><time datetime="2011-01-26T17:07:09+08:00">2011年01月26日 17:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“那堆乱七八糟的东西说白了就是汇编。” — 这个描述有点不科学！<br/>
+“那堆乱七八糟的东西说白了就是机器码。” — 这样才对吧？<br/>
+和thunk有点类似么，数据和代码本无界限～</p>
+<p>不过linux内核不是有保护的么？数据页的内容不让执行，代码页的不让修改！<br/>
+哪位大侠知道这种保护linux上怎么去设置，也就是说表现为代码侧是怎么样的？</p>
+<p>PS: 评论没法成功重新发的时候怎么提示说我好像发过类似评论？— bug啊～～～</p>
+</div>
+ </article>
+</li>
+<li id="comment-25271" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25271" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/79ca4a865902abe1a798f8dd53a06d33?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/79ca4a865902abe1a798f8dd53a06d33?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">OwnWaterloo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25271"><time datetime="2011-01-26T17:34:56+08:00">2011年01月26日 17:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>小心DEP……</p>
+</div>
+ </article>
+</li>
+<li id="comment-25294" class="comment even thread-even depth-1">
+<article id="div-comment-25294" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ee3f62ee01fee4b6d42084d48aea5b08?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ee3f62ee01fee4b6d42084d48aea5b08?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://wutiam.net/" class="url" rel="ugc external nofollow">islet8</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25294"><time datetime="2011-01-26T19:36:24+08:00">2011年01月26日 19:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这类技巧权当娱乐就好了，千万别让孩子们觉得是在鼓励他们写出“奇妙”的程序。<br/>
+另外，很严重的一个问题是，这个交换内存的方法，当传入a和b的地址是同一个地址时，就杯具了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-25321" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25321" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d57a52c98eee46fb4bc92e0b4ffe163?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d57a52c98eee46fb4bc92e0b4ffe163?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Javran</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25321"><time datetime="2011-01-26T22:21:02+08:00">2011年01月26日 22:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果a和b指向的是同一个内存地址的话,这么写swap不好使.</p>
+</div>
+ </article>
+</li>
+<li id="comment-25433" class="comment even thread-even depth-1">
+<article id="div-comment-25433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/21791aecccd7f7dc6c739e322e6d60d7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/21791aecccd7f7dc6c739e322e6d60d7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://qixinglu.com/" class="url" rel="ugc external nofollow">muzuiget</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25433"><time datetime="2011-01-27T12:54:32+08:00">2011年01月27日 12:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-25233"><p>
+<strong><a href="#comment-25233" rel="nofollow">Iven</a> :</strong><br/>
+换成 64 位还能编译吗？哈哈～
+</p></blockquote>
+<p>我真的试了，段错误。</p>
+</div>
+ </article>
+</li>
+<li id="comment-25486" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25486" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1cd733c7477d51b98974151aed241187?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1cd733c7477d51b98974151aed241187?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qeewe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25486"><time datetime="2011-01-27T18:02:10+08:00">2011年01月27日 18:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这是shellcode，黑客常用手法，所以现在linux和windows等加了DEP防止栈执行。</p>
+</div>
+ </article>
+</li>
+<li id="comment-25643" class="comment even thread-even depth-1">
+<article id="div-comment-25643" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60b33becb9ed2e59534832aec0b4b2d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60b33becb9ed2e59534832aec0b4b2d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">嗷嗷</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25643"><time datetime="2011-01-28T10:37:11+08:00">2011年01月28日 10:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个a^=b^=a^=b是有问题的，不妨看看<br/>
+<a href="http://c-faq.com/expr/xorswapexpr.html" rel="nofollow ugc">http://c-faq.com/expr/xorswapexpr.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-25791" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25791" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/777bb025bc6c345ce980f8b9282cb7c6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/777bb025bc6c345ce980f8b9282cb7c6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">在星星上摇摆</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-25791"><time datetime="2011-01-28T22:23:18+08:00">2011年01月28日 22:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-25266" rel="nofollow">@杭州-木风 </a><br/>
+这种字符串的定义方式是把东西放到了正文段的上半部，还是在代码部分呢，没在数据部分。</p>
+</div>
+ </article>
+</li>
+<li id="comment-26267" class="comment even thread-even depth-1">
+<article id="div-comment-26267" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2c89c4618318bca7c2f5f3bb063910b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2c89c4618318bca7c2f5f3bb063910b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Sorawa</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-26267"><time datetime="2011-02-01T08:23:54+08:00">2011年02月01日 08:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>果然是 SMC手法</p>
+</div>
+ </article>
+</li>
+<li id="comment-30794" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-30794" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b8ee98490aa4a1f34985d063499f588a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b8ee98490aa4a1f34985d063499f588a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Williams</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-30794"><time datetime="2011-02-20T19:11:17+08:00">2011年02月20日 19:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>做3次异或的方法不如用临时变量高效</p>
+</div>
+ </article>
+</li>
+<li id="comment-58375" class="comment even thread-even depth-1">
+<article id="div-comment-58375" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/113315662aa1e165da8fb32f93938864?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/113315662aa1e165da8fb32f93938864?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Xsoda</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-58375"><time datetime="2011-06-12T09:49:38+08:00">2011年06月12日 09:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实也可以这么写：<br/>
+void swap(int *a,int *b)<br/>
+{<br/>
+__asm{<br/>
+push a<br/>
+push b<br/>
+pop a<br/>
+pop b<br/>
+}<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-104179" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-104179" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7eb8ef38e1cc519f3f11d1e2abef5b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7eb8ef38e1cc519f3f11d1e2abef5b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">musiclife</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-104179"><time datetime="2011-11-30T20:53:37+08:00">2011年11月30日 20:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>shellcode ，大学的时候看老师演示过，目瞪口呆啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-308057" class="comment even thread-even depth-1">
+<article id="div-comment-308057" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83c13f011c59363594d814afd906cd1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83c13f011c59363594d814afd906cd1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zyx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-308057"><time datetime="2013-03-10T22:39:31+08:00">2013年03月10日 22:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前写过这个,在mingw gcc 3.4.5 下测试通过<br/>
+#include<br/>
+unsigned int main[]={0x0000a268,0xb8909000,(int)(void*)putchar,0x6858D0FF,0x000000e1,0xb8909090,<br/>
+(int)(void*)putchar,0xb858d0ff,(int)(void*)getchar,0xc390d0ff};</p>
+</div>
+ </article>
+</li>
+<li id="comment-571214" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-571214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b15d026e2980d15b8f2b47321c182e71?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b15d026e2980d15b8f2b47321c182e71?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">菜鸟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-571214"><time datetime="2013-06-26T16:29:47+08:00">2013年06月26日 16:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>a^=b^=a^=b;行为undefined,两个顺序点之间变量值多次改变.</p>
+</div>
+ </article>
+</li>
+<li id="comment-897064" class="comment even thread-even depth-1">
+<article id="div-comment-897064" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3349bc8e8dbc15321406e046c17b61f6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3349bc8e8dbc15321406e046c17b61f6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xxx.com" class="url" rel="ugc external nofollow">OGM</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3572.html#comment-897064"><time datetime="2013-11-08T11:39:34+08:00">2013年11月08日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>shellcode 最基本的东西</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

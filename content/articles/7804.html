@@ -1,0 +1,564 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>关于闰秒 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7804 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7804" class="post-content post-7804 post type-post status-publish format-standard hentry category-misc tag-leap-time tag-linux tag-timestamp">
+<header class="entry-header">
+<span class="screen-reader-text">关于闰秒</span>
+<h1 class="entry-title">关于闰秒</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7804.html" title="17:16" rel="bookmark"><time class="entry-date" datetime="2012-06-30T17:16:34+08:00" pubdate="">2012年06月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7804.html#comments" class="comments-link">35 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,004 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>2012年6月30日，也就今天晚上，时间会多出现一秒，也就是我们所说的闰秒。我不知道大家对闰秒的了解有多少，所以写下这篇文章。</p>
+<h4>背景知识</h4>
+<p>闰秒是在在<a href="https://en.wikipedia.org/wiki/Coordinated_Universal_Time" target="_blank">UTC</a>（中文“世界标准时间”或“世界协调时间<strong>”</strong>／英文“<strong>C</strong>oordinated <strong>U</strong>niversal <strong>T</strong>ime”／法文“<strong>T</strong>emps <strong>U</strong>niversel <strong>C</strong>ordonné”）是基于<a href="https://en.wikipedia.org/wiki/Atomic_clock" target="_blank">Atomic Clock</a>（原子时钟）的一种时间，向太阳时（<a title="Mean solar day" href="https://en.wikipedia.org/wiki/Mean_solar_day">Solar Time </a>）对齐的一种方法，因为太阳时是根据地球公转来计算的。所以，1972年制定的UTC为了确保其时间相对于UTC的时间误差不能超过0.9秒，因此在过一段时间后需要加一秒。下图是有UTC以来闰秒的调整表（来自<a href="https://zh.wikipedia.org/wiki/%E9%97%B0%E7%A7%92" target="_blank">Wikipedia闰秒的中文词条</a>）</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-7805" title="闰秒" src="/uploads/2012/06/闰秒.png" alt="" width="433" height="383" srcset="" sizes="(max-width: 433px) 100vw, 433px"/></p>
+<p><span id="more-7804"></span></p>
+<p>从上表中我们可以看到，从1972年到现在，在这四十年里已经进行过25次的闰秒调整。闰秒是在每年6月或12月的最后一天的最后一分钟进行跳秒或不跳秒。是否加入闰秒由位于巴黎的国际地球自转和参考坐标系统服务（IERS – <a title="International Earth Rotation and Reference Systems Service" href="https://en.wikipedia.org/wiki/International_Earth_Rotation_and_Reference_Systems_Service">International Earth Rotation and Reference Systems Service</a>）决定。如果决定加入闰秒，那么这一秒是被加在第二天的00:00:00前的，也就是说，时间会出现23:59:60的情况，然后才是第二天的00:00:00。如果是负闰秒的话，23:59:58的下一秒就直接跳到第二天的00:00:00了。<strong>现在，所有闰秒都是正闰秒</strong>。</p>
+<h4>计算机处理闰秒</h4>
+<p>那么，对于我们的电脑系统来说，怎么处理这个闰秒呢？一般来说，我们需要为我们的电脑系统配置UTC时钟，并通过NTP (<a title="Network time protocol" href="https://en.wikipedia.org/wiki/Network_time_protocol">Network time protocol</a>)来进行时间同步，NTP服务器会一级一级地下发闰秒事件通知直到最边缘的NTP服务器，然后NTP服务器就会把闰秒通知发给客户端的操作系统，由操作系统来处理闰秒通知。</p>
+<p>虽然闰秒调整对普通民众的日常生活不会产生影响。不过，<strong>这个问题将影响部分开启ntp服务的Linux操作系统——会导致Linux内核Crash！</strong>Linux kernel是在2.6.18-164.e15之后的版本中解决了这个问题。<span style="color: #cc0000;">换句话说，Linux kernel低于<strong>2.6.18-164</strong>的Linux系统，无论是什么公司的Linux都将受到影响</span>。（今晚过后大家可以查看一下你的Linux系统日志，看看闰秒有没有发生）</p>
+<p>可以参看下面的bug描述：</p>
+<ul>
+<li><a href="https://lkml.org/lkml/2009/1/2/373" target="_blank">LKML: Chris Adams: Re: Bug: Status/Summary of slashdot leap-second crash on new years 2008-2009</a></li>
+<li><a href="https://bugzilla.redhat.com/show_bug.cgi?id=479765" target="_blank">Bug 479765 – Leap second message can hang the kernel</a></li>
+</ul>
+<p>那么，我们的操作系统是怎么处理正闰秒通知的？通常来说有三种实现：</p>
+<ol>
+<li>后退一秒。</li>
+<li>停止一秒。</li>
+<li>真正的增加一秒。</li>
+</ol>
+<p>懂编程的人一眼就能看出来，前两种方式是以一种Workaround或Hack的方式解决这个问题。第一种方式会导致一些基于timestamp的消息通知乱序了，而第二种会导致出现两个一模一样的timestamp。最后一种不会出现timestamp的问题。对了，你还记得以前那篇《<a href="/articles/5075.html" rel="bookmark">你确信你了解时间吗？</a>》的文章吗？</p>
+<p>最后，说说Windows，Windows  Time Service不支持闰秒通知，所以，当闰秒发生的时候，你的Windows上的时间会比实际时间快一秒钟，这需要等下一次的时钟同步才会完成修正。你可以查看这篇文章：<a href="http://support.microsoft.com/kb/909614/en-us">http://support.microsoft.com/kb/909614/en-us</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7804-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">leap time</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">timestamp</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>关于闰秒</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-197938" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.ueder.info/769.html" class="url" rel="ugc external nofollow">7月1日闰秒事件linux的注意事项| 不想飞的蛤蟆不是好刺猬</a> </div>
+</li>
+<li id="comment-197939" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wxwidgets.sinaapp.com/2012/06/30/%e5%85%b3%e4%ba%8e%e9%97%b0%e7%a7%92/" class="url" rel="ugc external nofollow">关于闰秒 | wxWidgets</a> </div>
+</li>
+<li id="comment-197944" class="comment even thread-even depth-1">
+<article id="div-comment-197944" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9580c13d0e62bc286bcca37337a1055e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9580c13d0e62bc286bcca37337a1055e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://twitter.com/gamerh2o" class="url" rel="ugc external nofollow">GamerH2o</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197944"><time datetime="2012-06-30T18:28:49+08:00">2012年06月30日 18:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于普通用户来说，`sudo ntpdate cn.pool.ntp.org` 应该就可以了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197947" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197947" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2fa571176e18e6af2adb0f51e81d5e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2fa571176e18e6af2adb0f51e81d5e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">halfbloodrock</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197947"><time datetime="2012-06-30T19:01:45+08:00">2012年06月30日 19:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>生产环境里一坨子RHEL4呢。。。不少还是关键服务器</p>
+</div>
+ </article>
+</li>
+<li id="comment-197948" class="comment even thread-even depth-1">
+<article id="div-comment-197948" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87b895e4db50dc939de743920b652870?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87b895e4db50dc939de743920b652870?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.90blog.org" class="url" rel="ugc external nofollow">90</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197948"><time datetime="2012-06-30T19:07:44+08:00">2012年06月30日 19:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不说这事都要忘记了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197978" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197978" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14df441ccf4ae21d76cafb60a41d6ee4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14df441ccf4ae21d76cafb60a41d6ee4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://liupangzi.org" class="url" rel="ugc external nofollow">holyghost</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197978"><time datetime="2012-06-30T23:58:08+08:00">2012年06月30日 23:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>弱弱的问一句：我觉得还是windows的办法强，有和我同感的么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-197985" class="comment byuser comment-author-walkerinwind even thread-even depth-1">
+<article id="div-comment-197985" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f55a6fc26cd76fa54ee3d3dac005ea03?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f55a6fc26cd76fa54ee3d3dac005ea03?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.codeislife.tk/" class="url" rel="ugc external nofollow">Walkerinwind</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197985"><time datetime="2012-07-01T00:37:38+08:00">2012年07月01日 00:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚Google Reader上看到…<br/>
+真是应景的文字</p>
+</div>
+ </article>
+</li>
+<li id="comment-197986" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197986" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b1cf8f2a132aa5793c53061f66e2b84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b1cf8f2a132aa5793c53061f66e2b84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">steedguo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197986"><time datetime="2012-07-01T00:41:37+08:00">2012年07月01日 00:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>闰秒是全球同步修改，所以北京时间是在 7.1 07:59:60，而不是在6.30 的 23:59:60</p>
+</div>
+ </article>
+</li>
+<li id="comment-197992" class="comment even thread-even depth-1">
+<article id="div-comment-197992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f57e15f428ad44bad39c07b0dbfd9e9b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f57e15f428ad44bad39c07b0dbfd9e9b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xanpeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197992"><time datetime="2012-07-01T01:58:20+08:00">2012年07月01日 01:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个是北京时间,一个是世界时间,二者等同<a href="#comment-197986" rel="nofollow">@steedguo </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-197995" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197995" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8d5147fec0e0b18adfa108cacc67b3c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8d5147fec0e0b18adfa108cacc67b3c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://googleblog.blogspot.com/2011/09/time-technology-and-leaping-seconds.html" class="url" rel="ugc external nofollow">Frank</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-197995"><time datetime="2012-07-01T02:15:41+08:00">2012年07月01日 02:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>链接的网页是Google Blog中介绍Google是如何处理闰秒的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198008" class="comment even thread-even depth-1">
+<article id="div-comment-198008" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5aa9bea3ff3966be2739aa7e1861471?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5aa9bea3ff3966be2739aa7e1861471?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zhangyuchang.com" class="url" rel="ugc external nofollow">不纯粹文人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198008"><time datetime="2012-07-01T09:06:55+08:00">2012年07月01日 09:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真不知道闰秒的事情会这么频繁啊。<br/>
+明天去公司看看是否有这方面的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198010" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198010" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198010"><time datetime="2012-07-01T09:37:55+08:00">2012年07月01日 09:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今日时间多一秒 7:59:60你感觉到了吗？ 由于地球自转速度减慢…<br/>
+如果需要精确到1秒的应用系统，而且设备是非联网更新的，则肯定乱套了。。。。<br/>
+记得军阀时代，曾经漏了一天还是多少，这样就要求做IT系统的标准日期系统，还要懂得历史天文的人为增减事件了，的确不合理</p>
+</div>
+ </article>
+</li>
+<li id="comment-198011" class="comment even thread-even depth-1">
+<article id="div-comment-198011" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198011"><time datetime="2012-07-01T09:42:35+08:00">2012年07月01日 09:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>另外，很多系统（ms sql server、delphi应用等）的时间类型值，其实是距某个特定时间点（如1900-01-01、1970-01-01）的秒数<br/>
+如果有这么多不规则的闰月，而且很多是事后才人为添加的，那些系统肯定无法预先知道，事前的闰月，估计一般也不会考虑进行的<br/>
+所以，美国要求取消闰秒机制，应该是合理的</p>
+</div>
+ </article>
+</li>
+<li id="comment-198012" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198012" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198012"><time datetime="2012-07-01T09:43:52+08:00">2012年07月01日 09:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198011" rel="nofollow">@haitao </a><br/>
+上面的闰月，应该都是闰秒</p>
+</div>
+ </article>
+</li>
+<li id="comment-198013" class="comment even thread-even depth-1">
+<article id="div-comment-198013" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/565a42c3b7f7f10c28e688088ab6694a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/565a42c3b7f7f10c28e688088ab6694a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pete</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198013"><time datetime="2012-07-01T10:39:12+08:00">2012年07月01日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果不计算闰秒累计几千年下去就会出现黑白颠倒季节错乱吧。<br/>
+坐在办公室里编个代码，还得考虑地球公转自转的变化……</p>
+<p>xkcd发明了EST来解决这个问题<br/>
+<a href="http://xkcd.com/1061/" rel="nofollow ugc">http://xkcd.com/1061/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198029" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198029" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fd9f80f7207996821bf27062c7faec87?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fd9f80f7207996821bf27062c7faec87?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://syoshin.blog.163.com" class="url" rel="ugc external nofollow">syoshin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198029"><time datetime="2012-07-01T15:19:06+08:00">2012年07月01日 15:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，我对操作系统处理闰秒的方式还不太明白：<br/>
+1、操作系统提供了年月日时分秒与时间戳的相互转换的函数，这种转换有没有考虑闰秒？如何考虑闰秒？<br/>
+2、假如我的电脑没有运行NTP，我只是通过其他方法把年月日时分秒调对了，再问问题1。<br/>
+我对计算机懂的不多，希望大牛答疑解惑。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198033" class="comment even thread-even depth-1">
+<article id="div-comment-198033" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e9be554b4df11036ba828622d0f2537?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e9be554b4df11036ba828622d0f2537?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://windtear.net/" class="url" rel="ugc external nofollow">windtear</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198033"><time datetime="2012-07-01T16:24:43+08:00">2012年07月01日 16:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章有些东拼西凑 错误太多了</p>
+</div>
+ </article>
+</li>
+<li id="comment-198037" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198037" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198037"><time datetime="2012-07-01T16:51:26+08:00">2012年07月01日 16:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198013" rel="nofollow">@pete </a><br/>
+几千年也就差1小时最多了。不用一百年，就完全可以有更好的解决办法了</p>
+</div>
+ </article>
+</li>
+<li id="comment-198044" class="comment even thread-even depth-1">
+<article id="div-comment-198044" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d01f20dd6a629816d2ffb1465ed1602?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d01f20dd6a629816d2ffb1465ed1602?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">千手扑蝶</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198044"><time datetime="2012-07-01T18:15:26+08:00">2012年07月01日 18:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-198062" class="comment byuser comment-author-walkerinwind odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198062" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f55a6fc26cd76fa54ee3d3dac005ea03?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f55a6fc26cd76fa54ee3d3dac005ea03?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.codeislife.tk/" class="url" rel="ugc external nofollow">Walkerinwind</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198062"><time datetime="2012-07-01T21:36:32+08:00">2012年07月01日 21:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-198033"><p>
+<strong><a href="#comment-198033" rel="nofollow">windtear</a> :</strong><br/>
+这篇文章有些东拼西凑 错误太多了
+</p></blockquote>
+<p>我特别不喜欢这样的评价,显得自己很高深的样子.</p>
+<p>如果直截了当指出某处某处硬伤,佩服之至.<br/>
+“乃水平太次,错误太多,不屑置辩~”呵呵</p>
+</div>
+ </article>
+</li>
+<li id="comment-198121" class="comment even thread-even depth-1">
+<article id="div-comment-198121" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85095915a4c0aa8867036a465f8f38fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85095915a4c0aa8867036a465f8f38fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.d6city.com" class="url" rel="ugc external nofollow">六城婴童</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198121"><time datetime="2012-07-02T17:00:12+08:00">2012年07月02日 17:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>小小的一秒钟竟然有这么深的东西</p>
+</div>
+ </article>
+</li>
+<li id="comment-198125" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-198125" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e9be554b4df11036ba828622d0f2537?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e9be554b4df11036ba828622d0f2537?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://windtear.net/" class="url" rel="ugc external nofollow">windtear</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198125"><time datetime="2012-07-02T18:16:47+08:00">2012年07月02日 18:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198062" rel="nofollow">@Walkerinwind </a> </p>
+<p>比如背景这一段 完全乱七八糟啊<br/>
+“闰秒是在在UTC向Atomic Clock（原子时钟）对齐的一种方法，因为UTC是民用时间，其精确值是毫秒，而Atomic Clock精确值是纳秒，所以，1972年制定的UTC为了确保其时间相对于Atomic Clock的时间误差不能超过0.9秒，因此在过一段时间后需要加一秒。”<br/>
+如果参考维基百科中文版 应该是：“在协调世界时 (UTC) 中增加或减少一秒，使它与平太阳时贴近所做调整。UTC，是透过广播作为民用时的官方时间基础，它使用非常精确的原子钟来维护。要保持UTC与平太阳时的一致性，偶尔需要调整”<br/>
+在这个意义上 UTC和原子时种可以理解为是一回事 闰秒UTC是因为相对于mean solar time，不是UTC相对于原子时。</p>
+<p>后面的也是以讹传讹<br/>
+“换句话说，Linux kernel低于2.6.18-164的Linux系统，无论是什么公司的Linux都将受到影响。”<br/>
+传说的错误是“RHEL 5.4 2.6.18-164以下 RHEL 4.8 2.6.9-89以下” （其实也并不受到影响） 其他公司用官方2.6.18压根都没引入这个错误呢</p>
+<p>处理闰秒三种实现的解释那段也是乱七八糟<br/>
+可以参考这里 <a href="http://www.eecis.udel.edu/~mills/leap.html" rel="nofollow ugc">http://www.eecis.udel.edu/~mills/leap.html</a></p>
+<p>另外这篇拼凑文章只提了先前网上误传的老版本的问题 也没有指出新版本的问题<br/>
+可以参考这里<br/>
+<a href="http://it.slashdot.org/story/12/07/01/1920217/leap-second-bug-causes-crashes" rel="nofollow ugc">http://it.slashdot.org/story/12/07/01/1920217/leap-second-bug-causes-crashes</a><br/>
+<a href="http://serverfault.com/questions/403732/anyone-else-experiencing-high-rates-of-linux-server-crashes-during-a-leap-second" rel="nofollow ugc">http://serverfault.com/questions/403732/anyone-else-experiencing-high-rates-of-linux-server-crashes-during-a-leap-second</a></p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-198149" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-198149" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198149"><time datetime="2012-07-03T10:24:24+08:00">2012年07月03日 10:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@windtear, 谢谢批评。</p>
+<p>1）背景的一段是我理解错误的问题，我把太阳时理解成了原子钟，我已修正。</p>
+<p>2）关于实现的三种方式没问题，那就是Unix/Linux下的三种不同的实现方式，你可以查看<a href="http://www.meinberg.de/english/info/leap-second.htm#os" target="_blank" rel="nofollow">Leap Second Handling by Operating Systems</a>。</p>
+<p>3）关于你说的Linux的内核受影响的问题，给你两个内核的commit log<br/>
+<a href="https://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=746976a301ac9c9aa10d7d42454f8d6cdad8ff2b" target="_blank" rel="nofollow">NTP: remove clock_was_set() call to prevent deadlock</a></p>
+<p><a href="https://git.kernel.org/?p=linux/kernel/git/torvalds/linux-2.6.git;a=commit;h=6b43ae8a619d17c4935c3320d2ef9e92bdeed05d" target="_blank" rel="nofollow">ntp: Fix leap-second hrtimer livelock</a></p>
+<p>另，你的评论没有被批准是因为你的评论中有很多链接，所以被系统识别为可能为垃圾评论。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-198127" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198127" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e9be554b4df11036ba828622d0f2537?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e9be554b4df11036ba828622d0f2537?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://windtear.net/" class="url" rel="ugc external nofollow">windtear</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198127"><time datetime="2012-07-02T18:54:27+08:00">2012年07月02日 18:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198062" rel="nofollow">@Walkerinwind </a><br/>
+我18:16评论了几段 1.2k 管理员还没审核通过</p>
+</div>
+ </article>
+</li>
+<li id="comment-198163" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198163" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdcb7088f5fff3a28850bae51058d19d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdcb7088f5fff3a28850bae51058d19d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/nieyinyin" class="url" rel="ugc external nofollow">jerry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198163"><time datetime="2012-07-03T16:00:49+08:00">2012年07月03日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近看了楼主的很多文章，感觉学到了很多，在此地无其他表示感激的方式，只能真心地说句谢谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198165" class="comment odd alt thread-even depth-1">
+<article id="div-comment-198165" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdcb7088f5fff3a28850bae51058d19d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdcb7088f5fff3a28850bae51058d19d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/nieyinyin" class="url" rel="ugc external nofollow">jerry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198165"><time datetime="2012-07-03T16:11:54+08:00">2012年07月03日 16:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实，博文本身对与错肯定是有争议的，再好的文章，想找漏洞也是能找到，我觉得博文最大的好处，就是能通过分享带动一股热潮，带来一些评论，带来不一样的观点。就好像，博主曾经对c情有独钟，对Java的认识可能也有些许的偏见（当然，博主后来貌似已经摒弃了语言之间的门阶），但是热爱java的人看了博主的文章，会引发不一样的思考，会引起java之人对c、unix、linux产生某中好奇，会让人发问：unix c真就这么强大吗？其实，这无形之中就已经带来了社会效应。所以，顶coolshell，期待博主的好文章。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198840" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-198840" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/357a20e8c56e69d6f9734d23ef9517e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/357a20e8c56e69d6f9734d23ef9517e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mustang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-198840"><time datetime="2012-07-12T17:10:24+08:00">2012年07月12日 17:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197978" rel="nofollow">@holyghost </a><br/>
+同感</p>
+</div>
+ </article>
+</li>
+<li id="comment-201133" class="comment odd alt thread-even depth-1">
+<article id="div-comment-201133" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/517d2c87c9bfeafec0daaa90b9f15251?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/517d2c87c9bfeafec0daaa90b9f15251?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">danny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-201133"><time datetime="2012-08-06T15:17:25+08:00">2012年08月06日 15:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198149" rel="nofollow">@陈皓 </a><br/>
+3）关于你说的Linux的内核受影响的问题，给你两个内核的commit log<br/>
+commit 1 -&gt; NTP: remove clock_was_set() call to prevent deadlock<br/>
+commit 2 -&gt; ntp: Fix leap-second hrtimer livelock<br/>
+没做过内核还是不要谣传这类的比较好。。。<br/>
+对commit 1， 老版本的内核没有打开HRTIMER， clock_was_set() 是空函数<br/>
+对commit 2，是由于commit 7dffa3c673fbcf835cd7be80bb4aec8ad3f51168引起的regression，而那个commit是的3.x里引入的<br/>
+leap second的bug只有在2.6.26-26.27内核才会出现</p>
+</div>
+ </article>
+</li>
+<li id="comment-201626" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-201626" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c6c4f81691380e1fa8530bdc61f1c804?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c6c4f81691380e1fa8530bdc61f1c804?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">acmerfight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-201626"><time datetime="2012-08-15T19:10:00+08:00">2012年08月15日 19:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>长见识了</p>
+</div>
+ </article>
+</li>
+<li id="comment-546386" class="comment odd alt thread-even depth-1">
+<article id="div-comment-546386" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/127d3062bd71aab52f973d651733c82c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/127d3062bd71aab52f973d651733c82c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.fakeraybans4sale.com" class="url" rel="ugc external nofollow">Fake Ray Bans for sale</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-546386"><time datetime="2013-06-14T04:54:29+08:00">2013年06月14日 04:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Hi, I read your blogs like every week. Your story-telling style is awesome, keep it up!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1730364" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1730364" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23a831ab3072c370cd64ccc32e92ea22?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23a831ab3072c370cd64ccc32e92ea22?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">暗夜的怒吼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-1730364"><time datetime="2015-07-02T11:39:38+08:00">2015年07月02日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>楼主，那么java和c#为啥没有闰秒呢，我用java写Date(2012, 5, 30, 23, 59, 59)得到的是6月31号的0点，Date(2012, 6, 1, 7, 59, 60)得到的是7月1日8点钟；用c#的话new DateTime(2012, 6, 30, 23, 59, 60)和new DateTime(2012, 7, 1, 7, 59, 60)都会报错。<br/>
+程序里不能出现60秒吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1861411" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1861411" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/450887f3c80fe5504dbf2e2c91640d81?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/450887f3c80fe5504dbf2e2c91640d81?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">续一秒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7804.html#comment-1861411"><time datetime="2016-07-25T20:10:53+08:00">2016年07月25日 20:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我为祖国续一秒</p>
+</div>
+ </article>
+</li>
+<li id="comment-1892310" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://encrt.com/2016/10/16/%e5%85%b3%e4%ba%8e%e9%97%b0%e7%a7%92/" class="url" rel="ugc external nofollow">关于闰秒 | Desmond&#39;s Blog</a> </div>
+</li>
+<li id="comment-2012470" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/08/22/5d5df525186ef/" class="url" rel="ugc external nofollow">Unix时间戳 | 大专栏</a> </div>
+</li>
+<li id="comment-2187481" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21128.html" class="url" rel="ugc">Go编程模式：切片，接口，时间和性能 | 酷 壳 - CoolShell</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

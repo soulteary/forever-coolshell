@@ -1,0 +1,423 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何读懂并写出装逼的函数式代码 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17524 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17524" class="post-content post-17524 post type-post status-publish format-standard hentry category-misc category-progdesign category-proglanguage tag-closure tag-functional tag-javascript tag-y-combinator">
+<header class="entry-header">
+<span class="screen-reader-text">如何读懂并写出装逼的函数式代码</span>
+<h1 class="entry-title">如何读懂并写出装逼的函数式代码</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17524.html" title="17:56" rel="bookmark"><time class="entry-date" datetime="2016-10-23T17:56:29+08:00" pubdate="">2016年10月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17524.html#comments" class="comments-link">66 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 94,532 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" src="/uploads/2016/10/drawing-recursive-300x204.jpg" alt="drawing-recursive" width="300" height="204" class="alignright size-medium wp-image-17535" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>今天在微博上看到了 有人<a href="http://weibo.com/1655747731/Ee4gU0qNn" target="_blank">分享了下面的这段函数式代码</a>，我把代码贴到下面，不过我对原来的代码略有改动，对于函数式的版本，咋一看，的确令人非常费解，仔细看一下，你可能就晕掉了，似乎完全就是天书，看上去非常装逼，哈哈。不过，我感觉解析那段函数式的代码可能会一个比较有趣过程，而且，我以前写过一篇《<a href="/articles/10822.html" target="_blank">函数式编程</a>》的入门式的文章，正好可以用这个例子，再升华一下原来的那篇文章，顺便可以向大家更好的介绍很多基础知识，所以写下这篇文章。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%85%88%E7%9C%8B%E4%BB%A3%E7%A0%81" title="先看代码">先看代码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Javascript%E7%9A%84%E7%AE%AD%E5%A4%B4%E5%87%BD%E6%95%B0" title="Javascript的箭头函数">Javascript的箭头函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0%E7%9A%84%E9%80%92%E5%BD%92" title="匿名函数的递归">匿名函数的递归</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%8A%A8%E7%94%A8%E9%AB%98%E9%98%B6%E5%87%BD%E6%95%B0%E7%9A%84%E9%80%92%E5%BD%92" title="动用高阶函数的递归">动用高阶函数的递归</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%9B%9E%E9%A1%BE%E4%B9%8B%E5%89%8D%E7%9A%84%E7%A8%8B%E5%BA%8F" title="回顾之前的程序">回顾之前的程序</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%85%B6%E5%AE%83" title="其它">其它</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%85%88%E7%9C%8B%E4%BB%A3%E7%A0%81"></span>先看代码<span class="ez-toc-section-end"></span></h4>
+<p>这个代码平淡无奇，就是从一个数组中找到一个数，O(n)的算法，找不到就返回 null。</p>
+<p>下面是正常的 old-school 的方式。不用多说。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//正常的版本
+function find (x, y) {
+  for ( let i = 0; i &lt; x.length; i++ ) {
+    if ( x[i] == y ) return i;
+  }
+  return null;
+}
+
+let arr = [0,1,2,3,4,5]
+console.log(find(arr, 2))
+console.log(find(arr, 8))</pre>
+<p>结果到了函数式成了下面这个样子（好像上面的那些代码在下面若影若现，不过又有点不太一样，为了消掉if语言，让其看上去更像一个表达式，动用了 ? 号表达式）：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//函数式的版本
+const find = ( f =&gt; f(f) ) ( f =&gt;
+  (next =&gt; (x, y, i = 0) =&gt;
+    ( i &gt;= x.length) ?  null :
+      ( x[i] == y ) ? i :
+        next(x, y, i+1))((...args) =&gt;
+          (f(f))(...args)))
+
+let arr = [0,1,2,3,4,5]
+console.log(find(arr, 2))
+console.log(find(arr, 8))</pre>
+<p>为了讲清这个代码，需要先补充一些知识。</p>
+<p><span id="more-17524"></span></p>
+<h4><span class="ez-toc-section" id="Javascript%E7%9A%84%E7%AE%AD%E5%A4%B4%E5%87%BD%E6%95%B0"></span>Javascript的箭头函数<span class="ez-toc-section-end"></span></h4>
+<p>首先先简单说明一下，ECMAScript2015 引入的箭头表达式。箭头函数其实都是匿名函数，其基本语法如下：</p>
+<blockquote>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">(param1, param2, …, paramN) =&gt; { statements } 
+(param1, param2, …, paramN) =&gt; expression
+     // 等于 :  =&gt; { return expression; } 
+
+// 只有一个参数时,括号才可以不加:
+(singleParam) =&gt; { statements }
+singleParam =&gt; { statements }
+
+//如果没有参数,就一定要加括号:
+() =&gt; { statements }</pre>
+</blockquote>
+<p>下面是一些示例：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var simple = a =&gt; a &gt; 15 ? 15 : a; 
+simple(16); // 15
+simple(10); // 10
+
+let max = (a, b) =&gt; a &gt; b ? a : b;
+
+// Easy array filtering, mapping, ...
+
+var arr = [5, 6, 13, 0, 1, 18, 23];
+var sum = arr.reduce((a, b) =&gt; a + b);  // 66
+var even = arr.filter(v =&gt; v % 2 == 0); // [6, 0, 18]
+var double = arr.map(v =&gt; v * 2);       // [10, 12, 26, 0, 2, 36, 46]</pre>
+<p>看上去不复杂吧。不过，上面前两个 simple 和 max 的例子都把这箭头函数赋值给了一个变量，于是它就有了一个名字。有时候，某些函数在声明的时候就是调用的时候，尤其是函数式编程中，一个函数还对外返回函数的时候。比如下在这个例子：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function MakePowerFn(power) {
+  return function PowerFn(base) {
+    return Math.pow(base, power);
+  } 
+}
+
+power3 = MakePowerFn(3); //制造一个X的3次方的函数
+power2 = MakePowerFn(2); //制造一个X的2次方的函数
+
+console.log(power3(10)); //10的3次方 = 1000
+console.log(power2(10)); //10的2次方 = 100</pre>
+<p>其实，在 MakePowerFn 函数里的那个 PowerFn 根本不需要命名，完全可以写成：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function MakePowerFn(power) {
+  return function(base) {
+    return Math.pow(base, power);
+  } 
+}</pre>
+<p>如果用箭头函数，可以写成：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">MakePowerFn = power  =&gt; {
+  return base =&gt; {
+    return Math.pow(base, power);
+  } 
+}</pre>
+<p>我们还可以写得更简洁（如果用表达式的话，就不需要 { 和 }， 以及 return 语句 ）：</p>
+<p><code data-enlighter-language="js" class="EnlighterJSRAW">MakePowerFn = power =&gt; base =&gt; Math.pow(base, power)</code></p>
+<p>我还是加上括号，和换行可能会更清楚一些：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">MakePowerFn = (power) =&gt; (
+  (base) =&gt; (Math.pow(base, power))
+)</pre>
+<p>好了，有了上面的知识，我们就可以进入一个更高级的话题——匿名函数的递归。</p>
+<h4><span class="ez-toc-section" id="%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0%E7%9A%84%E9%80%92%E5%BD%92"></span>匿名函数的递归<span class="ez-toc-section-end"></span></h4>
+<p>函数式编程立志于用函数表达式消除有状态的函数，以及for/while循环，所以，在函数式编程的世界里是不应该用for/while循环的，而要改用递归（递归的性能很差，所以，一般是用尾递归来做优化，也就是把函数的计算的状态当成参数一层一层的往下传递，这样语言的编译器或解释器就不需要用函数栈来帮你保存函数的内部变量的状态了）。</p>
+<p>好了，那么，匿名函数的递归该怎么做？</p>
+<p>一般来说，递归的代码就是函数自己调用自己，比如我们求阶乘的代码：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function fact(n){
+  return n==0 ? 1 :  n * fact(n-1);
+};
+result = fact(5);
+</pre>
+<p>在匿名函数下，这个递归该怎么写呢？对于匿名函数来说，<b>我们可以把匿名函数当成一个参数传给另外一个函数，因为函数的参数有名字，所以就可以调用自己了</b>。 如下所示：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function combinator(func) {
+  func(func);
+}</pre>
+<p>这个是不是有点作弊的嫌疑？Anyway，我们再往下，把上面这个函数整成箭头函数式的匿名函数的样子。</p>
+<p><code data-enlighter-language="js" class="EnlighterJSRAW">（func) =&gt; (func(func)) </code></p>
+<p>现在你似乎就不像作弊了吧。把上面那个求阶乘的函数套进来是这个样子：</p>
+<p>首先，先重构一下fact，把fact中自己调用自己的名字去掉：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function fact(func, n) {
+  return n==0 ? 1 :  n * func(func, n-1);
+}
+
+fact(fact, 5); //输出120
+</pre>
+<p>然后，我们再把上面这个版本变成箭头函数的匿名函数版：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var fact = (func, n) =&gt; ( n==0 ? 1 :  n * func(func, n-1) )
+fact(fact, 5)
+</pre>
+<p>这里，我们依然还要用一个fact来保存这个匿名函数，我们继续，我们要让匿名函数声明的时候，就自己调用自己。</p>
+<p>也就是说，我们要把 </p>
+<p><code data-enlighter-language="js" class="EnlighterJSRAW">(func, n) =&gt; ( n==0 ? 1 : n * func(func, n-1) )</code> </p>
+<p>这个函数当成调用参数，传给下面这个函数：</p>
+<p><code data-enlighter-language="js" class="EnlighterJSRAW">(func, x) =&gt; func(func, x) </code></p>
+<p>最终我们得到下面的代码：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW"> 
+( (func, x) =&gt; func(func, x) ) (  //函数体
+  (func, n) =&gt; ( n==0 ? 1 :  n * func(func, n-1) ), //第一个调用参数
+  5 //第二调用参数
+); </pre>
+<p>好像有点绕，anyway, 你看懂了吗？没事，我们继续。</p>
+<h4><span class="ez-toc-section" id="%E5%8A%A8%E7%94%A8%E9%AB%98%E9%98%B6%E5%87%BD%E6%95%B0%E7%9A%84%E9%80%92%E5%BD%92"></span>动用高阶函数的递归<span class="ez-toc-section-end"></span></h4>
+<p>但是上面这个递归的匿名函数在自己调用自己，所以，代码中有hard code的实参。我们想实参去掉，如何去掉呢？我们可以参考前面说过的那个 MakePowerFn 的例子，不过这回是递归版的高阶函数了。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">HighOrderFact = function(func){
+  return function(n){
+    return n==0 ? 1 : n * func(func)(n-1);
+  };
+};</pre>
+<p>我们可以看，上面的代码简单说来就是，<b>需要一个函数做参数，然后返回这个函数的递归版本</b>。那么，我们怎么调用呢？</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">fact = HighOrderFact(HighOrderFact);
+fact(5); </pre>
+<p>连起来写就是：<br/>
+<code data-enlighter-language="js" class="EnlighterJSRAW">HighOrderFact ( HighOrderFact ) ( 5 )</code></p>
+<p>但是，这样让用户来调用很不爽，所以，以我们一个函数把 <b> HighOrderFact ( HighOrderFact ) </b> 给代理一下：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">fact = function ( hifunc ) {
+  return hifunc ( hifunc );
+} (
+  //调用参数是一个函数
+  function (func) { 
+    return function(n){
+      return n==0 ? 1 : n * func(func)(n-1);
+    };
+  }
+);
+
+fact(5); //于是我们就可以直接使用了</pre>
+<p>用箭头函数重构一下，是不是简洁了一些？</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">fact = (highfunc =&gt; highfunc ( highfunc ) ) (
+  func =&gt; n =&gt;  n==0 ? 1 : n * func(func)(n-1)
+);</pre>
+<p>上面就是我们最终版的阶乘的函数式代码。</p>
+<h4><span class="ez-toc-section" id="%E5%9B%9E%E9%A1%BE%E4%B9%8B%E5%89%8D%E7%9A%84%E7%A8%8B%E5%BA%8F"></span>回顾之前的程序<span class="ez-toc-section-end"></span></h4>
+<p>我们再来看那个查找数组的正常程序：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//正常的版本
+function find (x, y) {
+  for ( let i = 0; i &lt; x.length; i++ ) {
+    if ( x[i] == y ) return i;
+  }
+  return null;
+}</pre>
+<p>先把for干掉，搞成递归版本：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function find (x, y, i=0) {
+  if ( i &gt;= x.length ) return null;
+  if ( x[i] == y ) return i;
+  return find(x, y, i+1);
+}</pre>
+<p>然后，写出带实参的匿名函数的版本（注：其中的if代码被重构成了 ？号表达式）：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">( (func, x, y, i) =&gt; func(func, x, y, i) ) (  //函数体
+  (func, x, y, i=0) =&gt; (
+      i &gt;= x.length ?  null :
+         x[i] == y  ?  i : func (func, x, y, i+1)
+  ), //第一个调用参数
+  arr, //第二调用参数
+  2 //第三调用参数
+)</pre>
+<p>最后，引入高阶函数，去除实参：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">const find = ( highfunc =&gt; highfunc( highfunc ) ) (
+   func =&gt; (x, y, i = 0) =&gt; (
+     i &gt;= x.length ?  null :
+           x[i] == y  ?  i : func (func) (x, y, i+1)
+   )
+);</pre>
+<p>注：函数式编程装逼时一定要用const字符，这表示我写的函数里的状态是 immutable 的，天生骄傲！</p>
+<p>再注：我写的这个比原来版的那个简单了很多，原来版本的那个又在函数中套了一套 next， 而且还动用了不定参数，当然，如果你想装逼装到天上的，理论上来说，你可以套N层，呵呵。</p>
+<p><b>现在，你可以体会到，如此逼装的是怎么来的了吧？</b>。</p>
+<h4><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83"></span>其它<span class="ez-toc-section-end"></span></h4>
+<p>你还别说这就是装逼，简单来说，我们可以使用数学的方式来完成对复杂问题的描述，那怕是递归。其实，这并不是新鲜的东西，这是Alonzo Church 和 Haskell Curry 上世纪30年代提出来的东西，这个就是 Y Combinator 的玩法，关于这个东西，你可以看看下面两篇文章：</p>
+<p>《<a href="http://mvanier.livejournal.com/2897.html" target="_blank">The Y Combinator (Slight Return)</a>》，</p>
+<p>《<a href="https://en.wikipedia.org/wiki/Fixed-point_combinator" target="_blank">Wikipedia: Fixed-point combinator</a>》</p>
+<p>（全文完）</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17524-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Closure</a>, <a href="javascript:void(0)" rel="tag">functional</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">Y combinator</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何读懂并写出装逼的函数式代码</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1913606" class="comment even thread-even depth-1">
+<article id="div-comment-1913606" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b5021ca914ee5c40d9f805511b28c396?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b5021ca914ee5c40d9f805511b28c396?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">amazonove</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1913606"><time datetime="2017-03-26T15:08:44+08:00">2017年03月26日 15:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>即使是函数式语言 也不代表可以写出这么不负责任的装逼代码 即使这样的代码是必要的 也应该包装起来 比如语法糖之类的 总之 简洁的代码和装逼的代码完全是两码事</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914239" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1914239" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/321e72850616e002580688ace4ee7dbf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/321e72850616e002580688ace4ee7dbf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaojunjor</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1914239"><time datetime="2017-06-06T14:05:07+08:00">2017年06月06日 14:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我日。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914442" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1183" class="url" rel="ugc external nofollow">Go语言的修饰器编程 | 星达红</a> </div>
+</li>
+<li id="comment-1916154" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1916154" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44bae3815548f020cccb70e60a684ac4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44bae3815548f020cccb70e60a684ac4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">levi.duan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1916154"><time datetime="2017-08-12T10:01:21+08:00">2017年08月12日 10:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想问下文章写的字体 是苹果专用的字体么？是什么字体？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916567" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/08/20/%e8%bf%99%e4%ba%9bjavascript%e7%bc%96%e7%a8%8b%e9%bb%91%e7%a7%91%e6%8a%80%ef%bc%8c%e8%a3%85%e9%80%bc%e6%8c%87%e5%8d%97%ef%bc%8c%e9%ab%98%e9%80%bc%e6%a0%bc%e4%bb%a3%e7%a0%8" class="url" rel="ugc external nofollow">这些JavaScript编程黑科技，装逼指南，高逼格代码，让你惊叹不已 - 莹莹之色</a> </div>
+</li>
+<li id="comment-1916569" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.verycenter.com/47423.html" class="url" rel="ugc external nofollow">这些JavaScript编程黑科技，装逼指南，高逼格代码，让你惊叹不已 | 很科技</a> </div>
+</li>
+<li id="comment-1916742" class="comment even thread-even depth-1">
+<article id="div-comment-1916742" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3eb9810a4467f0682e4be35782ad25dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3eb9810a4467f0682e4be35782ad25dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://acohome.cn" class="url" rel="ugc external nofollow">aco</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1916742"><time datetime="2017-08-25T00:31:12+08:00">2017年08月25日 00:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>const fact = (n)=&gt;n==0 ? 1 : n * fact(n-1);<br/>
+反正 fact 是常量，所以说这样写不就可以了吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916990" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1916990" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b531ff65aae4545163f5b174a7af82e1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b531ff65aae4545163f5b174a7af82e1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://WangNianyi2001.github.io" class="url" rel="ugc external nofollow">WangNianyi2001</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1916990"><time datetime="2017-08-29T18:58:11+08:00">2017年08月29日 18:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Array.prototype.indexOf()…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917015" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=106" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – IT青年文摘</a> </div>
+</li>
+<li id="comment-1917506" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1917506" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d37b881149563ceb9b1eedbdcd030ee5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d37b881149563ceb9b1eedbdcd030ee5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Herson</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1917506"><time datetime="2017-09-11T15:55:50+08:00">2017年09月11日 15:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>复杂性果断上去了，要消化一下才能理解</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917770" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e9%ab%98%e7%ba%a7javascript%e4%bb%a3%e7%a0%81.html" class="url" rel="ugc external nofollow">高级Javascript代码 | Codeba</a> </div>
+</li>
+<li id="comment-1919951" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1919951" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff73314796decad9a9e52ae6dbd7c711?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff73314796decad9a9e52ae6dbd7c711?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kaizhou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17524.html/comment-page-2#comment-1919951"><time datetime="2017-10-30T15:35:08+08:00">2017年10月30日 15:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>匿名函数有种降维攻击的感觉。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1920957" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yanwen.blog/2017/11/21/%ef%bc%88%e8%bd%ac%ef%bc%89javascript%e7%bc%96%e7%a8%8b%e9%bb%91%e7%a7%91%e6%8a%80/" class="url" rel="ugc external nofollow">（转）JavaScript编程黑科技 – YanWen.Blog</a> </div>
+</li>
+<li id="comment-1921013" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2017/06/go%e8%af%ad%e8%a8%80%e7%9a%84%e4%bf%ae%e9%a5%b0%e5%99%a8%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">Go语言的修饰器编程 - 知乎精选</a> </div>
+</li>
+<li id="comment-1930310" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.qqwenda.com/wenda/22114.html" class="url" rel="ugc external nofollow">这些JavaScript编程黑科技，装逼指南，高逼格代码，让你惊叹不已 - 奇奇问答</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/17524.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/17524.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">17524</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

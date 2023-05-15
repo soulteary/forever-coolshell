@@ -1,0 +1,358 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Java读写Excel | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1954 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1954" class="post-content post-1954 post type-post status-publish format-standard hentry category-javadev category-proglanguage tag-excel tag-java tag-jexcelapi">
+<header class="entry-header">
+<span class="screen-reader-text">Java读写Excel</span>
+<h1 class="entry-title">Java读写Excel</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1954.html" title="09:36" rel="bookmark"><time class="entry-date" datetime="2009-12-15T09:36:21+08:00" pubdate="">2009年12月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1954.html#comments" class="comments-link">5 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 10,326 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文主要向你演示如何使用JavaExcel API来读写Excel文件。关于JavaExcel API，这是一个开源的lib库。其相关的feature如下：</p>
+<li>支持Excel 95, 97, 2000, <span style="color: #ff0000;">XP, 2003</span> 的制表页。</li>
+<li>可以读写相关的Excel公式 （仅支持Excel 97 及以后版本）</li>
+<li>可以生成 Excel 2000 格式的xls文件。</li>
+<li>支持字体，数字和日期格式。</li>
+<li>支持单元格的阴影，边框和颜色。</li>
+<li>可以修改已存在的制表页。</li>
+<li>国际化多语言集。(公式目前支持，英文，法文，西班牙文和德文）</li>
+<li>支持图表拷贝。</li>
+<li><span style="color: #ff0000;">支持图片的插入和复制。</span></li>
+<li>日志生成可以使用Jakarta Commons Logging, log4j, JDK 1.4 Logger, 等。</li>
+<li>更多……</li>
+<p>你可以在这里下载：<a href="http://jexcelapi.sourceforge.net/">http://jexcelapi.sourceforge.net/</a>，然后，把jxl.jar加到你的Java的classpath中。</p>
+<p>下面是两段例程，一段是如何创建Excel，一段是如何读取Excel。</p>
+<p><span id="more-1954"></span></p>
+<p><strong>创建Excel</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">package writer;
+
+import java.io.File;
+import java.io.IOException;
+import java.util.Locale;
+
+import jxl.CellView;
+import jxl.Workbook;
+import jxl.WorkbookSettings;
+import jxl.format.UnderlineStyle;
+import jxl.write.Formula;
+import jxl.write.Label;
+import jxl.write.Number;
+import jxl.write.WritableCellFormat;
+import jxl.write.WritableFont;
+import jxl.write.WritableSheet;
+import jxl.write.WritableWorkbook;
+import jxl.write.WriteException;
+import jxl.write.biff.RowsExceededException;
+
+
+public class WriteExcel {
+
+	private WritableCellFormat timesBoldUnderline;
+	private WritableCellFormat times;
+	private String inputFile;
+	
+public void setOutputFile(String inputFile) {
+	this.inputFile = inputFile;
+	}
+
+	public void write() throws IOException, WriteException {
+		File file = new File(inputFile);
+		WorkbookSettings wbSettings = new WorkbookSettings();
+
+		wbSettings.setLocale(new Locale(&#34;en&#34;, &#34;EN&#34;));
+
+		WritableWorkbook workbook = Workbook.createWorkbook(file, wbSettings);
+		workbook.createSheet(&#34;Report&#34;, 0);
+		WritableSheet excelSheet = workbook.getSheet(0);
+		createLabel(excelSheet);
+		createContent(excelSheet);
+
+		workbook.write();
+		workbook.close();
+	}
+
+	private void createLabel(WritableSheet sheet)
+			throws WriteException {
+		// Lets create a times font
+		WritableFont times10pt = new WritableFont(WritableFont.TIMES, 10);
+		// Define the cell format
+		times = new WritableCellFormat(times10pt);
+		// Lets automatically wrap the cells
+		times.setWrap(true);
+
+		// Create create a bold font with unterlines
+		WritableFont times10ptBoldUnderline = new WritableFont(
+				WritableFont.TIMES, 10, WritableFont.BOLD, false,
+				UnderlineStyle.SINGLE);
+		timesBoldUnderline = new WritableCellFormat(times10ptBoldUnderline);
+		// Lets automatically wrap the cells
+		timesBoldUnderline.setWrap(true);
+
+		CellView cv = new CellView();
+		cv.setFormat(times);
+		cv.setFormat(timesBoldUnderline);
+		cv.setAutosize(true);
+
+		// Write a few headers
+		addCaption(sheet, 0, 0, &#34;Header 1&#34;);
+		addCaption(sheet, 1, 0, &#34;This is another header&#34;);
+		
+
+	}
+
+	private void createContent(WritableSheet sheet) throws WriteException,
+			RowsExceededException {
+		// Write a few number
+		for (int i = 1; i &lt; 10; i++) {
+			// First column
+			addNumber(sheet, 0, i, i + 10);
+			// Second column
+			addNumber(sheet, 1, i, i * i);
+		}
+		// Lets calculate the sum of it
+		StringBuffer buf = new StringBuffer();
+		buf.append(&#34;SUM(A2:A10)&#34;);
+		Formula f = new Formula(0, 10, buf.toString());
+		sheet.addCell(f);
+		buf = new StringBuffer();
+		buf.append(&#34;SUM(B2:B10)&#34;);
+		f = new Formula(1, 10, buf.toString());
+		sheet.addCell(f);
+
+		// Now a bit of text
+		for (int i = 12; i &lt; 20; i++) {
+			// First column
+			addLabel(sheet, 0, i, &#34;Boring text &#34; + i);
+			// Second column
+			addLabel(sheet, 1, i, &#34;Another text&#34;);
+		}
+	}
+
+	private void addCaption(WritableSheet sheet, int column, int row, String s)
+			throws RowsExceededException, WriteException {
+		Label label;
+		label = new Label(column, row, s, timesBoldUnderline);
+		sheet.addCell(label);
+	}
+
+	private void addNumber(WritableSheet sheet, int column, int row,
+			Integer integer) throws WriteException, RowsExceededException {
+		Number number;
+		number = new Number(column, row, integer, times);
+		sheet.addCell(number);
+	}
+
+	private void addLabel(WritableSheet sheet, int column, int row, String s)
+			throws WriteException, RowsExceededException {
+		Label label;
+		label = new Label(column, row, s, times);
+		sheet.addCell(label);
+	}
+
+	public static void main(String[] args) throws WriteException, IOException {
+		WriteExcel test = new WriteExcel();
+		test.setOutputFile(&#34;c:/temp/lars.xls&#34;);
+		test.write();
+		System.out
+				.println(&#34;Please check the result file under c:/temp/lars.xls &#34;);
+	}
+}
+</pre>
+<p></p>
+<p><strong>读取Excel</strong><br/>
+ </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">package reader;
+
+import java.io.File;
+import java.io.IOException;
+
+import jxl.Cell;
+import jxl.CellType;
+import jxl.Sheet;
+import jxl.Workbook;
+import jxl.read.biff.BiffException;
+
+public class ReadExcel {
+
+	private String inputFile;
+
+	public void setInputFile(String inputFile) {
+		this.inputFile = inputFile;
+	}
+
+	public void read() throws IOException  {
+		File inputWorkbook = new File(inputFile);
+		Workbook w;
+		try {
+			w = Workbook.getWorkbook(inputWorkbook);
+			// Get the first sheet
+			Sheet sheet = w.getSheet(0);
+			// Loop over first 10 column and lines
+
+			for (int j = 0; j &lt; sheet.getColumns(); j++) {
+				for (int i = 0; i &lt; sheet.getRows(); i++) {
+					Cell cell = sheet.getCell(j, i);
+					CellType type = cell.getType();
+					if (cell.getType() == CellType.LABEL) {
+						System.out.println(&#34;I got a label &#34;
+								+ cell.getContents());
+					}
+
+					if (cell.getType() == CellType.NUMBER) {
+						System.out.println(&#34;I got a number &#34;
+								+ cell.getContents());
+					}
+
+				}
+			}
+		} catch (BiffException e) {
+			e.printStackTrace();
+		}
+	}
+
+	public static void main(String[] args) throws IOException {
+		ReadExcel test = new ReadExcel();
+		test.setInputFile(&#34;c:/temp/lars.xls&#34;);
+		test.read();
+	}
+
+}
+</pre>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1954-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Excel</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">jexcelapi</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Java读写Excel</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-12261" class="comment even thread-even depth-1">
+<article id="div-comment-12261" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b2ae3c24e7681bc1048177a2fa1c556?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b2ae3c24e7681bc1048177a2fa1c556?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mzhou.me" class="url" rel="ugc external nofollow">mzhou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1954.html#comment-12261"><time datetime="2010-10-27T20:39:04+08:00">2010年10月27日 20:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>apache poi库操作excel更好点，支持2007的格式</p>
+</div>
+ </article>
+</li>
+<li id="comment-41290" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-41290" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab13c562bd868b1bfa8fdaa16948fd80?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab13c562bd868b1bfa8fdaa16948fd80?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">will0419</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1954.html#comment-41290"><time datetime="2011-04-01T17:27:33+08:00">2011年04月01日 17:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-12261" rel="nofollow">@mzhou </a><br/>
+同感，感觉poi更好些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-77149" class="comment even thread-even depth-1">
+<article id="div-comment-77149" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2956454781117dad04e744a03a4267f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2956454781117dad04e744a03a4267f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">javen.zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1954.html#comment-77149"><time datetime="2011-08-26T17:57:24+08:00">2011年08月26日 17:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有没有一些操作word比较好的java类库？</p>
+</div>
+ </article>
+</li>
+<li id="comment-202355" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1063f5ee10fe8b1ddd5a415ea3024a7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1063f5ee10fe8b1ddd5a415ea3024a7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小满</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1954.html#comment-202355"><time datetime="2012-09-04T11:35:03+08:00">2012年09月04日 11:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>转别人的贴最好说明一下出处</p>
+</div>
+ </article>
+</li>
+<li id="comment-510497" class="comment even thread-even depth-1">
+<article id="div-comment-510497" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f15364586380ea148dcfba985076209?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f15364586380ea148dcfba985076209?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Davyjones2010</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1954.html#comment-510497"><time datetime="2013-05-29T15:05:28+08:00">2013年05月29日 15:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果是生成比较复杂的excel文档的话，用jasperreports(<a href="http://community.jaspersoft.com/project/jasperreports-library" rel="nofollow ugc">http://community.jaspersoft.com/project/jasperreports-library</a>)会更好一些吧。<br/>
+用apache poi的话样式格式设置太麻烦了。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

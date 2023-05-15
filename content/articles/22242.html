@@ -1,0 +1,690 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>ETCD的内存问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-22242 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-22242" class="post-content post-22242 post type-post status-publish format-standard hentry category-go- category-progdesign tag-easegress tag-etcd tag-go tag-performance">
+<header class="entry-header">
+<span class="screen-reader-text">ETCD的内存问题</span>
+<h1 class="entry-title">ETCD的内存问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/22242.html" title="16:13" rel="bookmark"><time class="entry-date" datetime="2022-05-05T16:13:37+08:00" pubdate="">2022年05月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/22242.html#comments" class="comments-link">39 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,914 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-22247" src="/uploads/2022/05/etcd.png" alt="" width="275" height="183" srcset=""/>今天跟大家分享一个etcd的内存大量占用的问题，这是前段时间在我们开源软件Easegress中遇到的问题，问题是比较简单的，但是我还想把前因后果说一下，包括，为什么要用etcd，使用etcd的用户场景，包括etcd的一些导致内存占用比较大的设计，以及最后一些建议。希望这篇文章不仅仅只是让你看到了一个简单的内存问题，还能让你有更多的收获。当然，也欢迎您关注我们的开源软件，给我们一些鼓励。</p>
+<h4>为什么要用ETCD</h4>
+<p>先说一下为什么要用etcd。先从一个我们自己做的一个API网关 – Easegress（<a href="https://github.com/megaease/easegress">源码</a>）说起。</p>
+<p><a href="https://github.com/megaease/easegress" target="_blank" rel="noopener">Easegress</a> 是我们开发并开源的一个API应用网关产品，这个API应用网关不仅仅只是像nginx那样用来做一个反向代理，这个网关可以做的事很多，比如：API编排、服务发现、弹力设计（熔断、限流、重试等）、认证鉴权（JWT，OAuth2，HMAC等）、同样支持各种Cloud Native的架构如：微服务架构，Service Mesh，Serverless/FaaS的集成，并可以用于扛高并发、灰度发布、全链路压力测试、物联网……等更为高级的企业级的解决方案。所以，为了达到这些目标，在2017年的时候，我们觉得在现有的网关如Nginx上是无法演进出来这样的软件的，必需重新写一个（后来其他人也应该跟我们的想法一样，所以，Lyft写了一个Envoy。只不过，Envoy是用C++写的，而我用了技术门槛更低的Go语言）</p>
+<p>另外，Easegress最核心的设计主要有三个：</p>
+<p><span id="more-22242"></span></p>
+<ul>
+<li>一是无第三方依赖的自己选主组集群的能力</li>
+<li>二是像Linux管道命令行那样pipeline式的插件流式处理（支持Go/WebAssembly）</li>
+<li>三是内置一个Data Store用于集群控制和数据共享。</li>
+</ul>
+<p>对于任何一个分布式系统，都需要有一个强一制性的基于Paxos/Raft的可以自动选主机制，并且需要在整个集群间同步一些关键的控制/配置和相关的共享数据，以保证整个集群的行为是统一一致的。如果没有这么一个东西的话，就没有办法玩分布式系统的。这就是为什么会有像Zookeeper/etcd这样的组件出现并流行的原因。注意，Zookeeper他们主要不是给你存数据的，而是给你组集群的。</p>
+<p>Zookeeper是一个很流行的开源软件，也被用于各大公司的生产线，包括一些开源软件，比如：Kafka。但是，这会让其它软件有一个依赖，并且在运维上带来很大的复杂度。所以，Kafka在最新的版本也通过内置了选主的算法，而抛弃了外挂zookeeper的设计。Etcd是Go语言社区这边的主力，也是kubernetes组建集群的关键组件。Easegress在一开始（5年前）使用了gossip协议同步状态（当时想的过于超前，想做广域网的集群），但是后发现这个协议太过于复杂，而且很难调试，而广域网的API Gateway也没遇到相应的场景。所以，在3年前的时候，为了稳定性的考量，我们把其换成了内嵌版本的etcd，这个设计一直沿用到今天。</p>
+<p>Easegress会把所有的配置信息都放到etcd里，还包括一些统计监控数据，以及一些用户的自定义数据（这样用户自己的plugin不但可以在一条pipeline内，还可以在整个集群内共享数据），这对于用户进行扩展来说是非常方便的。软件代码的扩展性一直是我们追求的首要目标，尤其是开源软件更要想方设法降低技术门槛让技术易扩展，这就是为什么Google的很多开源软件都会选使用Go语言的原因，也是为什么Go正在取代C/C++的做PaaS基础组件的原因。</p>
+<h4>背景问题</h4>
+<p>好了，在介绍完为什么要用etcd以后，我开始分享一个实际的问题了。我们有个用户在使用 Easegress 的时候，在Easegress内配置了上千条pipeline，导致 Easegress的内存飙升的非常厉害- 10+GB 以上，而且长时间还下不来。</p>
+<p>用户报告的问题是——</p>
+<blockquote><p>在Easegress 1.4.1 上创建一个HTTP对象，1000个Pipeline，在Easegres初始化启动完成时的内存占用大概为400M，运行80分钟后2GB，运行200分钟后达到了4GB，这期间什么也没有干，对Easegress没有进行过一次请求。</p></blockquote>
+<p>一般来说，就算是API再多也不应该配置这么多的处理管道pipeline的，通常我们会使用HTTP API的前缀把一组属于一个类别的API配置在一个管道内是比较合理的，就像nginx下的location的配置，一般来说不会太多的。但是，在用户的这个场景下配置了上千个pipeline，我们也是头一次见，应该是用户想做更细粒度的控制。</p>
+<p>经过调查后，我们发现内存使用基本全部来自etcd，我们实在没有想到，因为我们往etcd里放的数据也没有多少个key，感觉不会超过10M，但不知道为什么会占用了10GB的内存。这种时候，一般会怀疑etcd有内存泄漏，上etcd上的github上搜了一下，发现etcd在3.2和3.3的版本上都有内存泄露的问题，但都修改了，而 Easegress 使用的是3.5的最新版本，另外，一般来说内存泄漏的问题不会是这么大的，我们开始怀疑是我们哪里误用了etcd。要知道是否误用了etcd，那么只有一条路了，沉下心来，把etcd的设计好好地看一遍。</p>
+<div class="p-rich_text_section">
+<p>大概花了两天左右的时间看了一下etcd的设计，我发现了etcd有下面这些消耗内存的设计，老实说，还是非常昂贵的，这里分享出来，避免后面的同学再次掉坑。</p>
+<p><b data-stringify-type="bold">首当其冲是——RaftLog</b>。etcd用Raft Log，主要是用于帮助follower同步数据，这个log的底层实现不是文件，而是内存。所以，而且还至少要保留 <code>5000</code> 条最新的请求。如果key的size很大，这 <code>5000</code>条就会产生大量的内存开销。比如，不断更新一个 1M的key，哪怕是同一个key，这 5000 条Log就是 5000MB = 5GB 的内存开销。这个问题在etcd的issue列表中也有人提到过  <a href="https://github.com/etcd-io/etcd/issues/12548" target="_blank" rel="noopener">issue #12548 </a>，不过，这个问题不了了之了。这个5000还是一个hardcode，无法改。（参看 <code>DefaultSnapshotCatchUpEntries</code> <a class="c-link" tabindex="-1" href="https://github.com/etcd-io/etcd/blob/29c3b0f307107fd95a6eb43ddff20db952eeb2fa/server/etcdserver/server.go#L80" target="_blank" rel="noopener noreferrer" data-stringify-link="https://github.com/etcd-io/etcd/blob/29c3b0f307107fd95a6eb43ddff20db952eeb2fa/server/etcdserver/server.go#L80" data-sk="tooltip_parent" data-remove-tab-index="true">相关源码</a>）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">// DefaultSnapshotCatchUpEntries is the number of entries for a slow follower
+// to catch-up after compacting the raft storage entries.
+// We expect the follower has a millisecond level latency with the leader.
+// The max throughput is around 10K. Keep a 5K entries is enough for helping
+// follower to catch up.
+DefaultSnapshotCatchUpEntries uint64 = 5000</pre>
+<p>另外，我们还发现，这个设计在历史上etcd的官方团队把这个默认值从10000降到了5000，我们估计etcd官方团队也意识到10000有点太耗内存了，所以，降了一半，但是又怕follwer同步不上，所以，保留了 5000条……（在这里，我个人感觉还有更好的方法，至少不用全放在内存里吧……）</p>
+<p>另外还有下面几项也会导致etcd的内存会增加</p>
+<ol class="p-rich_text_list p-rich_text_list__ordered" data-stringify-type="ordered-list" data-indent="0" data-border="0">
+<li data-stringify-indent="0" data-stringify-border="0"><strong>索引</strong>。etcd的每一对 key-value 都会在内存中有一个 B-tree 索引。这个索引的开销跟key的长度有关，etcd还会保存版本。所以B-tree的内存跟key的长度以及历史版本号数量也有关系。</li>
+<li data-stringify-indent="0" data-stringify-border="0"><b data-stringify-type="bold">mmap</b>。还有，etcd 使用 mmap 这样上古的unix技术做文件映射，会把他的blotdb的内存map到虚拟内存中，所以，db-size越大，内存越大。</li>
+<li data-stringify-indent="0" data-stringify-border="0"><b data-stringify-type="bold">Watcher</b>。watch也会占用很大的内存，如果watch很多，连接数多，都会堆积内存。</li>
+</ol>
+<p>（很明显，etcd这么做就是为了一个高性能的考虑）</p>
+<div class="p-rich_text_section">
+<p>Easegress中的问题更多的应该是Raft Log 的问题。后面三种问题我们觉得不会是用户这个问题的原因，对于索引和mmap，使用 <a href="https://etcd.io/docs/v3.2/op-guide/maintenance/" target="_blank" rel="noopener">etcd 的 compact 和 defreg</a> （压缩和碎片整理应该可以降低内存，但用户那边不应该是这个问题的核心原因）。</p>
+<p>针对用户的问题，大约有1000多条pipeline，因为Easegress会对每一条pipeline进行数据统计（如：M1, M5, M15， P99, P90, P50等这样的统计数据），统计信息可能会有1KB-2KB左右，但Easegress会把这1000条pipeline的统计数据合并起来写到一个key中，这1000多条的统计数据合并后会导致出现一个平均尺寸为2MB的key，而5000个in-memory的RaftLog导致etcd要消耗了10GB的内存。之前没有这么多的pipeline的场景，所以，这个内存问题没有暴露出来。</p>
+<p>于是，我们最终的解决方案也很简单，我们修改我们的策略，不再写这么大的Value的数据了，虽然以前只写在一个key上，但是Key的值太大，现在把这个大Key值拆分成多个小的key来写，这样，实际保存的数据没有发生变化，但是RaftLog的每条数据量就小了，所以，以前是5000条 2M（10GB），现在是5000条 1K（500MB），就这样解决了这个问题。相关的PR在这里 <a href="https://github.com/megaease/easegress/pull/542" target="_blank" rel="noopener">PR#542</a> 。</p>
+<h4>总结</h4>
+<p>要用好 etcd，有如下的实践</p>
+<ul>
+<li>避免大尺寸的key和value，一方面会通过一个内存级的 Raft Log 占大量内存，另一方面，B-tree的多版本索引也会因为这样耗内存。</li>
+<li>避免DB的尺寸太大，并通过 compact和defreg来压缩和碎片整理降低内存。</li>
+<li>避免大量的Watch Client 和 Watch数。这个开销也是比较大的。</li>
+<li>最后还有一个，就是尽可能使用新的版本，无论是go语言还是etcd，这样会少很多内存问题。比如：golang的这个跟LInux内核心相关的<a href="https://github.com/golang/go/issues/42330" target="_blank" rel="noopener">内存问题</a> —— golang 1.12的版sget的是 <code>MADV_FREE</code> 的内存回收机制，而在1.16的时候，改成了 <code>MADV_DONTNEED</code> ，这两者的差别是，<code>FREE</code>表示，虽然进程标记内存不要了，但是操作系统会保留之，直到需要更多的内存，而 <code>DONTNEED</code> 则是立马回收，你可以看到，在常驻内存RSS 上，前者虽然在golang的进程上回收了内存，但是RSS值不变，而后者会看到RSS直立马变化。Linux下对 <code>MADV_FREE</code> 的实现在某些情况下有一定的问题，所以，在go 1.16的时候，默认值改成了 <code>MADV_DONTNEED</code> 。而 etcd 3.4 是用 来1.12 编译的。</li>
+</ul>
+<p>最后，欢迎大家关注我们的开源软件！ <a href="https://github.com/megaease/" target="_blank" rel="noopener">https://github.com/megaease/ </a></p>
+<div class="p-rich_text_section">
+<p>（全文完）</p>
+</div>
+</div>
+</div>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-22242-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">easegress</a>, <a href="javascript:void(0)" rel="tag">etcd</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">Performance</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>ETCD的内存问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2370417" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2370417" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/13a7c6d88ccfddb8c46d90e5cfeae614?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/13a7c6d88ccfddb8c46d90e5cfeae614?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://springboot.io" class="url" rel="ugc external nofollow">KevinBlandy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370417"><time datetime="2022-05-05T17:26:42+08:00">2022年05月05日 17:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>错别字呢：<br/>
+站用 -&gt; 占用<br/>
+调坑 -&gt; 调坑</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370418" class="comment odd alt depth-2 parent">
+<article id="div-comment-2370418" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/13a7c6d88ccfddb8c46d90e5cfeae614?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/13a7c6d88ccfddb8c46d90e5cfeae614?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://springboot.io" class="url" rel="ugc external nofollow">KevinBlandy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370418"><time datetime="2022-05-05T17:27:32+08:00">2022年05月05日 17:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>掉掉掉</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370419" class="comment byuser comment-author-haoel bypostauthor even depth-3">
+<article id="div-comment-2370419" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370419"><time datetime="2022-05-05T17:34:14+08:00">2022年05月05日 17:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2370420" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370420" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d32745d331b187c1ad7058e2382ad5a2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d32745d331b187c1ad7058e2382ad5a2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.cong.moe" class="url" rel="ugc external nofollow">zcong1993</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370420"><time datetime="2022-05-05T17:39:31+08:00">2022年05月05日 17:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>10000万有点太耗内存了 -&gt; 10000有点太耗内存了</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370422" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370422" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370422"><time datetime="2022-05-05T17:54:13+08:00">2022年05月05日 17:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，已修正！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370423" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2370423" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96418a9d294827783f786a7315231e20?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96418a9d294827783f786a7315231e20?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://makerroot.com" class="url" rel="ugc external nofollow">makerroot</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370423"><time datetime="2022-05-05T17:59:12+08:00">2022年05月05日 17:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Google主要使用Java语言应该是笔误，应该是go语言吧</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370426" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370426" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370426"><time datetime="2022-05-05T20:28:32+08:00">2022年05月05日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>汗，我是有多爱Java啊，不过，Google的一大开源项目Android就是用Java的……</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370445" class="comment odd alt depth-2">
+<article id="div-comment-2370445" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7ee9760e1ff9a0a1e68d3723e2e3e9d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7ee9760e1ff9a0a1e68d3723e2e3e9d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mocy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370445"><time datetime="2022-05-06T20:13:11+08:00">2022年05月06日 20:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Google 主要用的确实是 Java，几乎所有服务端都是。C++ 是第二大语言，golang 要排在后面。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370908" class="comment even depth-2">
+<article id="div-comment-2370908" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/243a4f3ce6d2f676f0c88f02873315fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/243a4f3ce6d2f676f0c88f02873315fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">doubleC</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370908"><time datetime="2022-11-14T18:55:23+08:00">2022年11月14日 18:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><b>虽然都姓G,haha</b></p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370424" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370424" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b5b62cdf3714ea4a7fd01207ebb84c7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b5b62cdf3714ea4a7fd01207ebb84c7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">navygg</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370424"><time datetime="2022-05-05T19:23:25+08:00">2022年05月05日 19:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>供享 -&gt; 共享</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370427" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370427" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370427"><time datetime="2022-05-05T20:28:46+08:00">2022年05月05日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，已更正。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370429" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2370429" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/858f09c5fc777deb852c498b38c222b3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/858f09c5fc777deb852c498b38c222b3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">H</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370429"><time datetime="2022-05-05T23:30:33+08:00">2022年05月05日 23:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+Easegress会对每一条pipeline进行数据统计（如：M1, M5, M15， P99, P90, P50等这样的统计数据），统计信息可能会有1KB-2KB左右，但Easegress会把这1000条pipeline的统计数据合并起来写到一个key中
+</p></blockquote>
+<p>为什么要把这些监控数据存在 etcd中，而不是提供 API 暴露 metrics 交给 prometheus 这样的软件抓取呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370436" class="comment byuser comment-author-haoel bypostauthor even depth-2 parent">
+<article id="div-comment-2370436" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370436"><time datetime="2022-05-06T06:59:07+08:00">2022年05月06日 06:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>存etcd是因为整个集群需要感知这些数据。metrics API是有的，但是自己也得要存一份最新的吧，就像linux的/proc文件系统一样，不然，API请求的时候，现算？这个不太好吧。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370705" class="comment odd alt depth-3 parent">
+<article id="div-comment-2370705" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/826c48381c20ea6cec02afcfc2310999?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/826c48381c20ea6cec02afcfc2310999?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://post.techwavelabs.org/" class="url" rel="ugc external nofollow">Mr. Cui</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370705"><time datetime="2022-09-13T20:10:32+08:00">2022年09月13日 20:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果不用etcd, K8S云原生KV存储这块, 请问还有更好的解决方面吗?</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370706" class="comment even depth-4">
+<article id="div-comment-2370706" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/826c48381c20ea6cec02afcfc2310999?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/826c48381c20ea6cec02afcfc2310999?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://post.techwavelabs.org/" class="url" rel="ugc external nofollow">Mr. Cui</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370706"><time datetime="2022-09-13T20:12:20+08:00">2022年09月13日 20:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>解决方案, 打错字了, 抱歉!</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2370430" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370430" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cb2f8225264120dff13f48fb426bea4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cb2f8225264120dff13f48fb426bea4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://wingu.se" class="url" rel="ugc external nofollow">Yingyu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370430"><time datetime="2022-05-05T23:42:49+08:00">2022年05月05日 23:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+后来 Hashicrop也应该跟我们的想法一样，所以，也写了一个envoy
+</p></blockquote>
+<p>哈哈哈，我来抓虫啦：Hashicorp 拼写错了，Envoy 不是 Hashicorp 写的，最早源于 Lyft 的内部项目。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370435" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370435" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370435"><time datetime="2022-05-06T06:57:12+08:00">2022年05月06日 06:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，这是我的错！已修正</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370438" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2370438" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/69d9ef424f779487617f633cfff0aacf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/69d9ef424f779487617f633cfff0aacf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/spongecaptain" class="url" rel="ugc external nofollow">spongecaptain</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370438"><time datetime="2022-05-06T09:23:13+08:00">2022年05月06日 09:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“虽然只写在一个key上，而是拆分成多个小的key来写”<br/>
+感觉这里的逻辑有点问题。<br/>
+是不是下面的意思：<br/>
+“以前只写在一个key上，现在选择拆分成多个小的key来写”</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370440" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370440" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370440"><time datetime="2022-05-06T10:17:42+08:00">2022年05月06日 10:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>嗯，你理解是对的，我重新写了一下。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370439" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370439" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/69d9ef424f779487617f633cfff0aacf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/69d9ef424f779487617f633cfff0aacf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/spongecaptain" class="url" rel="ugc external nofollow">spongecaptain</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370439"><time datetime="2022-05-06T09:28:36+08:00">2022年05月06日 09:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看起来核心思想就是 2kb*5K &lt;&lt; 2MB * 5k 的问题。更新次数不变的情况下，将 key-value 的字节大小降下来。即不使用单个大 key-value 对，使用小的 key-value 对。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370441" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370441" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370441"><time datetime="2022-05-06T10:18:07+08:00">2022年05月06日 10:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的。就是降Raft Log的大小。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370456" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370456" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/62f5dd2e48e8a50152a309d79db8243e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/62f5dd2e48e8a50152a309d79db8243e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">namgking</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370456"><time datetime="2022-05-10T11:31:54+08:00">2022年05月10日 11:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“而后者会看到RSS直立马变化”<br/>
+一个错字</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370462" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370462" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29b99a095cc4a7a083472421d2836bc0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29b99a095cc4a7a083472421d2836bc0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">海</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370462"><time datetime="2022-05-13T11:18:38+08:00">2022年05月13日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>问题分析过程非常精彩，原因、结果、处理办法弄个明明白白，受教了。不过问个事后诸葛亮式的问题：先说前提，我没用过 go ，只对 java 熟悉。咱们一开始分析这个内存问题的时候是不是可以先看内存数据分类占比，类似查看 java 内存 dump 一样，这样是不是可以更快确定问题原因查找的目标。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370571" class="comment odd alt depth-2">
+<article id="div-comment-2370571" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/481bfd2b51aec3072aa502f1802b0b9c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/481bfd2b51aec3072aa502f1802b0b9c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370571"><time datetime="2022-06-30T17:14:31+08:00">2022年06月30日 17:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>go也有pprof 能看到heap</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371005" class="comment even depth-2">
+<article id="div-comment-2371005" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff2f48c871e78892e9337baaade8a226?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff2f48c871e78892e9337baaade8a226?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xxx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2371005"><time datetime="2022-12-26T15:42:35+08:00">2022年12月26日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我：用各种工具分析观察<br/>
+博主：读源码，主要这些地方在写数据，bug可能在。。。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370467" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2370467" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec1f452b24b6a01612c8db6fc8e15c5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec1f452b24b6a01612c8db6fc8e15c5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">烟灰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370467"><time datetime="2022-05-15T02:33:27+08:00">2022年05月15日 02:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>etcd 使用 mmap 这样上古的unix技术做文件映射</p>
+<p>mmap 有替代的技术吗？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370486" class="comment even depth-2">
+<article id="div-comment-2370486" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09356b3bba508a5cd7eb6eff95077663?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09356b3bba508a5cd7eb6eff95077663?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ech</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370486"><time datetime="2022-05-30T11:31:27+08:00">2022年05月30日 11:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我记得kafka也是用mmap技术，借用系统page cache但减少内存copy。不太理解这里说“上古”，是不是有什么特殊含义</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371144" class="comment odd alt depth-2">
+<article id="div-comment-2371144" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/866fe9a2c387c0c77900baf3c303ca94?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/866fe9a2c387c0c77900baf3c303ca94?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">habits</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2371144"><time datetime="2023-03-05T00:28:18+08:00">2023年03月05日 00:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>CMU的数据库课程上面有说过这种实现的替换，就是buffer pool</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370469" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370469" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f95ab3194b38c57685b7e26f67022546?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f95ab3194b38c57685b7e26f67022546?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">通</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370469"><time datetime="2022-05-17T00:55:57+08:00">2022年05月17日 00:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>而 etcd 3.4 是用 来1.12 编译的。<br/>
+多了一个来字</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370470" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370470" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/997391ac6bc8eb03f4f3f25a5fb99e55?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/997391ac6bc8eb03f4f3f25a5fb99e55?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ssebo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370470"><time datetime="2022-05-18T10:13:45+08:00">2022年05月18日 10:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉不像耗子叔写的，不过分析的很精彩</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370474" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370474" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/053de2c5082431a5dfbe75e390a4d86d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/053de2c5082431a5dfbe75e390a4d86d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">muzig</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370474"><time datetime="2022-05-20T18:33:34+08:00">2022年05月20日 18:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分析的很精彩！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370477" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370477" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc148aac43aa6ee275a83316bf09dd44?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc148aac43aa6ee275a83316bf09dd44?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Chris</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370477"><time datetime="2022-05-23T16:33:35+08:00">2022年05月23日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问这个 pull request 中的内存分析图是怎么画出来的:<br/>
+<a href="https://github.com/megaease/easegress/pull/542#issuecomment-1067620642" rel="nofollow ugc">https://github.com/megaease/easegress/pull/542#issuecomment-1067620642</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2370560" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370560" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9ea3cea9f8da818dced1eb8f9080d863?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9ea3cea9f8da818dced1eb8f9080d863?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">beiguoqishi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370560"><time datetime="2022-06-24T20:28:33+08:00">2022年06月24日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>像是极客时间里etcd课程里面的内容</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370570" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370570" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/481bfd2b51aec3072aa502f1802b0b9c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/481bfd2b51aec3072aa502f1802b0b9c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370570"><time datetime="2022-06-30T17:09:35+08:00">2022年06月30日 17:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>blotdb 应该是boltdb</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370583" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370583" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7df04bf41592ebc0ebbc250de5608cc9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7df04bf41592ebc0ebbc250de5608cc9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ryan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370583"><time datetime="2022-07-14T19:32:06+08:00">2022年07月14日 19:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>而后者会看到RSS直立马变化。-&gt;值</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370588" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2370588" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/72eb5939a2986127c4c275fb80e27512?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/72eb5939a2986127c4c275fb80e27512?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Alex</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370588"><time datetime="2022-07-17T09:47:12+08:00">2022年07月17日 09:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>修改DefaultSnapshotCatchUpEntries 不是一样的效果吗？<br/>
+如你们把10条entry 合成1条，那就将它改为500即可</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370657" class="comment even depth-2">
+<article id="div-comment-2370657" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b56bfadd93e511e24acc20f232ad4b2a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b56bfadd93e511e24acc20f232ad4b2a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Joe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370657"><time datetime="2022-08-22T11:24:48+08:00">2022年08月22日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这样follower会因为 raft log日志不够 同步出现问题</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370745" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370745" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/36a2bbbf6ef646ad5b19fc3f0b5b07eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/36a2bbbf6ef646ad5b19fc3f0b5b07eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">仁德的人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2370745"><time datetime="2022-10-04T11:39:55+08:00">2022年10月04日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>冋</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371213" class="comment even thread-even depth-1">
+<article id="div-comment-2371213" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8527fe2e1678bda40e59b40e7a81725e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8527fe2e1678bda40e59b40e7a81725e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">q</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22242.html#comment-2371213"><time datetime="2023-05-02T07:41:51+08:00">2023年05月02日 07:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益很大，感谢分享<br/>
+同时反馈个拼写问题<br/>
+defreg –&gt; defrag</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

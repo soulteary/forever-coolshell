@@ -1,0 +1,154 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Java如何取源文件中文件名和行号 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-611 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-611" class="post-content post-611 post type-post status-publish format-standard hentry category-cplusplus category-javadev category-proglanguage tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">Java如何取源文件中文件名和行号</span>
+<h1 class="entry-title">Java如何取源文件中文件名和行号</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/611.html" title="15:00" rel="bookmark"><time class="entry-date" datetime="2009-04-22T15:00:49+08:00" pubdate="">2009年04月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/611.html#comments" class="comments-link">5 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 12,418 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>如何取的Java源代码文件中文件名和行号：）</p>
+<p>在C/C++的程序，编译器提供了两个宏来支持取得源文件中的行号和文件名，这两个宏是__FILE__,__LINE__</p>
+<p>你可以如下的方法打印行号和文件名</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">
+
+#include &lt;stdio.h&gt;
+int main()
+{
+ fprintf(stdout,&#34;[%s:%d] Hello World!&#34;,__FILE__,__LINE__);
+ return 0;
+}
+
+</pre>
+<p><span id="more-611"></span><br/>
+但是在JAVA下没有这两个宏，那么我们如何来取得文件名和行号，翻阅JDK，我们找到StackTraceElement这个类。这个类可以从Throwable取得，另外也可以从Thread类取得，通过这些我写如下的一个打印行号的测试程序：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">
+
+public class LineNo {
+ public static int getLineNumber() {
+ return Thread.currentThread().getStackTrace()[2].getLineNumber();
+ }  
+
+ public static String getFileName() {
+ return Thread.currentThread().getStackTrace()[2].getFileName();
+ }
+ public static void main(String args[]) {
+ System.out.println(&#34;[&#34;+getFileName()+&#34;：&#34;+ getLineNumber()+&#34;]&#34;+&#34;Hello World!&#34;);
+ }
+}
+
+</pre>
+<p>留下一个问题，上面程序中的magic数字 2 代表什么含义呢？</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-611-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Java如何取源文件中文件名和行号</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-63" class="comment even thread-even depth-1">
+<article id="div-comment-63" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c2538d4c73924be7a84c29c550d0c91?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c2538d4c73924be7a84c29c550d0c91?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">coolzyt</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/611.html#comment-63"><time datetime="2009-04-22T22:03:35+08:00">2009年04月22日 22:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>0是thread.getCurrentThread()<br/>
+1是getLineNumber()<br/>
+2才是调用getLineNumber的类</p>
+</div>
+ </article>
+</li>
+<li id="comment-306217" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/shi-li-fen-xi-java-class-di-wen-jian-jie-gou.html" class="url" rel="ugc external nofollow">Definite Digest » 实例分析Java Class的文件结构</a> </div>
+</li>
+<li id="comment-1345662" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=962" class="url" rel="ugc external nofollow">Java中的CopyOnWrite容器 | 星达红</a> </div>
+</li>
+<li id="comment-1510553" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30219.html" class="url" rel="ugc external nofollow">Java中的CopyOnWrite容器 – 马开东博客</a> </div>
+</li>
+<li id="comment-1740043" class="comment even thread-even depth-1">
+<article id="div-comment-1740043" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8651fe92009e309d5fe2ed095525ad9b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8651fe92009e309d5fe2ed095525ad9b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">neosdong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/611.html#comment-1740043"><time datetime="2015-07-24T14:54:42+08:00">2015年07月24日 14:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>0 是当前线程信息<br/>
+1 是StackTrace的第一层，在LineNo类的方法里<br/>
+2 是StackTrace的第二层，调用LineNo.getXX方法的位置</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

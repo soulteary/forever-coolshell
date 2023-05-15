@@ -1,0 +1,495 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何自己写一个网络爬虫 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-27 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-27" class="post-content post-27 post type-post status-publish format-standard hentry category-webdev category-proglanguage tag-crawler tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">如何自己写一个网络爬虫</span>
+<h1 class="entry-title">如何自己写一个网络爬虫</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/27.html" title="14:02" rel="bookmark"><time class="entry-date" datetime="2009-03-02T14:02:03+08:00" pubdate="">2009年03月02日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/27.html#comments" class="comments-link">24 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 64,659 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://en.wikipedia.org/wiki/Web_spider" target="_blank">这里</a>是维基百科对网络爬虫的词条页面。网络爬虫以叫网络蜘蛛，网络机器人，这是一个程序，其会自动的通过网络抓取互联网上的网页，这种技术一般可能用来检查你的站点上所有的链接是否是都是有效的。当然，更为高级的技术是把网页中的相关数据保存下来，可以成为搜索引擎。</p>
+<p>从技相来说，实现抓取网页可能并不是一件很困难的事情，困难的事情是对网页的分析和整理，那是一件需要有轻量智能，需要大量数学计算的程序才能做的事情。下面一个简单的流程：</p>
+<p><span id="more-27"></span></p>
+<p><img decoding="async" class="alignnone" src="https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/WebCrawlerArchitecture.svg/500px-WebCrawlerArchitecture.svg.png" alt="" width="500" height="382"/></p>
+<p>在这里，我们只是说一下如何写一个网页抓取程序。</p>
+<p>首先我们先看一下，如何使用命令行的方式来找开网页。</p>
+<p style="padding-left: 30px; text-align: left;">telnet somesite.com 80<br/>
+GET /index.html HTTP/1.0<br/>
+按回车两次</p>
+<p style="text-align: left;">使用telnet就是告诉你其实这是一个socket的技术，并且使用HTTP的协议，如GET方法来获得网页，当然，接下来的事你就需要解析HTML文法，甚至还需要解析Javascript，因为现在的网页使用Ajax的越来越多了，而很多网页内容都是通过Ajax技术加载的，因为，只是简单地解析HTML文件在未来会远远不够。当然，在这里，只是展示一个非常简单的抓取，简单到只能做为一个例子，下面这个示例的伪代码：</p>
+<pre>取网页
+for each 链接 in 当前网页所有的链接
+{
+        if(如果本链接是我们想要的 || 这个链接从未访问过)
+        {
+                处理对本链接
+                把本链接设置为已访问
+        }
+}</pre>
+<pre class="ruby">require “rubygems”
+require “mechanize”
+
+class Crawler &lt; WWW::Mechanize
+
+  attr_accessor :callback
+  INDEX = 0
+  DOWNLOAD = 1
+  PASS = 2
+
+  def initialize
+    super
+    init
+    @first = true
+    self.user_agent_alias = “Windows IE 6″
+  end
+
+  def init
+    @visited = []
+  end
+
+  def remember(link)
+    @visited &lt;&lt; link
+  end
+
+  def perform_index(link)
+    self.get(link)
+    if(self.page.class.to_s == “WWW::Mechanize::Page”)
+      links = self.page.links.map {|link| link.href } - @visited
+      links.each do |alink|
+        start(alink)
+      end
+    end
+  end
+
+  def start(link)
+    return if link.nil?
+    if(<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e9c8a99f809a809d8c8dc780878a859c8d8c">[email protected]</a>?(link))
+      action = @callback.call(link)
+      if(@first)
+        @first = false
+        perform_index(link)
+      end
+      case action
+        when INDEX
+          perform_index(link)
+        when DOWNLOAD
+          self.get(link).save_as(File.basename(link))
+        when PASS
+          puts “passing on #{link}”
+      end
+    end
+  end
+
+  def get(site)
+    begin
+      puts “getting #{site}”
+      @visited &lt;&lt; site
+      super(site)
+    rescue
+      puts “error getting #{site}”
+    end
+  end
+end</pre>
+<p>上面的代码就不必多说了，大家可以去试试。下面是如何使用上面的代码：</p>
+<pre class="ruby">require “crawler”
+
+x = Crawler.new
+callback = lambda do |link|
+  if(link =~/\\.(zip|rar|gz|pdf|doc)
+    x.remember(link)
+    return Crawler::PASS
+  elsif(link =~/\\.(jpg|jpeg)/)
+    return Crawler::DOWNLOAD
+  end
+  return Crawler::INDEX;
+end
+
+x.callback = callback
+x.start(”http://somesite.com”)</pre>
+<p>下面是一些和网络爬虫相关的开源网络项目</p>
+<ul>
+<li><a class="external text" title="http://arachnode.net" rel="nofollow" href="http://arachnode.net/" target="_blank"><strong>arachnode.net</strong></a> is a .NET crawler written in C# using SQL 2005 and <a title="Lucene" href="https://en.wikipedia.org/wiki/Lucene" target="_blank">Lucene</a> and is released under the <a title="GNU General Public License" href="https://en.wikipedia.org/wiki/GNU_General_Public_License" target="_blank">GNU General Public License</a>.</li>
+<li><strong><a title="DataparkSearch" href="https://en.wikipedia.org/wiki/DataparkSearch" target="_blank">DataparkSearch</a></strong> is a crawler and search engine released under the <a title="GNU General Public License" href="https://en.wikipedia.org/wiki/GNU_General_Public_License" target="_blank">GNU General Public License</a>.</li>
+<li><strong><a title="Wget" href="https://en.wikipedia.org/wiki/Wget" target="_blank">GNU Wget</a></strong> is a <a class="mw-redirect" title="Command line interface" href="https://en.wikipedia.org/wiki/Command_line_interface" target="_blank">command-line</a>-operated crawler written in <a title="C (programming language)" href="https://en.wikipedia.org/wiki/C_%28programming_language%29" target="_blank">C</a> and released under the <a title="GNU General Public License" href="https://en.wikipedia.org/wiki/GNU_General_Public_License" target="_blank">GPL</a>. It is typically used to mirror Web and FTP sites.</li>
+<li><strong><a title="Grub (search engine)" href="https://en.wikipedia.org/wiki/Grub_%28search_engine%29" target="_blank">GRUB</a></strong> is an open source distributed search crawler that Wikia Search ( <a class="external free" title="http://wikiasearch.com" rel="nofollow" href="http://wikiasearch.com/" target="_blank">http://wikiasearch.com</a> ) uses to crawl the web.</li>
+<li><strong><a title="Heritrix" href="https://en.wikipedia.org/wiki/Heritrix" target="_blank">Heritrix</a></strong> is the <a title="Internet Archive" href="https://en.wikipedia.org/wiki/Internet_Archive" target="_blank">Internet Archive</a>’s archival-quality crawler, designed for archiving periodic snapshots of a large portion of the Web. It was written in <a title="Java (programming language)" href="https://en.wikipedia.org/wiki/Java_%28programming_language%29" target="_blank">Java</a>.</li>
+<li><strong><a class="mw-redirect" title="Ht-//dig" href="https://en.wikipedia.org/wiki/Ht-//dig" target="_blank">ht://Dig</a></strong> includes a Web crawler in its indexing engine.</li>
+<li><strong><a title="HTTrack" href="https://en.wikipedia.org/wiki/HTTrack" target="_blank">HTTrack</a></strong> uses a Web crawler to create a mirror of a web site for off-line viewing. It is written in <a title="C (programming language)" href="https://en.wikipedia.org/wiki/C_%28programming_language%29" target="_blank">C</a> and released under the <a title="GNU General Public License" href="https://en.wikipedia.org/wiki/GNU_General_Public_License" target="_blank">GPL</a>.</li>
+<li><strong><a title="ICDL crawling" href="https://en.wikipedia.org/wiki/ICDL_crawling" target="_blank">ICDL Crawler</a></strong> is a <a title="Cross-platform" href="https://en.wikipedia.org/wiki/Cross-platform" target="_blank">cross-platform</a> web crawler written in <a title="C++" href="https://en.wikipedia.org/wiki/C%2B%2B" target="_blank">C++</a> and intended to crawl Web sites based on <a title="Website Parse Template" href="https://en.wikipedia.org/wiki/Website_Parse_Template" target="_blank"><br/>
+</a></li>
+</ul>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-27-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Crawler</a>, <a href="javascript:void(0)" rel="tag">Web</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何自己写一个网络爬虫</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-83" class="comment even thread-even depth-1">
+<article id="div-comment-83" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a760ae8f67aa4626999025896dfa9a9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a760ae8f67aa4626999025896dfa9a9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.pghouse.net" class="url" rel="ugc external nofollow">泉州房产</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-83"><time datetime="2009-05-01T00:30:02+08:00">2009年05月01日 00:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>网络爬虫程序不简单哦</p>
+</div>
+ </article>
+</li>
+<li id="comment-152" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-152" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc49fb7ad607e6d02f8dadfc6d863c72?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc49fb7ad607e6d02f8dadfc6d863c72?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">w水</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-152"><time datetime="2009-05-27T17:01:50+08:00">2009年05月27日 17:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是Ruby？</p>
+</div>
+ </article>
+</li>
+<li id="comment-406" class="comment even thread-even depth-1">
+<article id="div-comment-406" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1fc859fbbac94eab3c8c9c56c53e266?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1fc859fbbac94eab3c8c9c56c53e266?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.gooseeker.com" class="url" rel="ugc external nofollow">Fuller</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-406"><time datetime="2009-07-17T16:24:15+08:00">2009年07月17日 16:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当前比较流行的是定题爬虫，专门提取特定语义的内容，用于建立垂直搜索、情报采集等等，此类爬虫可以剔除不相关的内容，而且一般将提取到的内容存成有结构的格式，例如，存入关系数据库、存成XML文件、CSV或者EXCEL文件等等。</p>
+<p>MetaSeeker工具包就是这样的爬虫，客户端软件99％的代码用Javascript写成，可以读源代码，由于运行在Mozilla平台上，借用了强大的Mozilla平台功能，几乎可以实现任何网页内容的提取，例如，其它工具难于处理的AJAX网站内容。</p>
+<p>软件下载地址：http://www.gooseeker.com</p>
+</div>
+ </article>
+</li>
+<li id="comment-2748" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2748" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b9cc8ce5bb681a0aa130b65a22a3c82b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b9cc8ce5bb681a0aa130b65a22a3c82b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">childz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-2748"><time datetime="2009-12-30T13:18:32+08:00">2009年12月30日 13:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是来学习的：）</p>
+</div>
+ </article>
+</li>
+<li id="comment-4594" class="comment even thread-even depth-1">
+<article id="div-comment-4594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d203899413f25d947424a768f78129ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d203899413f25d947424a768f78129ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-4594"><time datetime="2010-01-25T11:24:55+08:00">2010年01月25日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错</p>
+</div>
+ </article>
+</li>
+<li id="comment-20095" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-20095" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e36eaf4c0d8db4b5eef42375a17b3df1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e36eaf4c0d8db4b5eef42375a17b3df1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小波</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-20095"><time datetime="2010-12-24T17:59:52+08:00">2010年12月24日 17:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>佩服厉害的人物</p>
+</div>
+ </article>
+</li>
+<li id="comment-31499" class="comment even thread-even depth-1">
+<article id="div-comment-31499" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/433c8fc92f9e00022b0f9b6f1a7f240f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/433c8fc92f9e00022b0f9b6f1a7f240f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.aleo.cn/" class="url" rel="ugc external nofollow">刘汉有</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-31499"><time datetime="2011-02-23T09:48:31+08:00">2011年02月23日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>..爬虫很有技术含量哦~！</p>
+</div>
+ </article>
+</li>
+<li id="comment-45571" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-45571" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f5153bde852e7df618e1fb284fd5e2f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f5153bde852e7df618e1fb284fd5e2f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/destinyai/home" class="url" rel="ugc external nofollow">冰火梦幻</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-45571"><time datetime="2011-04-19T12:23:03+08:00">2011年04月19日 12:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为了自己用写了一个在线漫画下载器，典型的HTTP蜘蛛～还好这些网站的页面都很简单，最复杂的也就是javascript的eval-packet压缩。</p>
+</div>
+ </article>
+</li>
+<li id="comment-45606" class="comment even thread-even depth-1">
+<article id="div-comment-45606" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大家帮助大家</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-45606"><time datetime="2011-04-19T14:42:31+08:00">2011年04月19日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为了自己用写了一个在线图片下载器，典型的HTTP蜘蛛～还好这些网站的页面都很简单，（最复杂的也就是javascript的eval-packet压缩）这个我都没涉及到。就是shell + perl + flashget就搞定了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-48877" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-48877" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fba4f82f78194712970044607dcfc01a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fba4f82f78194712970044607dcfc01a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hellow</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-48877"><time datetime="2011-04-28T17:25:39+08:00">2011年04月28日 17:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可是如果大量的固定的去讀取網路的資料，流量上會容易引起別人注意，而且聽說是違法的??<br/>
+以後也不必自己更新內容了，直接從各網站截取資料就好了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73423" class="comment even thread-even depth-1">
+<article id="div-comment-73423" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab2d6787d8d2946f55751f8bcdee9b8c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab2d6787d8d2946f55751f8bcdee9b8c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.huangjianyu.netai.net" class="url" rel="ugc external nofollow">james</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-73423"><time datetime="2011-08-14T10:44:08+08:00">2011年08月14日 10:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很牛！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-81634" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://202.120.40.124/xyf/blog/?p=167" class="url" rel="ugc external nofollow">黑客的白板 » coolshell资源汇总</a> </div>
+</li>
+<li id="comment-143762" class="comment even thread-even depth-1">
+<article id="div-comment-143762" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/459cb9bceb3e15677bfd29a491b99867?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/459cb9bceb3e15677bfd29a491b99867?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.yucoat.com" class="url" rel="ugc external nofollow">蚊子叔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-143762"><time datetime="2012-03-09T12:01:09+08:00">2012年03月09日 12:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我拿Bash shell写过图片爬虫。。。。。<br/>
+Bash + 正则表达式 + curl就搞定啦</p>
+</div>
+ </article>
+</li>
+<li id="comment-148427" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-148427" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d62d782bd0ed42394797cff8a9adae70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d62d782bd0ed42394797cff8a9adae70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://virusswb.blog.51cto.com" class="url" rel="ugc external nofollow">andy shi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-148427"><time datetime="2012-03-23T13:34:39+08:00">2012年03月23日 13:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>curl是个好东西。<br/>
+越来越发现linux下面好东西正是多啊！<br/>
+这方面windows确实不能比！</p>
+</div>
+ </article>
+</li>
+<li id="comment-185348" class="comment even thread-even depth-1">
+<article id="div-comment-185348" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fde7158580296e65d5e8ac3719047dfa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fde7158580296e65d5e8ac3719047dfa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">katero</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-185348"><time datetime="2012-05-10T11:44:10+08:00">2012年05月10日 11:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好像广告 坏人 ：（<a href="#comment-406" rel="nofollow">@Fuller </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-307410" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-307410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f55a6fc26cd76fa54ee3d3dac005ea03?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f55a6fc26cd76fa54ee3d3dac005ea03?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://argcandargv.com" class="url" rel="ugc external nofollow">Yu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-307410"><time datetime="2013-03-09T21:37:20+08:00">2013年03月09日 21:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我尝试过用C的socket编程写爬虫过。。。</p>
+<p>但是获得的信息好像夹杂了些其他东西，不知道找什么文档比较好…</p>
+</div>
+ </article>
+</li>
+<li id="comment-499110" class="comment even thread-even depth-1">
+<article id="div-comment-499110" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cfe19ff998f3515b1243763f4c1482bd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cfe19ff998f3515b1243763f4c1482bd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yunlingguo.net16.net" class="url" rel="ugc external nofollow">小ling</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-499110"><time datetime="2013-05-25T11:03:03+08:00">2013年05月25日 11:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只说明了spider的大致逻辑，还有很多没涉及到，比如如何控制 spider执行深度优先爬去还是广度有些爬取等.</p>
+</div>
+ </article>
+</li>
+<li id="comment-601464" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.smallcd.com/?p=62" class="url" rel="ugc external nofollow">文章收集 | Coding for fun</a> </div>
+</li>
+<li id="comment-1048663" class="comment even thread-even depth-1">
+<article id="div-comment-1048663" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c8a7d26e4d30295e2390078e5bb7dca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c8a7d26e4d30295e2390078e5bb7dca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">菜鸟小L</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-1048663"><time datetime="2013-12-09T21:36:32+08:00">2013年12月09日 21:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也打算写个网络爬虫， 抓取京东这类的购物网站的数据然后分析价格等等。想想近期自己写一个试试</p>
+</div>
+ </article>
+</li>
+<li id="comment-1328665" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1328665" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f84b021407ed0780bf95e5ded8c8d314?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f84b021407ed0780bf95e5ded8c8d314?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chongdata.com" class="url" rel="ugc external nofollow">chongdata</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-1328665"><time datetime="2014-03-04T02:58:06+08:00">2014年03月04日 02:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>chongdata.com是我写的一个网络爬虫，基于Python实现～可以大规模提取网页关键字，现在免费试用，欢迎试用</p>
+</div>
+ </article>
+</li>
+<li id="comment-1328674" class="comment even thread-even depth-1">
+<article id="div-comment-1328674" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f84b021407ed0780bf95e5ded8c8d314?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f84b021407ed0780bf95e5ded8c8d314?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chongdata.com" class="url" rel="ugc external nofollow">chongdata</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-1328674"><time datetime="2014-03-04T02:59:39+08:00">2014年03月04日 02:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>chongdata.com 是我写的一个网络爬虫，基于Python实现～可以大规模提取网页关键字，现在免费试用，欢迎试用, 有凡客和淘宝的价格提取案例</p>
+</div>
+ </article>
+</li>
+<li id="comment-1358609" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1358609" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b46f25a24f5fffd3ae3f6b8044e71e97?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b46f25a24f5fffd3ae3f6b8044e71e97?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://pizida.com" class="url" rel="ugc external nofollow">痞子达</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-1358609"><time datetime="2014-03-11T11:14:46+08:00">2014年03月11日 11:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近写了一个专门抓取百度网盘的程序 <a href="http://www.iqibing.com" rel="nofollow ugc">http://www.iqibing.com</a><br/>
+可是总觉得太浅了，好像一些深度抓取还不是很懂。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1447446" class="comment even thread-even depth-1">
+<article id="div-comment-1447446" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4900796d8398dbe42b9263ac8730bfe4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4900796d8398dbe42b9263ac8730bfe4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.SaiBoDY.Com" class="url" rel="ugc external nofollow">SaiBoDY</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-1447446"><time datetime="2014-04-27T11:43:02+08:00">2014年04月27日 11:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://www.SaiBoDY.Com" rel="nofollow ugc">http://www.SaiBoDY.Com</a> 赛博电影 是我自己的写的一个复合型爬虫抓取的，可以瞬间全自动抓取、筛选、整合和排列各种类型的影视资源，已经做到了24小时无人值守的高效，对于博主的这篇文章，也受益匪浅，学习了。谢谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1751855" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1751855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/404dcbe7ae75f2f4d9a16131f2da3a70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/404dcbe7ae75f2f4d9a16131f2da3a70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.elesos.com" class="url" rel="ugc external nofollow">www_elesos_com</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/27.html#comment-1751855"><time datetime="2015-08-30T10:19:57+08:00">2015年08月30日 10:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>based on what?</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

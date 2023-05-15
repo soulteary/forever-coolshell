@@ -1,0 +1,501 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>读书笔记：对线程模型的批评 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4626 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4626" class="post-content post-4626 post type-post status-publish format-standard hentry category-techarticle category-operatingsystem category-progdesign category-proglanguage tag-design tag-programmer tag-programming-language tag-threading-model">
+<header class="entry-header">
+<span class="screen-reader-text">读书笔记：对线程模型的批评</span>
+<h1 class="entry-title">读书笔记：对线程模型的批评</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4626.html" title="10:23" rel="bookmark"><time class="entry-date" datetime="2011-05-03T10:23:27+08:00" pubdate="">2011年05月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/ian-sino" title="View all posts by Ian.sino" rel="author">Ian.sino</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4626.html#comments" class="comments-link">37 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,668 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><span style="color: #cc0000;"><strong>——感谢Ian.Sian投递本文——</strong></span></p>
+<p>多线程模型是主流的并发编程模型。在过去几十年来，多线程模型一直是开发并发程序的有力工具。然而，它的历史并非总那么美好。1997年，NASA 的“火星探路者”号在执行任务的途中遭遇了严重的时序异常（参见 “<a href="http://research.microsoft.com/en-us/um/people/mbj/mars_pathfinder/mars_pathfinder.html" target="_blank">What really happend on Mars</a>“，注目 follow-up 中的<a href="http://research.microsoft.com/en-us/um/people/mbj/mars_pathfinder/Authoritative_Account.html" target="_blank">现身说法</a>），无法发回探测数据。如果不是 NASA 远程刷新了程序，它的结局就只能是报废在火星上。这一切都是由程序中潜藏的一个优先级反转 bug 造成的。更早的例子还有80年代的一系列 <a title="Therac-25" href="https://en.wikipedia.org/wiki/Therac-25" target="_blank">Therac-25</a> 型医用粒子加速器事故。在这些加速器释放出的过量辐射照射之下，数位病人死亡。事后调查显示，至少有一次发生事故的原因，是加速器的控制软件中，存在一个只能由特定操作序列引发的竞争条件 bug。你也许认为这些只是陈年往事，但是直到现在，即便是世界500强公司们高价买来的信息系统，也同样避免不了这些问题。这导致许多程序员认为线程是个潘多拉魔盒，对它采取能躲就躲的态度。然而近来计算机的发展使得躲猫猫的空间越来越小：随便从市场上淘一个CPU，它里面也有不止一个核心。未来的程序员只会有越来越多的机会接触到并发编程，而无法再独善其身了。</p>
+<p>加州大学伯克利分校教授，<a href="http://ptolemy.eecs.berkeley.edu/~eal/" target="_blank">爱德华 A. 李</a>在2006年做了一次题为<a href="http://www.eecs.berkeley.edu/Pubs/TechRpts/2006/EECS-2006-1.html" target="_blank">《线程的麻烦 (The Problem with Threads)》</a>的学术报告。在报告中他提到：看上去，多线程只是对核心语言的小小扩展，甚至可以以第三方库的形式存在。但实质上，多线程程序和原有的核心语言编写的程序已经完全不同了。其原因在于，由于多线程程序可能以任意的次序交错执行，程序再也无法像顺序执行时那样产生确定的结果。多线程程序容易编写(因为写的是顺序程序)，但是难分析，难调试，更容易出错。</p>
+<p>在我的想法中，产生问题的根源，是多线程模型作为对并发问题的一个抽象，是很不完善的。<span id="more-4626"></span>抽象的实质是对问题的转换。我们可以把抽象应用于一个问题，把它转换成另一个（或许）更简单的问题来解决。解决了转换后的简单问题，就意味着解决了原有的困难问题。严格来说，一个抽象一定要保存原有问题的结构，同时去除无关细节。但是，由于我们生活的世界并没有什么东西是完全“严格”的，现实中使用的抽象有时会隐藏解决问题的关键细节，或者残留一些不该漏出来的东西。评价一个抽象的好坏，也就不止是看它能节省多少代码，和它的界面有多优美这么简单，同时还要看看在一个问题被抽象转换之后，留了下来的细节还能不能好好地解决它。</p>
+<p>我们可以从这个意义上理解为什么线程模型是个很糟糕的抽象。一方面，对解决问题很关键的细节（如执行次序）被隐藏起来并受到了粗暴的对待。另一方面，线程模型极力兼容顺序程序的设计思想也使得如共享变量这样的，与线程不兼容的细节依然残留在程序员们的视线之内。我们无力控制程序的执行次序，而我们程序的正确性却依赖于对共享变量的有序变更。可以说，线程提供给我们的抽象简直是千疮百孔。我们还能用它干活，只是因为我们手里还有加锁机制，而它可以部分地堵上线程模型的漏洞。讽刺的是，引入加锁机制解决问题的同时，又带来了新的问题，所以我们编写多线程程序总会遇上死锁，活锁，优先级反转……等等。</p>
+<p>同样作为并发编程问题的抽象，<a href="http://c2.com/cgi/wiki?ActorsModel" target="_blank">角色模型</a>（Actor Model） 比线程模型好就好在，它的资源分享不像线程模型那样通过共享变量来进行。角色模型中的资源分享只能通过特定的机制（消息传递）来进行。你在角色模型里依然可能犯错误，如你可能制造死锁，也有可能造成优先级反转。但是没有共享变量就意味着没有了竞争条件，所以绝大部分资源也用不着上锁了。这样一来，原先至关重要的细节变得不那么重要，问题就这么解决了。</p>
+<p>一般来说，在修复一个糟糕的抽象时，可以采取的策略分如下两类：</p>
+<ul>
+<li>把造成问题的那部分抽象拿掉，直接露出底层的细节</li>
+<li>换一个和底层兼容性更好的抽象模型</li>
+</ul>
+<p>以 <a href="https://en.wikipedia.org/wiki/MapReduce" target="_blank">MapReduce </a>为例，它在解决分布式计算问题时，采取的是第一类策略。与现时流行的做法相反，MapReduce 并不试图制造计算是在单一场所完成的假象(流行话讲叫“云计算”)，相反它需要程序员自己把问题拆分到集群中不同的机器上。同时，它却隐藏了大量其他细节。这种另类策略导致批评 MapReduce “<a href="http://databasecolumn.vertica.com/database-innovation/mapreduce-a-major-step-backwards/" target="_blank">太底层，不通用</a>” 的声音不绝于耳， 然而这正是 MapReduce 聪明的地方。它放弃面面俱到，集中精力于高效地解决一小类问题（这类问题与排序问题有类似的结构），同时对其他的问题故意视而不见。它的流行证明了这一策略的成功。</p>
+<p>角色模型，通信进程（<a href="https://en.wikipedia.org/wiki/Communicating_sequential_processes" target="_blank">Communicating Sequential Processes</a>, CSP），以及函数式编程（FP）在应对并发编程问题时不约而同地选择了第二类策略。它们采用了与并发兼容性更好的抽象。角色模型与通信进程从线程模型的问题中抹去了共享变量，纯粹 FP 则抹掉了“变量”的可变性。CSP 还可以降低程序执行次序的不确定性（因为在CSP中执行次序默认是确定的，不确定性必须在程序设计时显式声明）。由于这些努力，这几种模型都避免了落入线程模型的麻烦中，得到了对并发问题的更优美的解法。我们可以说，这些模型提供的抽象比线程模型的都要好。很遗憾的是，它们尽管优美，但却乏人问津。角色模型与通信进程目前不被任何主流操作系统原生支持（微软在 Windows 7 附带的新并行运行时 <a href="http://msdn.microsoft.com/en-us/library/dd504870.aspx" target="_blank">ConcRT </a>中加入了基于角色模型的 Asynchronous Agents Library，使得状况稍微改观了一点）。FP 的年岁几乎和计算机语言的历史一样古老， 但它的市场份额直到现在也小得可怜。</p>
+<p>也许一切都是因为线程模型表面上那迷惑人的简单性，以及墨菲定律的变体：布劳尔技术惯性定律（已经成功的技术在新的，更好的技术出现时也会赖着不走）。我们曾经接纳了一个有缺点的解决方案，而现在我们被捆绑在这个方案上了。我们为线程模型写了成百上千万行的代码，而现在这些代码的重量束缚住我们的手脚，使得我们无法前行。</p>
+<p>解决线程模型带来的问题的正确做法，是推广新的，更完善的模型。既然解决问题的阻碍同时来自于新技术的低认知度和现有代码的拖累，很自然地有两个方面的工作要做。一、使得新技术更容易被多数程序员使用，二、想办法让现有的代码和新技术兼容。</p>
+<p>在兼容老代码这一头，我们已经有了一些行动。微软在 Windows 7 中提供一个称为<a href="http://msdn.microsoft.com/en-us/library/dd627187%28v=vs.85%29.aspx" target="_blank">用户模式调度 </a>(UMS) 的功能。UMS 可以将内核模式的线程转换为用户模式线程，而应用程序可以自己提供一个 UMS 调度器来调度它们。这意味着，我们现在有机会重载掉系统调度器的默认行为，而根据应用自身的特点给出更合理的调度安排来。这个功能可以用在构造更容易使用的并发模型上，这样开发的模型可以与老代码兼容（但 UMS 有一个让人迷惑的限制：只能用在64bit 的Windows 7 版本上）。</p>
+<p>同样地，在推广新技术方面，现在也有了很多成果。除了角色模型外，事务性内存(这又是一种避免竞争条件，从而避免加锁的方法)正在研究中；CSP 已经有了数个实现（如由 Kent 大学开发，针对 Java 的 <a href="http://www.cs.kent.ac.uk/projects/ofa/jcsp/" target="_blank">JCSP</a>），同时还有针对 CSP 的模型检证工具；至于 FP，最近因为人们认为 Web 系统的建模可以在函数式编程范式中更好的表达，FP 正在唤起人们的注意。我们缺的只剩下新技术的成功应用范例（实际上，前面的技术并不是没有成功范例，我们缺的是经验能够大规模运用的范例 ），以及一支理解这些技术的程序员大军了。对于这后一条，我甚至想，既然多线程编程唯一”容易”的事情是写代码，何不做出一种工具来让程序员们可以用写顺序程序的思维来在这些新模型中编写程序呢？这样的工具会帮助程序员利用线性程序的思维来理解代码，但是同时又让人注意到自己的改动正在影响系统的哪一部分。如果新模型的代码变得好理解了，也许更多的人会使用它们。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4626-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">programming language</a>, <a href="javascript:void(0)" rel="tag">threading model</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>读书笔记：对线程模型的批评</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-49922" class="comment even thread-even depth-1">
+<article id="div-comment-49922" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60d27b09c7ffd3f2c2d01cedf9847725?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60d27b09c7ffd3f2c2d01cedf9847725?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49922"><time datetime="2011-05-03T11:17:45+08:00">2011年05月03日 11:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>线程模型是一种机器模型，而不是一种问题模型。</p>
+</div>
+ </article>
+</li>
+<li id="comment-49926" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-49926" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cc8814072b1b933d5cfbd09389d00ef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cc8814072b1b933d5cfbd09389d00ef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lhb5883.wordpress.com/" class="url" rel="ugc external nofollow">lhb5883</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49926"><time datetime="2011-05-03T11:47:24+08:00">2011年05月03日 11:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为一味的封装不是一个好的解决方案,作为一个LabVIEW程序员,深受不能接触到程序底层而困扰中.确实LabVIEW的封装使多线程的开发容易了很多,但是使用多线程时提高的性能往往消耗在了各种各样的封装里.</p>
+</div>
+ </article>
+</li>
+<li id="comment-49937" class="comment even thread-even depth-1">
+<article id="div-comment-49937" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f639781fd312907a062a0b5041786be5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f639781fd312907a062a0b5041786be5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">busyStone</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49937"><time datetime="2011-05-03T13:05:56+08:00">2011年05月03日 13:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说来说去还是资源管理的问题。。。<br/>
+对于异步操作执行的顺序可以是确定的，但是执行的时间确是不定的。</p>
+<p>今天才知道还有这么多概念，很有收获，多谢！</p>
+<p>关于“角色模型”，在嵌入式里，量子编程（http://www.state-machine.com/）是一种类似的实现，可惜跟国内大多数嵌入式程序员思维方式不同、资料缺乏，没有流行起来。</p>
+</div>
+ </article>
+</li>
+<li id="comment-49940" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-49940" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1467ad38d98ea6b351a5f679655d291?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://innocentim.info/blog" class="url" rel="ugc external nofollow">INNOCENT</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49940"><time datetime="2011-05-03T13:22:32+08:00">2011年05月03日 13:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人理解, 线程模型最初是为了让两个没什么关系的事一起跑以提高效率, 现在人们只是远离了其初衷罢了 —— 让许多有密切关系的事在不同的线程上跑.</p>
+</div>
+ </article>
+</li>
+<li id="comment-49942" class="comment even thread-even depth-1">
+<article id="div-comment-49942" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c4c5681478ff956d4d0a90180f6de8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c4c5681478ff956d4d0a90180f6de8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鸟人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49942"><time datetime="2011-05-03T13:32:42+08:00">2011年05月03日 13:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是翻译的文章还是Ian.Sian原创？</p>
+</div>
+ </article>
+</li>
+<li id="comment-49947" class="comment byuser comment-author-ian-sino bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-49947" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2ea38ff49f2147eee95687f2dc51a90?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2ea38ff49f2147eee95687f2dc51a90?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ian.sino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49947"><time datetime="2011-05-03T14:12:50+08:00">2011年05月03日 14:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-49942" rel="nofollow">@鸟人 </a><br/>
+这是敝人写作一篇 Research Proposal 的副产品。原文是用英文写的，然后由我自己翻译成的中文。参考文献里的连接则几乎都是老美的东西（这也没法了）。</p>
+</div>
+ </article>
+</li>
+<li id="comment-49949" class="comment even thread-even depth-1">
+<article id="div-comment-49949" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c4c5681478ff956d4d0a90180f6de8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c4c5681478ff956d4d0a90180f6de8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鸟人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49949"><time datetime="2011-05-03T14:15:53+08:00">2011年05月03日 14:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-49922" rel="nofollow">@hou </a><br/>
+之所以有了机器模型，或言之 机器支持(CPU supports Thread),还是源自于问题模型的需要。</p>
+</div>
+ </article>
+</li>
+<li id="comment-49950" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-49950" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c4c5681478ff956d4d0a90180f6de8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c4c5681478ff956d4d0a90180f6de8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鸟人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49950"><time datetime="2011-05-03T14:19:10+08:00">2011年05月03日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-49947" rel="nofollow">@Ian.sino </a><br/>
+哈哈，牛人啊。 不错不错，学习了很多东西。 不过，偶的嗅觉还是不错的， 闻到了翻译的味道。还是<br/>
+现有英文，再有中文。 BTW,你的research 是哪个方向啊？ 如果贴上英文版，来个中英对照，就更好了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-49965" class="comment even thread-even depth-1">
+<article id="div-comment-49965" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75dec8ef3a732dd89919735a452359fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75dec8ef3a732dd89919735a452359fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wooki</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49965"><time datetime="2011-05-03T15:32:12+08:00">2011年05月03日 15:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在桌面环境下过度抽象不是好事，会对效率产生很大影响。如果用四核CPU跑抽象过的程序的效率和原生跑单核的程序一个效率，那么还不如直接写单线程程序。</p>
+</div>
+ </article>
+</li>
+<li id="comment-49974" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-49974" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大家帮助大家</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-49974"><time datetime="2011-05-03T16:33:55+08:00">2011年05月03日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>建议写线程，进程论文的，先到富士康的iphone生产装配线学习一下什么是流水线，如何优化流水线，再写论文，会更靠谱一些。</p>
+</div>
+ </article>
+</li>
+<li id="comment-50012" class="comment even thread-even depth-1">
+<article id="div-comment-50012" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ecb060f0a79fe3acd2b8b09a8e2e365b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ecb060f0a79fe3acd2b8b09a8e2e365b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/wbywgx" class="url" rel="ugc external nofollow">宇文高下</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50012"><time datetime="2011-05-03T20:08:15+08:00">2011年05月03日 20:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想起一句话：进程是在CPU上并行；线程则在进程下并行</p>
+</div>
+ </article>
+</li>
+<li id="comment-50038" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-50038" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e27fcc4ef08dcf8129f6dd3eb1bfa8ce?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e27fcc4ef08dcf8129f6dd3eb1bfa8ce?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.parallellabs.com" class="url" rel="ugc external nofollow">Guancheng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50038"><time datetime="2011-05-03T22:15:52+08:00">2011年05月03日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章，尤其喜欢文中总结的两个策略。<br/>
+多线程其实是Shared Memory，Actor是Message passing。大部分人都用的shared memory模型进行并行编程，但是多线程的non-deterministic成了万恶之源。现在有很多人在做deterministic multiprocessing的研究，TM也只是解决了并行编程的部分问题。对并行编程来讲，性能、功耗、Debugging、Programmability都需要很多工作，任重而道远啊，没有十年的功夫怕是很难搞定。</p>
+</div>
+ </article>
+</li>
+<li id="comment-50186" class="comment even thread-even depth-1">
+<article id="div-comment-50186" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fedb5f12d4927e70140b18a6cdf53b1f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fedb5f12d4927e70140b18a6cdf53b1f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/不正直的人" class="url" rel="ugc external nofollow">不正直的人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50186"><time datetime="2011-05-04T14:19:02+08:00">2011年05月04日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>erlang的那种消息传递的轻量用户线程很优雅，效率也够高。</p>
+</div>
+ </article>
+</li>
+<li id="comment-50254" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-50254" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d2aff713844bbf7f7fa476ab78f0c4a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d2aff713844bbf7f7fa476ab78f0c4a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://softpalace.co.de" class="url" rel="ugc external nofollow">Ring0</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50254"><time datetime="2011-05-04T23:19:10+08:00">2011年05月04日 23:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个写的真好</p>
+</div>
+ </article>
+</li>
+<li id="comment-50368" class="comment even thread-even depth-1">
+<article id="div-comment-50368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75dec8ef3a732dd89919735a452359fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75dec8ef3a732dd89919735a452359fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wooki</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50368"><time datetime="2011-05-05T17:35:11+08:00">2011年05月05日 17:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-50186" rel="nofollow">@不正直的人 </a><br/>
+erlang的效率一点也不高，比V8的javascript都要慢，对于计算密集型程序，单线程的C程序都要比跑在8核上的erlang程序快。</p>
+</div>
+ </article>
+</li>
+<li id="comment-50397" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-50397" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9c3d19790f99f33018ad6f29247b192?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9c3d19790f99f33018ad6f29247b192?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">威海的风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50397"><time datetime="2011-05-05T22:43:37+08:00">2011年05月05日 22:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-49926" rel="nofollow">@lhb5883 </a><br/>
+哥坚决不玩LabView大半年了，现在已转Qt啦，哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-50398" class="comment even thread-even depth-1">
+<article id="div-comment-50398" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9c3d19790f99f33018ad6f29247b192?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9c3d19790f99f33018ad6f29247b192?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">威海的风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50398"><time datetime="2011-05-05T22:46:25+08:00">2011年05月05日 22:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-49926"><p>
+<strong><a href="#comment-49926" rel="nofollow">lhb5883</a> :</strong><br/>
+我认为一味的封装不是一个好的解决方案,作为一个LabVIEW程序员,深受不能接触到程序底层而困扰中.确实LabVIEW的封装使多线程的开发容易了很多,但是使用多线程时提高的性能往往消耗在了各种各样的封装里.
+</p></blockquote>
+<p>虽然做了快两年LV，但哥坚决不再继续LabView了，现在已转Qt啦，哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-50452" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-50452" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12e9eda33194c575e6aa4292b5d8e18f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12e9eda33194c575e6aa4292b5d8e18f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">huzhan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50452"><time datetime="2011-05-06T12:16:24+08:00">2011年05月06日 12:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>OPENMP如何？<br/>
+就象第一个回复说的，线程模型是一种机器模型，不是问题模型。<br/>
+呈现给用户什么模型是库或者编译器之类应该做的事情。<br/>
+印象中最早的pthread库不是基于内核线程的，都是库自身实现调度，早期solaris不是可以在一个内核lwp上调度多个用户线程么。现在是一对一了，从前我记得是1对N的。自己做一个调度库应该有很多gnu的实现了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-50455" class="comment even thread-even depth-1">
+<article id="div-comment-50455" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d95a37153730bba907f7274277bf1b0d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d95a37153730bba907f7274277bf1b0d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kknd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50455"><time datetime="2011-05-06T13:38:37+08:00">2011年05月06日 13:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>构建一个多线程的系统就像是构建一个小社会，每个线程就是一个人，而避免人之间的冲突还真是个麻烦事</p>
+</div>
+ </article>
+</li>
+<li id="comment-50497" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-50497" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44b2bc868f7dd4bc8d744739e0464a0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44b2bc868f7dd4bc8d744739e0464a0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">血痕</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50497"><time datetime="2011-05-06T22:47:44+08:00">2011年05月06日 22:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很不错 啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-50988" class="comment byuser comment-author-ian-sino bypostauthor even thread-even depth-1">
+<article id="div-comment-50988" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2ea38ff49f2147eee95687f2dc51a90?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2ea38ff49f2147eee95687f2dc51a90?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ian.sino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-50988"><time datetime="2011-05-10T00:35:21+08:00">2011年05月10日 00:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-50452" rel="nofollow">@huzhan </a><br/>
+不好意思有急事出差，回答晚了。<br/>
+感谢huzhan的回复，可以看出来您对此也有很深刻的了解。以下是我对这些问题的看法。</p>
+<p>1 我认为，OpenMP 的问题范围是”并行”，而非更广义的”并发”。它是分配同样的任务到多个处理器，而并发要处理的情况更加通用。</p>
+<p>2 我同意这个描述：线程模型是一个机器模型。它原本的考虑是将求解问题的机器与问题本身分离开来，但是实践证明这两样东西没法完全分开 (线程模型中的不确定性就是分开的结果)。因此，像CSP这样的建模方法试图在对问题建模的同时将并发考虑在内。这样的话并发就成了问题模型的一部分。关于它们是什么模型的争论意义不大，因为一旦开始编程，怎么分析线程就成了程序员面前的问题的一部分了。</p>
+<p>3 UNIX支持用户模式的线程，用户模式线程也确实是构造CSP的常用底层，但是用户模式线程会遇上和 Windows中的 fiber 一样的问题：一个线程阻塞相当于进程阻塞。UMS 的专利文档中号称它解决了这个问题（大概就是内核把阻塞这个事件抛给UMS调度器让它处理，和Scheduler Activations 很像，甚至”Scheduler Activations”直接就出现在了文档里）。这里不好的一点就是我应该提起 UMS 的源头为 Scheduler Activations 的。至于为什么Windows 要为 Scheduler Activations 招魂，是因为多核系统可能是它的新机会。</p>
+</div>
+ </article>
+</li>
+<li id="comment-52437" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-52437" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fedb5f12d4927e70140b18a6cdf53b1f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fedb5f12d4927e70140b18a6cdf53b1f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/不正直的人" class="url" rel="ugc external nofollow">不正直的人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-52437"><time datetime="2011-05-16T09:34:53+08:00">2011年05月16日 09:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-50368" rel="nofollow">@wooki </a><br/>
+我说的不是Erlang的运行效率，而是说的消息传递效率，Erlang里发一个消息的开销很低。<br/>
+从运行效率上来说不适合做计算密集型的应用。<br/>
+另外如果使用HIPE，性能会有很大的提高。目前我对HIPE的了解不多，准备学习一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-54765" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bigasp.com/archives/478" class="url" rel="ugc external nofollow">Chrome学习笔记（一）：MessageLoop » Soul Apogee</a> </div>
+</li>
+<li id="comment-57678" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://arm9.22os.com/2011/06/09/%e8%af%bb%e4%b9%a6%e7%ac%94%e8%ae%b0%ef%bc%9a%e5%af%b9%e7%ba%bf%e7%a8%8b%e6%a8%a1%e5%9e%8b%e7%9a%84%e6%89%b9%e8%af%84/" class="url" rel="ugc external nofollow">读书笔记：对线程模型的批评 « ARM9 &amp; Embedded System</a> </div>
+</li>
+<li id="comment-58239" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://unknownerror.net/2011-06/turn-reading-notes-criticism-of-the-threading-model-38647" class="url" rel="ugc external nofollow">Turn】 【reading Notes: criticism of the threading model</a> </div>
+</li>
+<li id="comment-66227" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-66227" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa9d55088a69f2110a951b711e1c4928?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa9d55088a69f2110a951b711e1c4928?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ekd123.org" class="url" rel="ugc external nofollow">Mike Ma</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-66227"><time datetime="2011-07-20T02:01:39+08:00">2011年07月20日 02:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实。。。个人觉得多进程模式简单易实现。。。IPC方法也相当多，UNIX下控制子进程还是很简单的。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-67357" class="comment even thread-even depth-1">
+<article id="div-comment-67357" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5811056f783287781ae4c6091682ab9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5811056f783287781ae4c6091682ab9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">baibaichen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-67357"><time datetime="2011-07-23T02:43:27+08:00">2011年07月23日 02:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你总有共享资源的时候，比如写文件。共享本质是跑不掉的。</p>
+<p><a href="http://drdobbs.com/high-performance-computing/200001985" rel="nofollow ugc">http://drdobbs.com/high-performance-computing/200001985</a> 不知楼主看否。你用何种编程模型取决于你要解决的问题。</p>
+<p>现在遇到的编程问题是，你必须<br/>
+1 确定那些资源共享<br/>
+2 手工加锁确保exclusively access共享资源</p>
+<p>#2 引起的问题在明处，而#1是个设计问题，在暗处。最头疼的是，你无法在语法上（C C#,C++和java)中声明某个变量或某个函数只能在某个特定的线程中访问或运行。这样，随着时间的变化，没共享的被共享了。这是我现实中遇到的问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-127389" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://h1ppy.com/archives/1796" class="url" rel="ugc external nofollow">由12306.cn谈谈网站性能技术 | 挨踢联播</a> </div>
+</li>
+<li id="comment-684997" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1598" class="url" rel="ugc external nofollow">Technical Heartbeat #12 | Steve Guan</a> </div>
+</li>
+<li id="comment-706897" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1757" class="url" rel="ugc external nofollow">Technical Heartbeat #13 | Steve Guan</a> </div>
+</li>
+<li id="comment-840187" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://chgon.com/?p=1403" class="url" rel="ugc external nofollow">关于 MessageDialog 类的坑</a> </div>
+</li>
+<li id="comment-1413638" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=283" class="url" rel="ugc external nofollow">对线程模型的批评 | skynetdoc</a> </div>
+</li>
+<li id="comment-1413649" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=287" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | skynetdoc</a> </div>
+</li>
+<li id="comment-1463017" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wort.sinaapp.com/?p=13" class="url" rel="ugc external nofollow">Chrome学习笔记（一）：线程模型，消息循环 | 麦芽堂</a> </div>
+</li>
+<li id="comment-1808112" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://peimin.org/?p=54" class="url" rel="ugc external nofollow">开发日志: 服务器最近的一些问题和以后的事 | peimin</a> </div>
+</li>
+<li id="comment-1858697" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.flyear.cn/archives/4720" class="url" rel="ugc external nofollow">多线程模型下的无锁编程 | 菜鸟飞翔</a> </div>
+</li>
+<li id="comment-1907328" class="comment even thread-even depth-1">
+<article id="div-comment-1907328" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f3c16165a600d883d0081bed9151ca6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f3c16165a600d883d0081bed9151ca6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.rominyue.com" class="url" rel="ugc external nofollow">yomin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4626.html#comment-1907328"><time datetime="2016-12-17T11:02:46+08:00">2016年12月17日 11:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在再看到这篇文章，貌似actor和fp有发扬光大的趋势。。以及go的csp。。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

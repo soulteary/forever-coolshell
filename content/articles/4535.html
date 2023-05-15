@@ -1,0 +1,379 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>一些软件设计的原则 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4535 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4535" class="post-content post-4535 post type-post status-publish format-standard hentry category-progdesign tag-coding tag-design tag-object-oriented tag-unix tag-404">
+<header class="entry-header">
+<span class="screen-reader-text">一些软件设计的原则</span>
+<h1 class="entry-title">一些软件设计的原则</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4535.html" title="08:24" rel="bookmark"><time class="entry-date" datetime="2011-04-25T08:24:18+08:00" pubdate="">2011年04月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4535.html#comments" class="comments-link">69 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 82,799 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>以前本站向大家介绍过一些软件开发的原则，比如<a title="优质代码的十诫" href="/articles/1007.html" target="_blank" rel="bookmark noopener">优质代码的十诫</a>和<a title="Unix传奇(下篇)" href="/articles/2324.html" target="_blank" rel="noopener">Unix传奇(下篇)</a>中所以说的UNIX的设计原则。相信大家从中能够从中学了解到一些设计原理方面的知识，正如我在《<a title="再谈“我是怎么招聘程序员的”（上）" href="/articles/4506.html" target="_blank" rel="noopener">再谈“我是怎么招聘程序”</a>》中所说的，一个好的程序员通常由其操作技能、知识水平，经验层力和能力四个方面组成。在这里想和大家说说设计中的一些原则，我认为这些东西属于长期经验总结出来的知识。这些原则，每一个程序员都应该了解。但是请不要教条主义，在使用的时候还是要多多考虑实际情况。其实，<strong>下面这些原则，不单单只是软件开发，可以推广到其它生产活动中，甚至我们的生活中</strong>。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Don%E2%80%99t_Repeat_Yourself_DRY" title="Don’t Repeat Yourself (DRY)">Don’t Repeat Yourself (DRY)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Keep_It_Simple_Stupid_KISS" title="Keep It Simple, Stupid (KISS)">Keep It Simple, Stupid (KISS)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Program_to_an_interface_not_an_implementation" title="Program to an interface, not an implementation">Program to an interface, not an implementation</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Command-Query_Separation_CQS_%E2%80%93_%E5%91%BD%E4%BB%A4-%E6%9F%A5%E8%AF%A2%E5%88%86%E7%A6%BB%E5%8E%9F%E5%88%99" title="Command-Query Separation (CQS)  – 命令-查询分离原则">Command-Query Separation (CQS)  – 命令-查询分离原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#You_Ain%E2%80%99t_Gonna_Need_It_YAGNI" title="You Ain’t Gonna Need It (YAGNI)">You Ain’t Gonna Need It (YAGNI)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Law_of_Demeter_%E2%80%93_%E8%BF%AA%E7%B1%B3%E7%89%B9%E6%B3%95%E5%88%99" title="Law of Demeter – 迪米特法则">Law of Demeter – 迪米特法则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%9A%84SOLID_%E5%8E%9F%E5%88%99" title="面向对象的S.O.L.I.D 原则">面向对象的S.O.L.I.D 原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#Common_Closure_Principle%EF%BC%88CCP%EF%BC%89%E2%80%93_%E5%85%B1%E5%90%8C%E5%B0%81%E9%97%AD%E5%8E%9F%E5%88%99" title="Common Closure Principle（CCP）– 共同封闭原则">Common Closure Principle（CCP）– 共同封闭原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#Common_Reuse_Principle_CRP_%E2%80%93_%E5%85%B1%E5%90%8C%E9%87%8D%E7%94%A8%E5%8E%9F%E5%88%99" title="Common Reuse Principle (CRP) – 共同重用原则">Common Reuse Principle (CRP) – 共同重用原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#Hollywood_Principle_%E2%80%93_%E5%A5%BD%E8%8E%B1%E5%9D%9E%E5%8E%9F%E5%88%99" title="Hollywood Principle – 好莱坞原则">Hollywood Principle – 好莱坞原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#High_Cohesion_LowLoose_coupling_%E2%80%93_%E9%AB%98%E5%86%85%E8%81%9A%EF%BC%8C_%E4%BD%8E%E8%80%A6%E5%90%88" title="High Cohesion &amp; Low/Loose coupling &amp; – 高内聚， 低耦合">High Cohesion &amp; Low/Loose coupling &amp; – 高内聚， 低耦合</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-12" href="#Convention_over_Configuration%EF%BC%88CoC%EF%BC%89%E2%80%93_%E6%83%AF%E4%BE%8B%E4%BC%98%E4%BA%8E%E9%85%8D%E7%BD%AE%E5%8E%9F%E5%88%99" title="Convention over Configuration（CoC）– 惯例优于配置原则">Convention over Configuration（CoC）– 惯例优于配置原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-13" href="#Separation_of_Concerns_SoC_%E2%80%93_%E5%85%B3%E6%B3%A8%E7%82%B9%E5%88%86%E7%A6%BB" title="Separation of Concerns (SoC) – 关注点分离">Separation of Concerns (SoC) – 关注点分离</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-14" href="#Design_by_Contract_DbC_%E2%80%93_%E5%A5%91%E7%BA%A6%E5%BC%8F%E8%AE%BE%E8%AE%A1" title="Design by Contract (DbC) – 契约式设计">Design by Contract (DbC) – 契约式设计</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-15" href="#Acyclic_Dependencies_Principle_ADP_%E2%80%93_%E6%97%A0%E7%8E%AF%E4%BE%9D%E8%B5%96%E5%8E%9F%E5%88%99" title="Acyclic Dependencies Principle (ADP) – 无环依赖原则">Acyclic Dependencies Principle (ADP) – 无环依赖原则</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-16" href="#%E5%90%8E%E8%AE%B0" title="后记">后记</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Don%E2%80%99t_Repeat_Yourself_DRY"></span>Don’t Repeat Yourself (DRY)<span class="ez-toc-section-end"></span></h4>
+<p>DRY 是一个最简单的法则，也是最容易被理解的。但它也可能是最难被应用的（因为要做到这样，我们需要在泛型设计上做相当的努力，这并不是一件容易的事）。它意味着，当我们在两个或多个地方的时候发现一些相似的代码的时候，我们需要把他们的共性抽象出来形一个唯一的新方法，并且改变现有的地方的代码让他们以一些合适的参数调用这个新的方法。</p>
+<p><strong>参考</strong>：<a title="http://en.wikipedia.org/wiki/Don%27t_repeat_yourself" href="https://en.wikipedia.org/wiki/Don%27t_repeat_yourself" rel="nofollow">http://en.wikipedia.org/wiki/Don%27t_repeat_yourself</a></p>
+<h4><span class="ez-toc-section" id="Keep_It_Simple_Stupid_KISS"></span>Keep It Simple, Stupid (KISS)<span class="ez-toc-section-end"></span></h4>
+<p>KISS原则在设计上可能最被推崇的，在家装设计，界面设计 ，操作设计上，复杂的东西越来越被众人所BS了，而简单的东西越来越被人所认可，比如<a title="UI的恶梦" href="/articles/1907.html" target="_blank" rel="noopener">这些UI的设计</a>和我们<a title="为什么中国的网页设计那么烂？" href="/articles/3605.html" target="_blank" rel="noopener">中国网页</a>（尤其是<a title="微软用新浪来当反面教材" href="/articles/3872.html" target="_blank" rel="noopener">新浪的网页</a>）者是负面的例子。“宜家”（IKEA）简约、效率的家居设计、生产思路；“微软”（Microsoft）“所见即所得”的理念；“谷歌”（Google)简约、直接的商业风格，无一例外的遵循了“kiss”原则，也正是“kiss”原则，成就了这些看似神奇的商业经典。而苹果公司的iPhone/iPad将这个原则实践到了极至。</p>
+<p><span id="more-4535"></span></p>
+<p>把一个事情搞复杂是一件简单的事，但要把一个复杂的事变简单，这是一件复杂的事。</p>
+<p><strong>参考</strong>：<a title="http://en.wikipedia.org/wiki/KISS_principle" href="https://en.wikipedia.org/wiki/KISS_principle" rel="nofollow">http://en.wikipedia.org/wiki/KISS_principle</a></p>
+<h4><span class="ez-toc-section" id="Program_to_an_interface_not_an_implementation"></span>Program to an interface, not an implementation<span class="ez-toc-section-end"></span></h4>
+<p>这是设计模式中最根本的哲学，注重接口，而不是实现，依赖接口，而不是实现。接口是抽象是稳定的，实现则是多种多样的。以后面我们会面向对象的SOLID原则中会提到我们的依赖倒置原则，就是这个原则的的另一种样子。还有一条原则叫 <strong>Composition over inheritance</strong>（喜欢组合而不是继承），这两条是那23个经典设计模式中的设计原则。</p>
+<h4><span class="ez-toc-section" id="Command-Query_Separation_CQS_%E2%80%93_%E5%91%BD%E4%BB%A4-%E6%9F%A5%E8%AF%A2%E5%88%86%E7%A6%BB%E5%8E%9F%E5%88%99"></span>Command-Query Separation (CQS)  – 命令-查询分离原则<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li>查询：当一个方法返回一个值来回应一个问题的时候，它就具有查询的性质；</li>
+<li>命令：当一个方法要改变对象的状态的时候，它就具有命令的性质；</li>
+</ul>
+<p>通常，一个方法可能是纯的Command模式或者是纯的Query模式，或者是两者的混合体。在设计接口时，如果可能，应该尽量使接口单一化，保证方法的行为严格的是命令或者是查询，这样查询方法不会改变对象的状态，没有副作用，而会改变对象的状态的方法不可能有返回值。也就是说：如果我们要问一个问题，那么就不应该影响到它的答案。实际应用，要视具体情况而定，语义的清晰性和使用的简单性之间需要权衡。将Command和Query功能合并入一个方法，方便了客户的使用，但是，降低了清晰性，而且，可能不便于基于断言的程序设计并且需要一个变量来保存查询结果。</p>
+<p>在系统设计中，很多系统也是以这样原则设计的，查询的功能和命令功能的系统分离，这样有则于系统性能，也有利于系统的安全性。</p>
+<p><strong>参考</strong>：<a title="http://en.wikipedia.org/wiki/Command-query_separation" href="https://en.wikipedia.org/wiki/Command-query_separation" rel="nofollow">http://en.wikipedia.org/wiki/Command-query_separation</a></p>
+<h4><span class="ez-toc-section" id="You_Ain%E2%80%99t_Gonna_Need_It_YAGNI"></span>You Ain’t Gonna Need It (YAGNI)<span class="ez-toc-section-end"></span></h4>
+<p>这个原则简而言之为——只考虑和设计必须的功能，避免过度设计。只实现目前需要的功能，在以后您需要更多功能时，可以再进行添加。</p>
+<ul>
+<li>如无必要，勿增复杂性。</li>
+<li>软件开发先是一场沟通博弈。</li>
+</ul>
+<p>以前本站有一篇关于<a title="代码重构的一个示例" href="/articles/3005.html" target="_blank" rel="noopener">过度重构的文章</a>，这个示例就是这个原则的反例。而，WebSphere的设计者就<a href="http://www.bbc.co.uk/news/business-11944966" target="_blank" rel="noopener">表示过他过度设计了这个产品</a>。我们的程序员或是架构师在设计系统的时候，会考虑很多扩展性的东西，导致在架构与设计方面使用了大量折衷，最后导致项目失败。这是个令人感到讽刺的教训，因为本来希望尽可能延长项目的生命周期，结果反而缩短了生命周期。</p>
+<p><strong>参考</strong>：<a title="http://en.wikipedia.org/wiki/You_Ain%27t_Gonna_Need_It" href="https://en.wikipedia.org/wiki/You_Ain%27t_Gonna_Need_It" target="_blank" rel="nofollow noopener">http://en.wikipedia.org/wiki/You_Ain%27t_Gonna_Need_It</a></p>
+<h4><span class="ez-toc-section" id="Law_of_Demeter_%E2%80%93_%E8%BF%AA%E7%B1%B3%E7%89%B9%E6%B3%95%E5%88%99"></span>Law of Demeter – 迪米特法则<span class="ez-toc-section-end"></span></h4>
+<p>迪米特法则(Law of Demeter)，又称“最少知识原则”（Principle of Least Knowledge），其来源于1987年荷兰大学的一个叫做Demeter的项目。Craig Larman把Law of Demeter又称作“不要和陌生人说话”。在《程序员修炼之道》中讲LoD的那一章叫作“解耦合与迪米特法则”。关于迪米特法则有一些很形象的比喻：</p>
+<ul>
+<li>如果你想让你的狗跑的话，你会对狗狗说还是对四条狗腿说？</li>
+<li>如果你去店里买东西，你会把钱交给店员，还是会把钱包交给店员让他自己拿？</li>
+</ul>
+<p>和狗的四肢说话？让店员自己从钱包里拿钱？这听起来有点荒唐，不过在我们的代码里这几乎是见怪不怪的事情了。</p>
+<p>对于LoD，正式的表述如下：</p>
+<blockquote><p>对于对象 ‘O’ 中一个方法’M’，M应该只能够访问以下对象中的方法：</p>
+<ol>
+<li>对象O；</li>
+<li>与O直接相关的Component Object；</li>
+<li>由方法M创建或者实例化的对象；</li>
+<li>作为方法M的参数的对象。</li>
+</ol>
+</blockquote>
+<p>在《Clean Code》一书中，有一段Apache framework中的一段违反了LoD的代码：</p>
+<p style="padding-left: 30px;">final String outputDir = ctxt.getOptions().getScratchDir().getAbsolutePath();</p>
+<p>这么长的一串对其它对象的细节，以及细节的细节，细节的细节的细节……的调用，增加了耦合，使得代码结构复杂、僵化，难以扩展和维护。</p>
+<p>在《重构》一书中的代码的环味道中有一种叫做“Feature Envy”(依恋情结），形象的描述了一种违反了LoC的情况。Feature Envy就是说一个对象对其它对象的内容更有兴趣，也就是说老是羡慕别的对象的成员、结构或者功能，大老远的调用人家的东西。这样的结构显然是不合理的。我们的程序应该写得比较“害羞”。不能像前面例子中的那个不把自己当外人的店员一样，拿过客人的钱包自己把钱拿出来。“害羞”的程序只和自己最近的朋友交谈。这种情况下应该调整程序的结构，让那个对象自己拥有它羡慕的feature，或者使用合理的设计模式（例如Facade和Mediator）。</p>
+<p><strong>参考</strong>：<a title="http://en.wikipedia.org/wiki/Principle_of_Least_Knowledge" href="https://en.wikipedia.org/wiki/Principle_of_Least_Knowledge" rel="nofollow">http://en.wikipedia.org/wiki/Principle_of_Least_Knowledge</a></p>
+<h4><span class="ez-toc-section" id="%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%9A%84SOLID_%E5%8E%9F%E5%88%99"></span>面向对象的S.O.L.I.D 原则<span class="ez-toc-section-end"></span></h4>
+<p>一般来说这是面向对象的五大设计原则，但是，我觉得这些原则可适用于所有的软件开发。</p>
+<p><strong>Single Responsibility Principle (SRP) – 职责单一原则</strong></p>
+<p>关于单一职责原则，其核心的思想是：<strong>一个类，只做一件事，并把这件事做好，其只有一个引起它变化的原因</strong>。单一职责原则可以看作是低耦合、高内聚在面向对象原则上的引申，将职责定义为引起变化的原因，以提高内聚性来减少引起变化的原因。职责过多，可能引起它变化的原因就越多，这将导致职责依赖，相互之间就产生影响，从而极大的损伤其内聚性和耦合度。单一职责，通常意味着单一的功能，因此不要为一个模块实现过多的功能点，以保证实体只有一个引起它变化的原因。</p>
+<ul>
+<li>Unix/Linux是这一原则的完美体现者。各个程序都独立负责一个单一的事。</li>
+<li>Windows是这一原则的反面示例。几乎所有的程序都交织耦合在一起。</li>
+</ul>
+<p><strong>Open/Closed Principle (OCP) – 开闭原则</strong></p>
+<p>关于开发封闭原则，其核心的思想是：模块是可扩展的，而不可修改的。也就是说，<strong>对扩展是开放的，而对修改是封闭的</strong>。</p>
+<ul>
+<li>对扩展开放，意味着有新的需求或变化时，可以对现有代码进行扩展，以适应新的情况。</li>
+<li>对修改封闭，意味着类一旦设计完成，就可以独立完成其工作，而不要对类进行任何修改。</li>
+</ul>
+<p>对于面向对象来说，需要你依赖抽象，而不是实现，23个经典设计模式中的“策略模式”就是这个实现。对于非面向对象编程，一些API需要你传入一个你可以扩展的函数，比如我们的C 语言的qsort()允许你提供一个“比较器”，STL中的容器类的内存分配，ACE中的多线程的各种锁。对于软件方面，浏览器的各种插件属于这个原则的实践。</p>
+<p><strong>Liskov substitution principle (LSP) – 里氏代换原则</strong></p>
+<p>软件工程大师Robert C. Martin把里氏代换原则最终简化为一句话：“Subtypes must be substitutable for their base types”。也就是，子类必须能够替换成它们的基类。即：子类应该可以替换任何基类能够出现的地方，并且经过替换以后，代码还能正常工作。另外，不应该在代码中出现if/else之类对子类类型进行判断的条件。里氏替换原则LSP是使代码符合开闭原则的一个重要保证。正是由于子类型的可替换性才使得父类型的模块在无需修改的情况下就可以扩展。</p>
+<p>这么说来，似乎有点教条化，我非常建议大家看看这个原则个两个最经典的案例——“正方形不是长方形”和“鸵鸟不是鸟”。通过这两个案例，你会明白《墨子 小取》中说的 ——“娣，美人也，爱娣，非爱美人也….盗，人也；恶盗，非恶人也。”——妹妹虽然是美人，但喜欢妹妹并不代表喜欢美人。盗贼是人，但讨厌盗贼也并不代表就讨厌人类。<strong>这个原则让你考虑的不是语义上对象的间的关系，而是实际需求的环境</strong>。</p>
+<p>在很多情况下，在设计初期我们类之间的关系不是很明确，LSP则给了我们一个判断和设计类之间关系的基准：需不需要继承，以及怎样设计继承关系。</p>
+<p><strong>Interface Segregation Principle (ISP) – 接口隔离原则</strong></p>
+<p>接口隔离原则意思是把功能实现在接口中，而不是类中，使用多个专门的接口比使用单一的总接口要好。</p>
+<p>举个例子，我们对电脑有不同的使用方式，比如：写作，通讯，看电影，打游戏，上网，编程，计算，数据等，如果我们把这些功能都声明在电脑的抽类里面，那么，我们的上网本，PC机，服务器，笔记本的实现类都要实现所有的这些接口，这就显得太复杂了。所以，我们可以把其这些功能接口隔离开来，比如：工作学习接口，编程开发接口，上网娱乐接口，计算和数据服务接口，这样，我们的不同功能的电脑就可以有所选择地继承这些接口。</p>
+<p>这个原则可以提升我们“搭积木式”的软件开发。对于设计来说，Java中的各种Event Listener和Adapter，对于软件开发来说，不同的用户权限有不同的功能，不同的版本有不同的功能，都是这个原则的应用。</p>
+<p><strong>Dependency Inversion Principle (DIP) – 依赖倒置原则</strong></p>
+<p>高层模块不应该依赖于低层模块的实现，而是依赖于高层抽象。</p>
+<p>举个例子，墙面的开关不应该依赖于电灯的开关实现，而是应该依赖于一个抽象的开关的标准接口，这样，当我们扩展程序的时候，我们的开关同样可以控制其它不同的灯，甚至不同的电器。也就是说，电灯和其它电器继承并实现我们的标准开关接口，而我们的开关产商就可不需要关于其要控制什么样的设备，只需要关心那个标准的开关标准。这就是依赖倒置原则。</p>
+<p>这就好像浏览器并不依赖于后面的web服务器，其只依赖于HTTP协议。这个原则实在是太重要了，社会的分工化，标准化都是这个设计原则的体现。</p>
+<p><strong>参考</strong>：<a href="https://en.wikipedia.org/wiki/Solid_(object-oriented_design)">http://en.wikipedia.org/wiki/Solid_(object-oriented_design)</a></p>
+<h4><span class="ez-toc-section" id="Common_Closure_Principle%EF%BC%88CCP%EF%BC%89%E2%80%93_%E5%85%B1%E5%90%8C%E5%B0%81%E9%97%AD%E5%8E%9F%E5%88%99"></span>Common Closure Principle（CCP）– 共同封闭原则<span class="ez-toc-section-end"></span></h4>
+<p>一个包中所有的类应该对同一种类型的变化关闭。一个变化影响一个包，便影响了包中所有的类。一个更简短的说法是：一起修改的类，应该组合在一起（同一个包里）。如果必须修改应用程序里的代码，我们希望所有的修改都发生在一个包里（修改关闭），而不是遍布在很多包里。CCP原则就是把因为某个同样的原因而需要修改的所有类组合进一个包里。如果2个类从物理上或者从概念上联系得非常紧密，它们通常一起发生改变，那么它们应该属于同一个包。</p>
+<p>CCP延伸了开闭原则（OCP）的“关闭”概念，当因为某个原因需要修改时，把需要修改的范围限制在一个最小范围内的包里。</p>
+<p><strong>参考</strong>：<a href="http://c2.com/cgi/wiki?CommonClosurePrinciple">http://c2.com/cgi/wiki?CommonClosurePrinciple</a></p>
+<h4><span class="ez-toc-section" id="Common_Reuse_Principle_CRP_%E2%80%93_%E5%85%B1%E5%90%8C%E9%87%8D%E7%94%A8%E5%8E%9F%E5%88%99"></span>Common Reuse Principle (CRP) – 共同重用原则<span class="ez-toc-section-end"></span></h4>
+<p>包的所有类被一起重用。如果你重用了其中的一个类，就重用全部。换个说法是，没有被一起重用的类不应该被组合在一起。CRP原则帮助我们决定哪些类应该被放到同一个包里。依赖一个包就是依赖这个包所包含的一切。当一个包发生了改变，并发布新的版本，使用这个包的所有用户都必须在新的包环境下验证他们的工作，即使被他们使用的部分没有发生任何改变。因为如果包中包含有未被使用的类，即使用户不关心该类是否改变，但用户还是不得不升级该包并对原来的功能加以重新测试。</p>
+<p>CCP则让系统的维护者受益。CCP让包尽可能大（CCP原则加入功能相关的类），CRP则让包尽可能小（CRP原则剔除不使用的类）。它们的出发点不一样，但不相互冲突。</p>
+<p><strong>参考</strong>：<a href="http://c2.com/cgi/wiki?CommonReusePrinciple">http://c2.com/cgi/wiki?CommonReusePrinciple</a></p>
+<h4><span class="ez-toc-section" id="Hollywood_Principle_%E2%80%93_%E5%A5%BD%E8%8E%B1%E5%9D%9E%E5%8E%9F%E5%88%99"></span>Hollywood Principle – 好莱坞原则<span class="ez-toc-section-end"></span></h4>
+<p>好莱坞原则就是一句话——“don’t call us, we’ll call you.”。意思是，好莱坞的经纪人们不希望你去联系他们，而是他们会在需要的时候来联系你。也就是说，所有的组件都是被动的，所有的组件初始化和调用都由容器负责。组件处在一个容器当中，由容器负责管理。</p>
+<p>简单的来讲，就是由容器控制程序之间的关系，而非传统实现中，由程序代码直接操控。这也就是所谓“控制反转”的概念所在：</p>
+<ol>
+<li>不创建对象，而是描述创建对象的方式。</li>
+<li>在代码中，对象与服务没有直接联系，而是容器负责将这些联系在一起。</li>
+</ol>
+<p>控制权由应用代码中转到了外部容器，控制权的转移，是所谓反转。</p>
+<p>好莱坞原则就是IoC（Inversion of Control）或DI（Dependency Injection ）的基础原则。这个原则很像依赖倒置原则，依赖接口，而不是实例，但是这个原则要解决的是怎么把这个实例传入调用类中？你可能把其声明成成员，你可以通过构造函数，你可以通过函数参数。但是 IoC可以让你通过配置文件，一个由Service Container 读取的配置文件来产生实际配置的类。但是程序也有可能变得不易读了，程序的性能也有可能还会下降。</p>
+<p><strong>参考</strong>：</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Hollywood_Principle">http://en.wikipedia.org/wiki/Hollywood_Principle</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Inversion_of_Control">http://en.wikipedia.org/wiki/Inversion_of_Control</a></li>
+</ul>
+<h4><span class="ez-toc-section" id="High_Cohesion_LowLoose_coupling_%E2%80%93_%E9%AB%98%E5%86%85%E8%81%9A%EF%BC%8C_%E4%BD%8E%E8%80%A6%E5%90%88"></span>High Cohesion &amp; Low/Loose coupling &amp; – 高内聚， 低耦合<span class="ez-toc-section-end"></span></h4>
+<p>这个原则是UNIX操作系统设计的经典原则，把模块间的耦合降到最低，而努力让一个模块做到精益求精。</p>
+<ul>
+<li>内聚：一个模块内各个元素彼此结合的紧密程度</li>
+<li>耦合：一个软件结构内不同模块之间互连程度的度量</li>
+</ul>
+<p>内聚意味着重用和独立，耦合意味着多米诺效应牵一发动全身。</p>
+<p><strong>参考</strong>：</p>
+<ul>
+<li><a title="http://en.wikipedia.org/wiki/Coupling_(computer_science)" href="https://en.wikipedia.org/wiki/Coupling_%28computer_science%29" rel="nofollow">http://en.wikipedia.org/wiki/Coupling_(computer_science)</a></li>
+<li><a title="http://en.wikipedia.org/wiki/Cohesion_(computer_science)" href="https://en.wikipedia.org/wiki/Cohesion_%28computer_science%29" rel="nofollow">http://en.wikipedia.org/wiki/Cohesion_(computer_science)</a></li>
+</ul>
+<h4><span class="ez-toc-section" id="Convention_over_Configuration%EF%BC%88CoC%EF%BC%89%E2%80%93_%E6%83%AF%E4%BE%8B%E4%BC%98%E4%BA%8E%E9%85%8D%E7%BD%AE%E5%8E%9F%E5%88%99"></span>Convention over Configuration（CoC）– 惯例优于配置原则<span class="ez-toc-section-end"></span></h4>
+<p>简单点说，就是将一些公认的配置方式和信息作为内部缺省的规则来使用。例如，Hibernate的映射文件，如果约定字段名和类属性一致的话，基本上就可以不要这个配置文件了。你的应用只需要指定不convention的信息即可，从而减少了大量convention而又不得不花时间和精力啰里啰嗦的东东。配置文件很多时候相当的影响开发效率。</p>
+<p>Rails 中很少有配置文件（但不是没有，数据库连接就是一个配置文件），Rails 的fans号称期开发效率是 java 开发的 10 倍，估计就是这个原因。Maven也使用了CoC原则，当你执行mvn -compile命令的时候，不需要指源文件放在什么地方，而编译以后的class文件放置在什么地方也没有指定，这就是CoC原则。</p>
+<p><strong>参考</strong>：<a title="http://en.wikipedia.org/wiki/Convention_over_Configuration" href="https://en.wikipedia.org/wiki/Convention_over_Configuration" rel="nofollow">http://en.wikipedia.org/wiki/Convention_over_Configuration</a></p>
+<h4><span class="ez-toc-section" id="Separation_of_Concerns_SoC_%E2%80%93_%E5%85%B3%E6%B3%A8%E7%82%B9%E5%88%86%E7%A6%BB"></span>Separation of Concerns (SoC) – 关注点分离<span class="ez-toc-section-end"></span></h4>
+<p>SoC 是计算机科学中最重要的努力目标之一。这个原则，就是在软件开发中，通过各种手段，将问题的各个关注点分开。如果一个问题能分解为独立且较小的问题，就是相对较易解决的。问题太过于复杂，要解决问题需要关注的点太多，而程序员的能力是有限的，不能同时关注于问题的各个方面。正如程序员的记忆力相对于计算机知识来说那么有限一样，程序员解决问题的能力相对于要解决的问题的复杂性也是一样的非常有限。在我们分析问题的时候，如果我们把所有的东西混在一起讨论，那么就只会有一个结果——乱。</p>
+<p>我记得在上一家公司有一个项目，讨论就讨论了1年多，项目本来不复杂，但是没有使用SoC，全部的东西混为一谈，再加上一堆程序员注入了各种不同的观点和想法，整个项目一下子就失控了。最后，本来一个1年的项目做了3年。</p>
+<p>实现关注点分离的方法主要有两种，一种是标准化，另一种是抽象与包装。标准化就是制定一套标准，让使用者都遵守它，将人们的行为统一起来，这样使用标准的人就不用担心别人会有很多种不同的实现，使自己的程序不能和别人的配合。Java EE就是一个标准的大集合。每个开发者只需要关注于标准本身和他所在做的事情就行了。就像是开发镙丝钉的人只专注于开发镙丝钉就行了，而不用关注镙帽是怎么生产的，反正镙帽和镙丝钉按标来就一定能合得上。不断地把程序的某些部分抽像差包装起来，也是实现关注点分离的好方法。一旦一个函数被抽像出来并实现了，那么使用函数的人就不用关心这个函数是如何实现的，同样的，一旦一个类被抽像并实现了，类的使用者也不用再关注于这个类的内部是如何实现的。诸如组件，分层，面向服务，等等这些概念都是在不同的层次上做抽像和包装，以使得使用者不用关心它的内部实现细节。</p>
+<p>说白了还是“高内聚，低耦合”。</p>
+<p><strong>参考</strong>：<a href="http://sulong.me/archives/99">http://sulong.me/archives/99</a></p>
+<h4><span class="ez-toc-section" id="Design_by_Contract_DbC_%E2%80%93_%E5%A5%91%E7%BA%A6%E5%BC%8F%E8%AE%BE%E8%AE%A1"></span>Design by Contract (DbC) – 契约式设计<span class="ez-toc-section-end"></span></h4>
+<p>DbC的核心思想是对软件系统中的元素之间相互合作以及“责任”与“义务”的比喻。这种比喻从商业活动中“客户”与“供应商”达成“契约”而得来。例如：</p>
+<ul>
+<li>供应商必须提供某种产品（责任），并且他有权期望客户已经付款（权利）。</li>
+<li>客户必须付款（责任），并且有权得到产品（权利）。</li>
+<li>契约双方必须履行那些对所有契约都有效的责任，如法律和规定等。</li>
+</ul>
+<p>同样的，如果在程序设计中一个模块提供了某种功能，那么它要：</p>
+<ul>
+<li>期望所有调用它的客户模块都保证一定的进入条件：这就是模块的先验条件（客户的义务和供应商的权利，这样它就不用去处理不满足先验条件的情况）。</li>
+<li>保证退出时给出特定的属性：这就是模块的后验条件——（供应商的义务，显然也是客户的权利）。</li>
+<li>在进入时假定，并在退出时保持一些特定的属性：不变式。</li>
+</ul>
+<p>契约就是这些权利和义务的正式形式。我们可以用“三个问题”来总结DbC，并且作为设计者要经常问：</p>
+<ul>
+<li>它期望的是什么？</li>
+<li>它要保证的是什么？</li>
+<li>它要保持的是什么？</li>
+</ul>
+<p>根据Bertrand Meyer氏提出的DBC概念的描述，对于类的一个方法，都有一个前提条件以及一个后续条件，前提条件说明方法接受什么样的参数数据等，只有前提条件得到满足时，这个方法才能被调用；同时后续条件用来说明这个方法完成时的状态，如果一个方法的执行会导致这个方法的后续条件不成立，那么这个方法也不应该正常返回。</p>
+<p>现在把前提条件以及后续条件应用到继承子类中，子类方法应该满足：</p>
+<ol>
+<li>前提条件不强于基类．</li>
+<li>后续条件不弱于基类．</li>
+</ol>
+<p>换句话说，通过基类的接口调用一个对象时，用户只知道基类前提条件以及后续条件。因此继承类不得要求用户提供比基类方法要求的更强的前提条件，亦即，继承类方法必须接受任何基类方法能接受的任何条件（参数）。同样，继承类必须顺从基类的所有后续条件，亦即，继承类方法的行为和输出不得违反由基类建立起来的任何约束，不能让用户对继承类方法的输出感到困惑。</p>
+<p>这样，我们就有了基于契约的LSP，基于契约的LSP是LSP的一种强化。</p>
+<p><strong>参考</strong>：<a href="https://en.wikipedia.org/wiki/Design_by_contract">http://en.wikipedia.org/wiki/Design_by_contract</a></p>
+<h4><span class="ez-toc-section" id="Acyclic_Dependencies_Principle_ADP_%E2%80%93_%E6%97%A0%E7%8E%AF%E4%BE%9D%E8%B5%96%E5%8E%9F%E5%88%99"></span>Acyclic Dependencies Principle (ADP) – 无环依赖原则<span class="ez-toc-section-end"></span></h4>
+<p>包之间的依赖结构必须是一个直接的无环图形，也就是说，在依赖结构中不允许出现环（循环依赖）。如果包的依赖形成了环状结构，怎么样打破这种循环依赖呢？有2种方法可以打破这种循环依赖关系：第一种方法是创建新的包，如果A、B、C形成环路依赖，那么把这些共同类抽出来放在一个新的包D里。这样就把C依赖A变成了C依赖D以及A依赖D，从而打破了循环依赖关系。第二种方法是使用DIP（依赖倒置原则）和ISP（接口分隔原则）设计原则。</p>
+<p>无环依赖原则（ADP）为我们解决包之间的关系耦合问题。在设计模块时，不能有循环依赖。</p>
+<p><strong>参考</strong>：<a href="http://c2.com/cgi/wiki?AcyclicDependenciesPrinciple">http://c2.com/cgi/wiki?AcyclicDependenciesPrinciple</a></p>
+<h4><span class="ez-toc-section" id="%E5%90%8E%E8%AE%B0"></span>后记<span class="ez-toc-section-end"></span></h4>
+<p>上面这些原则可能有些学院派，也可能太为理论，我在这里说的也比较模糊和简单，这里只是给大家一个概貌，如果想要了解更多的东西，大家可以多google一下。</p>
+<p>不过这些原则看上去都不难，但是要用好却并不那么容易。要能把这些原则用得好用得精，而不教条，我的经验如下：（我以为这是一个理论到应用的过程）</p>
+<ol>
+<li>你可以先粗浅或是表面地知道这些原则。</li>
+<li>但不要急着马上就使用。</li>
+<li>在工作学习中观察和总结别人或自己的设计。</li>
+<li>再回过头来了回顾一下这些原则，相信你会有一些自己的心得。</li>
+<li>有适度地去实践一下。</li>
+<li>Goto第 3步。</li>
+</ol>
+<p>我相信可能还会有其实一些原则，欢迎大家提供。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4535-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">Object-Oriented</a>, <a href="javascript:void(0)" rel="tag">Unix</a>, <a href="javascript:void(0)" rel="tag">面向对象</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>一些软件设计的原则</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1024012" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zzstudy.offcn.com/?p=11730" class="url" rel="ugc external nofollow">对程序员职业的一些建议 | 站长学习网</a> </div>
+</li>
+<li id="comment-1075498" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.pearltrees.com/gandofyan/tech/id10020549/pearl98809270" class="url" rel="ugc external nofollow">Tech | Pearltrees</a> </div>
+</li>
+<li id="comment-1416440" class="comment even thread-even depth-1">
+<article id="div-comment-1416440" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4c036809ce4ec92d57728f329a8378dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4c036809ce4ec92d57728f329a8378dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">foxsonzhou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4535.html/comment-page-2#comment-1416440"><time datetime="2014-04-06T23:43:02+08:00">2014年04月06日 23:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章，这些原则让人感同身受！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1520790" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bungula.com/some-software-design-principles.html" class="url" rel="ugc external nofollow">一些软件设计原则 - 南门二</a> </div>
+</li>
+<li id="comment-1571482" class="comment even thread-even depth-1">
+<article id="div-comment-1571482" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad3b652e14277c32120e901a6d8d0c3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad3b652e14277c32120e901a6d8d0c3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4535.html/comment-page-2#comment-1571482"><time datetime="2014-10-14T09:48:31+08:00">2014年10月14日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文好文！开发中遇到问题了，再来拜阅研读~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1603868" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yutuo.net/archives/bff4ad536e39dace-2.html" class="url" rel="ugc external nofollow">【转】一些软件设计的原则 - 宇托的狗窝</a> </div>
+</li>
+<li id="comment-1797307" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.shenpengfei.sinaapp.com/?p=515" class="url" rel="ugc external nofollow">一些软件设计的原则 | 生活不只是眼前的苟且</a> </div>
+</li>
+<li id="comment-1804537" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1804537" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5120501a022abbbe2ffb8470b0124c64?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5120501a022abbbe2ffb8470b0124c64?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lailai23</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4535.html/comment-page-2#comment-1804537"><time datetime="2016-01-07T00:48:37+08:00">2016年01月07日 00:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天又重读了此文。好文章，谢谢分享。<br/>
+不过有一处typo：<br/>
+“LOC”应为“LOD”</p>
+</div>
+ </article>
+</li>
+<li id="comment-1819374" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://zlshi.blog.ustc.edu.cn/%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e8%ae%be%e8%ae%a1%e5%8e%9f%e5%88%99/" class="url" rel="ugc external nofollow">面向对象设计原则 | Study</a> </div>
+</li>
+<li id="comment-1829940" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e7%94%a8unix%e7%9a%84%e8%ae%be%e8%ae%a1%e6%80%9d%e6%83%b3%e6%9d%a5%e5%ba%94%e5%af%b9%e5%a4%9a%e5%8f%98%e7%9a%84%e9%9c%80%e6%b1%82.html" class="url" rel="ugc external nofollow">用Unix的设计思想来应对多变的需求 | | Codeba</a> </div>
+</li>
+<li id="comment-1830156" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/bob%e5%a4%a7%e5%8f%94%e5%92%8cjim-coplien%e5%af%b9tdd%e7%9a%84%e8%ae%ba%e6%88%98.html" class="url" rel="ugc external nofollow">Bob大叔和Jim Coplien对TDD的论战 | | Codeba</a> </div>
+</li>
+<li id="comment-1830204" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e5%af%b9%e7%a8%8b%e5%ba%8f%e5%91%98%e8%81%8c%e4%b8%9a%e7%9a%84%e4%b8%80%e4%ba%9b%e5%bb%ba%e8%ae%ae.html" class="url" rel="ugc external nofollow">对程序员职业的一些建议 | | Codeba</a> </div>
+</li>
+<li id="comment-1913909" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codedou.com/archives/1094.html" class="url" rel="ugc external nofollow">对程序员职业的一些建议 - 行业资讯 - 代码豆</a> </div>
+</li>
+<li id="comment-1913978" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1913978" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f936799c86a0ab81e04be65cb3eb2b7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f936799c86a0ab81e04be65cb3eb2b7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.baohongfei.com/" class="url" rel="ugc external nofollow">鲍宏飞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4535.html/comment-page-2#comment-1913978"><time datetime="2017-05-05T09:52:10+08:00">2017年05月05日 09:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>「下面这些原则，不单单只是软件开发，可以推广到其它生产活动中，甚至我们的生活中。」</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915068" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.yinli.org/it/webframe/196272.html" class="url" rel="ugc external nofollow">除了封装，继承，多态 您还知道那些？-面向对象设计的金字塔 - 霍旭东 - 引力一族 – 引力一族</a> </div>
+</li>
+<li id="comment-1921255" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1224" class="url" rel="ugc external nofollow">一些软件设计的原则 – 趣学</a> </div>
+</li>
+<li id="comment-1921297" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1229" class="url" rel="ugc external nofollow">用UNIX的设计思想来应对多变的需求 – 趣学</a> </div>
+</li>
+<li id="comment-2350932" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21672.html" class="url" rel="ugc">我做系统架构的一些原则 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2370397" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://mapcoding.cn/%e8%bd%ac%e8%bd%bd%e6%88%91%e5%81%9a%e7%b3%bb%e7%bb%9f%e6%9e%b6%e6%9e%84%e7%9a%84%e4%b8%80%e4%ba%9b%e5%8e%9f%e5%88%99/" class="url" rel="ugc external nofollow">[转载]我做系统架构的一些原则 - 程序员的自我修养</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/4535.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/4535.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">4535</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

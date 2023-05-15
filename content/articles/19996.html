@@ -1,0 +1,912 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Unix 50 年：Ken Thompson 的密码 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-19996 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-19996" class="post-content post-19996 post type-post status-publish format-standard hentry category-unixlinux category-techarticle category-operatingsystem category-misc tag-bsd tag-dennis-ritchie tag-ken-thompson tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">Unix 50 年：Ken Thompson 的密码</span>
+<h1 class="entry-title">Unix 50 年：Ken Thompson 的密码</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/19996.html" title="14:12" rel="bookmark"><time class="entry-date" datetime="2019-11-03T14:12:54+08:00" pubdate="">2019年11月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/19996.html#comments" class="comments-link">30 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 59,998 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium" src="/uploads/2019/11/ken.dennis-300x186.jpeg" alt="" width="300" height="186" srcset=""/>50年前，除了Apollo上天之外，还有一个大事的发生，就是Unix操作系统的诞生，若干年前我写过《Unix的传奇，<a href="/articles/2322.html" target="_blank" rel="noopener noreferrer">上篇</a>，<a href="/articles/2324.html" target="_blank" rel="noopener noreferrer">下篇</a>》，Unix是我入行前十年伴我成长的操作系统，虽然现在Linux早已接过了Unix的时代交接棒，但是，Unix文化对我个人的技术观影响是非常大的（注：《<a href="https://book.douban.com/subject/1467587/" target="_blank" rel="noopener noreferrer">Unix编程艺术</a>》是一本对影响我很深的书），而对于 <a href="https://en.wikipedia.org/wiki/Ken_Thompson">Ken Thompson</a> 和 <a href="https://en.wikipedia.org/wiki/Dennis_Ritchie" target="_blank" rel="noopener noreferrer">Dennis Ritchie</a> 这两位 Unix 的缔造者，也是计算机圈中的神一般的人物。今天，Dennis已经去逝，Ken在Google里跟 Rob Pike和 Robert Griesemer 这两位大神在开发Go语言。</p>
+<p>P.S. 今年，我一直想写篇Unix 50周年纪念的文章，但一直无从下手，因为不想写过大的命题，如果能写个轶事最好不过。正好过完国庆节，技术圈里有个“热搜”——Ken Thompson的密码。但一直没有时间，所以拖到今天才写下来。</p>
+<p>正文开始，2014年，有个叫Leah Neukirchen的程序员（<a href="https://leahneukirchen.org/blog/" target="_blank" rel="noopener noreferrer">blog</a>）在 BSD 3 的源代码中的 <code><a href="https://leahneukirchen.org/blog/archive/2019/10/ken-thompson-s-unix-password.html" target="_blank" rel="noopener noreferrer">/etc/passwd</a></code> 看到了早年Unix黑客们的被 hash了的密码，该文件如下所示：</p>
+<p><span id="more-19996"></span></p>
+<pre>root:OVCPatZ8RFmFY:0:10:Ernie Co-vax,4156427925:/:
+daemon:*:1:1:The devil himself:/:
+bill:.2xvLVqGHJm8M:8:10:&amp; Joy,4156424948:/usr/bill:/bin/csh
+ozalp:m5syt3.lB5LAE:40:10:&amp; Babaoglu,4156423806:/usr/ozalp:/bin/csh
+sklower:8PYh/dUBQT9Ss:2:10:Keith &amp;,4156424972:/usr/staff/sklower:/bin/csh
+kridle:4BkcEieEtjWXI:3:10:Bob &amp;,4156426744:/usr/staff/kridle:/bin/csh
+kurt:olqH1vDqH38aw:4:10:&amp; Shoens,4156420572:/usr/staff/kurt:/bin/csh
+schmidt:FH83PFo4z55cU:7:10:Eric &amp;,4156424951:/usr/staff/schmidt:/bin/csh
+hpk:9ycwM8mmmcp4Q:9:10:Howard Katseff,2019495337:/usr/staff/hpk:/bin/csh
+tbl:cBWEbG59spEmM:10:10:Tom London,2019492006:/usr/staff/tbl:
+jfr:X.ZNnZrciWauE:11:10:John Reiser:/usr/staff/jfr:
+mark:Pb1AmSpsVPG0Y:12:10:&amp; Horton,4156428311:/usr/staff/mark:/bin/csh
+dmr:gfVwhuAMF0Trw:42:10:Dennis Ritchie:/usr/staff/dmr:
+ken:ZghOT0eRm4U9s:52:10:&amp; Thompson:/usr/staff/ken:
+sif:IIVxQSvq1V9R2:53:10:Stuart Feldman:/usr/staff/sif:
+scj:IL2bmGECQJgbk:60:10:Steve Johnson:/usr/staff/scj:
+pjw:N33.MCNcTh5Qw:61:10:Peter J. Weinberger,2015827214:/usr/staff/pjw:/bin/csh
+bwk:ymVglQZjbWYDE:62:10:Brian W. Kernighan,2015826021:/usr/staff/bwk:
+uucp:P0CHBwE/mB51k:66:10:UNIX-to-UNIX Copy:/usr/spool/uucp:/usr/lib/uucp/uucico
+srb:c8UdIntIZCUIA:68:10:Steve Bourne,2015825829:/usr/staff/srb:
+finger::199:199:The &amp; Program:/usr/ucb:/usr/ucb/finger
+who::199:199:The &amp; Program:/usr/ucb:/bin/who
+w::199:199:The &amp; Program:/usr/ucb:/usr/ucb/w
+mckusick:AAZk9Aj5/Ue0E:201:10:Kirk &amp;,4156424948:/usr/staff/mckusick:/bin/csh
+peter:Nc3IkFJyW2u7E:202:10:&amp; Kessler,4156424948:/usr/staff/peter:/bin/csh
+henry:lj1vXnxTAPnDc:203:10:Robert &amp;,4156424948:/usr/staff/henry:/bin/csh
+jkf:9ULn5cWTc0b9E:209:10:John Foderaro,4156424972:/usr/staff/jkf:/bin/csh
+fateman:E9i8fWghn1p/I:300:10:Richard &amp;,4156421879:/usr/staff/fateman:/bin/csh
+fabry:d9B17PTU2RTlM:305:10:Bob &amp;,4156422714:/usr/staff/fabry:/bin/csh
+network:9EZLtSYjeEABE:501:50:*:/usr/net/network:/usr/net/network/nsh
+tty::504:50::/:/bin/tty我</pre>
+<p>（注，以前Unix是一个服务器，所有人都用一个终端到服务器上进行操作，于是，这个服务上的 <code>/etc/passwd</code> 下保存着所有的人的登录密码，能让所有的人都能读到，为了不让别人猜到，这个文件中的密码保存（第二列）被做过哈希处理）</p>
+<p>这位程序员一看，这些个用户不就是<a href="https://en.wikipedia.org/wiki/Dennis_Ritchie" target="_blank" rel="noopener noreferrer">Dennis Ritchie</a>, <a href="https://en.wikipedia.org/wiki/Ken_Thompson">Ken Thompson</a>, <a href="https://en.wikipedia.org/wiki/Brian_Kernighan" target="_blank" rel="noopener noreferrer">Brian W. Kernighan</a>, <a href="https://en.wikipedia.org/wiki/Stephen_R._Bourne" target="_blank" rel="noopener noreferrer">Steve Bourne</a>, <a href="https://en.wikipedia.org/wiki/Bill_Joy" target="_blank" rel="noopener noreferrer">Bill Joy</a> 这些神人的密码吗？！于是，他想看看这些人用什么样的密码。考虑到当时的加密算法用的是基于DES的 <a href="https://minnie.tuhs.org/cgi-bin/utree.pl?file=V7/usr/man/man3/crypt.3">crypt(3)</a> 算法（这个算法今天还在用，像Perl/PHP/Python/Ruby都提供<code>crypt()</code> 函数），而且当时的密码最长只支持8个长度，所以，感觉还是很容易暴力破解的。</p>
+<p>一般来说，暴力破解的这种hash密码的工具主要是用<a href="https://hashcat.net/" target="_blank" rel="noopener noreferrer">hashcat</a> 或 <a href="https://www.openwall.com/john/" target="_blank" rel="noopener noreferrer">john</a> ，很快，Leah 破解了大多数人的密码，因为大多数都使用的是比较弱的密码，比如： <a href="https://en.wikipedia.org/wiki/Brian_Kernighan" target="_blank" rel="noopener noreferrer">Brian W. Kernighan</a> （<code>bwk</code>）使用了 <code>/.,/.,</code> 这样的密码，而 <a href="https://en.wikipedia.org/wiki/Dennis_Ritchie" target="_blank" rel="noopener noreferrer">Dennis Ritchie</a> （<code>dmr</code>）则使用了 <code>dmac</code> 这样的密码。然后，在破解到 Ken Thompson的密码时，搞不定了，花了好几天穷举完了所有的小写字母+数字都没有找到。</p>
+<p>因为这个<code>crypt</code>的算法也是Ken Thompson 和 Robert Morris 写的，他们在40年前就发现，原来的hash算法太快了，这样很容易被暴力穷举，于是在第七版的Unix（1979年发布），他们把算法改成DES的算法，就是要让这个算法变慢。详细地说，用户密码被截断为八个字符，每个字符仅被压缩为7位。这形成56位DES密钥。然后，该密钥用于加密全零位块，然后再次使用相同的密钥对密文进行加密，依此类推，总共进行了25次DES加密。感觉跟区块链的“挖矿”有点像。<strong>在最早的Unix计算机上，这个算法需要花了整整一秒钟的时间来计算密码哈希</strong>。</p>
+<p>这几十年来，计算机的计算速度根据摩尔定律至少double了20次，所以，DES算法已经很容被攻击了，然而，对于Ken Thompson的密码，在2014年还是很不容易被破解的，因为，<strong>如果要加上所有的大小写字符数字和其它特殊字符，那么，在2014年，就算用最快的GPU来穷举所有的8位长度的密码，也需要花上至少2年以上的时间</strong>。</p>
+<p>在2019年10月份，在 <a href="https://www.tuhs.org/">The Unix Heritage Society</a> 这个社区中，<a href="https://inbox.vuxu.org/tuhs/6dceffe228804a76de1e12f18d1fc0dc@inventati.org/" target="_blank" rel="noopener noreferrer">这个事又被人问起来</a>，说以前有个人破解这些密码，不知道有没有全破解出来了？于是Leah看到了，就回应说，那个人是我，但是还是没干出来……于是好些人进来留言。</p>
+<p>5天后，2019年10月08日，一个来自澳大利亚的程序员Nigel Williams说，<a href="https://inbox.vuxu.org/tuhs/CACCFpdx_6oeyNkgH_5jgfxbxWbZ6VtOXQNKOsonHPF2=747ZOw@mail.gmail.com/" target="_blank" rel="noopener noreferrer">Ken的密码我破解出来了</a>，哈希串<code>ZghOT0eRm4U9s</code> 明文是 <code>p/q2-q4!</code>（果然是有数字有特殊字符），小伙说，我在 AMD Radeon Vega 64 的 GPU上运行了 <code>hashcat</code> 这个命令，干了我 4天多，每秒钟的“配速”是930MH/s （每秒钟9亿3千万次hash运算）。然后，<a href="https://inbox.vuxu.org/tuhs/CAG=a+rj8VcXjS-ftaj8P2_duLFSUpmNgB4-dYwnTsY_8g5WdEA@mail.gmail.com/" target="_blank" rel="noopener noreferrer">Ken Thompson 也留言到 “恭喜”</a> ，这样，Ken 的密码在40年后被破解了……</p>
+<p>马上，就有人问到，这个密码是不是国际象棋的走棋？嗯，很像中国象棋中的“车五进一”，“马三退一”，这个密码中的 <code>p</code> 代表 <code>pawn</code> 小兵，从 <code>q2</code> 的位置走到 <code>q4</code>，这个看来是国际象棋中的开局进兵——用来做登录密码，非常合适。而且，Ken Thompson 在 Unix中写下的一个国际象棋的程序 <a href="https://en.wikipedia.org/wiki/Belle_(chess_machine)" target="_blank" rel="noopener noreferrer">Belle</a>，在1978年首次参加<a href="https://en.wikipedia.org/wiki/North_American_Computer_Chess_Championship">计算机协会的北美计算机国际象棋锦标赛</a>时，它获得了第一个冠军头衔，其搜索深度为八层。之后又赢得了四次冠军。1983年，它也成为第一台获得国际象棋“大师”称号的计算机。所以，Ken用这个做密码相当make sense!</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2019/11/ken.chess_.jpg" alt="" width="600" height="800" srcset=""/>Ken在贝尔实验室调程序（图片来源：<a href="https://spectrum.ieee.org/tech-history/silicon-revolution/in-1983-this-bell-labs-computer-was-the-first-machine-to-become-a-chess-master" target="_blank" rel="noopener noreferrer">IEEE SPECTRUM</a>）</p>
+<p>当然，还有一个人的密码是所有人里最难破解的，这个人就是<a href="https://en.wikipedia.org/wiki/Bill_Joy" target="_blank" rel="noopener noreferrer">Bill Joy</a>，他最初作为加州大学伯克利分校的研究生，在校期间着手改进Unix 内核，并管理BSD发行版。他最著名的贡献是ex和vi编辑器以及C shell。在Sun公司成立6个月后，他正式成为公司的联合创始人，他在Sun公司的推动了NFS，SPARC处理器，以及Java语言。他还是一个风险投资人员。</p>
+<p>在Ken的密被破解后两周（2019年10月19日），有人号称已经破解了Bill的密码，他在<a href="https://minnie.tuhs.org/pipermail/tuhs/2019-October/019124.html" target="_blank" rel="noopener noreferrer">邮件组中这样写到</a>：</p>
+<blockquote><p>一开始，我使用了大小写字符和数字，8位长度来破解所有的组合，花了我6天的时间，失败了。然后，我开始尝试只用小写字母和控制字符，结果在40分钟内就破解了。但是因为Bill现健在，所以，只要bill同意他才公布这个密码。</p></blockquote>
+<p>在密码里存控制字符？这脑洞，Ctrl+C么？破解者还说，他在一个有三个结点的DELL 的HPC集群上完成这个工作，每个结点包括两个 Tesla V100 nVidia GPU 的显卡，一共30720个CUDA核…… 关于这个显卡多少钱，你可以上网搜吧…… 相当于一块劳力士吧……（我估计这组机器平时是用来挖矿的……[狗头]）</p>
+<p>好了，我们来看一下这个 <code>/etc/passwd</code> 中的这些人的密码是什么样的，<strong>但最主要的是向这些为人类做过巨大贡献的程序员科学家们致敬</strong>！</p>
+<ul>
+<li><strong><a href="https://en.wikipedia.org/wiki/Ken_Thompson" target="_blank" rel="noopener noreferrer">Ken Thompson</a></strong><br/>
+除了是Unix、B语言和Go语言作者之外，他还贡献过正则表达式，QED/ed编辑器，UTF-8编码定义，以及计算机国际象棋Belle……<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>ken</code></td>
+<td colspan="1" rowspan="1"><code>ZghOT0eRm4U9s</code></td>
+<td colspan="1" rowspan="1"><code>p/q2-q4!</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Dennis_Ritchie" target="_blank" rel="noopener noreferrer">Dennis Ritchie</a></strong><br/>
+Unix和C语言之父，与Ken于1983年获图灵奖，1990年美国国家海明奖章，于2011年去世。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>dmr</code></td>
+<td colspan="1" rowspan="1"><code>gfVwhuAMF0Trw</code></td>
+<td colspan="1" rowspan="1"><code>dmac</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Brian_Kernighan" target="_blank" rel="noopener noreferrer">Brian W. Kernighan</a></strong><br/>
+AWK的作者，是AWK中的“K”，也是与Dennis写的K&amp;C的C语言编程书中的“K”，他还编写了很多Unix的其它程序，如：<code>ditroff</code>，而且，设计了著名的<a href="https://en.wikipedia.org/wiki/Heuristic" target="_blank" rel="noopener noreferrer">启发式算法</a>。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>bwk</code></td>
+<td colspan="1" rowspan="1"><code>ymVglQZjbWYDE</code></td>
+<td colspan="1" rowspan="1"><code>/.,/.,</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Stephen_R._Bourne" target="_blank" rel="noopener noreferrer">Stephen R. Bourne</a></strong><br/>
+Bourne shell（<code>sh</code>）的作者，Unix Shell作者，同时也是Unix调试器的作者。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>srb</code></td>
+<td colspan="1" rowspan="1"><code>c8UdIntIZCUIA</code></td>
+<td colspan="1" rowspan="1"><code>bourne</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Eric_Schmidt" target="_blank" rel="noopener noreferrer">Eric Schmidt</a></strong><br/>
+你可能知道他是Google的CEO，苹果的董事，但是你可能不知道，他当年是是贝尔实施室的实习生，他对Unix的词法分析器 Lex 进行为了完全的重写。他的密码是中的wendy应该是他的妻子。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>schmidt</code></td>
+<td colspan="1" rowspan="1"><code>FH83PFo4z55cU</code></td>
+<td colspan="1" rowspan="1"><code>wendy!!!</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Stuart_Feldman" target="_blank" rel="noopener noreferrer">Stuart Feldman</a></strong><br/>
+他除了是Unix系统小组的成员，他还是第一个Fortran 77 编译器的作者，也是 <code>make</code> 的作者。他还是楼上Shmidt慈善基金会的科学负责人，在Google/IBM Research任过职，也担任过ACM的主席。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>sif</code></td>
+<td colspan="1" rowspan="1"><code>IIVxQSvq1V9R2</code></td>
+<td colspan="1" rowspan="1"><code>axolotl</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Mary_Ann_Horton" target="_blank" rel="noopener noreferrer">Mark Horton</a></strong><br/>
+Unix贡献者，包括vi和curses，后来变性为女性，新的名字叫Mary Ann Horton。原来的照片在<a href="http://www.ugu.com/sui/ugu/show?I=info.Mark_R._Horton" target="_blank" rel="noopener noreferrer">Unix Guru Universe</a><p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>mark</code></td>
+<td colspan="1" rowspan="1"><code>Pb1AmSpsVPG0Y</code></td>
+<td colspan="1" rowspan="1"><code>uio</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Marshall_Kirk_McKusick" target="_blank" rel="noopener noreferrer">Kirk McKusick</a></strong><br/>
+BSD贡献者，主要负责文件系统UFS以及fsck命令，同时也是<code>gprof</code>的贡献者，公开的同性恋者。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>mckusick</code></td>
+<td colspan="1" rowspan="1"><code>AAZk9Aj5/Ue0E</code></td>
+<td colspan="1" rowspan="1"><code>foobar</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Richard_Fateman" target="_blank" rel="noopener noreferrer">Richard Fateman</a></strong><br/>
+他在伯克利的VAX UNIX系统的开发工作中发挥了重要作用，以及开发了<a href="https://en.wikipedia.org/wiki/Franz_Lisp" target="_blank" rel="noopener noreferrer"> Franz Lisp</a>。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>fateman</code></td>
+<td colspan="1" rowspan="1"><code>E9i8fWghn1p/I</code></td>
+<td colspan="1" rowspan="1"><code>apr1744</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>Peter Kessler</strong><br/>
+这位老兄能在网上查到的资料基本没有，可以查到他是 <code>gprof</code> 的贡献者，以及有名字的<a href="https://web.eecs.umich.edu/~weimerw/2009-4610/reading/graham-gprof.pdf" target="_blank" rel="noopener noreferrer">gprof的一篇论文</a><p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>peter</code></td>
+<td colspan="1" rowspan="1"><code>Nc3IkFJyW2u7E</code></td>
+<td colspan="1" rowspan="1"><code>...hello</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>Kurt Shoens</strong><br/>
+BSD电子邮件开发者。Unix早期版本中使用 <code>uux</code> 和 <code>sendmail</code> 来进行远程消息传递，1978年，Kurt为Unix编写了一个邮件用户代理 Berkeley Mail。相关的历史可以参看<a href="http://heirloom.sourceforge.net/mailx_history.html" target="_blank" rel="noopener noreferrer">这篇文章</a>。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>kurt</code></td>
+<td colspan="1" rowspan="1"><code>olqH1vDqH38aw</code></td>
+<td colspan="1" rowspan="1"><code>sacristy</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://franz.com/about/press_room/foderaro_2-2-2015.lhtml" target="_blank" rel="noopener noreferrer">John Foderaro</a></strong><br/>
+他为Berkeley的Lisp语言编写原始的编译器，Lisp语言是一种类似于数据代数的语言，在计算机历史上有和C语言一样的作用。后来他成立了Franz公司，主要开发和部署图形搜索解决方案。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>jkf</code></td>
+<td colspan="1" rowspan="1"><code>9ULn5cWTc0b9E</code></td>
+<td colspan="1" rowspan="1"><code>sherril.</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Peter_J._Weinberger" target="_blank" rel="noopener noreferrer">Peter J. Weinberger</a></strong><br/>
+他就是AWK中的那个“W”，同时也是Fortan编译器f77的贡献者，后来是<a title="" href="https://en.wikipedia.org/wiki/Renaissance_Technologies">Renaissance Technologies</a> （一家对冲基金）的CTO，现在在Google工作，<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>pjw</code></td>
+<td colspan="1" rowspan="1"><code>N33.MCNcTh5Qw</code></td>
+<td colspan="1" rowspan="1"><code>uucpuucp</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>John Reiser</strong><br/>
+他主要工作是将Unix和C移植到了DEC VAX上，这个机器在学术界相当流行（陈皓注：我在1994年上大学的时候，就是在这个机器上学习的C语言）。这扩大了Unix和C的影响力。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>jfr</code></td>
+<td colspan="1" rowspan="1"><code>X.ZNnZrciWauE</code></td>
+<td colspan="1" rowspan="1"><code>5%ghj</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Stephen_C._Johnson" target="_blank" rel="noopener noreferrer">Steve Johnson</a></strong><br/>
+曾在贝尔实验室和AT＆T工作近20年。他以Yacc，Lint，spell和Portable C编译器而闻名。后来他去了硅谷，加入了一些创业公司，主要从事编译器的工作，以及2D和3D图形，大规模并行系统和嵌入式系统的开发工作。现在他在Wave Computing从事机器学习的工作。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>scj</code></td>
+<td colspan="1" rowspan="1"><code>IL2bmGECQJgbk</code></td>
+<td colspan="1" rowspan="1"><code>pdq;dq</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>Bob Kridle</strong><br/>
+这位老兄的资料在没有太多，只能在 <a href="https://www.oreilly.com/openbook/opensources/book/kirkmck.html_original" target="_blank" rel="noopener noreferrer">Berkeley Unix 20 年</a> 上看到他跟Ken Thompson混过一段时间。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>kridle</code></td>
+<td colspan="1" rowspan="1"><code>4BkcEieEtjWXI</code></td>
+<td colspan="1" rowspan="1"><code>jilland1</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://people.eecs.berkeley.edu/~sklower/" target="_blank" rel="noopener noreferrer">Keith Sklower</a></strong><br/>
+BSD 的一个程序员。从他的主页上可以看到他目前在Berkeley大学，信息分析师，主要研究一些网络通信相关的技术。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>sklower</code></td>
+<td colspan="1" rowspan="1"><code>8PYh/dUBQT9Ss</code></td>
+<td colspan="1" rowspan="1"><code>theik!!!</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>Robert Henry</strong><br/>
+网上的资料不多，只在<a href="https://www.tuhs.org/Archive/Documentation/Books/Life_with_Unix.pdf" target="_blank" rel="noopener noreferrer">Life with Unix</a>这本电子书中查到，他写了 <code>error</code><p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>henry</code></td>
+<td colspan="1" rowspan="1"><code>lj1vXnxTAPnDc</code></td>
+<td colspan="1" rowspan="1"><code>sn74193n</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>Howard Katseff</strong><br/>
+网上的资料不多，只在<a href="https://www.tuhs.org/Archive/Documentation/Books/Life_with_Unix.pdf" target="_blank" rel="noopener noreferrer">Life with Unix</a>这本电子书中查到，他写了 <code>sdb</code> 和 <code>last</code><p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>hpk</code></td>
+<td colspan="1" rowspan="1"><code>9ycwM8mmmcp4Q</code></td>
+<td colspan="1" rowspan="1"><code>graduat;</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/%C3%96zalp_Babao%C4%9Flu" target="_blank" rel="noopener noreferrer">Özalp Babaoğlu</a></strong><br/>
+土耳其计算机科学家，1981年在Berkeley担任 BSD Unix的首席设计师，曾经与Sun的创造人Bill Joy在BSD上实现了虚拟内存。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>ozalp</code></td>
+<td colspan="1" rowspan="1"><code>m5syt3.lB5LAE</code></td>
+<td colspan="1" rowspan="1"><code>12ucdort</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong><a href="https://en.wikipedia.org/wiki/Bob_Fabry" target="_blank" rel="noopener noreferrer">Bob Fabry</a></strong><br/>
+他主要推动美国国防部高级研究计划局DARPA采用了Unix系统<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>fabry</code></td>
+<td colspan="1" rowspan="1"><code>d9B17PTU2RTlM</code></td>
+<td colspan="1" rowspan="1"><code>561cml..</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+<li><strong>Tom London</strong><br/>
+他和John Reiser在把Unix移植到了VAX-11机上。<p></p>
+<table>
+<tbody>
+<tr>
+<td colspan="1" rowspan="1">登录名</td>
+<td colspan="1" rowspan="1"><b>哈希串</b></td>
+<td colspan="1" rowspan="1"><b>密码</b></td>
+</tr>
+<tr>
+<td colspan="1" rowspan="1"><code>tbl</code></td>
+<td colspan="1" rowspan="1"><code>cBWEbG59spEmM</code></td>
+<td colspan="1" rowspan="1"><code>..pnn521</code></td>
+</tr>
+</tbody>
+</table>
+</li>
+</ul>
+<p>最后，再首尾呼应一下，在我的技术生涯中，Unix文化对我个人的技术观影响是非常大的，<strong>我个人认为 Unix 就像摇滚乐一样，上世纪60年代-80年代，是整个人类最经典最光亮的时代，值得我们每个人向那个时代的人和事致敬！</strong></p>
+<p>————————————————————————</p>
+<p>P.S.</p>
+<p>你可以浏览 Github 的 <a href="https://github.com/dspinellis/unix-history-repo/tree/BSD-3-Snapshot-Development" target="_blank" rel="noopener noreferrer">unix-history-repo</a> 目录（注：本文给的这个链接不在master分支上），这个repo是40年前的代码，涵盖了从1970年创建时的2.5万行内核和26条命令到2017年为止广泛使用的2700万行系统。1.1GB的存储库包含大约一百万次提交和两千多次合并。通过<a href="http://www.dmst.aueb.gr/dds/pubs/jrnl/2016-EMPSE-unix-history/html/unix-history.html" target="_blank" rel="noopener noreferrer">这个链接</a>你可以了解一下这个代码的历史！</p>
+<p>下载这些代码需要你的1.5GB的硬盘空间，你可以查看各个大神写的代码，包括 Ken Thompson 和 Dennis的，以及相关的注释。</p>
+<p>根据这些，你还可以找到 Ken Thompson的 Github账号 <a href="https://github.com/ken" target="_blank" rel="noopener noreferrer">https://github.com/ken</a> 以及别人为dmr建的github帐号 <a href="https://github.com/dmr-1941-2011">https://github.com/dmr-1941-2011</a></p>
+<p>P.S.S</p>
+<p>下面是一些和Unix相关的维基百科资料</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/History_of_Unix" target="_blank" rel="nofollow noopener noreferrer">History of Unix</a></li>
+<li><a href="https://en.wikipedia.org/wiki/List_of_Unix_systems" target="_blank" rel="nofollow noopener noreferrer">List of Unix systems</a></li>
+<li><a href="https://en.wikipedia.org/wiki/List_of_Unix_commands" target="_blank" rel="nofollow noopener noreferrer">List of Unix commands</a></li>
+<li><a href="https://en.wikipedia.org/wiki/List_of_Unix_daemons" target="_blank" rel="nofollow noopener noreferrer">List of Unix daemons</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Research_Unix" target="_blank" rel="nofollow noopener noreferrer">Research Unix</a></li>
+<li><a href="https://en.wikipedia.org/wiki/BSD_Unix" target="_blank" rel="nofollow noopener noreferrer">Berkeley Software Distribution</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Unix_philosophy" target="_blank" rel="nofollow noopener noreferrer">Unix philosophy</a></li>
+</ul>
+<p>还有Unix的社区：TUHS: The Unix Heritage Society – <a href="http://minnie.tuhs.org/cgi-bin/utree.pl" rel="nofollow">The Unix Tree</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-19996-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">BSD</a>, <a href="javascript:void(0)" rel="tag">Dennis Ritchie</a>, <a href="javascript:void(0)" rel="tag">Ken Thompson</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Unix 50 年：Ken Thompson 的密码</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2035007" class="comment even thread-even depth-1">
+<article id="div-comment-2035007" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d103e874d3cb665f3d0c9b1ec2fda24c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d103e874d3cb665f3d0c9b1ec2fda24c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">madao756</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035007"><time datetime="2019-11-03T19:06:50+08:00">2019年11月03日 19:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这些人都太牛逼了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2035023" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2035023" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b8cef6a32515b07e666735f1f42b90b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b8cef6a32515b07e666735f1f42b90b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ge Xiao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035023"><time datetime="2019-11-03T20:47:27+08:00">2019年11月03日 20:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Ken 和 Rob Pike 现在已经不直接参与 Go 语言开发了。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2035437" class="comment even depth-2">
+<article id="div-comment-2035437" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d89b0514cf4a50d0e53c5533fbe73e83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d89b0514cf4a50d0e53c5533fbe73e83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://mzh.io" class="url" rel="ugc external nofollow">mz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035437"><time datetime="2019-11-05T16:20:15+08:00">2019年11月05日 16:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Ken 是明确退休了<br/>
+Rob 是半隐退的状态<br/>
+Russ 是Go的tech leader</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2035024" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2035024" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f841bc76a962485a63023e69c22797ae?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f841bc76a962485a63023e69c22797ae?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gholk.github.io" class="url" rel="ugc external nofollow">王鼎鈞</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035024"><time datetime="2019-11-03T20:48:08+08:00">2019年11月03日 20:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Peter J. Weinberger 打錯了吧？他應該是 awk 的 w 。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2035032" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2035032" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035032"><time datetime="2019-11-03T23:57:48+08:00">2019年11月03日 23:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的锅，打错了，已修正！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2035080" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2035080" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e66ef9a7acbd0300293a132f5273fc3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e66ef9a7acbd0300293a132f5273fc3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">望伊如西</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035080"><time datetime="2019-11-04T09:59:19+08:00">2019年11月04日 09:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>高山仰止</p>
+</div>
+ </article>
+</li>
+<li id="comment-2035174" class="comment even thread-even depth-1">
+<article id="div-comment-2035174" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fd6ac38a293e1253c5877fd2664945a8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fd6ac38a293e1253c5877fd2664945a8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">laok</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035174"><time datetime="2019-11-04T20:28:21+08:00">2019年11月04日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>向经典致敬~！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2035521" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2035521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5a15e709161f3b539f05844ed7de2c53?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5a15e709161f3b539f05844ed7de2c53?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">along</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035521"><time datetime="2019-11-05T22:53:30+08:00">2019年11月05日 22:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我真是孤耳寡闻,许多都没有听说过,谢谢分享!</p>
+</div>
+ </article>
+</li>
+<li id="comment-2035731" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.go2live.cn/program/go/gocn%e6%af%8f%e6%97%a5%e6%96%b0%e9%97%bb2019-11-05.html" class="url" rel="ugc external nofollow">GoCN每日新闻(2019-11-05) | 演道网</a> </div>
+</li>
+<li id="comment-2035829" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2035829" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0191453121803ca70a7376ba58063e9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0191453121803ca70a7376ba58063e9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lijl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2035829"><time datetime="2019-11-06T19:09:22+08:00">2019年11月06日 19:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥现在工作忙吗、顺利吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2036266" class="comment even thread-even depth-1">
+<article id="div-comment-2036266" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/094c35d824b12ca60bde702b6ec1a0d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/094c35d824b12ca60bde702b6ec1a0d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://ioerr.github.io/" class="url" rel="ugc external nofollow">Calon</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2036266"><time datetime="2019-11-08T08:48:04+08:00">2019年11月08日 08:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>tty::504:50::/:/bin/tty我</p>
+<p>多了一个我</p>
+</div>
+ </article>
+</li>
+<li id="comment-2037904" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2037904" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ede0aad336bce8e01eef392d23857c69?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ede0aad336bce8e01eef392d23857c69?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.resotoutiao.com" class="url" rel="ugc external nofollow">热搜</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2037904"><time datetime="2019-11-15T01:44:45+08:00">2019年11月15日 01:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章不错非常喜欢，支持</p>
+</div>
+ </article>
+</li>
+<li id="comment-2039081" class="comment even thread-even depth-1">
+<article id="div-comment-2039081" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/10348ed1b2738b583904435eac3d2119?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/10348ed1b2738b583904435eac3d2119?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://icloudcone.com/" class="url" rel="ugc external nofollow">CloudCone</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2039081"><time datetime="2019-11-19T15:40:48+08:00">2019年11月19日 15:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>交换链接吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2040006" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2040006" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c353e5d5af6fd8c1a3e4cd10e359d63a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c353e5d5af6fd8c1a3e4cd10e359d63a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://springboot.io" class="url" rel="ugc external nofollow">KevinBlandy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2040006"><time datetime="2019-11-22T16:53:07+08:00">2019年11月22日 16:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>蛮有意思。如果以后量子计算平民化了，对于现有的加密算法，会是一种挑战吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2041140" class="comment even thread-even depth-1">
+<article id="div-comment-2041140" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/110e7d85cb34b7605ea088345eee9ece?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/110e7d85cb34b7605ea088345eee9ece?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">细华</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2041140"><time datetime="2019-11-26T08:31:11+08:00">2019年11月26日 08:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只想为你点个赞，觉得很棒，无条件的支持下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2041814" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2041814" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dfbdb6de8947fb356ac2e19b2391c77d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dfbdb6de8947fb356ac2e19b2391c77d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chrisxiao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2041814"><time datetime="2019-11-28T12:32:16+08:00">2019年11月28日 12:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中 “也是与Dennis写的K&amp;C的C语言编程书中” 这里应该是 K&amp;R 吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-2042143" class="comment even thread-even depth-1">
+<article id="div-comment-2042143" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e631b095a7ec027892060041713b3f39?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e631b095a7ec027892060041713b3f39?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dashen.tech" class="url" rel="ugc external nofollow">fliter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2042143"><time datetime="2019-11-29T13:53:47+08:00">2019年11月29日 13:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>继ken,dmr,rms后又知道了一位在黑客圈子能有三字母称号的大神,bwk…</p>
+<p>和他一起研究”旅行商人问题”的有一位叫Shen Lin的,看上去像是华人,但找不到其资料</p>
+<p><a href="http://www.dashen.tech/2019/03/07/%E6%98%9F%E9%99%A8-2019/" rel="nofollow ugc">http://www.dashen.tech/2019/03/07/%E6%98%9F%E9%99%A8-2019/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2044459" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2044459" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ea73501c65318ff6268986710cb135fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ea73501c65318ff6268986710cb135fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.vsdaili.com" class="url" rel="ugc external nofollow">股票</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2044459"><time datetime="2019-12-06T16:00:01+08:00">2019年12月06日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很好的教程</p>
+</div>
+ </article>
+</li>
+<li id="comment-2049158" class="comment even thread-even depth-1">
+<article id="div-comment-2049158" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44348d50ceb6d692aa10315d491204a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44348d50ceb6d692aa10315d491204a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Dong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2049158"><time datetime="2019-12-22T07:23:17+08:00">2019年12月22日 07:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>也是与Dennis写的K&amp;C的C语言编程书中的“K” ，应该是K&amp;R，而不是K&amp;C，Dennis Ritchie。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2060525" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2060525" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b5c66406942c22591fd90bcfe54eba26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b5c66406942c22591fd90bcfe54eba26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ilghar_kus</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2060525"><time datetime="2020-01-26T20:46:59+08:00">2020年01月26日 20:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>p/q2-q4! …<br/>
+国际象棋里应该是没有q这一列的？<br/>
+或许指的是b2-b4?</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2136702" class="comment even depth-2">
+<article id="div-comment-2136702" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/edfdb07ae11a503b9355f49b187a60fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/edfdb07ae11a503b9355f49b187a60fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Fomalhaut</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2136702"><time datetime="2020-07-30T21:41:13+08:00">2020年07月30日 21:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一步走b4很少见吧。或许是d4？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2061051" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2061051" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5bf4fa5e63e706feae606ce68b42eaa7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5bf4fa5e63e706feae606ce68b42eaa7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2061051"><time datetime="2020-01-28T14:29:22+08:00">2020年01月28日 14:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2.5千行，不是2.5万行</p>
+</div>
+ </article>
+</li>
+<li id="comment-2080616" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://adamdev.net/guru-in-the-art-of-unix-program/" class="url" rel="ugc external nofollow">《UNIX编程艺术》的人物 | Adam Dev Site</a> </div>
+</li>
+<li id="comment-2120982" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2120982" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b634b98d5d39d4f03f9cf3641a592d8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b634b98d5d39d4f03f9cf3641a592d8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">citizen4</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2120982"><time datetime="2020-06-18T20:32:44+08:00">2020年06月18日 20:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“你可以浏览 Github 的 unix-history-repo 目录（注：本文给的这个链接不在master分支上），这个repo是40年前的代码，涵盖了从1970年创建时的2.5万行内核和26条命令到2017年为止广泛使用的2700万行系统。1.1GB的存储库包含大约一百万次提交和两千多次合并。通过这个链接你可以了解一下这个代码的历史！”</p>
+<p>40年前并没有git啊，commit提交是怎么生成的？好奇。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2129833" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2129833" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdf23c63251cdd962b0c527a5d7b9217?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdf23c63251cdd962b0c527a5d7b9217?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">David Lin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2129833"><time datetime="2020-07-10T18:21:10+08:00">2020年07月10日 18:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>膜拜大牛</p>
+</div>
+ </article>
+</li>
+<li id="comment-2157924" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2157924" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/589ffb5a7bac13c6126aea150cc6f66c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/589ffb5a7bac13c6126aea150cc6f66c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.kunzejiaoyu.net/" class="url" rel="ugc external nofollow">深圳学历提升</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2157924"><time datetime="2020-09-30T14:39:09+08:00">2020年09月30日 14:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常有用的内容！收藏了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2168452" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2168452" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6d830e0b44a8e3af57138c574be39d32?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6d830e0b44a8e3af57138c574be39d32?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.zikaobenke.cn/" class="url" rel="ugc external nofollow">广东自考</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2168452"><time datetime="2020-10-31T18:22:20+08:00">2020年10月31日 18:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>唉，所学知识太少还是要继续学习，进行前进啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-2195886" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2195886" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3872741b92be9f32092b1d9d44ad7ca4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3872741b92be9f32092b1d9d44ad7ca4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jason Wang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2195886"><time datetime="2021-01-18T15:27:07+08:00">2021年01月18日 15:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>向天才致敬</p>
+</div>
+ </article>
+</li>
+<li id="comment-2234190" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2234190" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c908530bd0591ed7f49b6f96f65a6224?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c908530bd0591ed7f49b6f96f65a6224?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">炮二平五</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2234190"><time datetime="2021-04-18T00:23:55+08:00">2021年04月18日 00:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这些人是精英中的精英，大牛中的大牛。</p>
+<p>当把他们发明创造的一大堆东西一股脑摆到我的眼前的时候，我承认：我晕了，我疯了，我郁闷了，消沉了。多少年也消化不了。</p>
+<p>在他们的基础上添加？也许吧， 不是说站在巨人身上才能看的更远吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2328355" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2328355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c2c86de98a02e03bd934a794df1df13?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c2c86de98a02e03bd934a794df1df13?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gt</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/19996.html#comment-2328355"><time datetime="2021-11-02T13:01:58+08:00">2021年11月02日 13:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>头发长了吧</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

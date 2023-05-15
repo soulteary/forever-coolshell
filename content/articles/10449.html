@@ -1,0 +1,338 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++模板”&gt;&gt;”编译问题与词法消歧设计 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10449 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10449" class="post-content post-10449 post type-post status-publish format-standard hentry category-cplusplus tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C++模板”&gt;&gt;”编译问题与词法消歧设计</span>
+<h1 class="entry-title">C++模板”&gt;&gt;”编译问题与词法消歧设计</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10449.html" title="18:47" rel="bookmark"><time class="entry-date" datetime="2013-10-02T18:47:36+08:00" pubdate="">2013年10月02日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10449.html#comments" class="comments-link">17 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 17,201 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 <a href="http://weibo.com/weidagang" target="_blank">@文艺复兴记</a>（todd） 投递此文）</strong></p>
+<p>在编译理论中，通常将编译过程抽象为5个主要阶段：词法分析(Lexical Analysis)，语法分析(Parsing)，语义分析(Semantic Analysis)，优化(Optimization)，代码生成(Code Generation)。这5个阶段类似Unix管道模型，上一个阶段的输出作为下一个阶段的输入。其中，词法分析是根据输入源代码文本流，分割出词，识别类别，产生词法元素(Token)流，如：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">int a = 10;
+</pre>
+<p>​经过词法分析会得到[(Type, “int”), (Identifier, “a”), (AssignOperator, “=”), (IntLiteral, 10)]，在后续的语法分析阶段，就会根据这些词法元素匹配相应的语法规则。在我学习编译原理时，教科书中对于词法分析的介绍主要是基于正则表达式的，言下之意就是普通语言的词法规则是可以通过正则表达式描述的。比如，C语言的变量名规则是“包含字母、数字或下划线，并且以字母或下划线开头”，这就可以用正则表达式<code>[a-zA-Z_][a-zA-Z0-9_]*</code>表达。但是，在实践中我发现不管是主流语言，还是自己设计的DSL都大量存在不能简单通过正则表达式进行词法分析的例子。来看C++98的模版例子：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">map&lt;int, vector&lt;int&gt;&gt;
+</pre>
+<p>上面这段代码会被C++98编译器中报语法错误，原因在于它把“&gt;&gt;”识别成了位右移运算符而不是两个模版右括号，在C++98中必须在两个括号中间加空格，写成</p>
+<p><span id="more-10449"></span></p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">map&lt;int, vector&lt;int&gt; &gt;
+</pre>
+<p>除此了C++模版，据我所知，经典的FORTRAN语言的语法规则更是大量存在词法歧义。</p>
+<p>我认为从本质上讲，这类问题的根源在于词法分析的依据只是简单的词法规则，并不具备所有的语法信息，而词法歧义必须提升一层在语法规则中消除。所以，在我自己设计一些DSL的时候干脆就把词法分析和语法分析合二为一了，相当于让语法分析在字符层次上去进行，而不是经典的词法元素层次上，这就是所谓的<a title="Scannerless Parsing" href="https://en.wikipedia.org/wiki/Scannerless_parsing">Scannerless Parsing</a>。采用这种方法的例子并不少见，TeX, Wiki, Makefile和Perl 6等语言的语法分析器都属此类。</p>
+<p>Scannerless Parsing方法弥补了词法规则无法消歧的问题，但是同时也破坏了词法和语法分析简单清晰的管道结构，总体上增加了实现和理解的复杂度。另外，像C++这样大型的语言，如果开始是有词法分析的，稍微碰到一个歧义就整个转成Scannerless Parsing未免也显得太夸张了。这个问题困扰了我很久，直到最近才找到了一个满意的解决方案。还是以上面”&gt;&gt;”为例，我们知道现在C++11已经允许不加空格了，那么C++11编译器是如何处理这个词法歧义的呢？答案是：词法分析阶段既然分析不好”&gt;&gt;”，干脆就不分析了，直接把”&gt;” “&gt;”交给语法分析器来分析，其他没有词法歧义的照旧。当我知道这个方案的时候不由得感叹：妙！理论上，词法分析是可以什么也不做的，全部把字符一一交给语法分析器也没有问题，所以，干脆让词法分析只做有把握的部分，解决不了的交给语法分析器，这样就既保留了管道结构，又解决了词法歧义。</p>
+<p>下面我们再来看看C++11规范关于这个问题的定义：</p>
+<blockquote><p>14.2 Names of template specializations [temp.names] ###</p>
+<p>After name lookup (3.4) finds that a name is a template-name or that an operator-function-id or a literal-operator-id refers to a set of overloaded functions any member of which is a function template if this is followed by a &lt;, the &lt; is always taken as the delimiter of a template-argument-list and never as the less-than operator. When parsing a template-argument-list, the first non-nested &gt; is taken as the ending delimiter rather than a greater-than operator. Similarly, the first non-nested &gt;&gt; is treated as two consecutive but distinct &gt; tokens, the first of which is taken as the end of the template-argument-list and completes the template-id. [ Note: The second &gt; token produced by this replacement rule may terminate an enclosing template-id construct or it may be part of a different construct (e.g. a cast).—end note ]</p></blockquote>
+<p>可见，在C++11中，词法分析器是把”&gt;&gt;”直接当成两个”&gt;”传给了语法分析器，然后在语法分析中如果匹配了template-argument-lis语法，第一个”&gt;”符号会被直接认为是模版结束符，而不是大于，也不是位移符号。根据这个定义，我构造了一个例子：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">template&lt;int N&gt;
+class Foo {
+};
+
+Foo&lt;3&gt;&gt;1&gt; foo;
+</pre>
+<p>这个例子在C++98中是能正确编译的，”&gt;&gt;”被解释成了位移运算，但是它反而不能在C++11中编译了，因为根据规范第一个”&gt;”被解释成了模版参数结束符。如果要在C++11中编译，需要显式地加上括号：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">Foo&lt;(3&gt;&gt;1)&gt; foo;
+</pre>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10449-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++模板”&gt;&gt;”编译问题与词法消歧设计</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-779756" class="comment even thread-even depth-1">
+<article id="div-comment-779756" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6fc00945aba77be927450f35a8e4c9f0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6fc00945aba77be927450f35a8e4c9f0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tianxialangui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-779756"><time datetime="2013-10-02T20:58:37+08:00">2013年10月02日 20:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我不是很清楚标准中的意思，如果按照这样子直接将&gt;传递给语法分析器，那么下面的语法会不会通过<br/>
+int a = 0;<br/>
+a &gt; &gt; 2;<br/>
+这里的“&gt; &gt;”会不被解释为“&gt;&gt;”？？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-779907" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-779907" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e251db4fd186f74c91aad8701a033d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e251db4fd186f74c91aad8701a033d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">g++</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-779907"><time datetime="2013-10-02T22:15:42+08:00">2013年10月02日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-779756"><p>
+<strong><a href="#comment-779756" rel="nofollow">tianxialangui </a> :</strong>我不是很清楚标准中的意思，如果按照这样子直接将&gt;传递给语法分析器，那么下面的语法会不会通过int a = 0;a &gt; &gt; 2;这里的“&gt; &gt;”会不被解释为“&gt;&gt;”？？？</p></blockquote>
+<p>g++ 出错，&gt;空格&gt;不会解释成&gt;&gt;</p>
+</div>
+ </article>
+</li>
+<li id="comment-780901" class="comment even thread-even depth-1">
+<article id="div-comment-780901" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6fc00945aba77be927450f35a8e4c9f0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6fc00945aba77be927450f35a8e4c9f0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tianxialangui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-780901"><time datetime="2013-10-03T09:26:11+08:00">2013年10月03日 09:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-779907" rel="nofollow">@g++ </a><br/>
+那么按照楼主的解释就不对了，如果是词法分析器传递两个&gt;给文法分析器，那么文法分析器不会直到两个&gt;之间有空格。这里应该会编译通过的</p>
+</div>
+ </article>
+</li>
+<li id="comment-781248" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-781248" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1c0a29c7f0cfa9a3f586cfddecee628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1c0a29c7f0cfa9a3f586cfddecee628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://bitfoc.us/" class="url" rel="ugc external nofollow">Neuron Teckid</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-781248"><time datetime="2013-10-03T12:48:20+08:00">2013年10月03日 12:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好早 C艹 就这么干了. 而且不仅语法跟词法, 还跟语义纠结在一起, 比如</p>
+<p>a <b> c;</b></p><b>
+<p>这个有两种解释</p>
+<p>* 变量定义<br/>
+* (a 小于 b) 大于 c</p>
+</b><p><b>每次语法分析器看到标识符后, 会去符号表查词元的类型, 再决定该如何解析.</b></p>
+</div>
+ </article>
+</li>
+<li id="comment-781251" class="comment even thread-even depth-1">
+<article id="div-comment-781251" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1c0a29c7f0cfa9a3f586cfddecee628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1c0a29c7f0cfa9a3f586cfddecee628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://bitfoc.us/" class="url" rel="ugc external nofollow">Neuron Teckid</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-781251"><time datetime="2013-10-03T12:49:45+08:00">2013年10月03日 12:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-781248" rel="nofollow">@Neuron Teckid </a><br/>
+coolshell 居然没把 <b> 转义么</b></p>
+</div>
+ </article>
+</li>
+<li id="comment-781637" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-781637" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6fc00945aba77be927450f35a8e4c9f0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6fc00945aba77be927450f35a8e4c9f0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tianxialangui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-781637"><time datetime="2013-10-03T17:36:52+08:00">2013年10月03日 17:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-780901"><p>
+<strong><a href="#comment-780901" rel="nofollow">tianxialangui</a> :</strong><br/>
+<a href="#comment-779907" rel="nofollow">@g++ </a><br/>
+那么按照楼主的解释就不对了，如果是词法分析器传递两个&gt;给文法分析器，那么文法分析器不会直到两个&gt;之间有空格。这里应该会编译通过的
+</p></blockquote>
+<p>不过我想到了一个法子，可以把token中的&gt;分为前面有空白和没有空白的两个token。这样子只要写多一点文法分析程序就可以了，正确解析这个问题了。<br/>
+至于Nerron Teckid说的问题，是文法二义性的问题而已，所有的语言都有这个问题。这个解决方案已经非常多了。<br/>
+例如C语言中的<br/>
+Number * value;<br/>
+可以是将value定义了一个指向Number类型的指针。也可以是int类型的Number乘以了value的值。<br/>
+符号表是从词法分析到文法分析到语义分析的桥梁。这三个阶段离开符号表都不能联系在一起。<br/>
+据说go语言设计的目的之一就是去除符号表，这个有点夸张，值得研究一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-781900" class="comment even thread-even depth-1">
+<article id="div-comment-781900" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0aeb33a4832e346f1e600e6d489a2e87?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0aeb33a4832e346f1e600e6d489a2e87?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-781900"><time datetime="2013-10-03T20:46:52+08:00">2013年10月03日 20:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我记得我学lex&amp;yacc的时候都是直接把’&gt;’这样的单字符直接传给yacc的，懒得再为’&gt;&gt;’定义一个token了</p>
+</div>
+ </article>
+</li>
+<li id="comment-783735" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-783735" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/424761952b2db8c7a2d11200829c05b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/424761952b2db8c7a2d11200829c05b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shuiren</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-783735"><time datetime="2013-10-04T15:55:53+08:00">2013年10月04日 15:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这一篇，略水啊，没啥含量</p>
+</div>
+ </article>
+</li>
+<li id="comment-791493" class="comment even thread-even depth-1">
+<article id="div-comment-791493" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/492c1f439aa1cebbea946637af5aa816?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/492c1f439aa1cebbea946637af5aa816?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">喵呜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-791493"><time datetime="2013-10-07T19:24:24+08:00">2013年10月07日 19:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-779907" rel="nofollow">@g++ </a><br/>
+会不会不是简单的直接传递，而是在传递一个字符时先查询下上次传递的是什么字符，然后再根据具体情况具体分析？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-793179" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-793179" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ca2f3e9f3c982b29aa2208d450af84e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ca2f3e9f3c982b29aa2208d450af84e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://wuleiblog.cn" class="url" rel="ugc external nofollow">唳天飞鹰</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-793179"><time datetime="2013-10-08T14:29:16+08:00">2013年10月08日 14:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受教了！设计一个编译器果真是相当复杂，还没有涉及到面向对象模型呢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-793202" class="comment even thread-even depth-1">
+<article id="div-comment-793202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-793202"><time datetime="2013-10-08T14:43:02+08:00">2013年10月08日 14:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>存在词法歧义，是否算是语言设计者的耻辱？</p>
+</div>
+ </article>
+</li>
+<li id="comment-793857" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-793857" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6c5bbdd4fad80d1c65afb5c6133a8589?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6c5bbdd4fad80d1c65afb5c6133a8589?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Straw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-793857"><time datetime="2013-10-08T20:50:42+08:00">2013年10月08日 20:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>类定义的最后要加一个“;”，不然，新手可能理解起来比较困惑。<br/>
+template<br/>
+class Foo {<br/>
+};</p>
+</div>
+ </article>
+</li>
+<li id="comment-796104" class="comment even thread-even depth-1">
+<article id="div-comment-796104" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60824ace73fb891a2309b27d0df8975f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60824ace73fb891a2309b27d0df8975f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.weaoo.com" class="url" rel="ugc external nofollow">围观天气</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-796104"><time datetime="2013-10-09T15:31:00+08:00">2013年10月09日 15:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>按例膜拜</p>
+</div>
+ </article>
+</li>
+<li id="comment-882543" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kaifazhe.com/programming/376028.html" class="url" rel="ugc external nofollow">说c++必羞到微软 - 编程 - 开发者</a> </div>
+</li>
+<li id="comment-909344" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=11" class="url" rel="ugc external nofollow">C++模板”&gt;&gt;”编译问题与词法消歧设计 | multiprocess</a> </div>
+</li>
+<li id="comment-1068332" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1068332" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/79a7a7e002ec553f819fb7484b3981c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/79a7a7e002ec553f819fb7484b3981c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wxd356</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-1068332"><time datetime="2013-12-15T15:51:21+08:00">2013年12月15日 15:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚好在看编译原理的时候想过这个问题，自己想的是就分成 ‘&lt;&#39; &#39;&lt;&#39;交给paser处理，书上说的是lexer也要前后看看做做分析</p>
+</div>
+ </article>
+</li>
+<li id="comment-1411685" class="comment even thread-even depth-1">
+<article id="div-comment-1411685" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a27ac3d088c9030f35f48ee73e572358?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a27ac3d088c9030f35f48ee73e572358?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">MageXellos</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10449.html#comment-1411685"><time datetime="2014-04-01T21:10:24+08:00">2014年04月01日 21:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在浩哥微博看到的题目，终于等到解答了，先顶再看。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

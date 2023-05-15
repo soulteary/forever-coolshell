@@ -1,0 +1,273 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>恢复Ext3下被删除的文件 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1265 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1265" class="post-content post-1265 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem tag-debugfs tag-ext3">
+<header class="entry-header">
+<span class="screen-reader-text">恢复Ext3下被删除的文件</span>
+<h1 class="entry-title">恢复Ext3下被删除的文件</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1265.html" title="10:31" rel="bookmark"><time class="entry-date" datetime="2009-08-14T10:31:48+08:00" pubdate="">2009年08月14日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1265.html#comments" class="comments-link">8 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 10,676 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p> 下面是这个教程将教你如何在Ext3的文件系统中恢复被rm掉的文件。</p>
+<p>假设我们有一个文件名叫 ‘test.txt’</p>
+<div style="margin-left: 40px;"><span style="font-style: italic;"> </span><span style="font-weight: bold;"><span style="font-style: italic;">$ls -il test.txt</span></span><br style="font-style: italic;"/><span style="font-weight: bold;"><span style="font-style: italic;"> 15 -rw-rw-r– 2 root root 20 Apr 17 12:08 test.txt</span></span><br style="font-style: italic;"/><span style="font-weight: bold;"> </span></div>
+<p>注意：: “-il” 选项表示显示文件的i-node号（15），如果你不知道Unix/Linux文件系统的“I结点”的话，你有必要先补充一下相关的知识。简单说来，i结点就是操作管理文件的一个标识号。</p>
+<p><span id="more-1265"></span></p>
+<p>我们再看一下其内容：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold;"><span style="font-style: italic;">$ cat test.txt</span></span><br style="font-style: italic;"/><span style="font-weight: bold;"><span style="font-style: italic;">this is test file</span></span><br style="font-style: italic;"/></div>
+<p>好，现在我们开始删除文件：.</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold;"><span style="font-style: italic;">$rm test.txt</span></span><br style="font-style: italic;"/><span style="font-weight: bold;"><span style="font-style: italic;">rm: remove write-protected regular file <code data-enlighter-language="mytest" class="EnlighterJSRAW">test.txt&#39;? y&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+ 
+&lt;h4&gt;使用 Journal 和 Inode 号恢复&lt;/h4&gt;
+注意，如果你删除文件后重启了系统，那么，相关的文件 journal 会丢失，我们也就无法恢复文件了。所以，恢复文件的前提是，Journal不能丢失，即，系统不能重启。
+因为我们已经知道 test.txt 文件的 inode 号是 15，所以我们可以使用 debugfs 命令来查看：
+&lt;div style=&#34;margin-left: 40px;&#34;&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;debugfs: logdump -i &lt;15&gt;&lt;/span&gt;&lt;/span&gt;
+&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;FS block 1006 logged at sequence 404351, journal block 7241&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;(inode block for inode 15):&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;Inode: 15 Type: regular Mode: 0664 Flags: 0x0 Generation: 0&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;User: 0 Group: 0 Size: 20&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;File ACL: 0 Directory ACL: 0&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;Links: 1 Blockcount: 8&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;Fragment: Address: 0 Number: 0 Size: 0&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;ctime: 0x48159f2d -- Mon Apr 28 15:25:57 2008&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;atime: 0x48159f27 -- Mon Apr 28 15:25:51 2008&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;mtime: 0x4806f070 -- Thu Apr 17 12:08:40 2008&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;Blocks: (0+1): 10234&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;No magic number at block 7247: end of journal.&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;/div&gt;
+&lt;span style=&#34;font-weight: bold;&#34;&gt;
+&lt;/span&gt;请注意上面信息中的这一行：
+&lt;div style=&#34;margin-left: 40px;&#34;&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;Blocks: (0+1): 10234&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;
+这就是inode 15存放文件的地址（数据块）。然后，我们知道了这个地址，我们就可以使用 dd 命令，把这个地址上的数据给取出来。
+&lt;div style=&#34;margin-left: 40px;&#34;&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;#dd if=/dev/sda5 of=/tmp/test.txt bs=4096 count=1 skip= 10234&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;1+0 records in&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;1+0 records out&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;/div&gt;
+&lt;ul&gt;
+&lt;li&gt;if 是输入的设备&lt;/li&gt;
+&lt;li&gt;of 是输出的设备.&lt;/li&gt;
+&lt;li&gt;bs 指定一个block的大小&lt;/li&gt;
+&lt;li&gt;count 说明有多少个block需要dump&lt;/li&gt;
+&lt;li&gt;skip 说明从开始的地方跳过 10234 个block，并从取下一个block的数据&lt;/li&gt;
+&lt;/ul&gt;
+下面让我们看一下被恢复的文件：
+&lt;div style=&#34;margin-left: 40px;&#34;&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;$cat /tmp/test.txt &lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold;&#34;&gt;&lt;span style=&#34;font-style: italic;&#34;&gt;this is test file&lt;/span&gt;&lt;/span&gt;&lt;br style=&#34;font-style: italic;&#34; /&gt;&lt;/div&gt;
+&lt;span style=&#34;font-weight: bold;&#34;&gt;
+&lt;/span&gt;当然，上面的文件恢复是基于我们知道文件的inode，可在现实中，我们并不知道这个信息，如果我们不知道inode，我们还可能恢复吗？是的，这是可能的，让我们来看一下如何恢复。
+&lt;h4&gt;使用 Journal 和 文件名恢复&lt;/h4&gt;
+如果我们不知道文件的inode我们可能恢复吗？我可以告诉你，这是不可能的事情。不过我们有办法知道文件的inode号。下面让我们来看看怎么做到：
+&lt;div style=&#34;margin-left: 40px;&#34;&gt;&lt;span style=&#34;font-weight: bold; font-style: italic;&#34;&gt;$rm mytest.txt&lt;/span&gt;&lt;br style=&#34;font-weight: bold; font-style: italic;&#34; /&gt;&lt;span style=&#34;font-weight: bold; font-style: italic;&#34;&gt;rm: remove write-protected regular file </code>.txt’? y</span><br style="font-weight: bold; font-style: italic;"/></span></div>
+<p>注意，我们并不知道其inode号，但我们可以使用 debugfs 命令来查看（使用其 ls -d 选项）。</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;">debugfs:  ls -d</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;"> 2  (12) .    2  (12) ..    11  (20) lost+found    2347777  (20) oss</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">&lt;2121567&gt; (20) mytest.txt</span><br style="font-weight: bold; font-style: italic;"/></div>
+<p>你看文件名了吧，它的inode号是 &lt;2121567&gt; ，注意，被删除了的文件的inode都是用尖括号包起来的。</p>
+<p>即然知道了inode号，那么我们就很容易恢复了（使用 logdump选项）：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;">debugfs:  logdump -i &lt;2121567&gt;</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">Inode 2121567 is at group 65, block 2129985, offset 3840</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">Journal starts at block 1, transaction 405642</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">  FS block 2129985 logged at sequence 405644, journal block 9</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    (inode block for inode 2121567):</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Inode: 2121567   Type: bad type        Mode:  0000   Flags: 0x0   Generation: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    User:     0   Group:     0   Size: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    File ACL: 0    Directory ACL: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Links: 0   Blockcount: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Fragment:  Address: 0    Number: 0    Size: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    ctime: 0x00000000 — Thu Jan  1 05:30:00 1970</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    atime: 0x00000000 — Thu Jan  1 05:30:00 1970</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    mtime: 0x00000000 — Thu Jan  1 05:30:00 1970</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Blocks:</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">  FS block 2129985 logged at sequence 405648, journal block 64</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    (inode block for inode 2121567):</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Inode: 2121567   Type: regular        Mode:  0664   Flags: 0x0   Generation: 913772093</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    User:   100   Group:     0   Size: 31</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    File ACL: 2130943    Directory ACL: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Links: 1   Blockcount: 16</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Fragment:  Address: 0    Number: 0    Size: 0</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    ctime: 0x4821d5d0 — Wed May  7 21:46:16 2008</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    atime: 0x4821d8be — Wed May  7 21:58:46 2008</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    mtime: 0x4821d5d0 — Wed May  7 21:46:16 2008</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    Blocks:  (0+1): 2142216</span><br style="font-weight: bold; font-style: italic;"/></div>
+<p>上面有很多信息，让我们仔细地查看，你可以看到下面一行信息：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;"> FS block 2129985 logged at sequence 405644, journal block 9</span><br style="font-weight: bold; font-style: italic;"/></div>
+<p>并且，其类型是：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;"> Type: bad type </span><br style="font-weight: bold; font-style: italic;"/></div>
+<p>再仔细看一下文件的时间戳下面的<span style="font-weight: bold; font-style: italic;">Blocks:</span> 什么也没有。那么，让我们看一下下一个block：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;">FS block 2129985 logged at sequence 405648, journal block 64</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">    (inode block for inode 2121567):</span><br style="font-weight: bold; font-style: italic;"/></div>
+<p>这一条Journal就有block信息了：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;">Blocks:  (0+1): 2142216</span></div>
+<p>这就是被删除文件的地址，让我们再次运行恢复命令：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;">$sudo dd if=/dev/sda5 of=/home/hchen/mytest_recovered.txt bs=4096 skip=2142216 count=1</span><br style="font-weight: bold; font-style: italic;"/></div>
+<p>再让我们来检查一下文件内容：</p>
+<div style="margin-left: 40px;"><span style="font-weight: bold; font-style: italic;">$ cat mytest_recovered.txt</span><br style="font-weight: bold; font-style: italic;"/><span style="font-weight: bold; font-style: italic;">this is my test file </span><br style="font-weight: bold; font-style: italic;"/></div>
+<h4>小结</h4>
+<p>好了，下面是我们的一些总结：<br/>
+<span style="font-weight: bold;">1)使用 debugfs: ls -d 找到被删除文件的inode号。</span><br style="font-weight: bold;"/><span style="font-weight: bold;">2)使用 debugfs:logdump找到文件的数据块地址。</span><br style="font-weight: bold;"/><span style="font-weight: bold;">3)使用dd 命令把数据取出来存成文件。</span></p>
+<p>网上有很其它不同的方法来恢复文件，基本上也是使用debugfs这个命令，有的还使用到了lsdel，其实大同小异，这个教程是我在网上看到的，虽然他说只是针对Ext3文件系统的，但我总感觉应该可以用于Ext2文件系统，不过我没有试过。也许Ext2和Ext3被debugfs输出的信息不一样吧。大家可以去试试。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1265-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">debugfs</a>, <a href="javascript:void(0)" rel="tag">ext3</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>恢复Ext3下被删除的文件</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-690" class="comment even thread-even depth-1 parent">
+<article id="div-comment-690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d015d44f52731c8e88d8637e445e72de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d015d44f52731c8e88d8637e445e72de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">helloworld</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-690"><time datetime="2009-08-14T11:45:14+08:00">2009年08月14日 11:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里恢复是基于日志的，ext2非日志文件系统 怎么恢复？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-695" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-695"><time datetime="2009-08-14T14:03:04+08:00">2009年08月14日 14:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于ext2的文件，网上有很多相关的文章，可以搜搜看。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-691" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-691" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://li2z.cn" class="url" rel="ugc external nofollow">bones7456</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-691"><time datetime="2009-08-14T12:21:49+08:00">2009年08月14日 12:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>稍微大些的文件，可能在不连续的块里面，有办法恢复不？</p>
+</div>
+ </article>
+</li>
+<li id="comment-880" class="comment odd alt thread-even depth-1">
+<article id="div-comment-880" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b5560c2e6d5c255b1b8df594c44bf3d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b5560c2e6d5c255b1b8df594c44bf3d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">druggo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-880"><time datetime="2009-09-02T21:51:07+08:00">2009年09月02日 21:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-691" rel="nofollow">@bones7456</a><br/>
+ext3grep啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-24327" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://deloby.com/entry/777" class="url" rel="ugc external nofollow">Facebook全球关系网 | 中文IT博客聚合</a> </div>
+</li>
+<li id="comment-281830" class="comment odd alt thread-even depth-1">
+<article id="div-comment-281830" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e65053eeafd41c743f51c80e9e471a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e65053eeafd41c743f51c80e9e471a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/hidinga" class="url" rel="ugc external nofollow">ping.bao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-281830"><time datetime="2013-01-29T14:16:51+08:00">2013年01月29日 14:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的输出信息是这样的, 怎么办呢?</p>
+<p>debugfs: logdump -i<br/>
+Inode 29622277 is at group 904, block 29622274, offset 512<br/>
+Journal starts at block 1334, transaction 1137796<br/>
+FS block 29622274 logged at sequence 1137948, journal block 6119<br/>
+(inode block for inode 29622277):<br/>
+Inode: 29622277 Type: regular Mode: 0664 Flags: 0x0 Generation: 307260863<br/>
+User: 500 Group: 500 Size: 56514<br/>
+File ACL: 0 Directory ACL: 0<br/>
+Links: 1 Blockcount: 120<br/>
+Fragment: Address: 0 Number: 0 Size: 0<br/>
+ctime: 0x50e8e78b — Sun Jan 6 10:55:07 2013<br/>
+atime: 0x50f7f556 — Thu Jan 17 20:57:58 2013<br/>
+mtime: 0x50e8e78a — Sun Jan 6 10:55:06 2013<br/>
+Blocks: (0+8): 29652747 (8+4): 29652775 (IND): 29652779<br/>
+FS block 29622274 logged at sequence 1137949, journal block 6122<br/>
+(inode block for inode 29622277):<br/>
+Inode: 29622277 Type: regular Mode: 0664 Flags: 0x0 Generation: 307260863<br/>
+User: 500 Group: 500 Size: 56514<br/>
+File ACL: 0 Directory ACL: 0<br/>
+Links: 1 Blockcount: 120<br/>
+Fragment: Address: 0 Number: 0 Size: 0<br/>
+ctime: 0x50e8e78b — Sun Jan 6 10:55:07 2013<br/>
+atime: 0x50f7f556 — Thu Jan 17 20:57:58 2013<br/>
+mtime: 0x50e8e78a — Sun Jan 6 10:55:06 2013<br/>
+Blocks: (0+8): 29652747 (8+4): 29652775 (IND): 29652779<br/>
+FS block 29622274 logged at sequence 1137950, journal block 6126<br/>
+(inode block for inode 29622277):<br/>
+Inode: 29622277 Type: regular Mode: 0664 Flags: 0x0 Generation: 307260863<br/>
+User: 500 Group: 500 Size: 0<br/>
+File ACL: 0 Directory ACL: 0<br/>
+Links: 0 Blockcount: 0<br/>
+Fragment: Address: 0 Number: 0 Size: 0<br/>
+ctime: 0x51075fee — Tue Jan 29 13:36:46 2013<br/>
+atime: 0x50f7f556 — Thu Jan 17 20:57:58 2013<br/>
+mtime: 0x51075fee — Tue Jan 29 13:36:46 2013<br/>
+dtime: 0x51075fee — Tue Jan 29 13:36:46 2013<br/>
+Blocks:<br/>
+No magic number at block 6139: end of journal.</p>
+</div>
+ </article>
+</li>
+<li id="comment-281834" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-281834" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e65053eeafd41c743f51c80e9e471a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e65053eeafd41c743f51c80e9e471a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/hidinga" class="url" rel="ugc external nofollow">ping.bao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-281834"><time datetime="2013-01-29T14:19:11+08:00">2013年01月29日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-281830" rel="nofollow">@ping.bao </a> </p>
+<p>最后一个 Blocks: 为空, 不知为何, 所以没法用 dd 弄出来</p>
+</div>
+ </article>
+</li>
+<li id="comment-1771222" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1771222" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f73425db663648579ffa1f70ba768515?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f73425db663648579ffa1f70ba768515?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liusx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1265.html#comment-1771222"><time datetime="2015-10-10T14:43:54+08:00">2015年10月10日 14:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>root用户删除的文件不能确定INODE，CETOS 5.11上测试的。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

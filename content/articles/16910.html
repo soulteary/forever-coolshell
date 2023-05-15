@@ -1,0 +1,566 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Linus：为何对象引用计数必须是原子的 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-16910 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-16910" class="post-content post-16910 post type-post status-publish format-standard hentry category-progdesign category-proglanguage tag-atomic tag-concurrency tag-linus-torvalds tag-lock-free tag-parallelism">
+<header class="entry-header">
+<span class="screen-reader-text">Linus：为何对象引用计数必须是原子的</span>
+<h1 class="entry-title">Linus：为何对象引用计数必须是原子的</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/16910.html" title="09:59" rel="bookmark"><time class="entry-date" datetime="2014-12-31T09:59:33+08:00" pubdate="">2014年12月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/16910.html#comments" class="comments-link">37 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 50,885 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p>Linus大神又在rant了！这次的吐槽对象是时下很火热的<strong>并行技术(parellism)</strong>，并直截了当地表示<a title="并行计算基本上就是浪费大家的时间" href="http://www.vaikan.com/linus-parallel-computing-is-a-huge-waste-of-everybodys-time/" target="_blank">并行计算是浪费所有人时间</a>(<a href="http://www.realworldtech.com/forum/?threadid=146066&amp;curpostid=146227">“The whole “let’s parallelize” thing is a huge waste of everybody’s time.”</a>)。大致意思是说<strong>乱序性能快、提高缓存容量、降功耗</strong>。当然笔者不打算正面讨论并行的是是非非（过于宏伟的主题），因为Linus在另一则<a title="reference counting" href="http://www.realworldtech.com/forum/?threadid=146066&amp;curpostid=146183" target="_blank">帖子</a>中举了对象<strong>引用计数(reference counting)</strong>的例子来说明并行的复杂性。</p>
+<p>在Linus回复之前有人指出<strong>对象需要锁机制的情况下，引用计数的原子性问题：</strong></p>
+<blockquote><p>Since it is being accessed in a multi-threaded way, via multiple access paths, generally it needs its own mutex — otherwise, reference counting would not be required to be atomic and a lock of a higher-level object would suffice.</p>
+<p>由于（对象）通过多线程方式及多种获取渠道，一般而言它需要自身维护一个互斥锁——否则引用计数就不要求是原子的，一个更高层次的对象锁足矣。</p></blockquote>
+<p>而Linus不那么认为：</p>
+<blockquote><p>The problem with reference counts is that you often need to take them *before* you take the lock that protects the object data.</p>
+<p>引用计数的问题在于你经常需要在对象数据<strong>上锁保护之前</strong>完成它。</p></blockquote>
+<p>The thing is, you have two different cases:</p>
+<p>问题有两种情况：</p>
+<p style="padding-left: 30px;"><strong>– object *reference* 对象引用</strong></p>
+<p style="padding-left: 30px;"><strong>– object data 对象数据</strong></p>
+<p>and they have completely different locking.</p>
+<p><strong>它们锁机制是完全不一样的。</strong></p>
+<p><span id="more-16910"></span></p>
+<p>Object data locking is generally per-object. Well, unless you don’t have huge scalability issues, in which case you may have some external bigger lock (extreme case: one single global lock).</p>
+<p>对象数据保护一般是一个对象拥有一个锁，假设你没有海量扩展性问题，不然你需要一些外部大一点的锁（极端的例子，一个对象一个全局锁）。</p>
+<p>But object *referencing* is mostly about finding the object (and removing/freeing it). Is it on a hash chain? Is it in a tree? Linked list? When the reference count goes down to zero, it’s not the object data that you need to protect (the object is not used by anything else, so there’s nothing to protect!), it’s the ways to find the object you need to protect.</p>
+<p>但对象引用主要关于对象的寻找（移除或释放），它是否在哈希链，一棵树或者链表上。<strong>当对象引用计数降为零，你要保护的不是对象数据，因为对象没有在其它地方使用，你要保护的是对象的寻找操作。</strong></p>
+<p>And the lock for the lookup operation cannot be in the object, because – by definition – you don’t know what the object is! You’re trying to look it up, after all.</p>
+<p>而且查询操作的锁不可能在对象内部，因为根据定义，你还不知道这是什么对象，你在尝试寻找它。</p>
+<p>So generally you have a lock that protects the lookup operation some way, and the reference count needs to be atomic with respect to that lock.</p>
+<p>因此一般你要对查询操作上锁，而且引用计数相对<strong>那个锁</strong>来说是原子的（译者注：查询锁不是引用计数所在的对象所有，不能保护对象引用计数，后面会解释为何引用计数变更时其所在对象不能上锁）。</p>
+<p>And yes, that lock may well be sufficient, and now you’re back to non-atomic reference counts. But you usually don’t have just one way to look things up: you might have pointers from other objects (and that pointer is protected by the object locking of the other object), but there may be multiple such objects that point to this (which is why you have a reference count in the first place!)</p>
+<p>当然这个锁是充分有效的，现在假设引用计数是非原子的，但你常常不仅仅使用一种方式来查询：你可能拥有其它对象的指针（这个指针又被其它对象的对象锁给保护起来），但同时还会有多个对象指向它（这就是为何你第一时间需要引用计数的理由）。</p>
+<p>See what happens? There is no longer one single lock for lookup. Imagine walking a graph of objects, where objects have pointers to each other. Each pointer implies a reference to an object, but as you walk the graph, you have to release the lock from the source object, so you have to take a new reference to the object you are now entering.</p>
+<p>看看会发生什么？查询不止存在一个锁保护。你可以想象走过一张对象流程图，其中对象存在指向其它对象的指针，每个指针暗含了一次对象引用，但当你走过这个流程图，你必须释放源对象的锁，而你进入新对象时又必须增加一次引用。</p>
+<p>And in order to avoid deadlocks, you can not in the general case take the lock of the new object first – you have to release the lock on the source object, because otherwise (in a complex graph), how do you avoid simple ABBA deadlock?</p>
+<p>而且为了避免死锁，你一般不能立即对新对象上锁——你必须释放源对象的锁，否则在一个复杂流程图里，你如何避免<strong>ABBA死锁</strong>（译者注：假设两个线程，一个是A-&gt;B，另一个B-&gt;;A，当线程一给A上锁，线程二给B上锁，此时两者谁也无法释放对方的锁）？</p>
+<p>So atomic reference counts fix that. They work because when you move from object A to object B, you can do this:</p>
+<p>原子引用计数修正了这一点，当你从对象A到对象B，你会这样做：</p>
+<p>(a) you have a reference count to A, and you can lock A</p>
+<p style="padding-left: 30px;">对象A增加一次引用计数，并上锁。</p>
+<p>(b) once object A is locked, the pointer from A to B is stable, and you know you have a reference to B (because of that pointer from A to B)</p>
+<p style="padding-left: 30px;">对象A一旦上锁，A指向B的指针就是稳定的，于是你知道你引用了对象B。</p>
+<p>(c) but you cannot take the object lock for B (ABBA deadlock) while holding the lock on A</p>
+<p style="padding-left: 30px;">但你不能在对象A上锁期间给B上锁（ABBA死锁）。</p>
+<p>(d) increment the atomic reference count on B</p>
+<p style="padding-left: 30px;">对象B增加一次原子引用计数。</p>
+<p>(e) now you can drop the lock on A (you’re “exiting” A)</p>
+<p style="padding-left: 30px;">现在你可以扔掉对象A的锁（退出对象A）。</p>
+<p>(f) your reference count means that B cannot go away from under you despite unlocking A, so now you can lock B.</p>
+<p style="padding-left: 30px;">对象B的原子引用计数意味着即使给A解锁期间，B也不会失联，现在你可以给B上锁。</p>
+<p>See? Atomic reference counts make this kind of situation possible. Yes, you want to avoid the overhead if at all possible (for example, maybe you have a strict ordering of objects, so you know you can walk from A to B, and never walk from B to A, so there is no ABBA deadlock, and you can just lock B while still holding the lock on A).</p>
+<p>看见了吗？原子引用计数使这种情况成为可能。是的，你想尽一切办法避免这种代价，比如，你也许把对象写成严格顺序的，这样你可以从A到B，绝不会从B到A，如此就不存在ABBA死锁了，你也就可以在A上锁期间给B上锁了。</p>
+<p>But if you don’t have some kind of forced ordering, and if you have multiple ways to reach an object (and again – why have reference counts in the first place if that isn’t true!) then atomic reference counts really are the simple and sane answer.</p>
+<p>但如果你无法做到这种强迫序列，如果你有多种方式接触一个对象（再一次强调，这是第一时间使用引用计数的理由），这样，原子引用计数就是简单又理智的答案。</p>
+<p>If you think atomic refcounts are unnecessary, that’s a big flag that you don’t actually understand the complexities of locking.</p>
+<p><strong>如果你认为原子引用计数是不必要的，这就大大说明你实际上不了解锁机制的复杂性。</strong></p>
+<p>Trust me, concurrency is hard. There’s a reason all the examples of “look how easy it is to parallelize things” tend to use simple arrays and don’t ever have allocations or freeing of the objects.</p>
+<p>相信我，<strong>并发设计是困难的。</strong>所有关于“并行化如此容易”的理由都倾向于使用简单数组操作做例子，甚至不包含对象的分配和释放。</p>
+<p>People who think that the future is highly parallel are invariably completely unaware of just how hard concurrency really is. They’ve seen Linpack, they’ve seen all those wonderful examples of sorting an array in parallel, they’ve seen all these things that have absolutely no actual real complexity – and often very limited real usefulness.</p>
+<p>那些认为未来是高度并行化的人一成不变地完全没有意识到并发设计是多么困难。他们只见过<a title="Linpack" href="https://en.wikipedia.org/wiki/LINPACK" target="_blank">Linpack</a>，他们只见过并行技术中关于数组排序的一切精妙例子，他们只见过一切绝不算真正复杂的事物——对真正的用处经常是非常有限的。</p>
+<p>（译者注：当然，我无意借大神之口把技术宗教化。实际上Linus又在另一篇<a title="评价" href="http://www.realworldtech.com/forum/?threadid=146066&amp;curpostid=146198" target="_blank">帖子</a>中综合了对并行的评价。）</p>
+<p>Oh, I agree. My example was the simple case. The really complex cases are much worse.</p>
+<p>哦，我同意。我的例子还算简单，真正复杂的用例更糟糕。</p>
+<p>I seriously don’t believe that the future is parallel. People who think you can solve it with compilers or programming languages (or better programmers) are so far out to lunch that it’s not even funny.</p>
+<p>我严重不相信未来是并行的。有人认为你可以通过编译器，编程语言或者更好的程序员来解决问题，他们目前都是神志不清，没意识到这一点都不有趣。</p>
+<p>Parallelism works well in simplified cases with fairly clear interfaces and models. You find parallelism in servers with independent queries, in HPC, in kernels, in databases. And even there, people work really hard to make it work at all, and tend to expressly limit their models to be more amenable to it (eg databases do some things much better than others, so DB admins make sure that they lay out their data in order to cater to the limitations).</p>
+<p>并行计算可以在简化的用例以及具备清晰的接口和模型上正常工作。你发现并行在服务器上独立查询里，在高性能计算(High-performance computing)里，在内核里，在数据库里。即使如此，人们还得花很大力气才能使它工作，并且还要明确限制他们的模型来尽更多义务（例如数据库要想做得更好，数据库管理员得确保数据得到合理安排来迎合局限性）。</p>
+<p>Of course, other programming models can work. Neural networks are inherently very parallel indeed. And you don’t need smarter programmers to program them either..</p>
+<p>当然，其它编程模型倒能派上用场，神经网络(neural networking)天生就是非常并行化的，你不需要更聪明的程序员为之写代码。</p>
+<h4>参考资料</h4>
+<ul>
+<li><a title="Real World Technologies" href="http://www.realworldtech.com/" target="_blank">Real World Technologies</a>：Linus常去“灌水”的一个论坛，讨论未来机器架构（看名字就知道Linus技术偏好，及其之前对虚拟化技术(virtualization)的<a title="virtualization is evil" href="http://www.networkworld.com/article/2220440/opensource-subnet/torvalds-says---virtualization-is-evil-.html" target="_blank">吐槽</a>）</li>
+<li><a title="多线程程序中操作的原子性" href="http://www.parallellabs.com/2010/04/15/atomic-operation-in-multithreaded-application/" target="_blank">多线程程序中操作的原子性</a>：解释为什么i++不是原子操作</li>
+<li><a title="Concurrency Is Not Parallelism" href="http://www.vaikan.com/docs/Concurrency-is-not-Parallelism" target="_blank"> Concurrency Is Not Parallelism</a>：Go语言之父Rob Pike幻灯片解释“并发”与“并行”概念上的区别</li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-16910-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Atomic</a>, <a href="javascript:void(0)" rel="tag">Concurrency</a>, <a href="javascript:void(0)" rel="tag">Linus Torvalds</a>, <a href="javascript:void(0)" rel="tag">lock-free</a>, <a href="javascript:void(0)" rel="tag">Parallelism</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Linus：为何对象引用计数必须是原子的</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1637959" class="comment even thread-even depth-1">
+<article id="div-comment-1637959" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ee59cc6f674d495e835d48437aee8152?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ee59cc6f674d495e835d48437aee8152?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/wks" class="url" rel="ugc external nofollow">wks</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1637959"><time datetime="2014-12-31T10:27:49+08:00">2014年12月31日 10:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Linus大人干得漂亮。早就想吐槽朴素引用计数了。</p>
+<p>其实，朴素的引用计数差劲，人们早就知道了，这也就是为什么学术界这么多年来一直没有人关心引用计数吧，高度优化的引用计数尚且比朴素的mark-sweep慢30%。当然，也有例外的突破，比如： <a href="http://users.cecs.anu.edu.au/~rifat/files/rc-ismm-2012.pdf" rel="nofollow ugc">http://users.cecs.anu.edu.au/~rifat/files/rc-ismm-2012.pdf</a> 和 <a href="http://users.cecs.anu.edu.au/~rifat/files/rcix-oopsla-2013.pdf" rel="nofollow ugc">http://users.cecs.anu.edu.au/~rifat/files/rcix-oopsla-2013.pdf</a></p>
+<p>我的感觉，现在的CPU已经不像人们以往想象的那样工作了。比如OoO什么的，让我脑子转了好久。</p>
+<p>让我感到意外的是，并行好像不是新概念，但Linux到了200x年才有比较好的POSIX thread实现。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638002" class="comment byuser comment-author-full_of_bull bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1638002" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638002"><time datetime="2014-12-31T12:47:55+08:00">2014年12月31日 12:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>再补充一下，关于对象循环引用(cyclic graph)这样更复杂的情况，Linus做了如下<a href="http://www.realworldtech.com/forum/?threadid=146066&amp;curpostid=146291" title="cyclic graph" rel="nofollow">回复</a>，大意是说，单纯使用引用计数不够，需要综合解决方案，比如compare-and-exchange云云。笔者看不大理解就不翻译了，所以留给大家填充脑洞吧~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638144" class="comment even thread-even depth-1">
+<article id="div-comment-1638144" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4befe8569e3bb6b8e6a05e511e1eca6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4befe8569e3bb6b8e6a05e511e1eca6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">passinger</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638144"><time datetime="2014-12-31T16:55:37+08:00">2014年12月31日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这句话“因此一般你要对查询操作上锁，而且引用计数相对那个锁来说是原子的”里面，不太理解“引用计数相对那个锁来说是原子的”是啥意思？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638159" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1638159" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4befe8569e3bb6b8e6a05e511e1eca6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4befe8569e3bb6b8e6a05e511e1eca6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">passinger</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638159"><time datetime="2014-12-31T17:08:23+08:00">2014年12月31日 17:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>理解能力比较弱，没看明白为什么非原子的引用计数怎么导致了ABBA死锁？而原子引用计数怎么就解决这个问题了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638230" class="comment byuser comment-author-full_of_bull bypostauthor even thread-even depth-1">
+<article id="div-comment-1638230" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638230"><time datetime="2014-12-31T21:09:51+08:00">2014年12月31日 21:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1638144" rel="nofollow">@passinger </a><br/>
+Linus先说明两个概念：对象数据和对象引用，并且两者拥有不同的锁机制。</p>
+<p>对象的引用计数属于对象内部data，理应由对象内部的锁保护起来。但引用计数的操作不属于对象，对象查询操作使用的外部锁无法保护引用计数，也就是说仍存在被其它引用入侵的风险，所以使用原子操作。</p>
+<p>至于入侵的风险会是什么，见参考资料第二条。</p>
+<p>ABBA死锁风险决定了当存在A-&gt;B执行序列时，A上锁期间B是不能上锁的，必须等到A退出。因而B的引用计数必须在B上锁之前完成，所以必须原子操作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638595" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1638595" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dd66bd19ad282695f27b14c684717214?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dd66bd19ad282695f27b14c684717214?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Benjamin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638595"><time datetime="2015-01-01T16:47:21+08:00">2015年01月01日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好高深啊，看不懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638640" class="comment even thread-even depth-1">
+<article id="div-comment-1638640" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a2ca2b28c7c4499a4c9062c18409802?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a2ca2b28c7c4499a4c9062c18409802?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mono</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638640"><time datetime="2015-01-01T18:06:52+08:00">2015年01月01日 18:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢转贴 不太感谢翻译<br/>
+a graph of objects 怎会是”对象流程图”的?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638690" class="comment byuser comment-author-full_of_bull bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1638690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1638690"><time datetime="2015-01-01T20:54:36+08:00">2015年01月01日 20:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1638640" rel="nofollow">@mono </a><br/>
+应该叫“对象关系图”比较合适</p>
+</div>
+ </article>
+</li>
+<li id="comment-1639025" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://iptest.damn.so/?p=589" class="url" rel="ugc external nofollow">Linus：为何对象引用计数必须是原子的 | 测试博客</a> </div>
+</li>
+<li id="comment-1639308" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1639308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2fcc16594bad026bcebd3140f9d474f4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2fcc16594bad026bcebd3140f9d474f4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bumfo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1639308"><time datetime="2015-01-03T07:58:38+08:00">2015年01月03日 07:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>中文翻譯太晦澀了，還不如英文原文通俗易懂，難道是機器翻譯的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1640529" class="comment even thread-even depth-1">
+<article id="div-comment-1640529" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a0f20faf12f134fb349fe02fcc869561?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a0f20faf12f134fb349fe02fcc869561?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1640529"><time datetime="2015-01-05T10:12:49+08:00">2015年01月05日 10:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>（极端的例子，一个对象一个全局锁）这句翻译有误，应该是一共只有一个而不是一个对象一个</p>
+</div>
+ </article>
+</li>
+<li id="comment-1640609" class="comment byuser comment-author-full_of_bull bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1640609" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1640609"><time datetime="2015-01-05T14:47:04+08:00">2015年01月05日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1640529" rel="nofollow">@wan </a><br/>
+的确是失误，谢谢指正！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1641555" class="comment even thread-even depth-1">
+<article id="div-comment-1641555" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a7a028c4d04f67582fb9ae47dc08f21?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a7a028c4d04f67582fb9ae47dc08f21?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mr-ping.com" class="url" rel="ugc external nofollow">Ping</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1641555"><time datetime="2015-01-07T10:27:00+08:00">2015年01月07日 10:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前他不是也吐槽用C++的都是脑残么…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1642811" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.person168.com/?p=76497" class="url" rel="ugc external nofollow">Linus Torvalds：忘掉那该死的并行吧！ | 我爱互联网</a> </div>
+</li>
+<li id="comment-1643298" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zijinxing.com/201501/133958.html" class="url" rel="ugc external nofollow">Linus Torvalds：忘掉那该死的并行吧！-紫金星</a> </div>
+</li>
+<li id="comment-1644675" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1644675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/01f909843adb0a391d49d6b7d5d1b767?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/01f909843adb0a391d49d6b7d5d1b767?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.renwuyi.com" class="url" rel="ugc external nofollow">威客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1644675"><time datetime="2015-01-14T13:53:23+08:00">2015年01月14日 13:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>偶尔看一下提提神</p>
+</div>
+ </article>
+</li>
+<li id="comment-1645279" class="comment even thread-even depth-1">
+<article id="div-comment-1645279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/weishun" class="url" rel="ugc external nofollow">pythonwood</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1645279"><time datetime="2015-01-15T19:44:34+08:00">2015年01月15日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈，那我不学go了，让它去吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1645991" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1645991" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ba292c8757c070826bb53b7775a25eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ba292c8757c070826bb53b7775a25eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baizhan.net/zt/guanyude2/" class="url" rel="ugc external nofollow">关羽美称</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1645991"><time datetime="2015-01-17T15:49:45+08:00">2015年01月17日 15:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关羽的美称！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1646646" class="comment even thread-even depth-1">
+<article id="div-comment-1646646" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ca5a362aa73cf1cdf11c94cc95f43ae4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ca5a362aa73cf1cdf11c94cc95f43ae4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://tumutanzi.com" class="url" rel="ugc external nofollow">土木坛子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1646646"><time datetime="2015-01-18T21:03:19+08:00">2015年01月18日 21:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是这么固执的人也不能坚持这么长时间。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1647501" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1647501" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6eb4f9ab331b99bd9b7defbd1708746?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6eb4f9ab331b99bd9b7defbd1708746?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.lingcc.com" class="url" rel="ugc external nofollow">测试</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1647501"><time datetime="2015-01-20T10:27:53+08:00">2015年01月20日 10:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>测试测试</p>
+</div>
+ </article>
+</li>
+<li id="comment-1648859" class="comment even thread-even depth-1">
+<article id="div-comment-1648859" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eec49ea7228adf593e431d27db23bf4b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eec49ea7228adf593e431d27db23bf4b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.nbxsyp.com" class="url" rel="ugc external nofollow">宁波遮阳篷</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1648859"><time datetime="2015-01-23T13:13:50+08:00">2015年01月23日 13:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢分享。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1660108" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1660108" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fef8ffd5c07e869a366e977c63dd9a8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fef8ffd5c07e869a366e977c63dd9a8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">simba</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1660108"><time datetime="2015-02-12T14:28:25+08:00">2015年02月12日 14:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有学习Solr的博客吗，给推荐一个。感激</p>
+</div>
+ </article>
+</li>
+<li id="comment-1662827" class="comment even thread-even depth-1">
+<article id="div-comment-1662827" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d89b0514cf4a50d0e53c5533fbe73e83?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d89b0514cf4a50d0e53c5533fbe73e83?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mengzhuo.org" class="url" rel="ugc external nofollow">mz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1662827"><time datetime="2015-02-16T15:52:37+08:00">2015年02月16日 15:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1645279" rel="nofollow">@pythonwood </a> </p>
+<p>Go 才不是并行呢，goroutine只是并发而已。<br/>
+而且Go提倡Share memory by channel， 就是不希望因操作同一对象徒增复杂度，而是把对象的操作交给一个特定的goroutine来完成。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1666721" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1666721" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d12fe6a0e08a11ad80bcaf85651657a2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d12fe6a0e08a11ad80bcaf85651657a2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.javaflush.com" class="url" rel="ugc external nofollow">java爱好者</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1666721"><time datetime="2015-02-24T21:57:13+08:00">2015年02月24日 21:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问关于javassist的文章能不能在你这里投稿？http://www.javafreer.com/%E5%9F%BA%E4%BA%8Ejavassist%E5%9C%A8jar%E5%8C%85%E4%B8%AD%E6%9F%A5%E6%89%BE%E7%9B%B8%E4%BA%92%E4%BE%9D%E8%B5%96%E5%85%B3%E7%B3%BB%E7%9A%84%E5%88%86%E6%9E%90%E5%B7%A5%E5%85%B7/<br/>
+关于javassist判断编译出来的jar中方法之间的相互关系。 可以防止java调度的问题导致jar冲突</p>
+</div>
+ </article>
+</li>
+<li id="comment-1672861" class="comment even thread-even depth-1">
+<article id="div-comment-1672861" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fd1af5affc8b96c492b54c1831b589a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fd1af5affc8b96c492b54c1831b589a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://quan.renwuyi.com/" class="url" rel="ugc external nofollow">威客圈子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1672861"><time datetime="2015-03-10T14:39:42+08:00">2015年03月10日 14:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分析的很仔细，值得我们这些人学习。<br/>
+博主有没有兴趣做友情链接啊，可以加扣扣联系：2396238979</p>
+</div>
+ </article>
+</li>
+<li id="comment-1675476" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1675476" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bc304d88571f9838ced5534f1c873dcd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bc304d88571f9838ced5534f1c873dcd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hlccnb.com" class="url" rel="ugc external nofollow">宁波叉车租赁</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1675476"><time datetime="2015-03-16T20:31:15+08:00">2015年03月16日 20:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是很懂。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1679374" class="comment even thread-even depth-1">
+<article id="div-comment-1679374" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7786646d379f62576c1a71b9103d0432?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7786646d379f62576c1a71b9103d0432?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">强哥</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1679374"><time datetime="2015-03-24T02:02:02+08:00">2015年03月24日 02:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>怎么去了阿里之后就不更新博客了?<br/>
+被洗脑了?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1714245" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.le51.cn/?p=4" class="url" rel="ugc external nofollow">乐我要 » 一小时Docker教程</a> </div>
+</li>
+<li id="comment-1717090" class="comment even thread-even depth-1">
+<article id="div-comment-1717090" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59caa84b9e766ae4f19e60a1a3b22f9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59caa84b9e766ae4f19e60a1a3b22f9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hoooo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1717090"><time datetime="2015-06-04T16:33:28+08:00">2015年06月04日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>objective-C笑而不语,人家ARC不是工作得很好嘛???? 不明白大神为什么要吐槽引用计数</p>
+</div>
+ </article>
+</li>
+<li id="comment-1719051" class="comment byuser comment-author-full_of_bull bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1719051" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/fullofbull" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1719051"><time datetime="2015-06-08T23:24:01+08:00">2015年06月08日 23:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1717090" rel="nofollow">@hoooo </a><br/>
+是你理解力有问题，Linus 根本没吐槽引用计数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1739995" class="comment even thread-even depth-1">
+<article id="div-comment-1739995" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f3eb43c0981459901fc98f5439bf94be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f3eb43c0981459901fc98f5439bf94be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.weibo.com/xara" class="url" rel="ugc external nofollow">enpengxu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1739995"><time datetime="2015-07-24T11:32:12+08:00">2015年07月24日 11:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Linus其实谈的就是ww_mutex的一个特例</p>
+</div>
+ </article>
+</li>
+<li id="comment-1865526" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1865526" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c891805eb08c22b95607c88966168c6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c891805eb08c22b95607c88966168c6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">electrlife</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/16910.html#comment-1865526"><time datetime="2016-08-07T06:54:01+08:00">2016年08月07日 06:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>(b) once object A is locked, the pointer from A to B is stable, and you know you have a reference to B (because of that pointer from A to B)<br/>
+这句如何理解?为什么当A是LOCKED, 我们可以安全的引用B指针?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914346" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://147hub.com/47399.html" class="url" rel="ugc external nofollow">#Linus Torvalds ：忘掉那该死的并行吧！# – 147hub/147俱乐部/微靖江/新靖江论坛/靖江红娘网/靖江人才网/靖江招聘网/靖江征婚交友</a> </div>
+</li>
+<li id="comment-1914347" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://147hub.com/47399.html" class="url" rel="ugc external nofollow">#Linus Torvalds ：忘掉那该死的并行吧！# – 147hub/147俱乐部/微靖江/新靖江论坛/靖江红娘网/靖江人才网/靖江招聘网/靖江征婚交友</a> </div>
+</li>
+<li id="comment-1914348" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://147hub.com/47399.html" class="url" rel="ugc external nofollow">#Linus Torvalds ：忘掉那该死的并行吧！# – 147hub/147俱乐部/微靖江/新靖江论坛/靖江红娘网/靖江人才网/靖江招聘网/靖江征婚交友</a> </div>
+</li>
+<li id="comment-1914349" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://147hub.com/47399.html" class="url" rel="ugc external nofollow">#Linus Torvalds ：忘掉那该死的并行吧！# – 147hub/147俱乐部/微靖江/新靖江论坛/靖江红娘网/靖江人才网/靖江招聘网/靖江征婚交友</a> </div>
+</li>
+<li id="comment-1915345" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://schspa.tk/locking/" class="url" rel="ugc external nofollow">Locking – Schspa Blog</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

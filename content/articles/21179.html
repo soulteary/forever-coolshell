@@ -1,0 +1,646 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go 编程模式：Go Generation | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21179 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21179" class="post-content post-21179 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-go tag-golang tag-template series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go 编程模式：Go Generation</span>
+<h1 class="entry-title">Go 编程模式：Go Generation</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21179.html" title="17:06" rel="bookmark"><time class="entry-date" datetime="2020-12-25T17:06:36+08:00" pubdate="">2020年12月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21179.html#comments" class="comments-link">18 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 40,617 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p><figure id="attachment_21254" aria-describedby="caption-attachment-21254" style="width: 296px" class="wp-caption alignright"><img decoding="async" class="wp-image-21254 size-medium" src="/uploads/2020/12/go.generate-296x300.png" alt="" width="296" height="300" srcset="" sizes="(max-width: 296px) 100vw, 296px"/><figcaption id="caption-attachment-21254" class="wp-caption-text">图片来源：<a href="https://gophersource.com/" target="_blank" rel="noopener">GopherSource</a></figcaption></figure><p></p>
+<p>在本篇文章中，我们将要学习一下Go语言的代码生成的玩法。Go语言代码生成主要还是用来解决编程泛型的问题，泛型编程主要解决的问题是因为静态类型语言有类型，所以，相关的算法或是对数据处理的程序会因为类型不同而需要复制一份，这样导致数据类型和算法功能耦合的问题。泛型编程可以解决这样的问题，就是说，在写代码的时候，不用关心处理数据的类型，只需要关心相当处理逻辑。泛型编程是静态语言中非常非常重要的特征，如果没有泛型，我们很难做到多态，也很难完成抽象，会导致我们的代码冗余量很大。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第6 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go 编程模式：Go Generation</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21164.html" rel="prev" title="Go编程模式：Map-Reduce">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/17929.html" rel="next" title="Go编程模式：修饰器">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%8E%B0%E5%AE%9E%E4%B8%AD%E7%9A%84%E7%B1%BB%E6%AF%94" title="现实中的类比">现实中的类比</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Go%E8%AF%AD%E6%96%B9%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%A3%80%E6%9F%A5" title="Go语方的类型检查">Go语方的类型检查</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#Type_Assert" title="Type Assert">Type Assert</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#Reflection" title="Reflection">Reflection</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%AE%83%E5%B1%B1%E4%B9%8B%E7%9F%B3" title="它山之石">它山之石</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Go_Generator" title="Go Generator">Go Generator</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%87%BD%E6%95%B0%E6%A8%A1%E6%9D%BF" title="函数模板">函数模板</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%87%BD%E6%95%B0%E7%94%9F%E6%88%90%E8%84%9A%E6%9C%AC" title="函数生成脚本">函数生成脚本</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#%E7%94%9F%E6%88%90%E4%BB%A3%E7%A0%81" title="生成代码">生成代码</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E6%96%B0%E7%89%88Filter" title="新版Filter">新版Filter</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#%E7%AC%AC%E4%B8%89%E6%96%B9%E5%B7%A5%E5%85%B7" title="第三方工具">第三方工具</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%8E%B0%E5%AE%9E%E4%B8%AD%E7%9A%84%E7%B1%BB%E6%AF%94"></span>现实中的类比<span class="ez-toc-section-end"></span></h4>
+<p>举个现实当中的例子，用螺丝刀来做具比方，螺丝刀本来就是一个拧螺丝的动作，但是因为螺丝的类型太多，有平口的，有十字口的，有六角的……螺丝还有大小尺寸，导致我们的螺丝刀为了要适配各种千奇百怪的螺丝类型（样式和尺寸），导致要做出各种各样的螺丝刀。</p>
+<table>
+<tbody>
+<tr>
+<td><img decoding="async" loading="lazy" class="aligncenter wp-image-21180 size-medium" src="/uploads/2020/12/type01-300x225.png" alt="" width="300" height="225" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></td>
+<td><img decoding="async" loading="lazy" class="aligncenter wp-image-21181 size-medium" src="/uploads/2020/12/type02-300x225.png" alt="" width="300" height="225" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></td>
+</tr>
+</tbody>
+</table>
+<p>而真正的抽象是螺丝刀不应该关心螺丝的类型，只要关注好自己的功能是否完备，并让自己可以适配于不同类型的螺丝，如下所示，这就是所谓的泛型编程要解决的实际问题。</p>
+<p><span id="more-21179"></span></p>
+<table>
+<tbody>
+<tr>
+<td colspan="2"><img decoding="async" loading="lazy" class="aligncenter wp-image-21182 size-medium" src="/uploads/2020/12/type03-300x226.png" alt="" width="300" height="226" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></td>
+</tr>
+</tbody>
+</table>
+<h4><span class="ez-toc-section" id="Go%E8%AF%AD%E6%96%B9%E7%9A%84%E7%B1%BB%E5%9E%8B%E6%A3%80%E6%9F%A5"></span>Go语方的类型检查<span class="ez-toc-section-end"></span></h4>
+<p>因为Go语言目前并不支持真正的泛型，所以，只能用 <code>interface{}</code> 这样的类似于 <code>void*</code> 这种过度泛型来玩这就导致了我们在实际过程中就需要进行类型检查。Go语言的类型检查有两种技术，一种是 Type Assert，一种是Reflection。</p>
+<h5><span class="ez-toc-section" id="Type_Assert"></span>Type Assert<span class="ez-toc-section-end"></span></h5>
+<p>这种技术，一般是对某个变量进行 <code>.(type)</code>的转型操作，其会返回两个值， <code>variable, error</code>，第一个返回值是被转换好的类型，第二个是如果不能转换类型，则会报错。</p>
+<p>比如下面的示例，我们有一个通用类型的容器，可以进行 <code>Put(val)</code>和 <code>Get()</code>，注意，其使用了 <code>interface{}</code>作泛型</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//Container is a generic container, accepting anything.
+type Container []interface{}
+
+//Put adds an element to the container.
+func (c *Container) Put(elem interface{}) {
+    *c = append(*c, elem)
+}
+//Get gets an element from the container.
+func (c *Container) Get() interface{} {
+    elem := (*c)[0]
+    *c = (*c)[1:]
+    return elem
+}</pre>
+<p>在使用中，我们可以这样使用</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">intContainer := &amp;Container{}
+intContainer.Put(7)
+intContainer.Put(42)</pre>
+<p>但是，在把数据取出来时，因为类型是 <code>interface{}</code> ，所以，你还要做一个转型，如果转型成功能才能进行后续操作（因为 <code>interface{}</code>太泛了，泛到什么类型都可以放）下在是一个Type Assert的示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="2">// assert that the actual type is int
+elem, ok := intContainer.Get().(int)
+if !ok {
+    fmt.Println(&#34;Unable to read an int from intContainer&#34;)
+}
+
+fmt.Printf(&#34;assertExample: %d (%T)\n&#34;, elem, elem)
+</pre>
+<h5><span class="ez-toc-section" id="Reflection"></span>Reflection<span class="ez-toc-section-end"></span></h5>
+<p>对于反射，我们需要把上面的代码修改如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Container struct {
+    s reflect.Value
+}
+func NewContainer(t reflect.Type, size int) *Container {
+    if size &lt;=0  { size=64 }
+    return &amp;Container{
+        s: reflect.MakeSlice(reflect.SliceOf(t), 0, size), 
+    }
+}
+func (c *Container) Put(val interface{})  error {
+    if reflect.ValueOf(val).Type() != c.s.Type().Elem() {
+        return fmt.Errorf(“Put: cannot put a %T into a slice of %s&#34;, 
+            val, c.s.Type().Elem()))
+    }
+    c.s = reflect.Append(c.s, reflect.ValueOf(val))
+    return nil
+}
+func (c *Container) Get(refval interface{}) error {
+    if reflect.ValueOf(refval).Kind() != reflect.Ptr ||
+        reflect.ValueOf(refval).Elem().Type() != c.s.Type().Elem() {
+        return fmt.Errorf(&#34;Get: needs *%s but got %T&#34;, c.s.Type().Elem(), refval)
+    }
+    reflect.ValueOf(refval).Elem().Set( c.s.Index(0) )
+    c.s = c.s.Slice(1, c.s.Len())
+    return nil
+}</pre>
+<p>上面的代码并不难读，这是完全使用 reflection的玩法，其中</p>
+<ul>
+<li>在 <code>NewContainer()</code>会根据参数的类型初始化一个Slice</li>
+<li>在 <code>Put()</code>时候，会检查 <code>val</code> 是否和Slice的类型一致。</li>
+<li>在 <code>Get()</code>时，我们需要用一个入参的方式，因为我们没有办法返回 <code>reflect.Value</code> 或是 <code>interface{}</code>，不然还要做Type Assert</li>
+<li>但是有类型检查，所以，必然会有检查不对的道理 ，因此，需要返回 <code>error</code></li>
+</ul>
+<p>于是在使用上面这段代码的时候，会是下面这个样子：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">f1 := 3.1415926
+f2 := 1.41421356237
+
+c := NewMyContainer(reflect.TypeOf(f1), 16)
+
+if err := c.Put(f1); err != nil {
+  panic(err)
+}
+if err := c.Put(f2); err != nil {
+  panic(err)
+}
+
+g := 0.0
+
+if err := c.Get(&amp;g); err != nil {
+  panic(err)
+}
+fmt.Printf(&#34;%v (%T)\n&#34;, g, g) //3.1415926 (float64)
+fmt.Println(c.s.Index(0)) //1.4142135623</pre>
+<p>我们可以看到，Type Assert是不用了，但是用反射写出来的代码还是有点复杂的。那么有没有什么好的方法？</p>
+<h4><span class="ez-toc-section" id="%E5%AE%83%E5%B1%B1%E4%B9%8B%E7%9F%B3"></span>它山之石<span class="ez-toc-section-end"></span></h4>
+<p>对于泛型编程最牛的语言 C++ 来说，这类的问题都是使用 Template来解决的。</p>
+<table style="border: 0px;">
+<tbody>
+<tr style="background: none;">
+<td style="border: 0px;">
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">//用&lt;class T&gt;来描述泛型
+template &lt;class T&gt; 
+T GetMax (T a, T b)  { 
+    T result; 
+    result = (a&gt;b)? a : b; 
+    return (result); 
+} 
+</pre>
+</td>
+<td style="border: 0px;">
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">int i=5, j=6, k; 
+//生成int类型的函数
+k=GetMax&lt;int&gt;(i,j);
+ 
+long l=10, m=5, n; 
+//生成long类型的函数
+n=GetMax&lt;long&gt;(l,m); 
+</pre>
+</td>
+</tr>
+</tbody>
+</table>
+<p>C++的编译器会在编译时分析代码，根据不同的变量类型来自动化的生成相关类型的函数或类。C++叫模板的具体化。</p>
+<p>这个技术是编译时的问题，所以，不需要我们在运行时进行任何的运行的类型识别，我们的程序也会变得比较的干净。</p>
+<p>那么，我们是否可以在Go中使用C++的这种技术呢？答案是肯定的，只是Go的编译器不帮你干，你需要自己动手。</p>
+<h4><span class="ez-toc-section" id="Go_Generator"></span>Go Generator<span class="ez-toc-section-end"></span></h4>
+<p>要玩 Go的代码生成，你需要三件事：</p>
+<ol>
+<li>一个函数模板，其中设置好相应的占位符。</li>
+<li>一个脚本，用于按规则来替换文本并生成新的代码。</li>
+<li>一行注释代码。</li>
+</ol>
+<h5><span class="ez-toc-section" id="%E5%87%BD%E6%95%B0%E6%A8%A1%E6%9D%BF"></span>函数模板<span class="ez-toc-section-end"></span></h5>
+<p>我们把我们之前的示例改成模板。取名为 <code>container.tmp.go</code> 放在 <code>./template/</code>下</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package PACKAGE_NAME
+type GENERIC_NAMEContainer struct {
+    s []GENERIC_TYPE
+}
+func NewGENERIC_NAMEContainer() *GENERIC_NAMEContainer {
+    return &amp;GENERIC_NAMEContainer{s: []GENERIC_TYPE{}}
+}
+func (c *GENERIC_NAMEContainer) Put(val GENERIC_TYPE) {
+    c.s = append(c.s, val)
+}
+func (c *GENERIC_NAMEContainer) Get() GENERIC_TYPE {
+    r := c.s[0]
+    c.s = c.s[1:]
+    return r
+}</pre>
+<p>我们可以看到函数模板中我们有如下的占位符：</p>
+<ul>
+<li><code>PACKAGE_NAME</code> – 包名</li>
+<li><code>GENERIC_NAME</code> – 名字</li>
+<li><code>GENERIC_TYPE</code> – 实际的类型</li>
+</ul>
+<p>其它的代码都是一样的。</p>
+<h5><span class="ez-toc-section" id="%E5%87%BD%E6%95%B0%E7%94%9F%E6%88%90%E8%84%9A%E6%9C%AC"></span>函数生成脚本<span class="ez-toc-section-end"></span></h5>
+<p>然后，我们有一个叫<code>gen.sh</code>的生成脚本，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell" data-enlighter-title="gen.sh">#!/bin/bash
+
+set -e
+
+SRC_FILE=${1}
+PACKAGE=${2}
+TYPE=${3}
+DES=${4}
+#uppcase the first char
+PREFIX=&#34;$(tr &#39;[:lower:]&#39; &#39;[:upper:]&#39; &lt;&lt;&lt; ${TYPE:0:1})${TYPE:1}&#34;
+
+DES_FILE=$(echo ${TYPE}| tr &#39;[:upper:]&#39; &#39;[:lower:]&#39;)_${DES}.go
+
+sed &#39;s/PACKAGE_NAME/&#39;&#34;${PACKAGE}&#34;&#39;/g&#39; ${SRC_FILE} | \
+    sed &#39;s/GENERIC_TYPE/&#39;&#34;${TYPE}&#34;&#39;/g&#39; | \
+    sed &#39;s/GENERIC_NAME/&#39;&#34;${PREFIX}&#34;&#39;/g&#39; &gt; ${DES_FILE}</pre>
+<p>其需要4个参数：</p>
+<ul>
+<li>模板源文件</li>
+<li>包名</li>
+<li>实际需要具体化的类型</li>
+<li>用于构造目标文件名的后缀</li>
+</ul>
+<p>然后其会用 <code>sed</code> 命令去替换我们的上面的函数模板，并生成到目标文件中。（关于sed命令请参看本站的《<a title="sed 简明教程" href="/articles/9104.html" target="_blank" rel="noopener">sed 简明教程</a>》）</p>
+<h5><span class="ez-toc-section" id="%E7%94%9F%E6%88%90%E4%BB%A3%E7%A0%81"></span>生成代码<span class="ez-toc-section-end"></span></h5>
+<p>接下来，我们只需要在代码中打一个特殊的注释：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="1,10">//go:generate ./gen.sh ./template/container.tmp.go gen uint32 container
+func generateUint32Example() {
+    var u uint32 = 42
+    c := NewUint32Container()
+    c.Put(u)
+    v := c.Get()
+    fmt.Printf(&#34;generateExample: %d (%T)\n&#34;, v, v)
+}
+
+//go:generate ./gen.sh ./template/container.tmp.go gen string container
+func generateStringExample() {
+    var s string = &#34;Hello&#34;
+    c := NewStringContainer()
+    c.Put(s)
+    v := c.Get()
+    fmt.Printf(&#34;generateExample: %s (%T)\n&#34;, v, v)
+}</pre>
+<p>其中，</p>
+<ul>
+<li>第一个注释是生成包名为 <code>gen</code> 类型为 <code>uint32</code> 目标文件名以 <code>container</code> 为后缀</li>
+<li>第二个注释是生成包名为 <code>gen</code> 类型为 <code>string</code> 目标文件名以 <code>container</code> 为后缀</li>
+</ul>
+<p>然后，在工程目录中直接执行 <code> go generate</code> 命令，就会生成如下两份代码，</p>
+<p>一份文件名为<code>uint32_container.go</code></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp" data-enlighter-title="uint32_container.go">package gen
+
+type Uint32Container struct {
+    s []uint32
+}
+func NewUint32Container() *Uint32Container {
+    return &amp;Uint32Container{s: []uint32{}}
+}
+func (c *Uint32Container) Put(val uint32) {
+    c.s = append(c.s, val)
+}
+func (c *Uint32Container) Get() uint32 {
+    r := c.s[0]
+    c.s = c.s[1:]
+    return r
+}</pre>
+<p>另一份的文件名为 <code>string_container.go</code></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp" data-enlighter-title="string_container.go">package gen
+
+type StringContainer struct {
+    s []string
+}
+func NewStringContainer() *StringContainer {
+    return &amp;StringContainer{s: []string{}}
+}
+func (c *StringContainer) Put(val string) {
+    c.s = append(c.s, val)
+}
+func (c *StringContainer) Get() string {
+    r := c.s[0]
+    c.s = c.s[1:]
+    return r
+}
+</pre>
+<p>这两份代码可以让我们的代码完全编译通过，所付出的代价就是需要多执行一步 <code>go generate</code> 命令。</p>
+<h4><span class="ez-toc-section" id="%E6%96%B0%E7%89%88Filter"></span>新版Filter<span class="ez-toc-section-end"></span></h4>
+<p>现在我们再回头看看我们之前《<a href="/articles/21164.html" target="_blank" rel="noopener">Go编程模式：Map-Reduce</a>》中的那些个用反射整出来的例子，有了这样的技术，我就不必在代码里用那些晦涩难懂的反射来做运行时的类型检查了。我们可以写下很干净的代码，让编译器在编译时检查类型对不对。下面是一个Fitler的模板文件 <code>filter.tmp.go</code>：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package PACKAGE_NAME
+
+type GENERIC_NAMEList []GENERIC_TYPE
+
+type GENERIC_NAMEToBool func(*GENERIC_TYPE) bool
+
+func (al GENERIC_NAMEList) Filter(f GENERIC_NAMEToBool) GENERIC_NAMEList {
+    var ret GENERIC_NAMEList
+    for _, a := range al {
+        if f(&amp;a) {
+            ret = append(ret, a)
+        }
+    }
+    return ret
+}
+</pre>
+<p>于是我们可在需要使用这个的地方，加上相关的 go generate 的注释</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic" data-enlighter-highlight="8">type Employee struct {
+  Name     string
+  Age      int
+  Vacation int
+  Salary   int
+}
+
+//go:generate ./gen.sh ./template/filter.tmp.go gen Employee filter
+func filterEmployeeExample() {
+
+  var list = EmployeeList{
+    {&#34;Hao&#34;, 44, 0, 8000},
+    {&#34;Bob&#34;, 34, 10, 5000},
+    {&#34;Alice&#34;, 23, 5, 9000},
+    {&#34;Jack&#34;, 26, 0, 4000},
+    {&#34;Tom&#34;, 48, 9, 7500},
+  }
+
+  var filter EmployeeList
+  filter = list.Filter(func(e *Employee) bool {
+    return e.Age &gt; 40
+  })
+
+  fmt.Println(&#34;----- Employee.Age &gt; 40 ------&#34;)
+  for _, e := range filter {
+    fmt.Println(e)
+  }
+
+  filter = list.Filter(func(e *Employee) bool {
+    return e.Salary &lt;= 5000
+  })
+
+  fmt.Println(&#34;----- Employee.Salary &lt;= 5000 ------&#34;)
+  for _, e := range filter {
+    fmt.Println(e)
+  }
+}</pre>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%89%E6%96%B9%E5%B7%A5%E5%85%B7"></span>第三方工具<span class="ez-toc-section-end"></span></h4>
+<p>我们并不需要自己手写 <code>gen.sh</code> 这样的工具类，已经有很多第三方的已经写好的可以使用。下面是一个列表：</p>
+<ul>
+<li>Genny –  <a href="https://github.com/cheekybits/genny">https://github.com/cheekybits/genny</a></li>
+<li>Generic – <a href="https://github.com/taylorchu/generic">https://github.com/taylorchu/generic</a></li>
+<li>GenGen – <a href="https://github.com/joeshaw/gengen">https://github.com/joeshaw/gengen</a></li>
+<li>Gen – <a href="https://github.com/clipperhouse/gen">https://github.com/clipperhouse/gen</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21179-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">Template</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go 编程模式：Go Generation</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187513" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21228.html" class="url" rel="ugc">Go编程模式：Pipeline | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2187571" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2187571" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db9e52e180051ab91fd1cc82720e99a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db9e52e180051ab91fd1cc82720e99a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">喵小爱</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2187571"><time datetime="2020-12-26T20:33:09+08:00">2020年12月26日 20:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因为Go语言目前并不支持超人正的泛型<br/>
+超人证？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2187787" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2187787" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2187787"><time datetime="2020-12-27T10:43:22+08:00">2020年12月27日 10:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对不起，应该是“真正的”，不知道为什么会打成这样。我这五笔……</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187927" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2187927" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23062310363b8606a0fe803539367d58?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23062310363b8606a0fe803539367d58?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://morefreeze.github.io" class="url" rel="ugc external nofollow">morefreeze</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2187927"><time datetime="2020-12-27T19:59:58+08:00">2020年12月27日 19:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>损人和-&gt;操作</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188186" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2188186" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2188186"><time datetime="2020-12-28T10:50:41+08:00">2020年12月28日 10:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢啊，我这五笔……</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187969" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2187969" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23062310363b8606a0fe803539367d58?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23062310363b8606a0fe803539367d58?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://morefreeze.github.io" class="url" rel="ugc external nofollow">morefreeze</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2187969"><time datetime="2020-12-27T22:05:19+08:00">2020年12月27日 22:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因些 -&gt; 因此</p>
+<p>前面半句“必然会有检查不对的总理” 应该是 道理？</p>
+<p>耗叔招个编辑吧，或者每次把原稿发我邮箱 :P</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188001" class="comment even depth-2">
+<article id="div-comment-2188001" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">🍑</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2188001"><time datetime="2020-12-27T23:54:01+08:00">2020年12月27日 23:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈，大家吐槽错别字比较多。</p>
+<p>看得出来耗叔是打单字模式的，不然不应该像“语言 ygyy，“因此 ldhx” 会打错成“因些”的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2188200" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2188200" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2188200"><time datetime="2020-12-28T11:42:01+08:00">2020年12月28日 11:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好的，下次找你。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2188060" class="comment even thread-even depth-1">
+<article id="div-comment-2188060" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7be8234eab908462d2c203c944de6ccf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7be8234eab908462d2c203c944de6ccf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nivra</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2188060"><time datetime="2020-12-28T03:04:35+08:00">2020年12月28日 03:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>官方的 text/template 或许可以用</p>
+</div>
+ </article>
+</li>
+<li id="comment-2190949" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2190949" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5dc17a94c081b987eb3c65b7a15856c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5dc17a94c081b987eb3c65b7a15856c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">罗杰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2190949"><time datetime="2021-01-04T12:25:17+08:00">2021年01月04日 12:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Reflection 下面的代码双引号标点使用错误，使用了中文的双引号</p>
+</div>
+ </article>
+</li>
+<li id="comment-2210004" class="comment even thread-even depth-1">
+<article id="div-comment-2210004" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e22b6b21f47ead026e6f1029d06eb122?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e22b6b21f47ead026e6f1029d06eb122?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">苏无名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2210004"><time datetime="2021-02-23T12:51:46+08:00">2021年02月23日 12:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你有意思吗？写这么多好文章我都没收到通知</p>
+</div>
+ </article>
+</li>
+<li id="comment-2219256" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2219256" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2219256"><time datetime="2021-03-17T21:41:24+08:00">2021年03月17日 21:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>泛型实现方式<br/>
+1、C<br/>
+通过void*和强制类型转换来实现，也可以通过宏来实现类似功能，一般只会用作简单的实现</p>
+<p>2、C++<br/>
+模板类的模板具体化，预编译时生成不同的类，分别进行编译，代码会膨胀，但由于不需要在运行时进行任何的类型识别，程序也会变得比较干净，运行效率也更高。</p>
+<p>3、JAVA<br/>
+基于类型擦除，在编译泛型类时将强制消除类型信息；JVM运行时泛型类并不知道自己处理的具体是何种类型。</p>
+<p>4、Go<br/>
+当前版本不支持泛型，可以通过 interface{}强制转换实现泛型。<br/>
+也可以通过第三方库，实现模板库类型的泛型。</p>
+<p>5、C#<br/>
+泛型类在编译生成中间码IL时，通用类型T只是一个占位符。<br/>
+在实例化类时，根据实际数据类型代替T并由即时编译器（JIT）生成本地代码运行，不同封闭类的本地代码是不一样的。</p>
+<p>6、JS、Python<br/>
+动态类型天然支持泛型</p>
+</div>
+ </article>
+</li>
+<li id="comment-2297113" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.mamaxue.com/article/57/" class="url" rel="ugc external nofollow">专题文章1 – Mamaxue</a> </div>
+</li>
+<li id="comment-2297535" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2297535" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/28aa0fa4ab586e1e302eab6a2373c83a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/28aa0fa4ab586e1e302eab6a2373c83a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">1234</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2297535"><time datetime="2021-09-03T12:24:32+08:00">2021年09月03日 12:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>反射版get put代码有错，直接<br/>
+reflect.TypeOf(refVal).Elem()!=c.s.Type().Elem()就行了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2298157" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21615.html" class="url" rel="ugc">Go编程模式 ： 泛型编程 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2312062" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2312062" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f7a575e443553802f7ca649df526d8ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f7a575e443553802f7ca649df526d8ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jianwen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2312062"><time datetime="2021-10-02T09:13:40+08:00">2021年10月02日 09:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种技术，一般是对某个变量进行 .(type)的转型操作，其会返回两个值， variable, error —&gt; 第二个返回值是boolean类型。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2326204" class="comment even thread-even depth-1">
+<article id="div-comment-2326204" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/360e74168f7f8c8d6b3125c83ca53765?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/360e74168f7f8c8d6b3125c83ca53765?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://edge" class="url" rel="ugc external nofollow">edgeplan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2326204"><time datetime="2021-10-29T10:50:11+08:00">2021年10月29日 10:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，标题2是：go语言中的类型检查吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2359235" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2359235" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0741637b24c7e01519c0a0530045eaf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0741637b24c7e01519c0a0530045eaf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">samuelyao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21179.html#comment-2359235"><time datetime="2022-01-14T10:02:33+08:00">2022年01月14日 10:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Go语方的类型检查<br/>
+=&gt;</p>
+<p>Go语言的类型检查</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,760 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Javascript 中的 var | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7480 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7480" class="post-content post-7480 post type-post status-publish format-standard hentry category-webdev category-misc category-story tag-javascript tag-jslint">
+<header class="entry-header">
+<span class="screen-reader-text">Javascript 中的 var</span>
+<h1 class="entry-title">Javascript 中的 var</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7480.html" title="14:50" rel="bookmark"><time class="entry-date" datetime="2012-05-24T14:50:31+08:00" pubdate="">2012年05月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7480.html#comments" class="comments-link">48 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 28,710 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>MelonCard发布了一篇文章——”<a href="http://blog.meloncard.com/post/12175941935/how-one-missing-var-ruined-our-launch" target="_blank">how one missing var ruined our launch</a>“（”少写了一个var毁了我的网站”），这篇文章是说MelonCard用Node.js做后台，因为出了一个小高峰——有50-100人注册，结果整个网站都不响应了，而且还出现了很多奇怪的问题。当他们调查到问题的要源的时候，他们发现下面的代码少写了一个var。</p>
+<p>[javascript]app.all(‘/apps/:user_id/status’, function(req, res, next) {<br/>
+// …<br/>
+initial = extractVariables(req.body);<br/>
+});[/javascript]</p>
+<p>为什么inital少写一个var会引发这个问题呢？因为如果你不写var，这个局部的变量会被javascript当成全局变量，而这个变量又是一个函数，所以，当多用户并发的时候，这个本应该在不同用户下互不干扰的变量，成了各个用户共享的东西。试想，用户A的数据被用户B覆盖了，用户A和B的数据还没处理完，结果被新的C给搞乱了，程序的逻辑自然出现了问题。</p>
+<p>在stackoverflow.com上有<a href="http://stackoverflow.com/questions/1470488/difference-between-using-var-and-not-using-var-in-javascript" target="_blank">这么一个贴子说明了“有var”和“无var”</a>的差别：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">// These are both globals
+var foo = 1;
+bar = 2;
+
+function test()
+{
+    var foo = 1; // Local
+    bar = 2;     // Global
+
+    // Execute an anonymous function
+    (function()
+    {
+        var wibble = 1; // Local
+        foo = 2; // Inherits from scope above (creating a closure)
+        moo = 3; // Global
+    }())
+}</pre>
+<p>上面这个示例告诉我们，如果你不用var，那么这个js引擎会一层一层地向上找父作用域中的变量，如果找到了，就用，如果找不到了，就会帮你定义一个全局的变量。上面这个例子充分说明了这一点。所以，<strong>如果你想在当前的作用域用声明变量，你一定要用var</strong>。这对于一些乱写javascript代码的程序员要注意了。这里再给大家介绍一个工具——</p>
+<p><span id="more-7480"></span></p>
+<p><strong>JSLint( <a href="http://www.jslint.com/">http://www.jslint.com/</a> )</strong>，一个JS代码质量的分析工具，我们把上述stackoverflow的代码copy到JSLint这个在线工具中，我们可以看到下面的报告：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-7483" title="jslint" src="/uploads/2012/05/jslint.jpg" alt="" width="500" height="184" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>这个报告说明了源码中的那些变量的情况。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7480-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">JSLint</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Javascript 中的 var</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-195684" class="comment even thread-even depth-1">
+<article id="div-comment-195684" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fa39aa85de9bda6de15e505f9bb6576a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fa39aa85de9bda6de15e505f9bb6576a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ed9985849e849e8b9883ad948c858282c38e8280">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195684"><time datetime="2012-05-24T15:28:01+08:00">2012年05月24日 15:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>MelonCard那里哥儿们都没用过JavaScript吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-195689" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195689" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://szhaitao.blog.hexun.com/" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195689"><time datetime="2012-05-24T17:09:09+08:00">2012年05月24日 17:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>【这对于一些乱写javascript代码的程序员要注意了】<br/>
+设计语言的时候，为什么不尽量让人想乱写都无法乱写呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-195693" class="comment even thread-even depth-1">
+<article id="div-comment-195693" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/330d0786af37c4323d183721dbff9f9f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/330d0786af37c4323d183721dbff9f9f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">enz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195693"><time datetime="2012-05-24T18:23:38+08:00">2012年05月24日 18:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>据我所知coffeescript没有var，这应该是一种改进吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195697" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195697" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e65add30eaf3de5c1955d1f309c7574?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e65add30eaf3de5c1955d1f309c7574?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.9696e.com" class="url" rel="ugc external nofollow">疯子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195697"><time datetime="2012-05-24T21:05:30+08:00">2012年05月24日 21:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>失误一个很小的地方就导致大错了。还是严谨好啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195699" class="comment even thread-even depth-1">
+<article id="div-comment-195699" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1aa0e3149007e3290c7adc99b0fabd3f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1aa0e3149007e3290c7adc99b0fabd3f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tlzebsl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195699"><time datetime="2012-05-24T21:23:29+08:00">2012年05月24日 21:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195689" rel="nofollow">@haitao </a><br/>
+十来天设计的语言……<br/>
+而且作者是研究函数式的，为了闭包总得找得到变量定义的地方，不写 var 就当成 local 的话就没闭包的事了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195700" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195700" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/128cd851232e04d9a8dd781a357f14af?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/128cd851232e04d9a8dd781a357f14af?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">resty</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195700"><time datetime="2012-05-24T22:04:34+08:00">2012年05月24日 22:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195693" rel="nofollow">@enz </a> </p>
+<p>coffee 没有var是个更大的问题。这样你程序本来是对的，某天碰巧在前面定义了一个全局变量，结果后面就自动错了，都没法指定成local的</p>
+</div>
+ </article>
+</li>
+<li id="comment-195703" class="comment even thread-even depth-1">
+<article id="div-comment-195703" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad7f517159350ae1997713b686130c98?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad7f517159350ae1997713b686130c98?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sss</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195703"><time datetime="2012-05-24T22:22:10+08:00">2012年05月24日 22:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于这些东西,可以看《javascript语言精粹》这本书,大牛里面都说了这些东西的</p>
+</div>
+ </article>
+</li>
+<li id="comment-195707" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195707" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a07a4106cef5468f5225fdabea7f5a7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a07a4106cef5468f5225fdabea7f5a7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">GG</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195707"><time datetime="2012-05-25T00:31:50+08:00">2012年05月25日 00:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Hi，《少写一个`var`是如何毁掉我们网站的》有中文译文哦 <a href="http://blog.jobbole.com/10348/" rel="nofollow ugc">http://blog.jobbole.com/10348/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-195708" class="comment even thread-even depth-1">
+<article id="div-comment-195708" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1106044c62c387e29dd4ea20bd8c96f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1106044c62c387e29dd4ea20bd8c96f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.mabye520.net/blog" class="url" rel="ugc external nofollow">心灵小屋</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195708"><time datetime="2012-05-25T01:39:22+08:00">2012年05月25日 01:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个貌似一般讲javascript语法的书中都提到要注意全局变量和局部变量，不过实际写的时候确实会偶尔犯这样的错误。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195716" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195716" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2d8d5c8e7891c2c56f678860f3059d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2d8d5c8e7891c2c56f678860f3059d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">t</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195716"><time datetime="2012-05-25T06:41:36+08:00">2012年05月25日 06:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实只是有木有注意的问题。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195717" class="comment even thread-even depth-1">
+<article id="div-comment-195717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2d8d5c8e7891c2c56f678860f3059d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2d8d5c8e7891c2c56f678860f3059d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">t</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195717"><time datetime="2012-05-25T06:44:19+08:00">2012年05月25日 06:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>此外我有一点想吐槽楼主 – 也是整个 coolshell.cn 如果没记错 – 你们为神马要一个 IE=EmulateIE7? 在 IE 9/10 标准模式下效果更好哦。。。:)</p>
+</div>
+ </article>
+</li>
+<li id="comment-195719" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195719" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d6e8639fcaea0c7c0fab106033f05de0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d6e8639fcaea0c7c0fab106033f05de0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nomospace</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195719"><time datetime="2012-05-25T10:22:08+08:00">2012年05月25日 10:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195717" rel="nofollow">@t </a><br/>
+历史原因这有什么好吐槽的</p>
+</div>
+ </article>
+</li>
+<li id="comment-195720" class="comment even thread-even depth-1">
+<article id="div-comment-195720" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00c438944f515804a1b31a997ccd113b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00c438944f515804a1b31a997ccd113b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">YY</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195720"><time datetime="2012-05-25T10:51:20+08:00">2012年05月25日 10:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>JavaScript坑爹的地方挺多，诘诎聱牙起来甚至有点像C++的语法了…所以现在做Node开发，开始流行用CoffeeScript来编写代码，再transcompile成JavaScript了…</p>
+</div>
+ </article>
+</li>
+<li id="comment-195722" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195722" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e84f2662ea48b9549458f86aac285f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e84f2662ea48b9549458f86aac285f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">LL</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195722"><time datetime="2012-05-25T11:32:12+08:00">2012年05月25日 11:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>类似的情况还有this关键字，写Java的时候习惯不用this获取成员变量，Javascript不用this获取的完全是不同的东西</p>
+</div>
+ </article>
+</li>
+<li id="comment-195723" class="comment even thread-even depth-1">
+<article id="div-comment-195723" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195723"><time datetime="2012-05-25T12:58:04+08:00">2012年05月25日 12:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚好在看var变量的部分，以后要注意一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-195740" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dabentu.com/453.html" class="url" rel="ugc external nofollow">JS学习（二）：值和变量 « 大笨兔博客</a> </div>
+</li>
+<li id="comment-195743" class="comment even thread-even depth-1">
+<article id="div-comment-195743" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://szhaitao.blog.hexun.com/" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195743"><time datetime="2012-05-25T17:51:49+08:00">2012年05月25日 17:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-195699"><p>
+<strong><a href="#comment-195699" rel="nofollow">tlzebsl </a> :</strong><a href="#comment-195689" rel="nofollow">@haitao </a>十来天设计的语言……而且作者是研究函数式的，为了闭包总得找得到变量定义的地方，不写 var 就当成 local 的话就没闭包的事了。</p></blockquote>
+<p>严格点，应该：global声明的变量，是全局变量；var声明的是局部变量；没声明的语法报错。<br/>
+语言设计，真正是：严是爱，宽是害</p>
+</div>
+ </article>
+</li>
+<li id="comment-195755" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195755" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cc68bb2d064b669bd3d1b5fff425c14c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cc68bb2d064b669bd3d1b5fff425c14c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">guoxu1231</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195755"><time datetime="2012-05-26T00:25:47+08:00">2012年05月26日 00:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>让Javascript这个苦逼的语言自然死亡把 缝缝补补又一年解决不了问题了</p>
+</div>
+ </article>
+</li>
+<li id="comment-195756" class="comment even thread-even depth-1">
+<article id="div-comment-195756" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96e0106dccde46f7395da1e8b23aff8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96e0106dccde46f7395da1e8b23aff8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://2maomao.com/blog/" class="url" rel="ugc external nofollow">半瓶墨水</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195756"><time datetime="2012-05-26T02:10:06+08:00">2012年05月26日 02:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这是javascript的设计缺陷。</p>
+<p>应该设计成这样：默认变量是局部的，全局变量必须加上类似于global关键字的前缀。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195765" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195765" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24bf1139bef4e20f51105650dba4a69b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24bf1139bef4e20f51105650dba4a69b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.81n.org" class="url" rel="ugc external nofollow">81难</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195765"><time datetime="2012-05-26T11:09:30+08:00">2012年05月26日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一直没有遇到过这种问题，看来俺写代码的习惯还是不错的。由此可以看出良好的编码习惯是多么的重要啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-195772" class="comment even thread-even depth-1">
+<article id="div-comment-195772" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00c438944f515804a1b31a997ccd113b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00c438944f515804a1b31a997ccd113b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">YY</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195772"><time datetime="2012-05-26T18:47:32+08:00">2012年05月26日 18:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-195756"><p>
+<strong><a href="#comment-195756" rel="nofollow">半瓶墨水 </a> :</strong>这是javascript的设计缺陷。<br/>
+应该设计成这样：默认变量是局部的，全局变量必须加上类似于global关键字的前缀。</p></blockquote>
+<p>或者干脆学ruby那样，不同作用域的名称的命名方法有显式的区别…</p>
+</div>
+ </article>
+</li>
+<li id="comment-195774" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195774" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24bf1139bef4e20f51105650dba4a69b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24bf1139bef4e20f51105650dba4a69b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.81n.org" class="url" rel="ugc external nofollow">81难</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195774"><time datetime="2012-05-26T22:27:14+08:00">2012年05月26日 22:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195772" rel="nofollow">@YY </a><br/>
+JavaScript就这样，咱们得学会适应</p>
+</div>
+ </article>
+</li>
+<li id="comment-195775" class="comment even thread-even depth-1">
+<article id="div-comment-195775" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e08a808821006370b0f5f3d1f78445d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e08a808821006370b0f5f3d1f78445d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ninozhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195775"><time datetime="2012-05-26T22:56:13+08:00">2012年05月26日 22:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还有一种定义会比较坑爹。</p>
+<p>var a,<br/>
+b,<br/>
+c;<br/>
+d,<br/>
+e;</p>
+<p>这时候d和e就..</p>
+</div>
+ </article>
+</li>
+<li id="comment-195781" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195781" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8525ceb678d7f173dc08df48deffe477?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8525ceb678d7f173dc08df48deffe477?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Arrowing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195781"><time datetime="2012-05-27T12:42:50+08:00">2012年05月27日 12:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实不加var也可以呀<br/>
+主要不要共享此函数就好了<br/>
+initial = clone(extractVariables(req.body));<br/>
+足以，复制一个就行，保证不同，不共享，clone自写。。。复制一个对象</p>
+</div>
+ </article>
+</li>
+<li id="comment-195804" class="comment even thread-even depth-1">
+<article id="div-comment-195804" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76bf877f55adfb3620495c0ba1c8ab47?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76bf877f55adfb3620495c0ba1c8ab47?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://shop.helpnow.cn" class="url" rel="ugc external nofollow">浮生如斯</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195804"><time datetime="2012-05-28T17:27:57+08:00">2012年05月28日 17:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>习惯问题，搞过JS的一般都不会写错的</p>
+</div>
+ </article>
+</li>
+<li id="comment-195838" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f2586bd0c9f88fad212dde8958409a9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f2586bd0c9f88fad212dde8958409a9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Noname</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195838"><time datetime="2012-05-30T23:56:26+08:00">2012年05月30日 23:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗哥现在对JavaScript很感兴趣了呀，嗨，两年前我用js写的扫雷游戏就中了var的招了，在递归地扫描某个格子周围非地雷格子的函数中：<br/>
+<code><br/>
+function search_empty_square( square ) // first invoked with square.value == 0<br/>
+{<br/>
+// var sr ;<br/>
+if( square.value &gt;=0 &amp;&amp; square.locked == false ) {<br/>
+click_square( square ) ;<br/>
+if( square.value == 0 ) {<br/>
+if( square.x&gt;0 &amp;&amp; square.y&gt;0 &amp;&amp; !( sr=document.getElementById((square.x-1)*row+(square.y-1)) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+if( square.x&gt;0 &amp;&amp; !( sr=document.getElementById((square.x-1)*row+square.y) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+if( square.x&gt;0 &amp;&amp; square.y0 &amp;&amp; !( sr=document.getElementById(square.x*row+(square.y-1)) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+if( square.y&lt;row-1 &amp;&amp; !( sr=document.getElementById(square.x*row+(square.y+1)) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+if( square.x0 &amp;&amp; !( sr=document.getElementById((square.x+1)*row+(square.y-1)) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+if( square.x&lt;line-1 &amp;&amp; !( sr=document.getElementById((square.x+1)*row+square.y) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+if( square.x&lt;line-1 &amp;&amp; square.y&lt;row-1 &amp;&amp; !( sr=document.getElementById((square.x+1)*row+(square.y+1)) ).clicked )<br/>
+search_empty_square( sr ) ;<br/>
+}<br/>
+}<br/>
+}<br/>
+</code><br/>
+上述代码没有对sr进行var声明，导致sr成为全局变量了，之前用C++写的扫雷扫描算法是OK，移植到JavaScript就出问题了，当时还以为JavaScript不支持递归呢，最后看了《精通JavaScript》后才知道不使用var进行声明的变量会成为全局变量，自做完扫雷游戏开始，在每次变量使用前我都会用var进行声明，教训呀，</p>
+</div>
+ </article>
+</li>
+<li id="comment-195839" class="comment even thread-even depth-1">
+<article id="div-comment-195839" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8392613f3b47ebaf39ce73392f5d133a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8392613f3b47ebaf39ce73392f5d133a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">星期六的黄昏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195839"><time datetime="2012-05-31T09:13:39+08:00">2012年05月31日 09:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>node.js已经支持use strict了就是用来杜绝此问题的。<br/>
+给你找个特性了你不去用，那怪谁啊<br/>
+只要在文件头添加一行”use strict”;<br/>
+任何未声明的变量都会报错<br/>
+“use strict”;</p>
+<p>app = 1;//报错</p>
+<p>(function(){<br/>
+var local = 2;<br/>
+})();</p>
+</div>
+ </article>
+</li>
+<li id="comment-195846" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195846" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4bd15a2894a89d882735d2417b7482a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4bd15a2894a89d882735d2417b7482a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">artair</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195846"><time datetime="2012-05-31T12:44:10+08:00">2012年05月31日 12:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-195743"><p>
+<strong><a href="#comment-195743" rel="nofollow">haitao</a> :</strong></p>
+<blockquote cite="#commentbody-195699"><p>
+<strong><a href="#comment-195699" rel="nofollow">tlzebsl </a> :</strong><a href="#comment-195689" rel="nofollow">@haitao </a>十来天设计的语言……而且作者是研究函数式的，为了闭包总得找得到变量定义的地方，不写 var 就当成 local 的话就没闭包的事了。</p></blockquote>
+<p>严格点，应该：global声明的变量，是全局变量；var声明的是局部变量；没声明的语法报错。<br/>
+语言设计，真正是：严是爱，宽是害
+</p></blockquote>
+<p>其实，这是js语言的一大优点，jsvascript根本就与严格语言没什么关系。扔掉那些诸如Fortran的规范语言，和面向对象的java语言后，再来学它。</p>
+<p>还有重要的一点，js本就不是为了生产而设计出来的语言。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195857" class="comment even thread-even depth-1">
+<article id="div-comment-195857" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://szhaitao.blog.hexun.com/" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195857"><time datetime="2012-06-01T10:06:05+08:00">2012年06月01日 10:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-195846"><p>
+<strong><a href="#comment-195846" rel="nofollow">artair </a> :</strong></p>
+<blockquote cite="#commentbody-195743"><p>
+<strong><a href="#comment-195743" rel="nofollow">haitao</a> :</strong></p>
+<blockquote cite="#commentbody-195699"><p>
+<strong><a href="#comment-195699" rel="nofollow">tlzebsl </a>:</strong><a href="#comment-195689" rel="nofollow">@haitao </a>十来天设计的语言……而且作者是研究函数式的，为了闭包总得找得到变量定义的地方，不写 var 就当成 local 的话就没闭包的事了。</p></blockquote>
+<p>严格点，应该：global声明的变量，是全局变量；var声明的是局部变量；没声明的语法报错。语言设计，真正是：严是爱，宽是害 </p></blockquote>
+<p>其实，这是js语言的一大优点，jsvascript根本就与严格语言没什么关系。扔掉那些诸如Fortran的规范语言，和面向对象的java语言后，再来学它。<br/>
+还有重要的一点，js本就不是为了生产而设计出来的语言。</p></blockquote>
+<p><a href="#comment-195846" rel="nofollow">@artair </a><br/>
+不为了生产？软件大了就如泥潭，不严格就更早、更快就变成泥潭。。。。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195863" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195863" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8c797d8761ee2f49c66c41be4d98b99?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8c797d8761ee2f49c66c41be4d98b99?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aisee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195863"><time datetime="2012-06-01T19:10:04+08:00">2012年06月01日 19:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>javascript代码在浏览器端执行, 怎么会并发用户互相影响 ??</p>
+</div>
+ </article>
+</li>
+<li id="comment-195874" class="comment even thread-even depth-1">
+<article id="div-comment-195874" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c48935c2c5ae6c39982a04793a432637?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c48935c2c5ae6c39982a04793a432637?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">裕波</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195874"><time datetime="2012-06-02T08:58:54+08:00">2012年06月02日 08:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这与运行时编译和运行前编译有关系，而且JavaScript也有他自己的故事，有兴趣可以看看道格拉思的写的那本书：JavaScript语言精粹。<a href="#comment-195689" rel="nofollow">@haitao </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-195976" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195976" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa7b2070cd73b30d5dcd52d0beb4cd7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa7b2070cd73b30d5dcd52d0beb4cd7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">承志</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195976"><time datetime="2012-06-04T16:56:11+08:00">2012年06月04日 16:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在客户端虽然也有问题，但还不至于这么大。node js放在了客户端，确实把问题放大了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-195977" class="comment even thread-even depth-1">
+<article id="div-comment-195977" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa7b2070cd73b30d5dcd52d0beb4cd7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa7b2070cd73b30d5dcd52d0beb4cd7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">承志</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-195977"><time datetime="2012-06-04T16:56:38+08:00">2012年06月04日 16:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>打错了，应该是：“node js跑在服务端”</p>
+</div>
+ </article>
+</li>
+<li id="comment-196235" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-196235" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5811645b61f42ec42dfb9fc4d5467381?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5811645b61f42ec42dfb9fc4d5467381?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://bepanda.me" class="url" rel="ugc external nofollow">月落</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-196235"><time datetime="2012-06-09T10:55:46+08:00">2012年06月09日 10:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195863" rel="nofollow">@aisee </a> 文中提到的是NodeJS，运行在服务端</p>
+</div>
+ </article>
+</li>
+<li id="comment-196426" class="comment even thread-even depth-1">
+<article id="div-comment-196426" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9afc32e99dc5e363dad91cbb6a74accd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9afc32e99dc5e363dad91cbb6a74accd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.zhaojie.me/" class="url" rel="ugc external nofollow">老赵</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-196426"><time datetime="2012-06-13T11:02:53+08:00">2012年06月13日 11:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还是得单元测试啊……刚好写了篇文章讲Mocha的单元测试，会探测有没有Global Leak：</p>
+<p><a href="http://blog.zhaojie.me/2012/06/jscex-unit-tests-with-mocha-chai.html" rel="nofollow ugc">http://blog.zhaojie.me/2012/06/jscex-unit-tests-with-mocha-chai.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-196704" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-196704" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1181638c8cfea050964dc93732404c0b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1181638c8cfea050964dc93732404c0b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andywang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-196704"><time datetime="2012-06-16T09:43:14+08:00">2012年06月16日 09:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错的博文啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-196705" class="comment even thread-even depth-1">
+<article id="div-comment-196705" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e16805e7098e5893406348c6d92a271?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e16805e7098e5893406348c6d92a271?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andywang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-196705"><time datetime="2012-06-16T09:44:26+08:00">2012年06月16日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>但有些看得不是很明白。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197144" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197144" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2ae833d329831a8d9bcff9eabef0a22?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2ae833d329831a8d9bcff9eabef0a22?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chenpeng.info" class="url" rel="ugc external nofollow">chenpeng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-197144"><time datetime="2012-06-21T16:21:03+08:00">2012年06月21日 16:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>几个基本概念,呵呵</p>
+<p>陈鹏个人博客<br/>
+优秀的开源软件让生活更简单</p>
+</div>
+ </article>
+</li>
+<li id="comment-197216" class="comment even thread-even depth-1">
+<article id="div-comment-197216" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e132d17f367dda4332c6571a07590aec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e132d17f367dda4332c6571a07590aec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">永远的阿哲</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-197216"><time datetime="2012-06-22T11:21:21+08:00">2012年06月22日 11:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人认为jshint更好</p>
+</div>
+ </article>
+</li>
+<li id="comment-198500" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198500" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/38135c60b09c5f5a6cba9e09a5f87205?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/38135c60b09c5f5a6cba9e09a5f87205?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jssucks</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-198500"><time datetime="2012-07-08T20:00:37+08:00">2012年07月08日 20:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谁让你们用javascript这种垃圾语言来做后台的，活该！</p>
+</div>
+ </article>
+</li>
+<li id="comment-218340" class="comment even thread-even depth-1">
+<article id="div-comment-218340" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cea96f97d8797c96529401e03d62117e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cea96f97d8797c96529401e03d62117e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://outofmemory.cn/" class="url" rel="ugc external nofollow">甄码农</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-218340"><time datetime="2012-11-20T17:35:31+08:00">2012年11月20日 17:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198500" rel="nofollow">@jssucks </a><br/>
+javascript为什么垃圾？ 这样评价js有什么道理？ 吐口水也得吐出内容呀</p>
+</div>
+ </article>
+</li>
+<li id="comment-512527" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dianshuoit.com/javascript%e4%b8%ad%e7%9a%84this/" class="url" rel="ugc external nofollow">JavaScript中的this | 点说IT</a> </div>
+</li>
+<li id="comment-569040" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://team-dev.tk/?p=70" class="url" rel="ugc external nofollow">Javascript中var引发的问题 | TK开发部学习交流平台</a> </div>
+</li>
+<li id="comment-1043807" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1043807" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/daea843fc4596d07a91684cf075d919c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/daea843fc4596d07a91684cf075d919c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://derekzeng.me" class="url" rel="ugc external nofollow">coderek</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-1043807"><time datetime="2013-12-08T13:53:07+08:00">2013年12月08日 13:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-195700" rel="nofollow">@resty </a><br/>
+在本文的情况下，使用CoffeeScript会在function scope内自动生成var关键字声明，initial不可能被误设成全局变量。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1112976" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=511" class="url" rel="ugc external nofollow">函数式编程 | 星达红</a> </div>
+</li>
+<li id="comment-1213886" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://javablogs.org/?p=150" class="url" rel="ugc external nofollow">Lua简明教程 | java博客，java教程</a> </div>
+</li>
+<li id="comment-1455726" class="comment even thread-even depth-1">
+<article id="div-comment-1455726" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5fa10938ba9b9ecb841a4c42edc50a70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5fa10938ba9b9ecb841a4c42edc50a70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">LordSpark</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7480.html#comment-1455726"><time datetime="2014-05-08T10:04:52+08:00">2014年05月08日 10:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚刚碰到一个类似的问题，用 jQuery 生成 bootstrap alert，在 1.5 秒后自动消失。结果存在多个 alert 的时候，只有最近创建的那一个会正常消失。</p>
+<p>偶然看到这篇文章解决了，原因也是声明局部变量的时候没有写 var。多谢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1489891" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.makaidong.com/29358.html" class="url" rel="ugc external nofollow">Lua简明教程 – 马开东博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

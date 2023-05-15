@@ -1,0 +1,714 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>菜鸟学PHP之Smarty入门 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-559 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-559" class="post-content post-559 post type-post status-publish format-standard hentry category-phpdev category-techarticle category-progdesign category-proglanguage tag-php tag-smarty">
+<header class="entry-header">
+<span class="screen-reader-text">菜鸟学PHP之Smarty入门</span>
+<h1 class="entry-title">菜鸟学PHP之Smarty入门</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/559.html" title="15:55" rel="bookmark"><time class="entry-date" datetime="2009-04-17T15:55:09+08:00" pubdate="">2009年04月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/559.html#comments" class="comments-link">7 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 17,556 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>　　刚开始接触模版引擎的 PHP 设计师，听到 Smarty 时，都会觉得很难。其实笔者也不例外，碰都不敢碰一下。但是后来在剖析 XOOPS 的程序架构时，开始发现 Smarty 其实并不难。只要将 Smarty 基础功练好，在一般应用上就已经相当足够了。当然基础能打好，后面的进阶应用也就不用怕了。<br/>
+　　<br/>
+　　这篇文章的主要用意并非要深入探讨 Smarty 的使用，这在<span class="t_tag">官方</span>使用说明中都已经写得很完整了。笔者仅在此写下一些自己使用上的心得，让想要了解 Smarty 却不得其门而入的<span class="t_tag">朋友</span>，可以从中得到一些启示。就因为这篇文章的内容不是非常深入，会使用 Smarty 的朋友们可能会觉得简单了点。<br/>
+　　<br/>
+<span id="more-559"></span>　<br/>
+　　<strong>Smarty介绍<br/>
+　　<br/>
+　　什么是模版引擎</strong><br/>
+　　<br/>
+　　不知道从什么时候开始，有人开始对 HTML 内嵌入 Server Script 觉得不太满意。然而不论是微软的 ASP 或是开放<span class="t_tag">源码</span>的 PHP，都是属于内嵌 Server Script 的<span class="t_tag">网页</span>伺服端语言。因此也就有人想到，如果能把程序应用逻辑 (或称商业应用逻辑) 与网页呈现 (Layout) 逻辑分离的话，是不是会比较好呢？<br/>
+　　<br/>
+　　其实这个问题早就存在已久，从交互式网页开始风行时，不论是 ASP 或是 PHP 的使用者都是身兼程序开发者与视觉设计师两种身份。可是通常这些使用者不是程序强就是美工强，如果要两者同时兼顾，那可得死掉不少脑细胞…<br/>
+　　<br/>
+　　所以模版引擎就应运而生啦！模版引擎的目的，就是要达到上述提到的逻辑分离的<span class="t_tag">功能</span>。它能让程序开发者专注于资料的控制或是功能的达成；而视觉设计师则可专注于网页排版，让网页看起来更具有专业感！因此模版引擎很适合公司的网站开发团队使用，使每个人都能发挥其专长！<br/>
+　　<br/>
+　　就笔者接触过的模版引擎来说，依资料呈现方式大概分成：需搭配程序处理的模版引擎和完全由模版本身自行决定的模版引擎两种形式。<br/>
+　　<br/>
+　　在需搭配程序处理的模版引擎中，程序开发者必须要负责变量的呈现逻辑，也就是说他必须把变量的内容在输出到模版前先处理好，才能做 assign 的工作。换句话说，程序开发者还是得多写一些程序来决定变量呈现的风貌。而完全由模版本身自行决定的模版引擎，它允许变量直接 assign 到模版中，让视觉设计师在设计模版时再决定变量要如何呈现。因此它就可能会有另一套属于自己的模版程序语法 (如 Smarty) ，以方便控制变量的呈现。但这样一来，视觉设计师也得学习如何使用模版语言。<br/>
+　　<br/>
+　　模版引擎的运作原理，首先我们先看看以下的运行图：<br/>
+　　 　<img decoding="async" src="http://linux.chinaitlab.com/imgfiles/2005.11.30.14.32.31.13.1.gif" alt="" width="400" height="450"/><br/>
+　　一般的模版引擎 (如 PHPLib) 都是在建立模版对象时取得要解析的模版，然后把变量套入后，透过 parse() 这个方法来解析模版，最后再将网页输出。<br/>
+　　 　<img decoding="async" loading="lazy" src="http://linux.chinaitlab.com/imgfiles/2005.11.30.14.32.38.13.2.gif" alt="" width="400" height="600"/><br/>
+　　对 Smarty 的使用者来说，程序里也不需要做任何 parse 的动作了，这些 Smarty 自动会帮我们做。而且已经<span class="t_tag">编译</span>过的网页，如果模版没有变动的话， Smarty 就自动跳过编译的动作，直接执行编译过的网页，以节省编译的时间。<br/>
+　　<br/>
+　　<strong>使用Smarty的一些概念</strong><br/>
+　　<br/>
+　　在一般模版引擎中，我们常看到区域的观念，所谓区块大概都会长成这样：<br/>
+　　&lt;!– START : Block name –&gt;<br/>
+　　区域内容<br/>
+　　&lt;!– END : Block name –&gt;<br/>
+　　<br/>
+　　这些区块大部份都会在 PHP 程序中以 if 或 for, while 来控制它们的显示状态，虽然模版看起来简洁多了，但只要一换了显示方式不同的模版， PHP 程序势必要再改一次！<br/>
+　　<br/>
+　　在 Smarty 中，一切以变量为主，所有的呈现逻辑都让模版自行控制。因为 Smarty 会有自己的模版语言，所以不管是区块是否要显示还是要重复，都是用 Smarty 的模版语法 (if, foreach, section) 搭配变量内容作呈现。这样一来感觉上好象模版变得有点复杂，但好处是只要规划得当， PHP 程序一行都不必改。<br/>
+　　<br/>
+　　由上面的说明，我们可以知道使用Smarty 要掌握一个原则：将程序应用逻辑与网页呈现逻辑明确地分离。就是说 PHP 程序里不要有太多的 HTML 码。程序中只要决定好那些变量要塞到模版里，让模版自己决定该如何呈现这些变量 (甚至不出现也行) 。<br/>
+　　<br/>
+　　<strong>Smarty的基础<br/>
+　　<br/>
+　　安装Smarty</strong><br/>
+　　<br/>
+　　首先，我们先决定程序放置的位置。<br/>
+　　<br/>
+　　<a href="http://windows.chinaitlab.com/" target="_blank"><span style="color: #0000ff;">Windows</span></a>下可能会类似这样的位置：「 d:\appserv\web\demo\ 」。<br/>
+　　<br/>
+　　Linux下可能会类似这样的位置：「 /home/jaceju/public_html/ 」。<br/>
+　　<br/>
+　　到Smarty的官方网站<a href="http://download.chinaitlab.com/" target="_blank"><span style="color: #0000ff;"><span class="t_tag">下载</span></span></a>最新的Smarty套件：<a href="http://smarty.php.net/" target="_blank">http://smarty.php.net</a>。<br/>
+　　<br/>
+　　解开 Smarty 2.6.0 后，会看到很多档案，其中有个 libs 资料夹。在 libs 中应该会有 3 个 class.php 檔 + 1 个 debug.tpl + 1 个 plugin 资料夹 + 1 个 core 资料夹。然后直接将 libs 复制到您的程序主资料夹下，再更名为 class 就可以了。就这样？没错！这种安装法比较简单，适合一般没有自己主机的使用者。<br/>
+　　<br/>
+　　至于 Smarty 官方手册中为什么要介绍一些比较复杂的安装方式呢？基本上依照官方的方式安装，可以只在主机安装一次，然后提供给该主机下所有设计者开发不同程序时直接引用，而不会重复安装太多的 Smarty 复本。而笔者所提供的方式则是适合要把程序带过来移过去的程序开发者使用，这样不用烦恼主机有没有安装 Smarty 。<br/>
+　　<br/>
+　　<strong>程序的资料夹设定</strong><br/>
+　　<br/>
+　　以笔者在<a href="http://windows.chinaitlab.com/" target="_blank"><span style="color: #0000ff;">Windows</span></a>安装Appserv为例，程序的主资料夹是「d:\appserv\web\demo\」。安装好Smarty后，我们在主资料夹下再建立这样的资料夹：<br/>
+　　 　<img decoding="async" loading="lazy" src="http://linux.chinaitlab.com/imgfiles/2005.11.30.14.32.46.13.3.gif" alt="" width="156" height="135"/><br/>
+　　在 Linux 底下，请记得将 templates_c 的权限变更为 777 。Windows 下则将其只读取消。<br/>
+　　<br/>
+　　<strong>第一个用Smarty写的小程序</strong><br/>
+　　<br/>
+　　我们先设定 Smarty 的路径，请将以下这个档案命名为 main.php ，并放置到主资料夹下：<br/>
+　　<br/>
+　　main.php:</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　include &#34;class/Smarty.class.php&#34;;
+　　define(&#39;__SITE_ROOT&#39;, &#39;d:/appserv/web/demo&#39;); // 最后没有斜线
+　　$tpl = new Smarty();
+　　$tpl-&gt;template_dir = __SITE_ROOT . &#34;/templates/&#34;;
+　　$tpl-&gt;compile_dir = __SITE_ROOT . &#34;/templates_c/&#34;;
+　　$tpl-&gt;config_dir = __SITE_ROOT . &#34;/configs/&#34;;
+　　$tpl-&gt;cache_dir = __SITE_ROOT . &#34;/cache/&#34;;
+　　$tpl-&gt;left_delimiter = &#39;&lt;{&#39;;
+　　$tpl-&gt;right_delimiter = &#39;}&gt;&#39;;
+　　?&gt;
+　　</pre>
+<p>　　照上面方式设定的用意在于，程序如果要移植到其它地方，只要改 __SITE_ROOT 就可以啦。 (这里是参考 XOOPS 的 )<br/>
+　　<br/>
+　　Smarty 的模版路径设定好后，程序会依照这个路径来抓所有模版的相对位置 (范例中是 ‘d:/appserv/web/demo/templates/’ ) 。然后我们用 display() 这个 Smarty 方法来显示我们的模版。<br/>
+　　<br/>
+　　接下来我们在 templates 资料夹下放置一个 test.htm：(扩展名叫什么都无所谓，但便于视觉设计师开发，笔者都还是以 .htm 为主。)<br/>
+　　<br/>
+　　templates/test.htm:</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">　　&lt;html&gt;
+　　&lt;head&gt;
+　　&lt;meta http-equiv=&#34;Content-Type&#34; content=&#34;text/html; charset=big5&#34;&gt;
+　　&lt;title&gt;&lt;{$title}&gt;&lt;/title&gt;
+　　&lt;/head&gt;
+　　&lt;body&gt;
+　　&lt;{$content}&gt;
+　　&lt;/body&gt;
+　　&lt;/html&gt;
+　　</pre>
+<p>　　现在我们要将上面的模版显示出来，并将网页标题 ($title) 与内容 ($content) 更换，请将以下档案内容命名为 test.php ，并放置在主资料夹下：<br/>
+　　<br/>
+　　test.php:</p>
+<p>       </p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　require &#34;main.php&#34;;
+　　$tpl-&gt;assign(&#34;title&#34;, &#34;测试用的网页标题&#34;);
+　　$tpl-&gt;assign(&#34;content&#34;, &#34;测试用的网页内容&#34;);
+　　// 上面两行也可以用这行代替
+　　// $tpl-&gt;assign(array(&#34;title&#34; =&gt; &#34;测试用的网页标题&#34;, &#34;content&#34; =&gt; &#34;测试用的网页内容&#34;));
+　　$tpl-&gt;display(&#39;test.htm&#39;);
+　　?&gt;
+　　</pre>
+<p>　　请打开浏览器，输入 http://localhost/demo/test.php 试试看(依您的环境决定网址)，应该会看到以下的画面：<br/>
+　　 　<img decoding="async" loading="lazy" src="http://linux.chinaitlab.com/imgfiles/2005.11.30.14.32.52.13.4.gif" alt="" width="287" height="217"/><br/>
+　　再到 templates_c 底下，我们会看到一个奇怪的资料夹 (%%179) ，再点选下去也是一个奇怪的资料夹 (%%1798044067) ，而其中有一个档案：<br/>
+　　<br/>
+　　templates_c/%%179/%%1798044067/test.htm.php:</p>
+<p>        </p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">　　&lt;?php /* Smarty version 2.6.0, created on 2003-12-15 22:19:45 compiled from test.htm */ ?&gt;
+　　&lt;html&gt;
+　　&lt;head&gt;
+　　&lt;meta http-equiv=&#34;Content-Type&#34; content=&#34;text/html; charset=big5&#34;&gt;
+　　&lt;title&gt;&lt;?php echo $this-&gt;_tpl_vars[&#39;title&#39;]; ?&gt;&lt;/title&gt;
+　　&lt;/head&gt;
+　　&lt;body&gt;
+　　&lt;?php echo $this-&gt;_tpl_vars[&#39;content&#39;]; ?&gt;
+　　&lt;/body&gt;
+　　&lt;/html&gt;
+　　</pre>
+<p>　　没错，这就是 Smarty 编译过的档案。它将我们在模版中的变量转换成了 PHP 的语法来执行，下次再读取同样的内容时， Smarty 就会直接抓取这个档案来执行了。<br/>
+　　<br/>
+　　最后我们整理一下整个 Smarty 程序撰写步骤：<br/>
+　　<br/>
+　　Step 1. 加载 Smarty 模版引擎。<br/>
+　　<br/>
+　　Step 2. 建立 Smarty 对象。<br/>
+　　<br/>
+　　Step 3. 设定 Smarty 对象的参数。<br/>
+　　<br/>
+　　Step 4. 在程序中处理变量后，再用 Smarty 的 assign 方法将变量置入模版里。<br/>
+　　<br/>
+　　Step 5. 利用 Smarty 的 display 方法将网页秀出。<br/>
+　　<br/>
+　　<strong>如何安排你的程序架构</strong><br/>
+　　<br/>
+　　上面我们看到除了 Smarty 所需要的资料夹外 (class 、 configs 、 templates 、 templates_c) ，还有两个资料夹： includes 、 modules 。其实这是笔者模仿 XOOPS 的架构所建立出来的，因为 XOOPS 是笔者所接触到的程序中，少数使用 Smarty 模版引擎的架站程序。所谓西瓜偎大边，笔者这样的程序架构虽没有 XOOPS 的百分之一强，但至少给人看时还有 XOOPS 撑腰。<br/>
+　　<br/>
+　　includes 这个资料夹主要是用来放置一些 function 、 sql 檔，这样在 main.php 就可以将它们引入了，如下：<br/>
+　　<br/>
+　　main.php:<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　include &#34;class/Smarty.class.php&#34;;
+　　define(&#39;__SITE_ROOT&#39;, &#39;d:/appserv/web/demo&#39;); // 最后没有斜线
+　　// 以 main.php 的位置为基准
+　　require_once &#34;includes/functions.php&#34;;
+　　require_once &#34;includes/include.php&#34;;
+　　$tpl = new Smarty();
+　　$tpl-&gt;template_dir = __SITE_ROOT . &#34;/templates/&#34;;
+　　$tpl-&gt;compile_dir = __SITE_ROOT . &#34;/templates_c/&#34;;
+　　$tpl-&gt;config_dir = __SITE_ROOT . &#34;/configs/&#34;;
+　　$tpl-&gt;cache_dir = __SITE_ROOT . &#34;/cache/&#34;;
+　　$tpl-&gt;left_delimiter = &#39;&lt;{&#39;;
+　　$tpl-&gt;right_delimiter = &#39;}&gt;&#39;;
+　　?&gt;
+　　</pre>
+<p>　　modules 这个资料夹则是用来放置程序模块的，如此一来便不会把程序丢得到处都是，整体架构一目了然。<br/>
+　　<br/>
+　　上面我们也提到 main.php ，这是整个程序的主要核心，不论是常数定义、外部程序加载、共享变量建立等，都是在这里开始的。所以之后的模块都只要将这个档案包含进来就可以啦。因此在程序流程规划期间，就必须好好构思 main.php 中应该要放那些东西；当然利用 include 或 require 指令，把每个环节清楚分离是再好不过了。<br/>
+　　 　<img decoding="async" loading="lazy" src="http://linux.chinaitlab.com/imgfiles/2005.11.30.14.32.59.13.5.gif" alt="" width="180" height="310"/><br/>
+　　在上节提到的 Smarty 程序 5 步骤， main.php 就会帮我们先将前 3 个步骤做好，后面的模块程序只要做后面两个步骤就可以了。<br/>
+　　<br/>
+　　<strong>从变量开始</strong><br/>
+　　<br/>
+　　如何使用变量<br/>
+　　<br/>
+　　从上一章范例中，我们可以清楚地看到我们利用 &lt;{ 及 }&gt; 这两个标示符号将变量包起来。预设的标示符号为 { 及 } ，但为了中文冲码及 <a href="http://java.chinaitlab.com/" target="_blank"><span style="color: #0000ff;">Java</span></a>script 的关系，因此笔者还是模仿 XOOPS ，将标示符号换掉。变量的命名方式和 PHP 的变量命名方式是一模一样的，前面也有个 $ 字号 (这和一般的模版引擎不同)。标示符号就有点像是 PHP 中的 &lt;?php 及 ?&gt; (事实上它们的确会被替换成这个) ，所以以下的模版变量写法都是可行的：<br/>
+　　<br/>
+　　1. &lt;{$var}&gt;<br/>
+　　<br/>
+　　2. &lt;{ $var }&gt; &lt;!– 和变量之间有空格 –&gt;<br/>
+　　<br/>
+　　3. &lt;{$var<br/>
+　　<br/>
+　　}&gt; &lt;!– 启始的标示符号和结束的标示符号不在同一行 –&gt;<br/>
+　　在 Smarty 里，变量预设是全域的，也就是说你只要指定一次就好了。指定两次以上的话，变量内容会以最后指定的为主。就算我们在主模版中加载了外部的子模版，子模版中同样的变量一样也会被替代，这样我们就不用再针对子模版再做一次解析的动作。<br/>
+　　<br/>
+　　而在 PHP 程序中，我们用 Smarty 的 assign 来将变量置放到模版中。 assign 的用法官方手册中已经写得很多了，用法就如同上一节的范例所示。不过在重复区块时，我们就必须将变量做一些手脚后，才能将变量 assign 到模版中，这在下一章再提。<br/>
+　　<br/>
+　　<strong>修饰你的变量</strong><br/>
+　　<br/>
+　　上面我们提到 Smarty 变量呈现的风貌是由模版自行决定的，所以 Smarty 提供了许多修饰变量的函式。使用的方法如下：<br/>
+　　<br/>
+　　&lt;{变量|修饰函式}&gt; &lt;!– 当修饰函式没有参数时 –&gt;<br/>
+　　<br/>
+　　&lt;{变量|修饰函式:”参数(非必要，视函式而定)”}&gt; &lt;!– 当修饰函式有参数时 –&gt;<br/>
+　　范例如下：<br/>
+　　<br/>
+　　&lt;{$var|nl2br}&gt; &lt;!– 将变量中的换行字符换成 &lt;br /&gt; –&gt;<br/>
+　　<br/>
+　　&lt;{$var|string_format:”%02d”}&gt; &lt;!– 将变量格式化 –&gt;<br/>
+　　好，那为什么要让模版自行决定变量呈现的风貌？先看看底下的 HTML ，这是某个购物车结帐的部份画面。<br/>
+　　<br/>
+　　&lt;input name=”total” type=”hidden” value=”21000″ /&gt;<br/>
+　　<br/>
+　　总金额：21,000 元<br/>
+　　一般模版引擎的模版可能会这样写：<br/>
+　　<br/>
+　　&lt;input name=”total” type=”hidden” value=”{total}” /&gt;<br/>
+　　<br/>
+　　总金额：{format_total} 元<br/>
+　　它们的 PHP 程序中要这样写：<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　$total = 21000;
+　　$tpl-&gt;assign(&#34;total&#34;, $total);
+　　$tpl-&gt;assign(&#34;format_total&#34;, number_format($total));
+　　?&gt;
+　　</pre>
+<p>　　而 Smarty 的模版就可以这样写： (number_format 修饰函式请到Smarty 官方网页<a href="http://download.chinaitlab.com/" target="_blank"><span style="color: #0000ff;">下载</span></a>)<br/>
+　　<br/>
+　　&lt;input name=”total” type=”hidden” value=”&lt;{$total}&gt;” /&gt;<br/>
+　　<br/>
+　　总金额：&lt;{$total|number_format:””}&gt; 元<br/>
+　　Smarty 的 PHP 程序中只要这样写：<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　$total = 21000;
+　　$tpl-&gt;assign(&#34;total&#34;, $total);
+　　?&gt;
+　　</pre>
+<p>　　所以在 Smarty 中我们只要指定一次变量，剩下的交给模版自行决定即可。这样了解了吗？这就是让模版自行决定变量呈现风貌的好处！<br/>
+　　<br/>
+　　<strong>控制模版的内容<br/>
+　　<br/>
+　　重复的区块</strong><br/>
+　　<br/>
+　　在 Smarty 样板中，我们要重复一个区块有两种方式： foreach 及 section 。而在程序中我们则要 assign 一个数组，这个数组中可以包含数组数组。就像下面这个例子：<br/>
+　　<br/>
+　　首先我们来看 PHP 程序是如何写的：<br/>
+　　<br/>
+　　test2.php:<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　require &#34;main.php&#34;;
+　　$array1 = array(1 =&gt; &#34;苹果&#34;, 2 =&gt; &#34;菠萝&#34;, 3 =&gt; &#34;香蕉&#34;, 4 =&gt; &#34;芭乐&#34;);
+　　$tpl-&gt;assign(&#34;array1&#34;, $array1);
+　　$array2 = array(
+　　array(&#34;index1&#34; =&gt; &#34;data1-1&#34;, &#34;index2&#34; =&gt; &#34;data1-2&#34;, &#34;index3&#34; =&gt; &#34;data1-3&#34;),
+　　array(&#34;index1&#34; =&gt; &#34;data2-1&#34;, &#34;index2&#34; =&gt; &#34;data2-2&#34;, &#34;index3&#34; =&gt; &#34;data2-3&#34;),
+　　array(&#34;index1&#34; =&gt; &#34;data3-1&#34;, &#34;index2&#34; =&gt; &#34;data3-2&#34;, &#34;index3&#34; =&gt; &#34;data3-3&#34;),
+　　array(&#34;index1&#34; =&gt; &#34;data4-1&#34;, &#34;index2&#34; =&gt; &#34;data4-2&#34;, &#34;index3&#34; =&gt; &#34;data4-3&#34;),
+　　array(&#34;index1&#34; =&gt; &#34;data5-1&#34;, &#34;index2&#34; =&gt; &#34;data5-2&#34;, &#34;index3&#34; =&gt; &#34;data5-3&#34;));
+　　$tpl-&gt;assign(&#34;array2&#34;, $array2);
+　　$tpl-&gt;display(&#34;test2.htm&#34;);
+　　?&gt;
+　　</pre>
+<p>　　而模版的写法如下：<br/>
+　　<br/>
+　　templates/test2.htm:<br/>
+　　</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">　　&lt;html&gt;
+　　&lt;head&gt;
+　　&lt;meta http-equiv=&#34;Content-Type&#34; content=&#34;text/html; charset=big5&#34;&gt;
+　　&lt;title&gt;测试重复区块&lt;/title&gt;
+　　&lt;/head&gt;
+　　&lt;body&gt;
+　　
+&lt;pre&gt;
+　　利用 foreach 来呈现 array1
+　　&lt;{foreach item=item1 from=$array1}&gt;
+　　&lt;{$item1}&gt;
+　　&lt;{/foreach}&gt;
+　　利用 section 来呈现 array1
+　　&lt;{section name=sec1 loop=$array1}&gt;
+　　&lt;{$array1[sec1]}&gt;
+　　&lt;{/section}&gt;
+　　利用 foreach 来呈现 array2
+　　&lt;{foreach item=index2 from=$array2}&gt;
+　　&lt;{foreach key=key2 item=item2 from=$index2}&gt;
+　　&lt;{$key2}&gt;: &lt;{$item2}&gt;
+　　&lt;{/foreach}&gt;
+　　&lt;{/foreach}&gt;
+　　利用 section 来呈现 array1
+　　&lt;{section name=sec2 loop=$array2}&gt;
+　　index1: &lt;{$array2[sec2].index1}&gt;
+　　index2: &lt;{$array2[sec2].index2}&gt;
+　　index3: &lt;{$array2[sec2].index3}&gt;
+　　&lt;{/section}&gt;
+　　&lt;/pre&gt;
+　　&lt;/body&gt;
+　　&lt;/html&gt;
+　　</pre>
+<p>　　执行上例后，我们发现不管是 foreach 或 section 两个执行结果是一样的。那么两者到底有何不同呢？<br/>
+　　<br/>
+　　第一个差别很明显，就是foreach 要以巢状处理的方式来呈现我们所 assign 的两层数组变量，而 section 则以「主数组[循环名称].子数组索引」即可将整个数组呈现出来。由此可知， Smarty 在模版中的 foreach 和 PHP 中的 foreach 是一样的；而 section 则是 Smarty 为了处理如上列的数组变量所发展出来的叙述。当然 section 的功能还不只如此，除了下一节所谈到的巢状资料呈现外，官方手册中也提供了好几个 section 的应用范例。<br/>
+　　<br/>
+　　不过要注意的是，丢给 section 的数组索引必须是从 0 开始的正整数，即 0, 1, 2, 3, …。如果您的数组索引不是从 0 开始的正整数，那么就得改用 foreach 来呈现您的资料。您可以参考官方讨论区中的此篇讨论，其中探讨了 section 和 foreach 的用法。<br/>
+　　<br/>
+　　<strong>巢状资料的呈现</strong><br/>
+　　<br/>
+　　模版引擎里最令人伤脑筋的大概就是巢状资料的呈现吧，许多著名的模版引擎都会特意强调这点，不过这对 Smarty 来说却是小儿科。<br/>
+　　<br/>
+　　最常见到的巢状资料，就算论譠程序中的讨论主题区吧。假设要呈现的结果如下：<br/>
+　　<br/>
+　　公告区<br/>
+　　<br/>
+　　站务公告<br/>
+　　<br/>
+　　文学专区<br/>
+　　<br/>
+　　好书介绍<br/>
+　　<br/>
+　　奇文共赏<br/>
+　　<br/>
+　　计算机专区<br/>
+　　<br/>
+　　硬件外围<br/>
+　　<br/>
+　　<span class="t_tag">软件</span>讨论<br/>
+　　<br/>
+　　程序中我们先以静态资料为例：<br/>
+　　<br/>
+　　test3.php:<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　require &#34;main.php&#34;;
+　　$forum = array(
+　　array(&#34;category_id&#34; =&gt; 1, &#34;category_name&#34; =&gt; &#34;公告区&#34;,
+　　&#34;topic&#34; =&gt; array(
+　　array(&#34;topic_id&#34; =&gt; 1, &#34;topic_name&#34; =&gt; &#34;站务公告&#34;)
+　　)
+　　),
+　　array(&#34;category_id&#34; =&gt; 2, &#34;category_name&#34; =&gt; &#34;文学专区&#34;,
+　　&#34;topic&#34; =&gt; array(
+　　array(&#34;topic_id&#34; =&gt; 2, &#34;topic_name&#34; =&gt; &#34;好书介绍&#34;),
+　　array(&#34;topic_id&#34; =&gt; 3, &#34;topic_name&#34; =&gt; &#34;奇文共赏&#34;)
+　　)
+　　),
+　　array(&#34;category_id&#34; =&gt; 3, &#34;category_name&#34; =&gt; &#34;计算机专区&#34;,
+　　&#34;topic&#34; =&gt; array(
+　　array(&#34;topic_id&#34; =&gt; 4, &#34;topic_name&#34; =&gt; &#34;硬件外围&#34;),
+　　array(&#34;topic_id&#34; =&gt; 5, &#34;topic_name&#34; =&gt; &#34;软件讨论&#34;)
+　　)
+　　)
+　　);
+　　$tpl-&gt;assign(&#34;forum&#34;, $forum);
+　　$tpl-&gt;display(&#34;test3.htm&#34;);
+　　?&gt;
+　　</pre>
+<p>　　模版的写法如下：<br/>
+　　<br/>
+　　templates/test3.htm:<br/>
+　　</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">　　&lt;html&gt;
+　　&lt;head&gt;
+　　&lt;title&gt;巢状循环测试&lt;/title&gt;
+　　&lt;/head&gt;
+　　&lt;body&gt;
+　　
+&lt;table width=&#34;200&#34; border=&#34;0&#34; align=&#34;center&#34; cellpadding=&#34;3&#34; cellspacing=&#34;0&#34;&gt;
+　　&lt;{section name=sec1 loop=$forum}&gt;
+　　
+&lt;tr&gt;
+　　
+&lt;td colspan=&#34;2&#34;&gt;&lt;{$forum[sec1].category_name}&gt;&lt;/td&gt;
+　　&lt;/tr&gt;
+　　&lt;{section name=sec2 loop=$forum[sec1].topic}&gt;
+　　
+&lt;tr&gt;
+　　
+&lt;td width=&#34;25&#34;&gt;&lt;/td&gt;
+　　
+&lt;td width=&#34;164&#34;&gt;&lt;{$forum[sec1].topic[sec2].topic_name}&gt;&lt;/td&gt;
+　　&lt;/tr&gt;
+　　&lt;{/section}&gt;
+　　&lt;{/section}&gt;
+　　&lt;/table&gt;
+　　&lt;/body&gt;
+　　&lt;/html&gt;
+　　</pre>
+<p>　　执行的结果就像笔者举的例子一样。<br/>
+　　<br/>
+　　因此呢，在程序中我们只要想<span class="t_tag">办法</span>把所要重复值一层一层的塞到数组中，再利用 &lt;{第一层数组[循环1].第二层数组[循环2].第三层数组[循环3]. … .数组索引}&gt; 这样的方式来显示每一个巢状循环中的值。至于用什么方法呢？下一节使用<span class="t_tag">数据库</span>时我们再提。<br/>
+　　<br/>
+　　<strong>转换<span class="t_tag">数据</span>库中的资料</strong><br/>
+　　<br/>
+　　上面提到如何显示巢状循环，而实际上应用时我们的资料可能是从数据库中抓取出来的，所以我们就得想办法把数据库的资料变成上述的多重数组的形式。这里笔者用一个 DB 类别来抓取数据库中的资料，您可以自行用您喜欢的方法。<br/>
+　　<br/>
+　　我们只修改 PHP 程序，模版还是上面那个 (这就是模版引擎的好处~)，其中 $db 这个对象假设已经在 main.php 中建立好了，而且抓出来的资料就是上面的例子。<br/>
+　　<br/>
+　　test3.php:<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　require &#34;main.php&#34;;
+　　// 先建立第一层数组
+　　$category = array();
+　　$db-&gt;set&lt;span class=&#34;t_tag&#34;&gt;SQL&lt;/span&gt;($SQL1, &#39;CATEGORY&#39;);
+　　if (!$db-&gt;query(&#39;CATEGORY&#39;)) die($db-&gt;error());
+　　// 抓取第一层循环的资料
+　　while ($item_category = $db-&gt;fetchAssoc(&#39;CATEGORY&#39;))
+　　{
+　　// 建立第二层数组
+　　$topic = array();
+　　$db-&gt;setSQL(sprintf($SQL2, $item_category[&#39;category_id&#39;]), &#39;TOPIC&#39;);
+　　if (!$db-&gt;query(&#39;TOPIC&#39;)) die($db-&gt;error());
+　　// 抓取第二层循环的资料
+　　while ($item_topic = $db-&gt;fetchAssoc(&#39;TOPIC&#39;))
+　　{
+　　// 把抓取的数据推入第二层数组中
+　　array_push($topic, $item_topic);
+　　}
+　　// 把第二层数组指定为第一层数组所抓取的数据中的一个成员
+　　$item_category[&#39;topic&#39;] = $topic;
+　　// 把第一层数据推入第一层数组中
+　　array_push($category, $item_category);
+　　}
+　　$tpl-&gt;assign(&#34;forum&#34;, $category);
+　　$tpl-&gt;display(&#34;test3.htm&#34;);
+　　?&gt;
+　　</pre>
+<p>　　在数据库抓取一笔资料后，我们得到的是一个包含该笔数据的数组。透过 while 叙述及 array_push 函式，我们将数据库中的资料一笔一笔塞到数组里。如果您只用到单层循环，就把第二层循环 (红色的部份) 去掉即可。<br/>
+　　<br/>
+　　<strong>决定内容是否显示</strong><br/>
+　　<br/>
+　　要决定是否显示内容，我们可以使用 if 这个语法来做选择。例如如果使用者已经登入的话，我们的模版就可以这样写：<br/>
+　　<br/>
+　　&lt;{if $is_login == true}&gt;<br/>
+　　显示使用者操作选单<br/>
+　　&lt;{else}&gt;<br/>
+　　显示输入<span class="t_tag">帐号</span>和<span class="t_tag">密码</span>的窗体<br/>
+　　&lt;{/if}&gt;<br/>
+　　<br/>
+　　要注意的是，「==」号两边一定要各留至少一个空格符，否则 Smarty 会无法解析。<br/>
+　　<br/>
+　　if 语法一般的应用可以参照官方使用说明，所以笔者在这里就不详加介绍了。不过笔者发现了一个有趣的应用：常常会看到程序里要产生这样的一个表格： (数字代表的是资料集的顺序)<br/>
+　　<br/>
+　　1 2<br/>
+　　<br/>
+　　3 4<br/>
+　　<br/>
+　　5 6<br/>
+　　<br/>
+　　7 8<br/>
+　　<br/>
+　　这个笔者称之为「横向重复表格」。它的特色和传统的纵向重复不同，前几节我们看到的重复表格都是从上而下，一列只有一笔资料。而横向重复表格则可以横向地在一列中产生 n 笔资料后，再换下一列，直到整个循环结束。要达到这样的功能，最简单的方式只需要 section 和 if 搭配即可。<br/>
+　　<br/>
+　　我们来看看下面这个例子：<br/>
+　　<br/>
+　　test4.php:<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　require &#34;main.php&#34;;
+　　$my_array = array(
+　　array(&#34;value&#34; =&gt; &#34;0&#34;),
+　　array(&#34;value&#34; =&gt; &#34;1&#34;),
+　　array(&#34;value&#34; =&gt; &#34;2&#34;),
+　　array(&#34;value&#34; =&gt; &#34;3&#34;),
+　　array(&#34;value&#34; =&gt; &#34;4&#34;),
+　　array(&#34;value&#34; =&gt; &#34;5&#34;),
+　　array(&#34;value&#34; =&gt; &#34;6&#34;),
+　　array(&#34;value&#34; =&gt; &#34;7&#34;),
+　　array(&#34;value&#34; =&gt; &#34;8&#34;),
+　　array(&#34;value&#34; =&gt; &#34;9&#34;));
+　　$tpl-&gt;assign(&#34;my_array&#34;, $my_array);
+　　$tpl-&gt;display(&#39;test4.htm&#39;);
+　　?&gt;
+　　</pre>
+<p>　　模版的写法如下：<br/>
+　　<br/>
+　　templates/test4.htm:<br/>
+　　</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">　　&lt;html&gt;
+　　&lt;head&gt;
+　　&lt;title&gt;横向重复表格测试&lt;/title&gt;
+　　&lt;/head&gt;
+　　&lt;body&gt;
+　　
+&lt;table width=&#34;500&#34; border=&#34;1&#34; cellspacing=&#34;0&#34; cellpadding=&#34;3&#34;&gt;
+　　
+&lt;tr&gt;
+　　&lt;{section name=sec1 loop=$my_array}&gt;
+　　
+&lt;td&gt;&lt;{$my_array[sec1].value}&gt;&lt;/td&gt;
+　　&lt;{if $smarty.section.sec1.rownum is div by 2}&gt;
+　　&lt;/tr&gt;
+　　
+&lt;tr&gt;
+　　&lt;{/if}&gt;
+　　&lt;{/section}&gt;
+　　&lt;/tr&gt;
+　　&lt;/table&gt;
+　　&lt;/body&gt;
+　　&lt;/html&gt;
+　　</pre>
+<p>　　重点在于 $smarty.section.sec1.rownum 这个 Smarty 变量，在 section 循环中这个变量会取得从 1 开始的索引值，所以当 rownum 能被 2 除尽时，就输出 &lt;/tr&gt;&lt;tr&gt; 使表格换列 (注意！是 &lt;/tr&gt; 在前面&lt;tr&gt; 在后面) 。因此数字 2 就是我们在一列中想要呈现的资料笔数。各位可以由此去变化其它不同的呈现方式。<br/>
+　　<br/>
+　　<strong>加载外部内容</strong><br/>
+　　<br/>
+　　我们可以在模版内加载 PHP 程序<span class="t_tag">代码</span>或是另一个子模版，分别是使用 include_php 及 include 这两个 Smarty 模版语法； include_php 笔者较少用，使用方式可以查询官方手册，这里不再叙述。<br/>
+　　<br/>
+　　在使用 include 时，我们可以预先加载子模版，或是动态加载子模版。预先加载通常使用在有共同的<span class="t_tag">文件</span>标头及版权宣告；而动态加载则可以用在统一的框架页，而进一步达到如 Win<span class="t_tag">amp</span> 般可换 Skin 。当然这两种我们也可以混用，视状况而定。<br/>
+　　<br/>
+　　我们来看看下面这个例子：<br/>
+　　<br/>
+　　test5.php:<br/>
+　　</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">　　&lt;?php
+　　require &#34;main.php&#34;;
+　　$tpl-&gt;assign(&#34;title&#34;, &#34;Include 测试&#34;);
+　　$tpl-&gt;assign(&#34;content&#34;, &#34;这是模版 2 中的变量&#34;);
+　　$tpl-&gt;assign(&#34;dyn_page&#34;, &#34;test5_3.htm&#34;);
+　　$tpl-&gt;display(&#39;test5_1.htm&#39;);
+　　?&gt;
+　　</pre>
+<p>　　模版 1 的写法如下：<br/>
+　　<br/>
+　　templates/test5_1.htm:<br/>
+　　</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">　　&lt;html&gt;
+　　&lt;head&gt;
+　　&lt;meta http-equiv=&#34;Content-Type&#34; content=&#34;text/html; charset=big5&#34;&gt;
+　　&lt;title&gt;&lt;{$title}&gt;&lt;/title&gt;
+　　&lt;/head&gt;
+　　&lt;body&gt;
+　　&lt;{include file=&#34;test5_2.htm&#34;}&gt;
+　　&lt;{include file=$dyn_page}&gt;
+　　&lt;{include file=&#34;test5_4.htm&#34; custom_var=&#34;自订变量的内容&#34;}&gt;
+　　&lt;/body&gt;
+　　&lt;/html&gt;
+　　</pre>
+<p>　　模版 2 的写法如下：<br/>
+　　<br/>
+　　templates/test5_2.htm:<br/>
+　　<br/>
+　　&lt;{$content}&gt;<br/>
+　　模版 3 的写法如下：<br/>
+　　<br/>
+　　templates/test5_3.htm:<br/>
+　　<br/>
+　　这是模版 3 的内容<br/>
+　　模版 4 的写法如下：<br/>
+　　<br/>
+　　templates/test5_4.htm:<br/>
+　　<br/>
+　　&lt;{$custom_var}&gt;</p>
+<p>　　这里注意几个重点：1. 模版的位置都是以先前定义的 template_dir 为基准；2. 所有 include 进来的子模版中，其变量也会被解译。；3. include 中可以用「变量名称=变量内容」来指定引含进来的模版中所包含的变量，如同上面模版 4 的做法。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-559-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">PHP脚本</a>, <a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">PHP</a>, <a href="javascript:void(0)" rel="tag">Smarty</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>菜鸟学PHP之Smarty入门</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-45" class="comment even thread-even depth-1">
+<article id="div-comment-45" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://claymore.phpme.info" class="url" rel="ugc external nofollow">Claymore</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-45"><time datetime="2009-04-18T00:29:49+08:00">2009年04月18日 00:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，一般的项目中都会遇到MVC模式，我一直用SMARTY，<br/>
+不过对于小型的项目来说，SMARTY不一定是最好的选择。</p>
+</div>
+ </article>
+</li>
+<li id="comment-147" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/755f55449f3caa821e31defce02b61a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/755f55449f3caa821e31defce02b61a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">花心。奋斗</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-147"><time datetime="2009-05-26T11:11:29+08:00">2009年05月26日 11:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章，支持一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-200158" class="comment even thread-even depth-1">
+<article id="div-comment-200158" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-200158"><time datetime="2012-07-29T21:50:08+08:00">2012年07月29日 21:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问一下smarty的变量值不支持中文的解决方案</p>
+</div>
+ </article>
+</li>
+<li id="comment-216588" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-216588" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5fe13a80ff76423747520ee901a2b37c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5fe13a80ff76423747520ee901a2b37c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://thinkalways.net/z-blog/" class="url" rel="ugc external nofollow">大头</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-216588"><time datetime="2012-11-16T21:49:20+08:00">2012年11月16日 21:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有没有完整的教程推荐呀，一直想写smarty很久了，一直都没有找到一个好的系统教程。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1469086" class="comment even thread-even depth-1">
+<article id="div-comment-1469086" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d05aeb4882bd093753df0ad08bbeb51?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d05aeb4882bd093753df0ad08bbeb51?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://program.dengshilong.org/" class="url" rel="ugc external nofollow">shilong</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-1469086"><time datetime="2014-05-25T13:33:45+08:00">2014年05月25日 13:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为left_delimiter和right_delimiter分别设置为{{和}}会更方便一些.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1558907" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1558907" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0408e64b73b48bb113e070407d6d53ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0408e64b73b48bb113e070407d6d53ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">哈尔</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-1558907"><time datetime="2014-09-30T09:36:51+08:00">2014年09月30日 09:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图都挂了，可以补一下不？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1943010" class="comment even thread-even depth-1">
+<article id="div-comment-1943010" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e6f3cbe0f105592613463d1ebb1e0ee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e6f3cbe0f105592613463d1ebb1e0ee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://no" class="url" rel="ugc external nofollow">anikin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/559.html#comment-1943010"><time datetime="2018-11-12T18:35:18+08:00">2018年11月12日 18:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很不错，学习了</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

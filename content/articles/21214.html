@@ -1,0 +1,501 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go编程模式：委托和反转控制 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21214 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21214" class="post-content post-21214 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-go tag-golang tag-ioc series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go编程模式：委托和反转控制</span>
+<h1 class="entry-title">Go编程模式：委托和反转控制</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21214.html" title="16:57" rel="bookmark"><time class="entry-date" datetime="2020-12-26T16:57:48+08:00" pubdate="">2020年12月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21214.html#comments" class="comments-link">15 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 44,683 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p><figure id="attachment_21256" aria-describedby="caption-attachment-21256" style="width: 300px" class="wp-caption alignright"><img decoding="async" class="wp-image-21256 size-medium" src="/uploads/2020/12/go.pair_-300x298.png" alt="" width="300" height="298" srcset="" sizes="(max-width: 300px) 100vw, 300px"/><figcaption id="caption-attachment-21256" class="wp-caption-text">图片来源：<a href="https://gophersource.com/" target="_blank" rel="noopener">GopherSource</a></figcaption></figure><p></p>
+<p>反转控制<a title="IoC - Inversion of Control" href="https://en.wikipedia.org/wiki/Inversion_of_control" target="_blank" rel="noopener">IoC – Inversion of Control</a> 是一种软件设计的方法，其主要的思想是把控制逻辑与业务逻辑分享，不要在业务逻辑里写控制逻辑，这样会让控制逻辑依赖于业务逻辑，而是反过来，让业务逻辑依赖控制逻辑。在《<a href="/articles/9949.html" target="_blank" rel="noopener">IoC/DIP其实是一种管理思想</a>》中的那个开关和电灯的示例一样，开关是控制逻辑，电器是业务逻辑，不要在电器中实现开关，而是把开关抽象成一种协议，让电器都依赖之。这样的编程方式可以有效的降低程序复杂度，并提升代码重用。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第4 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go编程模式：委托和反转控制</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21146.html" rel="prev" title="Go 编程模式：Functional Options">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21164.html" rel="next" title="Go编程模式：Map-Reduce">下一篇文章</a> »</span></nav></section>
+<p>面向对象的设计模式这里不提了，我们来看看Go语言使用Embed结构的一个示例。</p>
+<p><span id="more-21214"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%B5%8C%E5%85%A5%E5%92%8C%E5%A7%94%E6%89%98" title="嵌入和委托">嵌入和委托</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%BB%93%E6%9E%84%E4%BD%93%E5%B5%8C%E5%85%A5" title="结构体嵌入">结构体嵌入</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%96%B9%E6%B3%95%E9%87%8D%E5%86%99" title="方法重写">方法重写</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%B5%8C%E5%85%A5%E7%BB%93%E6%9E%84%E5%A4%9A%E6%80%81" title="嵌入结构多态">嵌入结构多态</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%8F%8D%E8%BD%AC%E6%8E%A7%E5%88%B6" title="反转控制">反转控制</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%AE%9E%E7%8E%B0Undo%E5%8A%9F%E8%83%BD" title="实现Undo功能">实现Undo功能</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%8D%E8%BD%AC%E4%BE%9D%E8%B5%96" title="反转依赖">反转依赖</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%B5%8C%E5%85%A5%E5%92%8C%E5%A7%94%E6%89%98"></span>嵌入和委托<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="%E7%BB%93%E6%9E%84%E4%BD%93%E5%B5%8C%E5%85%A5"></span>结构体嵌入<span class="ez-toc-section-end"></span></h5>
+<p>在Go语言中，我们可以很方便的把一个结构体给嵌到另一个结构体中。如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Widget struct {
+    X, Y int
+}
+type Label struct {
+    Widget        // Embedding (delegation)
+    Text   string // Aggregation
+}</pre>
+<p>上面的示例中，我们把 <code>Widget</code>嵌入到了 <code>Label</code> 中，于是，我们可以这样使用：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">label := Label{Widget{10, 10}, &#34;State:&#34;}
+
+label.X = 11
+label.Y = 12</pre>
+<p>如果在 <code>Label</code> 结构体里出现了重名，就需要解决重名，例如，如果 成员 <code>X</code> 重名，用 <code>label.X</code>表明 是自己的<code>X</code> ，用  <code>label.Wedget.X</code> 表示嵌入过来的。</p>
+<p>有了这样的嵌入，就可以像UI组件一样的在结构构的设计上进行层层分解。比如，我可以新出来两个结构体 <code>Button</code> 和 <code>ListBox</code>：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Button struct {
+    Label // Embedding (delegation)
+}
+
+type ListBox struct {
+    Widget          // Embedding (delegation)
+    Texts  []string // Aggregation
+    Index  int      // Aggregation
+}</pre>
+<h5><span class="ez-toc-section" id="%E6%96%B9%E6%B3%95%E9%87%8D%E5%86%99"></span>方法重写<span class="ez-toc-section-end"></span></h5>
+<p>然后，我们需要两个接口 <code>Painter</code> 用于把组件画出来，<code>Clicker</code> 用于表明点击事件：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Painter interface {
+    Paint()
+}
+ 
+type Clicker interface {
+    Click()
+}</pre>
+<p>当然，</p>
+<ul>
+<li>对于 <code>Lable</code> 来说，只有 <code>Painter</code> ，没有<code>Clicker</code></li>
+<li>对于 <code>Button</code> 和 <code>ListBox</code>来说，<code>Painter</code> 和<code>Clicker</code>都有。</li>
+</ul>
+<p>下面是一些实现：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func (label Label) Paint() {
+  fmt.Printf(&#34;%p:Label.Paint(%q)\n&#34;, &amp;label, label.Text)
+}
+
+//因为这个接口可以通过 Label 的嵌入带到新的结构体，
+//所以，可以在 Button 中可以重载这个接口方法以
+func (button Button) Paint() { // Override
+    fmt.Printf(&#34;Button.Paint(%s)\n&#34;, button.Text)
+}
+func (button Button) Click() {
+    fmt.Printf(&#34;Button.Click(%s)\n&#34;, button.Text)
+}
+
+
+func (listBox ListBox) Paint() {
+    fmt.Printf(&#34;ListBox.Paint(%q)\n&#34;, listBox.Texts)
+}
+func (listBox ListBox) Click() {
+    fmt.Printf(&#34;ListBox.Click(%q)\n&#34;, listBox.Texts)
+}</pre>
+<p>这里，需要重点提示一下，<strong><code>Button.Paint()</code> 接口可以通过 Label 的嵌入带到新的结构体，如果 <code>Button.Paint()</code> 不实现的话，会调用 <code>Label.Paint()</code> ，所以，在 <code>Button</code> 中声明 <code>Paint()</code> 方法，相当于Override</strong>。</p>
+<h5><span class="ez-toc-section" id="%E5%B5%8C%E5%85%A5%E7%BB%93%E6%9E%84%E5%A4%9A%E6%80%81"></span>嵌入结构多态<span class="ez-toc-section-end"></span></h5>
+<p>通过下面的程序可以看到，整个多态是怎么执行的。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">button1 := Button{Label{Widget{10, 70}, &#34;OK&#34;}}
+button2 := NewButton(50, 70, &#34;Cancel&#34;)
+listBox := ListBox{Widget{10, 40}, 
+    []string{&#34;AL&#34;, &#34;AK&#34;, &#34;AZ&#34;, &#34;AR&#34;}, 0}
+
+for _, painter := range []Painter{label, listBox, button1, button2} {
+    painter.Paint()
+}
+ 
+for _, widget := range []interface{}{label, listBox, button1, button2} {
+  widget.(Painter).Paint()
+  if clicker, ok := widget.(Clicker); ok {
+    clicker.Click()
+  }
+  fmt.Println() // print a empty line 
+}</pre>
+<p>我们可以看到，我们可以使用接口来多态，也可以使用 泛型的 <code>interface{}</code> 来多态，但是需要有一个类型转换。</p>
+<h4><span class="ez-toc-section" id="%E5%8F%8D%E8%BD%AC%E6%8E%A7%E5%88%B6"></span>反转控制<span class="ez-toc-section-end"></span></h4>
+<p>我们再来看一个示例，我们有一个存放整数的数据结构，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type IntSet struct {
+    data map[int]bool
+}
+func NewIntSet() IntSet {
+    return IntSet{make(map[int]bool)}
+}
+func (set *IntSet) Add(x int) {
+    set.data[x] = true
+}
+func (set *IntSet) Delete(x int) {
+    delete(set.data, x)
+}
+func (set *IntSet) Contains(x int) bool {
+    return set.data[x]
+}</pre>
+<p>其中实现了 <code>Add()</code> 、<code>Delete()</code> 和 <code>Contains()</code> 三个操作，前两个是写操作，后一个是读操作。</p>
+<h5><span class="ez-toc-section" id="%E5%AE%9E%E7%8E%B0Undo%E5%8A%9F%E8%83%BD"></span>实现Undo功能<span class="ez-toc-section-end"></span></h5>
+<p>现在我们想实现一个 Undo 的功能。我们可以把把 <code>IntSet</code> 再包装一下变成 <code>UndoableIntSet</code> 代码如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type UndoableIntSet struct { // Poor style
+    IntSet    // Embedding (delegation)
+    functions []func()
+}
+ 
+func NewUndoableIntSet() UndoableIntSet {
+    return UndoableIntSet{NewIntSet(), nil}
+}
+ 
+
+func (set *UndoableIntSet) Add(x int) { // Override
+    if !set.Contains(x) {
+        set.data[x] = true
+        set.functions = append(set.functions, func() { set.Delete(x) })
+    } else {
+        set.functions = append(set.functions, nil)
+    }
+}
+
+
+func (set *UndoableIntSet) Delete(x int) { // Override
+    if set.Contains(x) {
+        delete(set.data, x)
+        set.functions = append(set.functions, func() { set.Add(x) })
+    } else {
+        set.functions = append(set.functions, nil)
+    }
+}
+
+func (set *UndoableIntSet) Undo() error {
+    if len(set.functions) == 0 {
+        return errors.New(&#34;No functions to undo&#34;)
+    }
+    index := len(set.functions) - 1
+    if function := set.functions[index]; function != nil {
+        function()
+        set.functions[index] = nil // For garbage collection
+    }
+    set.functions = set.functions[:index]
+    return nil
+}</pre>
+<p>在上面的代码中，我们可以看到</p>
+<ul>
+<li>我们在 <code>UndoableIntSet</code> 中嵌入了<code>IntSet</code> ，然后Override了 它的 <code>Add()</code>和 <code>Delete()</code> 方法。</li>
+<li><code>Contains()</code> 方法没有Override，所以，会被带到 <code>UndoableInSet</code> 中来了。</li>
+<li>在Override的 <code>Add()</code>中，记录 <code>Delete</code> 操作</li>
+<li>在Override的 <code>Delete()</code> 中，记录 <code>Add</code> 操作</li>
+<li>在新加入 <code>Undo()</code> 中进行Undo操作。</li>
+</ul>
+<p>通过这样的方式来为已有的代码扩展新的功能是一个很好的选择，这样，可以在重用原有代码功能和重新新的功能中达到一个平衡。但是，这种方式最大的问题是，Undo操作其实是一种控制逻辑，并不是业务逻辑，所以，在复用 Undo这个功能上是有问题。因为其中加入了大量跟 <code>IntSet</code> 相关的业务逻辑。</p>
+<h5><span class="ez-toc-section" id="%E5%8F%8D%E8%BD%AC%E4%BE%9D%E8%B5%96"></span>反转依赖<span class="ez-toc-section-end"></span></h5>
+<p>现在我们来看另一种方法：</p>
+<p>我们先声明一种函数接口，表现我们的Undo控制可以接受的函数签名是什么样的：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Undo []func()</pre>
+<p>有了上面这个协议后，我们的Undo控制逻辑就可以写成如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func (undo *Undo) Add(function func()) {
+  *undo = append(*undo, function)
+}
+
+func (undo *Undo) Undo() error {
+  functions := *undo
+  if len(functions) == 0 {
+    return errors.New(&#34;No functions to undo&#34;)
+  }
+  index := len(functions) - 1
+  if function := functions[index]; function != nil {
+    function()
+    functions[index] = nil // For garbage collection
+  }
+  *undo = functions[:index]
+  return nil
+}</pre>
+<p>这里你不必觉得奇怪， <code>Undo</code> 本来就是一个类型，不必是一个结构体，是一个函数数组也没什么问题。</p>
+<p>然后，我们在我们的IntSet里嵌入 Undo，然后，再在 <code>Add()</code> 和 <code>Delete()</code> 里使用上面的方法，就可以完成功能。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="3">type IntSet struct {
+    data map[int]bool
+    undo Undo
+}
+ 
+func NewIntSet() IntSet {
+    return IntSet{data: make(map[int]bool)}
+}
+
+func (set *IntSet) Undo() error {
+    return set.undo.Undo()
+}
+ 
+func (set *IntSet) Contains(x int) bool {
+    return set.data[x]
+}
+
+func (set *IntSet) Add(x int) {
+    if !set.Contains(x) {
+        set.data[x] = true
+        set.undo.Add(func() { set.Delete(x) })
+    } else {
+        set.undo.Add(nil)
+    }
+}
+ 
+func (set *IntSet) Delete(x int) {
+    if set.Contains(x) {
+        delete(set.data, x)
+        set.undo.Add(func() { set.Add(x) })
+    } else {
+        set.undo.Add(nil)
+    }
+}</pre>
+<p>这个就是控制反转，不再由 控制逻辑 <code>Undo</code> 来依赖业务逻辑 <code>IntSet</code>，而是由业务逻辑 <code>IntSet</code> 来依赖 <code>Undo</code> 。其依赖的是其实是一个协议，这个协议是一个没有参数的函数数组。我们也可以看到，我们 Undo 的代码就可以复用了。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21214-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">IoC</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go编程模式：委托和反转控制</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187853" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2187853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.lilydjwg.me/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2187853"><time datetime="2020-12-27T15:41:32+08:00">2020年12月27日 15:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可能因为我没有真正写过 Java 的原因，我一直无法理解「控制反转」「反」在什么地方。由业务逻辑来依赖标准协议，这不是很「正」的事情吗？控制逻辑依赖业务逻辑，才是反着的，是下层依赖上层。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188605" class="comment odd alt depth-2">
+<article id="div-comment-2188605" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de1e3e64f9fd7b1be5142f0897f113da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de1e3e64f9fd7b1be5142f0897f113da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">abvic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2188605"><time datetime="2020-12-29T09:54:59+08:00">2020年12月29日 09:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该和java的IOC是不同的技巧。这个例子应该是说明代码和业务的解耦，尽可能重复利用接口和协议，减少代码重复。<br/>
+感觉golang应该用不上IOC，AOP之类技巧，这9篇大作应该能概括绝大部分golang的编程模式。不知道haoel怎么看？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2219141" class="comment even depth-2">
+<article id="div-comment-2219141" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/869f0dcab11ccf2ea797bd6f7dc610ab?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/869f0dcab11ccf2ea797bd6f7dc610ab?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lv</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2219141"><time datetime="2021-03-17T16:26:46+08:00">2021年03月17日 16:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>控制反转主要是指由主动依赖变成被动依赖，</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2188161" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2188161" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b23e707ecc9507cc11b83453a48a1208?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b23e707ecc9507cc11b83453a48a1208?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Panda张向北</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2188161"><time datetime="2020-12-28T09:34:29+08:00">2020年12月28日 09:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://gophersource.com/" rel="nofollow ugc">GopherSource</a><br/>
+文中图片来自这个社区，许可证是CC BY-NC-SA 4.0 ，需要署名的。皓哥</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188188" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2188188" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2188188"><time datetime="2020-12-28T10:54:55+08:00">2020年12月28日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哦，谢谢，我注明一下。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2188214" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2188214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27f191f21072671ab5c057e087ab07e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27f191f21072671ab5c057e087ab07e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">radio</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2188214"><time datetime="2020-12-28T13:08:16+08:00">2020年12月28日 13:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>提问：Undo 是一个类型当然可以，但是为啥不用interface呢？用了interface会如何呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188269" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2188269" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2188269"><time datetime="2020-12-28T15:42:49+08:00">2020年12月28日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>接口也可以，那就需要用面向对象的设计模式了。这里仅说只是功能注入（让业务逻辑反向依赖控制逻辑）。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2195196" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2195196" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e08a2018001e98b9d7991df011616742?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e08a2018001e98b9d7991df011616742?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">codebee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2195196"><time datetime="2021-01-15T18:22:44+08:00">2021年01月15日 18:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没有闭包不好干</p>
+</div>
+ </article>
+</li>
+<li id="comment-2203957" class="comment even thread-even depth-1">
+<article id="div-comment-2203957" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b6f348a8b871a0e4c3e4fbd06c023d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b6f348a8b871a0e4c3e4fbd06c023d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">半支烟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2203957"><time datetime="2021-02-08T12:43:39+08:00">2021年02月08日 12:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这几章做个合集出个电子书挺好的。感谢大佬分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-2248524" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2248524" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e2880b9177ecd8134ee9388263b4bde?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e2880b9177ecd8134ee9388263b4bde?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zxw12138</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2248524"><time datetime="2021-05-17T10:02:21+08:00">2021年05月17日 10:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>额，单词写错了好多</p>
+</div>
+ </article>
+</li>
+<li id="comment-2297111" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.mamaxue.com/article/57/" class="url" rel="ugc external nofollow">专题文章1 – Mamaxue</a> </div>
+</li>
+<li id="comment-2349456" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2349456" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/174d2c49f3ed8615092973bf8d6cd35d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/174d2c49f3ed8615092973bf8d6cd35d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">萌大统领</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2349456"><time datetime="2021-12-17T16:11:50+08:00">2021年12月17日 16:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>button2 := NewButton(50, 70, “Cancel”)</p>
+<p>这一行代码是不是有问题，并没有NewButton这个方法呀</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370638" class="comment even depth-2 parent">
+<article id="div-comment-2370638" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/564acdb2b6cb9e21983af745402e4300?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/564acdb2b6cb9e21983af745402e4300?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鸿溟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2370638"><time datetime="2022-08-13T11:41:46+08:00">2022年08月13日 11:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这是是一个方法吧，应该是漏写了</p>
+<p>func NewButton(x, y int, text string) Button {<br/>
+return Button{Label{Widget{2, 4},”OK”}}<br/>
+}</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370639" class="comment odd alt depth-3">
+<article id="div-comment-2370639" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/564acdb2b6cb9e21983af745402e4300?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/564acdb2b6cb9e21983af745402e4300?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鸿溟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21214.html#comment-2370639"><time datetime="2022-08-13T11:43:29+08:00">2022年08月13日 11:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>上面贴错了<br/>
+func NewButton(x, y int, text string) Button {<br/>
+return Button{Label{Widget{x, y}, text}}<br/>
+}</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2371164" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://aigc.luomor.com/2023/03/21/go-%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f%ef%bc%9ak8s-visitor-%e6%a8%a1%e5%bc%8f/" class="url" rel="ugc external nofollow">Go 编程模式：k8s Visitor 模式 - 文心AIGC</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

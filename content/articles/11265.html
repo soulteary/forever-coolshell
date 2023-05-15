@@ -1,0 +1,831 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Python修饰器的函数式编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11265 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11265" class="post-content post-11265 post type-post status-publish format-standard hentry category-pythondev category-progdesign category-proglanguage tag-decorator tag-functional tag-programming tag-pythondev tag-697">
+<header class="entry-header">
+<span class="screen-reader-text">Python修饰器的函数式编程</span>
+<h1 class="entry-title">Python修饰器的函数式编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11265.html" title="09:50" rel="bookmark"><time class="entry-date" datetime="2014-03-20T09:50:34+08:00" pubdate="">2014年03月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11265.html#comments" class="comments-link">84 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 124,797 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-11300" src="/uploads/2014/03/snake-hat-new-year-schedule-800x960.jpg" alt="" width="280" height="233" srcset="" sizes="(max-width: 280px) 100vw, 280px"/>Python的修饰器的英文名叫Decorator，当你看到这个英文名的时候，你可能会把其跟Design Pattern里的Decorator搞混了，其实这是完全不同的两个东西。虽然好像，他们要干的事都很相似——都是想要对一个已有的模块做一些“修饰工作”，所谓修饰工作就是想给现有的模块加上一些小装饰（一些小功能，这些小功能可能好多模块都会用到），但又不让这个小装饰（小功能）侵入到原有的模块中的代码里去。但是OO的Decorator简直就是一场恶梦，不信你就去看看wikipedia上的词条（<a href="https://en.wikipedia.org/wiki/Decorator_pattern" target="_blank" rel="noopener noreferrer">Decorator Pattern</a>）里的UML图和那些代码，这就是我在《 <a title="链接：从面向对象的设计模式看软件设计" href="/articles/8961.html" rel="bookmark">从面向对象的设计模式看软件设计</a>》“餐后甜点”一节中说的，OO鼓励了——“厚重地胶合和复杂层次”，也是《 <a title="链接：如此理解面向对象编程" href="/articles/8745.html" rel="bookmark">如此理解面向对象编程</a>》中所说的“OO的狂热者们非常害怕处理数据”，Decorator Pattern搞出来的代码简直就是OO的反面教程。</p>
+<p>Python 的 Decorator在使用上和Java/C#的Annotation很相似，就是在方法名前面加一个@XXX注解来为这个方法装饰一些东西。但是，Java/C#的Annotation也很让人望而却步，太TMD的复杂了，你要玩它，你需要了解一堆Annotation的类库文档，让人感觉就是在学另外一门语言。</p>
+<p>而Python使用了一种相对于Decorator Pattern和Annotation来说非常优雅的方法，这种方法不需要你去掌握什么复杂的OO模型或是Annotation的各种类库规定，完全就是语言层面的玩法：一种函数式编程的技巧。如果你看过本站的《<a href="/articles/10822.html">函数式编程</a>》，你一定会为函数式编程的那种“描述你想干什么，而不是描述你要怎么去实现”的编程方式感到畅快。（如果你不了解函数式编程，那在读本文之前，还请你移步去看看《<a href="/articles/10822.html">函数式编程</a>》） 好了，我们先来点感性认识，看一个Python修饰器的Hello World的代码。</p>
+<p><span id="more-11265"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Hello_World" title="Hello World">Hello World</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Decorator_%E7%9A%84%E6%9C%AC%E8%B4%A8" title="Decorator 的本质">Decorator 的本质</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%B8%A6%E5%8F%82%E6%95%B0%E5%8F%8A%E5%A4%9A%E4%B8%AADecrorator" title="带参数及多个Decrorator">带参数及多个Decrorator</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#class%E5%BC%8F%E7%9A%84_Decorator" title="class式的 Decorator">class式的 Decorator</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%94%A8Decorator%E8%AE%BE%E7%BD%AE%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8%E5%8F%82%E6%95%B0" title="用Decorator设置函数的调用参数">用Decorator设置函数的调用参数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Decorator%E7%9A%84%E5%89%AF%E4%BD%9C%E7%94%A8" title="Decorator的副作用">Decorator的副作用</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E4%B8%80%E4%BA%9Bdecorator%E7%9A%84%E7%A4%BA%E4%BE%8B" title="一些decorator的示例">一些decorator的示例</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E7%BB%99%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%81%9A%E7%BC%93%E5%AD%98" title="给函数调用做缓存">给函数调用做缓存</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#Profiler%E7%9A%84%E4%BE%8B%E5%AD%90" title="Profiler的例子">Profiler的例子</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#%E6%B3%A8%E5%86%8C%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0" title="注册回调函数">注册回调函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#%E7%BB%99%E5%87%BD%E6%95%B0%E6%89%93%E6%97%A5%E5%BF%97" title="给函数打日志">给函数打日志</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-12" href="#%E4%B8%80%E4%B8%AAMySQL%E7%9A%84Decorator" title="一个MySQL的Decorator">一个MySQL的Decorator</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-13" href="#%E7%BA%BF%E7%A8%8B%E5%BC%82%E6%AD%A5" title="线程异步">线程异步</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-14" href="#%E5%85%B6%E5%AE%83" title="其它">其它</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Hello_World"></span>Hello World<span class="ez-toc-section-end"></span></h4>
+<p>下面是代码（文件名：hello.py）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="1-6,8">def hello(fn):
+    def wrapper():
+        print &#34;hello, %s&#34; % fn.__name__
+        fn()
+        print &#34;goodby, %s&#34; % fn.__name__
+    return wrapper
+
+@hello
+def foo():
+    print &#34;i am foo&#34;
+
+foo()
+</pre>
+<p>当你运行代码，你会看到如下输出：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">[chena<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e58d8aa5868d808b8d848ac8848c97">[email protected]</a>]$ python hello.py
+hello, foo
+i am foo
+goodby, foo</pre>
+<p>你可以看到如下的东西：</p>
+<p style="padding-left: 30px;">1）函数foo前面有个@hello的“注解”，hello就是我们前面定义的函数hello</p>
+<p style="padding-left: 30px;">2）在hello函数中，其需要一个fn的参数（这就用来做回调的函数）</p>
+<p style="padding-left: 30px;">3）hello函数中返回了一个inner函数wrapper，这个wrapper函数回调了传进来的fn，并在回调前后加了两条语句。</p>
+<h4><span class="ez-toc-section" id="Decorator_%E7%9A%84%E6%9C%AC%E8%B4%A8"></span>Decorator 的本质<span class="ez-toc-section-end"></span></h4>
+<p>对于Python的这个@注解语法糖- Syntactic Sugar 来说，当你在用某个@decorator来修饰某个函数func时，如下所示:</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">@decorator
+def func():
+    pass
+</pre>
+<p>其解释器会解释成下面这样的语句：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">func = decorator(func)</pre>
+<p>尼玛，这不就是把一个函数当参数传到另一个函数中，然后再回调吗？是的，但是，我们需要注意，那里还有一个赋值语句，把decorator这个函数的返回值赋值回了原来的func。 根据《<a href="/articles/10822.html" target="_blank" rel="noopener noreferrer">函数式编程</a>》中的<strong>first class functions</strong>中的定义的，你可以把函数当成变量来使用，所以，decorator必需得返回了一个函数出来给func，这就是所谓的<strong>higher order function </strong>高阶函数，不然，后面当func()调用的时候就会出错。 就我们上面那个hello.py里的例子来说，</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">@hello
+def foo():
+    print &#34;i am foo&#34;
+</pre>
+<p>被解释成了：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python"> foo = hello(foo)</pre>
+<p><strong>是的，这是一条语句，而且还被执行了。</strong>你如果不信的话，你可以写这样的程序来试试看：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">def fuck(fn):
+    print &#34;fuck %s!&#34; % fn.__name__[::-1].upper()
+
+@fuck
+def wfg():
+    pass
+</pre>
+<p>没了，就上面这段代码，没有调用wfg()的语句，你会发现， fuck函数被调用了，而且还很NB地输出了我们每个人的心声！</p>
+<p>再回到我们hello.py的那个例子，我们可以看到，<strong>hello(foo)返回了wrapper()函数，所以，foo其实变成了wrapper的一个变量，而后面的foo()执行其实变成了wrapper()</strong>。</p>
+<p>知道这点本质，当你看到有多个decorator或是带参数的decorator，你也就不会害怕了。</p>
+<p>比如：多个decorator</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">@decorator_one
+@decorator_two
+def func():
+    pass</pre>
+<p>相当于：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">func = decorator_one(decorator_two(func))</pre>
+<p>比如：带参数的decorator：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">@decorator(arg1, arg2)
+def func():
+    pass</pre>
+<p>相当于：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">func = decorator(arg1,arg2)(func)</pre>
+<p>这意味着decorator(arg1, arg2)这个函数需要返回一个“真正的decorator”。</p>
+<h4><span class="ez-toc-section" id="%E5%B8%A6%E5%8F%82%E6%95%B0%E5%8F%8A%E5%A4%9A%E4%B8%AADecrorator"></span>带参数及多个Decrorator<span class="ez-toc-section-end"></span></h4>
+<p>我们来看一个有点意义的例子（文件名：html.py）：</p>
+<p>在上面这个例子中，我们可以看到：makeHtmlTag有两个参数。所以，<strong>为了让 <span style="color: #000080;">hello = makeHtmlTag(arg1, arg2)(hello)</span> 成功，makeHtmlTag 必需返回一个decorator</strong>（这就是为什么我们在makeHtmlTag中加入了real_decorator()的原因）<strong>，这样一来，我们就可以进入到 decorator 的逻辑中去了</strong>—— decorator得返回一个wrapper，wrapper里回调hello。<strong>看似那个makeHtmlTag() 写得层层叠叠，但是，已经了解了本质的我们觉得写得很自然</strong>。 你看，Python的Decorator就是这么简单，没有什么复杂的东西，你也不需要了解过多的东西，使用起来就是那么自然、体贴、干爽、透气，独有的速效凹道和完美的吸收轨迹，让你再也不用为每个月的那几天感到焦虑和不安，再加上贴心的护翼设计，量多也不用当心。对不起，我调皮了。 什么，你觉得上面那个带参数的Decorator的函数嵌套太多了，你受不了。好吧，没事，我们看看下面的方法。</p>
+<h4><span class="ez-toc-section" id="class%E5%BC%8F%E7%9A%84_Decorator"></span>class式的 Decorator<span class="ez-toc-section-end"></span></h4>
+<p>首先，先得说一下，decorator的class方式，还是看个示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python" data-enlighter-highlight="3,7">class myDecorator(object):
+
+    def __init__(self, fn):
+        print &#34;inside myDecorator.__init__()&#34;
+        self.fn = fn
+
+    def __call__(self):
+        self.fn()
+        print &#34;inside myDecorator.__call__()&#34;
+
+@myDecorator
+def aFunction():
+    print &#34;inside aFunction()&#34;
+
+print &#34;Finished decorating aFunction()&#34;
+
+aFunction()
+
+# 输出：
+# inside myDecorator.__init__()
+# Finished decorating aFunction()
+# inside aFunction()
+# inside myDecorator.__call__()</pre>
+<p>上面这个示例展示了，用类的方式声明一个decorator。我们可以看到这个类中有两个成员：<br/>
+1）一个是<strong>init</strong>()，这个方法是在我们给某个函数decorator时被调用，所以，需要有一个fn的参数，也就是被decorator的函数。<br/>
+2）一个是<strong>call</strong>()，这个方法是在我们调用被decorator函数时被调用的。<br/>
+上面输出可以看到整个程序的执行顺序。</p>
+<p>这看上去要比“函数式”的方式更易读一些。</p>
+<p>下面，我们来看看用类的方式来重写上面的html.py的代码（文件名：html.py）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">class makeHtmlTagClass(object):
+
+    def __init__(self, tag, css_class=&#34;&#34;):
+        self._tag = tag
+        self._css_class = &#34; class=&#39;{0}&#39;&#34;.format(css_class) \
+                                       if css_class !=&#34;&#34; else &#34;&#34;
+
+    def __call__(self, fn):
+        def wrapped(*args, **kwargs):
+            return &#34;&lt;&#34; + self._tag + self._css_class+&#34;&gt;&#34;  \
+                       + fn(*args, **kwargs) + &#34;&lt;/&#34; + self._tag + &#34;&gt;&#34;
+        return wrapped
+
+@makeHtmlTagClass(tag=&#34;b&#34;, css_class=&#34;bold_css&#34;)
+@makeHtmlTagClass(tag=&#34;i&#34;, css_class=&#34;italic_css&#34;)
+def hello(name):
+    return &#34;Hello, {}&#34;.format(name)
+
+print hello(&#34;Hao Chen&#34;)
+</pre>
+<p>上面这段代码中，我们需要注意这几点：<br/>
+1）如果decorator有参数的话，<strong>init</strong>() 成员就不能传入fn了，而fn是在<strong>call</strong>的时候传入的。<br/>
+2）这段代码还展示了 wrapped(*args, **kwargs) 这种方式来传递被decorator函数的参数。（其中：args是一个参数列表，kwargs是参数dict，具体的细节，请参考Python的文档或是<a href="http://stackoverflow.com/questions/3394835/args-and-kwargs" target="_blank" rel="noopener noreferrer">StackOverflow的这个问题</a>，这里就不展开了）</p>
+<h4><span class="ez-toc-section" id="%E7%94%A8Decorator%E8%AE%BE%E7%BD%AE%E5%87%BD%E6%95%B0%E7%9A%84%E8%B0%83%E7%94%A8%E5%8F%82%E6%95%B0"></span>用Decorator设置函数的调用参数<span class="ez-toc-section-end"></span></h4>
+<p>你有三种方法可以干这个事：</p>
+<p>第一种，通过 **kwargs，这种方法decorator会在kwargs中注入参数。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">def decorate_A(function):
+    def wrap_function(*args, **kwargs):
+        kwargs[&#39;str&#39;] = &#39;Hello!&#39;
+        return function(*args, **kwargs)
+    return wrap_function
+
+@decorate_A
+def print_message_A(*args, **kwargs):
+    print(kwargs[&#39;str&#39;])
+
+print_message_A()</pre>
+<p>第二种，约定好参数，直接修改参数</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">def decorate_B(function):
+    def wrap_function(*args, **kwargs):
+        str = &#39;Hello!&#39;
+        return function(str, *args, **kwargs)
+    return wrap_function
+
+@decorate_B
+def print_message_B(str, *args, **kwargs):
+    print(str)
+
+print_message_B()</pre>
+<p>第三种，通过 *args 注入</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">def decorate_C(function):
+    def wrap_function(*args, **kwargs):
+        str = &#39;Hello!&#39;
+        #args.insert(1, str)
+        args = args +(str,)
+        return function(*args, **kwargs)
+    return wrap_function
+
+class Printer:
+    @decorate_C
+    def print_message(self, str, *args, **kwargs):
+        print(str)
+
+p = Printer()
+p.print_message()</pre>
+<h4><span class="ez-toc-section" id="Decorator%E7%9A%84%E5%89%AF%E4%BD%9C%E7%94%A8"></span>Decorator的副作用<span class="ez-toc-section-end"></span></h4>
+<p>到这里，我相信你应该了解了整个Python的decorator的原理了。</p>
+<p>相信你也会发现，被decorator的函数其实已经是另外一个函数了，对于最前面那个hello.py的例子来说，如果你查询一下foo.<strong>name</strong>的话，你会发现其输出的是“wrapper”，而不是我们期望的“foo”，这会给我们的程序埋一些坑。所以，Python的functool包中提供了一个叫wrap的decorator来消除这样的副作用。下面是我们新版本的 hello.py。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python" data-enlighter-highlight="1,3">from functools import wraps
+def hello(fn):
+    @wraps(fn)
+    def wrapper():
+        print &#34;hello, %s&#34; % fn.__name__
+        fn()
+        print &#34;goodby, %s&#34; % fn.__name__
+    return wrapper
+
+@hello
+def foo():
+    &#39;&#39;&#39;foo help doc&#39;&#39;&#39;
+    print &#34;i am foo&#34;
+    pass
+
+foo()
+print foo.__name__ #输出 foo
+print foo.__doc__  #输出 foo help doc
+</pre>
+<p>当然，即使是你用了functools的wraps，也不能完全消除这样的副作用。</p>
+<p>来看下面这个示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">from inspect import getmembers, getargspec
+from functools import wraps
+
+def wraps_decorator(f):
+    @wraps(f)
+    def wraps_wrapper(*args, **kwargs):
+        return f(*args, **kwargs)
+    return wraps_wrapper
+
+class SomeClass(object):
+    @wraps_decorator
+    def method(self, x, y):
+        pass
+
+obj = SomeClass()
+for name, func in getmembers(obj, predicate=inspect.ismethod):
+    print &#34;Member Name: %s&#34; % name
+    print &#34;Func Name: %s&#34; % func.func_name
+    print &#34;Args: %s&#34; % getargspec(func)[0]
+
+# 输出：
+# Member Name: method
+# Func Name: method
+# Args: []</pre>
+<p>你会发现，即使是你你用了functools的wraps，你在用getargspec时，参数也不见了。</p>
+<p>要修正这一问，我们还得用Python的反射来解决，下面是相关的代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">def get_true_argspec(method):
+    argspec = inspect.getargspec(method)
+    args = argspec[0]
+    if args and args[0] == &#39;self&#39;:
+        return argspec
+    if hasattr(method, &#39;__func__&#39;):
+        method = method.__func__
+    if not hasattr(method, &#39;func_closure&#39;) or method.func_closure is None:
+        raise Exception(&#34;No closure for method.&#34;)
+
+    method = method.func_closure[0].cell_contents
+    return get_true_argspec(method)</pre>
+<p>当然，我相信大多数人的程序都不会去getargspec。所以，用functools的wraps应该够用了。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E4%BA%9Bdecorator%E7%9A%84%E7%A4%BA%E4%BE%8B"></span>一些decorator的示例<span class="ez-toc-section-end"></span></h4>
+<p>好了，现在我们来看一下各种decorator的例子：</p>
+<h5><span class="ez-toc-section" id="%E7%BB%99%E5%87%BD%E6%95%B0%E8%B0%83%E7%94%A8%E5%81%9A%E7%BC%93%E5%AD%98"></span>给函数调用做缓存<span class="ez-toc-section-end"></span></h5>
+<p>这个例实在是太经典了，整个网上都用这个例子做decorator的经典范例，因为太经典了，所以，我这篇文章也不能免俗。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">from functools import wraps
+def memo(fn):
+    cache = {}
+    miss = object()
+
+    @wraps(fn)
+    def wrapper(*args):
+        result = cache.get(args, miss)
+        if result is miss:
+            result = fn(*args)
+            cache[args] = result
+        return result
+
+    return wrapper
+
+@memo
+def fib(n):
+    if n &lt; 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+</pre>
+<p>上面这个例子中，是一个斐波拉契数例的递归算法。我们知道，这个递归是相当没有效率的，因为会重复调用。比如：我们要计算fib(5)，于是其分解成fib(4) + fib(3)，而fib(4)分解成fib(3)+fib(2)，fib(3)又分解成fib(2)+fib(1)…… 你可看到，基本上来说，fib(3), fib(2), fib(1)在整个递归过程中被调用了两次。</p>
+<p>而我们用decorator，在调用函数前查询一下缓存，如果没有才调用了，有了就从缓存中返回值。一下子，这个递归从二叉树式的递归成了线性的递归。</p>
+<h5><span class="ez-toc-section" id="Profiler%E7%9A%84%E4%BE%8B%E5%AD%90"></span>Profiler的例子<span class="ez-toc-section-end"></span></h5>
+<p>这个例子没什么高深的，就是实用一些。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">import cProfile, pstats, StringIO
+
+def profiler(func):
+    def wrapper(*args, **kwargs):
+        datafn = func.__name__ + &#34;.profile&#34; # Name the data file
+        prof = cProfile.Profile()
+        retval = prof.runcall(func, *args, **kwargs)
+        #prof.dump_stats(datafn)
+        s = StringIO.StringIO()
+        sortby = &#39;cumulative&#39;
+        ps = pstats.Stats(prof, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        print s.getvalue()
+        return retval
+
+    return wrapper
+
+</pre>
+<h5><span class="ez-toc-section" id="%E6%B3%A8%E5%86%8C%E5%9B%9E%E8%B0%83%E5%87%BD%E6%95%B0"></span>注册回调函数<span class="ez-toc-section-end"></span></h5>
+<p>下面这个示例展示了通过URL的路由来调用相关注册的函数示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">class MyApp():
+    def __init__(self):
+        self.func_map = {}
+
+    def register(self, name):
+        def func_wrapper(func):
+            self.func_map[name] = func
+            return func
+        return func_wrapper
+
+    def call_method(self, name=None):
+        func = self.func_map.get(name, None)
+        if func is None:
+            raise Exception(&#34;No function registered against - &#34; + str(name))
+        return func()
+
+app = MyApp()
+
+@app.register(&#39;/&#39;)
+def main_page_func():
+    return &#34;This is the main page.&#34;
+
+@app.register(&#39;/next_page&#39;)
+def next_page_func():
+    return &#34;This is the next page.&#34;
+
+print app.call_method(&#39;/&#39;)
+print app.call_method(&#39;/next_page&#39;)
+</pre>
+<p>注意：<br/>
+1）上面这个示例中，用类的实例来做decorator。<br/>
+2）decorator类中没有<strong>call</strong>()，但是wrapper返回了原函数。所以，原函数没有发生任何变化。</p>
+<h5><span class="ez-toc-section" id="%E7%BB%99%E5%87%BD%E6%95%B0%E6%89%93%E6%97%A5%E5%BF%97"></span>给函数打日志<span class="ez-toc-section-end"></span></h5>
+<p>下面这个示例演示了一个logger的decorator，这个decorator输出了函数名，参数，返回值，和运行时间。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">from functools import wraps
+def logger(fn):
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        ts = time.time()
+        result = fn(*args, **kwargs)
+        te = time.time()
+        print &#34;function      = {0}&#34;.format(fn.__name__)
+        print &#34;    arguments = {0} {1}&#34;.format(args, kwargs)
+        print &#34;    return    = {0}&#34;.format(result)
+        print &#34;    time      = %.6f sec&#34; % (te-ts)
+        return result
+    return wrapper
+
+@logger
+def multipy(x, y):
+    return x * y
+
+@logger
+def sum_num(n):
+    s = 0
+    for i in xrange(n+1):
+        s += i
+    return s
+
+print multipy(2, 10)
+print sum_num(100)
+print sum_num(10000000)</pre>
+<p>上面那个打日志还是有点粗糙，让我们看一个更好一点的（带log level参数的）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">import inspect
+def get_line_number():
+    return inspect.currentframe().f_back.f_back.f_lineno
+
+def logger(loglevel):
+    def log_decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            ts = time.time()
+            result = fn(*args, **kwargs)
+            te = time.time()
+            print &#34;function   = &#34; + fn.__name__,
+            print &#34;    arguments = {0} {1}&#34;.format(args, kwargs)
+            print &#34;    return    = {0}&#34;.format(result)
+            print &#34;    time      = %.6f sec&#34; % (te-ts)
+            if (loglevel == &#39;debug&#39;):
+                print &#34;    called_from_line : &#34; + str(get_line_number())
+            return result
+        return wrapper
+    return log_decorator</pre>
+<p>但是，上面这个带log level参数的有两具不好的地方，<br/>
+1） loglevel不是debug的时候，还是要计算函数调用的时间。<br/>
+2） 不同level的要写在一起，不易读。</p>
+<p>我们再接着改进：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">import inspect
+
+def advance_logger(loglevel):
+
+    def get_line_number():
+        return inspect.currentframe().f_back.f_back.f_lineno
+
+    def _basic_log(fn, result, *args, **kwargs):
+        print &#34;function   = &#34; + fn.__name__,
+        print &#34;    arguments = {0} {1}&#34;.format(args, kwargs)
+        print &#34;    return    = {0}&#34;.format(result)
+
+    def info_log_decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            result = fn(*args, **kwargs)
+            _basic_log(fn, result, args, kwargs)
+        return wrapper
+
+    def debug_log_decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            ts = time.time()
+            result = fn(*args, **kwargs)
+            te = time.time()
+            _basic_log(fn, result, args, kwargs)
+            print &#34;    time      = %.6f sec&#34; % (te-ts)
+            print &#34;    called_from_line : &#34; + str(get_line_number())
+        return wrapper
+
+    if loglevel is &#34;debug&#34;:
+        return debug_log_decorator
+    else:
+        return info_log_decorator
+</pre>
+<p>你可以看到两点，<br/>
+1）我们分了两个log level，一个是info的，一个是debug的，然后我们在外尾根据不同的参数返回不同的decorator。<br/>
+2）我们把info和debug中的相同的代码抽到了一个叫_basic_log的函数里，DRY原则。</p>
+<h5><span class="ez-toc-section" id="%E4%B8%80%E4%B8%AAMySQL%E7%9A%84Decorator"></span>一个MySQL的Decorator<span class="ez-toc-section-end"></span></h5>
+<p>下面这个decorator是我在工作中用到的代码，我简化了一下，把DB连接池的代码去掉了，这样能简单点，方便阅读。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">import umysql
+from functools import wraps
+
+class Configuraion:
+    def __init__(self, env):
+        if env == &#34;Prod&#34;:
+            self.host    = &#34;coolshell.cn&#34;
+            self.port    = 3306
+            self.db      = &#34;coolshell&#34;
+            self.user    = &#34;coolshell&#34;
+            self.passwd  = &#34;fuckgfw&#34;
+        elif env == &#34;Test&#34;:
+            self.host   = &#39;localhost&#39;
+            self.port   = 3300
+            self.user   = &#39;coolshell&#39;
+            self.db     = &#39;coolshell&#39;
+            self.passwd = &#39;fuckgfw&#39;
+
+def mysql(sql):
+
+    _conf = Configuraion(env=&#34;Prod&#34;)
+
+    def on_sql_error(err):
+        print err
+        sys.exit(-1)
+
+    def handle_sql_result(rs):
+        if rs.rows &gt; 0:
+            fieldnames = [f[0] for f in rs.fields]
+            return [dict(zip(fieldnames, r)) for r in rs.rows]
+        else:
+            return []
+
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            mysqlconn = umysql.Connection()
+            mysqlconn.settimeout(5)
+            mysqlconn.connect(_conf.host, _conf.port, _conf.user, \
+                              _conf.passwd, _conf.db, True, &#39;utf8&#39;)
+            try:
+                rs = mysqlconn.query(sql, {})
+            except umysql.Error as e:
+                on_sql_error(e)
+
+            data = handle_sql_result(rs)
+            kwargs[&#34;data&#34;] = data
+            result = fn(*args, **kwargs)
+            mysqlconn.close()
+            return result
+        return wrapper
+
+    return decorator
+
+@mysql(sql = &#34;select * from coolshell&#34; )
+def get_coolshell(data):
+    ... ...
+    ... ..
+</pre>
+<h5><span class="ez-toc-section" id="%E7%BA%BF%E7%A8%8B%E5%BC%82%E6%AD%A5"></span>线程异步<span class="ez-toc-section-end"></span></h5>
+<p>下面量个非常简单的异步执行的decorator，注意，异步处理并不简单，下面只是一个示例。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">from threading import Thread
+from functools import wraps
+
+def async(func):
+    @wraps(func)
+    def async_func(*args, **kwargs):
+        func_hl = Thread(target = func, args = args, kwargs = kwargs)
+        func_hl.start()
+        return func_hl
+
+    return async_func
+
+if __name__ == &#39;__main__&#39;:
+    from time import sleep
+
+    @async
+    def print_somedata():
+        print &#39;starting print_somedata&#39;
+        sleep(2)
+        print &#39;print_somedata: 2 sec passed&#39;
+        sleep(2)
+        print &#39;print_somedata: 2 sec passed&#39;
+        sleep(2)
+        print &#39;finished print_somedata&#39;
+
+    def main():
+        print_somedata()
+        print &#39;back in main&#39;
+        print_somedata()
+        print &#39;back in main&#39;
+
+    main()
+</pre>
+<h4><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83"></span>其它<span class="ez-toc-section-end"></span></h4>
+<p>关于更多的示例，你可以参看： <a href="https://wiki.python.org/moin/PythonDecoratorLibrary" target="_blank" rel="noopener noreferrer">Python Decorator Library</a></p>
+<p>关于Python Decroator的各种提案，可以参看：<a href="https://wiki.python.org/moin/PythonDecoratorProposals" target="_blank" rel="noopener noreferrer">Python Decorator Proposals</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11265-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Python</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Decorator</a>, <a href="javascript:void(0)" rel="tag">functional</a>, <a href="javascript:void(0)" rel="tag">Programming</a>, <a href="javascript:void(0)" rel="tag">Python</a>, <a href="javascript:void(0)" rel="tag">函数式</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Python修饰器的函数式编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1813205" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.lvxinwei.com/python-%e8%a3%85%e9%a5%b0%e5%99%a8%e5%92%8c-functools-%e6%a8%a1%e5%9d%97.html" class="url" rel="ugc external nofollow">python 装饰器和 functools 模块 - 辛未的博客</a> </div>
+</li>
+<li id="comment-1814215" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.shellsec.com/news/5899.html" class="url" rel="ugc external nofollow">PyTips 0x0f – Python 修饰器与 Functools | 神刀安全网</a> </div>
+</li>
+<li id="comment-1820283" class="comment even thread-even depth-1">
+<article id="div-comment-1820283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/782022ef3e85ff1ec135f34c6769f360?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/782022ef3e85ff1ec135f34c6769f360?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Eric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1820283"><time datetime="2016-04-21T10:19:51+08:00">2016年04月21日 10:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那个示例代码里面用了 str 作变量名，这个 str 是一个 built-in function，这样写不太好的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1833870" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1833870" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11fbd1af0bbc7f298008545b95375827?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11fbd1af0bbc7f298008545b95375827?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ajaxhe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1833870"><time datetime="2016-05-18T23:18:08+08:00">2016年05月18日 23:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很好的教程，建议初学者先了解下python闭包closure的原理，再回过头来看这篇文章，效果更佳。<br/>
+第三种，通过 *args 注入<br/>
+def decorate_C(function):<br/>
+def wrap_function(*args, **kwargs):<br/>
+str = ‘Hello!’<br/>
+#args.insert(1, str)<br/>
+args = args +(str,) ＃ 这里是不是应该改成args = (str, ) + args，否则Printer中打印第一个参数，就不是预期值了<br/>
+return function(*args, **kwargs)<br/>
+return wrap_function</p>
+<p>class Printer:<br/>
+@decorate_C<br/>
+def print_message(self, str, *args, **kwargs):<br/>
+print(str)</p>
+<p>p = Printer()<br/>
+p.print_message()</p>
+</div>
+ </article>
+</li>
+<li id="comment-1899338" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1899338" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ab4450c3e177027e0ff16ca3b2f0190?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ab4450c3e177027e0ff16ca3b2f0190?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Rogue</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1899338"><time datetime="2016-11-18T08:07:51+08:00">2016年11月18日 08:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我有一个问题：在带多个参数及多个decorator里，wrapper为什么一定要return,我写成print就报错：<br/>
+print “” + fn(*args, **kwargs) + “”<br/>
+TypeError: cannot concatenate ‘str’ and ‘NoneType’ objects</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2016574" class="comment odd alt depth-2">
+<article id="div-comment-2016574" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bcdbeb45be7c506edd62c0f515fd0a9f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bcdbeb45be7c506edd62c0f515fd0a9f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jasee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-2016574"><time datetime="2019-09-03T15:18:14+08:00">2019年09月03日 15:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>改成print的话，第一层wrapper没事，会返回None给第二层wrapper，这时候就会出现””+None，就报错了。<br/>
+用return的话，就会一直累加，不会出现None。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1900521" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1900521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29f29566ecb8a57c70760ae354334f03?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29f29566ecb8a57c70760ae354334f03?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大熊猫淘沙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1900521"><time datetime="2016-11-22T09:46:06+08:00">2016年11月22日 09:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1523681" rel="nofollow">@gaoxiao </a><br/>
+我也是这么理解的传参反倒让人容易和makeHtmlTag中的参数搞混</p>
+</div>
+ </article>
+</li>
+<li id="comment-1907644" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://aes.jypc.org/?p=38309" class="url" rel="ugc external nofollow">《笨办法学Python》笔记26—–Python中的各种符号 – 项目经验积累与分享</a> </div>
+</li>
+<li id="comment-1914203" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17929.html" class="url" rel="ugc">Go语言的修饰器编程 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1914218" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeceo.com/article/modifier-programming-in-go.html" class="url" rel="ugc external nofollow">GO 语言的修饰器编程 – 码农网</a> </div>
+</li>
+<li id="comment-1914441" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1183" class="url" rel="ugc external nofollow">Go语言的修饰器编程 | 星达红</a> </div>
+</li>
+<li id="comment-1914755" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kayenre.com/go%e8%af%ad%e8%a8%80%e7%9a%84%e4%bf%ae%e9%a5%b0%e5%99%a8%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – KAYENRE Technology</a> </div>
+</li>
+<li id="comment-1914940" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1914940" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/018eb121f2fbd8b09ebc43743de53368?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/018eb121f2fbd8b09ebc43743de53368?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chenlei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1914940"><time datetime="2017-07-07T13:33:32+08:00">2017年07月07日 13:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“带参数及多个Decrorator” 原文中decorator应该是拼写错了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916606" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1916606" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4a57053a8d25e0966bcc2a25888e572?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4a57053a8d25e0966bcc2a25888e572?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1916606"><time datetime="2017-08-21T11:52:50+08:00">2017年08月21日 11:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很棒。刚学习python，受益颇多。不过fib那个例子好像有点问题。if n &lt; 2: return 1，不是return n.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916711" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1916711" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4a57053a8d25e0966bcc2a25888e572?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4a57053a8d25e0966bcc2a25888e572?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-1916711"><time datetime="2017-08-23T16:25:14+08:00">2017年08月23日 16:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好吧，我弄错了，是return n。一直以为f(0) = 1…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916996" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=52" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – IT青年文摘</a> </div>
+</li>
+<li id="comment-1921012" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2017/06/go%e8%af%ad%e8%a8%80%e7%9a%84%e4%bf%ae%e9%a5%b0%e5%99%a8%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">Go语言的修饰器编程 - 知乎精选</a> </div>
+</li>
+<li id="comment-1921025" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2016/10/%e5%a6%82%e4%bd%95%e8%af%bb%e6%87%82%e5%b9%b6%e5%86%99%e5%87%ba%e8%a3%85%e9%80%bc%e7%9a%84%e5%87%bd%e6%95%b0%e5%bc%8f%e4%bb%a3%e7%a0%81/" class="url" rel="ugc external nofollow">如何读懂并写出装逼的函数式代码 - 知乎精选</a> </div>
+</li>
+<li id="comment-1924084" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jqhtml.com/11360.html" class="url" rel="ugc external nofollow">Python 会打扮的装饰器 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-1927377" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.yiwei.li/use-decorator-with-flask-route/" class="url" rel="ugc external nofollow">Flask路由使用装饰器的问题 - Yiwei.li</a> </div>
+</li>
+<li id="comment-1930553" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codertw.com/%e7%a8%8b%e5%bc%8f%e8%aa%9e%e8%a8%80/92292/" class="url" rel="ugc external nofollow">GO語言的修飾器程式設計 | 程式前沿</a> </div>
+</li>
+<li id="comment-1931284" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://com-it.tech/archives/89267" class="url" rel="ugc external nofollow">GO語言的修飾器程式設計 - 程序員的後花園</a> </div>
+</li>
+<li id="comment-1942672" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/9944.html" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – 西部IT科技</a> </div>
+</li>
+<li id="comment-1990893" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ddcode.net/2019/04/14/how-do-i-attach-attributes-to-the-controller-or-action-2/" class="url" rel="ugc external nofollow">How do I attach attributes to the controller or action? – DDCODE</a> </div>
+</li>
+<li id="comment-2012349" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/08/21/5d5c3ae39a547/" class="url" rel="ugc external nofollow">python decrorator | 大专栏</a> </div>
+</li>
+<li id="comment-2024153" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/09/24/5d895938001cd/" class="url" rel="ugc external nofollow">Python装饰器 | 大专栏</a> </div>
+</li>
+<li id="comment-2031398" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weixinewm.com/35347.html" class="url" rel="ugc external nofollow">50年前的登月程序和程序员有多硬核 - 微信二维码!</a> </div>
+</li>
+<li id="comment-2185558" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17929.html" class="url" rel="ugc">Go编程模式：修饰器 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2252370" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2252370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db771e40b27a02318b3fc9cfbf3e7aeb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db771e40b27a02318b3fc9cfbf3e7aeb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">墨色雨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11265.html/comment-page-2#comment-2252370"><time datetime="2021-05-24T17:12:30+08:00">2021年05月24日 17:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>带参数及多个Decrorator<br/>
+我们来看一个有点意义的例子（文件名：html.py）：</p>
+<p>在上面这个例子中，我们可以看到：makeHtmlTag有两个参数。所以，为了让 hello =</p>
+<p>这里没看到html.py的代码诶。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370218" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.bugjianghu.com/2017/" class="url" rel="ugc external nofollow">GO 语言的修饰器编程 – 江湖8</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11265.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11265.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">11265</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

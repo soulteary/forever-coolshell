@@ -1,0 +1,711 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go编程模式：修饰器 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17929 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17929" class="post-content post-17929 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-functional tag-go tag-golang tag-programming tag-697 series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go编程模式：修饰器</span>
+<h1 class="entry-title">Go编程模式：修饰器</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17929.html" title="16:48" rel="bookmark"><time class="entry-date" datetime="2017-06-01T16:48:15+08:00" pubdate="">2017年06月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17929.html#comments" class="comments-link">27 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 77,361 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-17945" src="/uploads/2017/06/go-hardhat.png" alt="" width="200" height="193" srcset=""/>之前写过一篇《<a href="/articles/11265.html" target="_blank" rel="noopener noreferrer">Python修饰器的函数式编程</a>》，这种模式很容易的可以把一些函数装配到另外一些函数上，可以让你的代码更为的简单，也可以让一些“小功能型”的代码复用性更高，让代码中的函数可以像乐高玩具那样自由地拼装。所以，一直以来，我对修饰器decoration这种编程模式情有独钟，这里写一篇Go语言相关的文章。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第7 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go编程模式：修饰器</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21179.html" rel="prev" title="Go 编程模式：Go Generation">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21228.html" rel="next" title="Go编程模式：Pipeline">下一篇文章</a> »</span></nav></section>
+<p>看过<a href="/articles/11265.html" target="_blank" rel="noopener noreferrer">Python修饰器</a>那篇文章的同学，一定知道这是一种函数式编程的玩法——用一个高阶函数来包装一下。多唠叨一句，关于函数式编程，可以参看我之前写过一篇文章《<a href="/articles/10822.html" target="_blank" rel="noopener noreferrer">函数式编程</a>》，这篇文章主要是，想通过从过程式编程的思维方式过渡到函数式编程的思维方式，从而带动更多的人玩函数式编程，所以，如果你想了解一下函数式编程，那么可以移步先阅读一下。所以，Go语言的修饰器编程模式，其实也就是函数式编程的模式。</p>
+<p>不过，要提醒注意的是，Go 语言的“糖”不多，而且又是强类型的静态无虚拟机的语言，所以，无法做到像 Java 和 Python 那样的优雅的修饰器的代码。当然，也许是我才才疏学浅，如果你知道有更多的写法，请你一定告诉我。先谢过了。<br/>
+<span id="more-17929"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%AE%80%E5%8D%95%E7%A4%BA%E4%BE%8B" title="简单示例">简单示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#HTTP_%E7%9B%B8%E5%85%B3%E7%9A%84%E4%B8%80%E4%B8%AA%E7%A4%BA%E4%BE%8B" title="HTTP 相关的一个示例">HTTP 相关的一个示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%A4%9A%E4%B8%AA%E4%BF%AE%E9%A5%B0%E5%99%A8%E7%9A%84_Pipeline" title="多个修饰器的 Pipeline">多个修饰器的 Pipeline</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%B3%9B%E5%9E%8B%E7%9A%84%E4%BF%AE%E9%A5%B0%E5%99%A8" title="泛型的修饰器">泛型的修饰器</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%AE%80%E5%8D%95%E7%A4%BA%E4%BE%8B"></span>简单示例<span class="ez-toc-section-end"></span></h4>
+<p>我们先来看一个示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+
+func decorator(f func(s string)) func(s string) {
+
+    return func(s string) {
+        fmt.Println(&#34;Started&#34;)
+        f(s)
+        fmt.Println(&#34;Done&#34;)
+    }
+}
+
+func Hello(s string) {
+    fmt.Println(s)
+}
+
+func main() {
+        decorator(Hello)(&#34;Hello, World!&#34;)
+}</pre>
+<p>我们可以看到，我们动用了一个高阶函数 <code>decorator()</code>，在调用的时候，先把 <code>Hello()</code> 函数传进去，然后其返回一个匿名函数，这个匿名函数中除了运行了自己的代码，也调用了被传入的 <code>Hello()</code> 函数。</p>
+<p>这个玩法和 Python 的异曲同工，只不过，有些遗憾的是，Go 并不支持像 Python 那样的 <code>@decorator</code> 语法糖。所以，在调用上有些难看。当然，如果你要想让代码容易读一些，你可以这样：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">hello := decorator(Hello)
+hello(&#34;Hello&#34;)</pre>
+<p>我们再来看一个和计算运行时间的例子：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="16-26">package main
+
+import (
+  &#34;fmt&#34;
+  &#34;reflect&#34;
+  &#34;runtime&#34;
+  &#34;time&#34;
+)
+
+type SumFunc func(int64, int64) int64
+
+func getFunctionName(i interface{}) string {
+  return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
+func timedSumFunc(f SumFunc) SumFunc {
+  return func(start, end int64) int64 {
+
+    defer func(t time.Time) {
+      fmt.Printf(&#34;--- Time Elapsed (%s): %v ---\n&#34;, 
+          getFunctionName(f), time.Since(t))
+    }(time.Now())
+
+    return f(start, end)
+  }
+}
+
+func Sum1(start, end int64) int64 {
+  var sum int64
+  sum = 0
+  if start &gt; end {
+    start, end = end, start
+  }
+  for i := start; i &lt;= end; i++ {
+    sum += i
+  }
+  return sum
+}
+
+func Sum2(start, end int64) int64 {
+  if start &gt; end {
+    start, end = end, start
+  }
+  return (end - start + 1) * (end + start) / 2
+}
+
+func main() {
+
+  sum1 := timedSumFunc(Sum1)
+  sum2 := timedSumFunc(Sum2)
+
+  fmt.Printf(&#34;%d, %d\n&#34;, sum1(-10000, 10000000), sum2(-10000, 10000000))
+}</pre>
+<p>关于上面的代码，有几个事说明一下：</p>
+<p>1）有两个 Sum 函数，<code>Sum1()</code> 函数就是简单的做个循环，<code>Sum2()</code> 函数动用了数据公式。（注意：start 和 end 有可能有负数的情况）</p>
+<p>2）代码中使用了 Go 语言的反射机器来获取函数名。</p>
+<p>3）修饰器函数是 <code>timedSumFunc()</code></p>
+<p>运行后输出：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ go run time.sum.go
+--- Time Elapsed (main.Sum1): 3.557469ms ---
+--- Time Elapsed (main.Sum2): 291ns ---
+49999954995000, 49999954995000
+</pre>
+<h4><span class="ez-toc-section" id="HTTP_%E7%9B%B8%E5%85%B3%E7%9A%84%E4%B8%80%E4%B8%AA%E7%A4%BA%E4%BE%8B"></span>HTTP 相关的一个示例<span class="ez-toc-section-end"></span></h4>
+<p>我们再来看一个处理 HTTP 请求的相关的例子。</p>
+<p>先看一个简单的 HTTP Server 的代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="10-16,24">package main
+
+import (
+    &#34;fmt&#34;
+    &#34;log&#34;
+    &#34;net/http&#34;
+    &#34;strings&#34;
+)
+
+func WithServerHeader(h http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        log.Println(&#34;---&gt;WithServerHeader()&#34;)
+        w.Header().Set(&#34;Server&#34;, &#34;HelloServer v0.0.1&#34;)
+        h(w, r)
+    }
+}
+
+func hello(w http.ResponseWriter, r *http.Request) {
+    log.Printf(&#34;Recieved Request %s from %s\n&#34;, r.URL.Path, r.RemoteAddr)
+    fmt.Fprintf(w, &#34;Hello, World! &#34;+r.URL.Path)
+}
+
+func main() {
+    http.HandleFunc(&#34;/v1/hello&#34;, WithServerHeader(hello))
+    err := http.ListenAndServe(&#34;:8080&#34;, nil)
+    if err != nil {
+        log.Fatal(&#34;ListenAndServe: &#34;, err)
+    }
+}</pre>
+<p>上面代码中使用到了修饰模式，<code>WithServerHeader()</code> 函数就是一个 Decorator，其传入一个 <code>http.HandlerFunc</code>，然后返回一个改写的版本。上面的例子还是比较简单，用 <code>WithServerHeader()</code> 就可以加入一个 Response 的 Header。</p>
+<p>于是，这样的函数我们可以写出好些个。如下所示，有写 HTTP 响应头的，有写认证 Cookie 的，有检查认证Cookie的，有打日志的……</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="60-62">package main
+
+import (
+    &#34;fmt&#34;
+    &#34;log&#34;
+    &#34;net/http&#34;
+    &#34;strings&#34;
+)
+
+func WithServerHeader(h http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        log.Println(&#34;---&gt;WithServerHeader()&#34;)
+        w.Header().Set(&#34;Server&#34;, &#34;HelloServer v0.0.1&#34;)
+        h(w, r)
+    }
+}
+
+func WithAuthCookie(h http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        log.Println(&#34;---&gt;WithAuthCookie()&#34;)
+        cookie := &amp;http.Cookie{Name: &#34;Auth&#34;, Value: &#34;Pass&#34;, Path: &#34;/&#34;}
+        http.SetCookie(w, cookie)
+        h(w, r)
+    }
+}
+
+func WithBasicAuth(h http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        log.Println(&#34;---&gt;WithBasicAuth()&#34;)
+        cookie, err := r.Cookie(&#34;Auth&#34;)
+        if err != nil || cookie.Value != &#34;Pass&#34; {
+            w.WriteHeader(http.StatusForbidden)
+            return
+        }
+        h(w, r)
+    }
+}
+
+func WithDebugLog(h http.HandlerFunc) http.HandlerFunc {
+    return func(w http.ResponseWriter, r *http.Request) {
+        log.Println(&#34;---&gt;WithDebugLog&#34;)
+        r.ParseForm()
+        log.Println(r.Form)
+        log.Println(&#34;path&#34;, r.URL.Path)
+        log.Println(&#34;scheme&#34;, r.URL.Scheme)
+        log.Println(r.Form[&#34;url_long&#34;])
+        for k, v := range r.Form {
+            log.Println(&#34;key:&#34;, k)
+            log.Println(&#34;val:&#34;, strings.Join(v, &#34;&#34;))
+        }
+        h(w, r)
+    }
+}
+func hello(w http.ResponseWriter, r *http.Request) {
+    log.Printf(&#34;Recieved Request %s from %s\n&#34;, r.URL.Path, r.RemoteAddr)
+    fmt.Fprintf(w, &#34;Hello, World! &#34;+r.URL.Path)
+}
+
+func main() {
+    http.HandleFunc(&#34;/v1/hello&#34;, WithServerHeader(WithAuthCookie(hello)))
+    http.HandleFunc(&#34;/v2/hello&#34;, WithServerHeader(WithBasicAuth(hello)))
+    http.HandleFunc(&#34;/v3/hello&#34;, WithServerHeader(WithBasicAuth(WithDebugLog(hello))))
+    err := http.ListenAndServe(&#34;:8080&#34;, nil)
+    if err != nil {
+        log.Fatal(&#34;ListenAndServe: &#34;, err)
+    }
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%A4%9A%E4%B8%AA%E4%BF%AE%E9%A5%B0%E5%99%A8%E7%9A%84_Pipeline"></span>多个修饰器的 Pipeline<span class="ez-toc-section-end"></span></h4>
+<p>在使用上，需要对函数一层层的套起来，看上去好像不是很好看，如果需要 decorator 比较多的话，代码会比较难看了。嗯，我们可以重构一下。</p>
+<p>重构时，我们需要先写一个工具函数——用来遍历并调用各个 decorator：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type HttpHandlerDecorator func(http.HandlerFunc) http.HandlerFunc
+
+func Handler(h http.HandlerFunc, decors ...HttpHandlerDecorator) http.HandlerFunc {
+    for i := range decors {
+        d := decors[len(decors)-1-i] // iterate in reverse
+        h = d(h)
+    }
+    return h
+}</pre>
+<p>然后，我们就可以像下面这样使用了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">http.HandleFunc(&#34;/v4/hello&#34;, Handler(hello,
+                WithServerHeader, WithBasicAuth, WithDebugLog))</pre>
+<p>这样的代码是不是更易读了一些？pipeline 的功能也就出来了。</p>
+<h4><span class="ez-toc-section" id="%E6%B3%9B%E5%9E%8B%E7%9A%84%E4%BF%AE%E9%A5%B0%E5%99%A8"></span>泛型的修饰器<span class="ez-toc-section-end"></span></h4>
+<p>不过，对于 Go 的修饰器模式，还有一个小问题 —— 好像无法做到泛型，就像上面那个计算时间的函数一样，其代码耦合了需要被修饰的函数的接口类型，无法做到非常通用，如果这个事解决不了，那么，这个修饰器模式还是有点不好用的。</p>
+<p>因为 Go 语言不像 Python 和 Java，Python是动态语言，而 Java 有语言虚拟机，所以他们可以干好些比较变态的事，然而 Go 语言是一个静态的语言，这意味着其类型需要在编译时就要搞定，否则无法编译。不过，Go 语言支持的最大的泛型是 <code>interface{}</code> 还有比较简单的 reflection 机制，在上面做做文章，应该还是可以搞定的。</p>
+<p>废话不说，下面是我用 reflection 机制写的一个比较通用的修饰器（为了便于阅读，我删除了出错判断代码）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang" data-enlighter-highlight="7,10">func Decorator(decoPtr, fn interface{}) (err error) {
+    var decoratedFunc, targetFunc reflect.Value
+
+    decoratedFunc = reflect.ValueOf(decoPtr).Elem()
+    targetFunc = reflect.ValueOf(fn)
+
+    v := reflect.MakeFunc(targetFunc.Type(),
+            func(in []reflect.Value) (out []reflect.Value) {
+                fmt.Println(&#34;before&#34;)
+                out = targetFunc.Call(in)
+                fmt.Println(&#34;after&#34;)
+                return
+            })
+
+    decoratedFunc.Set(v)
+    return
+}</pre>
+<p>上面的代码动用了 <code>reflect.MakeFunc()</code> 函数制出了一个新的函数其中的 <code>targetFunc.Call(in)</code> 调用了被修饰的函数。关于 Go 语言的反射机制，推荐官方文章 —— 《<a href="https://blog.golang.org/laws-of-reflection" target="_blank" rel="noopener noreferrer">The Laws of Reflection</a>》，在这里我不多说了。</p>
+<p>上面这个 <code>Decorator()</code> 需要两个参数，</p>
+<ul>
+<li>第一个是出参 <code>decoPtr</code> ，就是完成修饰后的函数</li>
+<li>第二个是入参 <code>fn</code> ，就是需要修饰的函数</li>
+</ul>
+<p>这样写是不是有些二？的确是的。不过，这是我个人在 Go 语言里所能写出来的最好的的代码了。如果你知道更多优雅的，请你一定告诉我！</p>
+<p>好的，让我们来看一下使用效果。首先假设我们有两个需要修饰的函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func foo(a, b, c int) int {
+    fmt.Printf(&#34;%d, %d, %d \n&#34;, a, b, c)
+    return a + b + c
+}
+
+func bar(a, b string) string {
+    fmt.Printf(&#34;%s, %s \n&#34;, a, b)
+    return a + b
+}</pre>
+<p>然后，我们可以这样做：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type MyFoo func(int, int, int) int
+var myfoo MyFoo
+Decorator(&amp;myfoo, foo)
+myfoo(1, 2, 3)
+</pre>
+<p>你会发现，使用 <code>Decorator()</code> 时，还需要先声明一个函数签名，感觉好傻啊。一点都不泛型，不是吗？</p>
+<p>嗯。如果你不想声明函数签名，那么你也可以这样</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">mybar := bar
+Decorator(&amp;mybar, bar)
+mybar(&#34;hello,&#34;, &#34;world!&#34;)</pre>
+<p>好吧，看上去不是那么的漂亮，但是 it works。看样子 Go 语言目前本身的特性无法做成像 Java 或 Python 那样，对此，我们只能多求 Go 语言多放糖了！</p>
+<p>Again， 如果你有更好的写法，请你一定要告诉我。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17929-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">functional</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">Programming</a>, <a href="javascript:void(0)" rel="tag">函数式</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go编程模式：修饰器</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1914204" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1914204" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a5dee62b8d538bf99c903f9f1bc5e311?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a5dee62b8d538bf99c903f9f1bc5e311?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘韦菠</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914204"><time datetime="2017-06-01T17:16:27+08:00">2017年06月01日 17:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://stackoverflow.com/questions/43729511/are-there-some-methods-in-golang-manipulate-function-like-stdbind-in-c" rel="nofollow ugc">https://stackoverflow.com/questions/43729511/are-there-some-methods-in-golang-manipulate-function-like-stdbind-in-c</a></p>
+<p>这个是我之前写过的一个类似装饰器的写法， 用闭包接受一个指定签名的函数并返回一个相同签名的函数， 这个应该就是装饰器编程了。</p>
+<p>跟你想到一起去了</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1914205" class="comment odd alt depth-2">
+<article id="div-comment-1914205" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a5dee62b8d538bf99c903f9f1bc5e311?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a5dee62b8d538bf99c903f9f1bc5e311?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘韦菠</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914205"><time datetime="2017-06-01T17:17:33+08:00">2017年06月01日 17:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也是受到python的启发由此想到这样写的， 写过一些flask的代码</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1914207" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1914207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/21a1df6339ce83a9e6c7ce3203331f62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/21a1df6339ce83a9e6c7ce3203331f62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://fatgrammer.github.io/" class="url" rel="ugc external nofollow">FatGrammer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914207"><time datetime="2017-06-01T21:55:39+08:00">2017年06月01日 21:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这不是Currying函数么。java8有类似写法</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">import java.util.function.Consumer;
+
+public class Ex {
+
+    public static Consumer decorator(Consumer con) {
+        return (str) -&gt; {
+            System.out.println(&#34;Started&#34;);
+            con.accept(str);
+            System.out.println(&#34;Done&#34;);
+        };
+    }
+
+    public static void Hello(Object s) {
+        System.out.println(s);
+    }
+
+    public static void main(String[] args) {
+        decorator(Ex::Hello).accept(&#34;Hello, World!&#34;);
+    }
+}
+</pre>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1914208" class="comment odd alt depth-2 parent">
+<article id="div-comment-1914208" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/21a1df6339ce83a9e6c7ce3203331f62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/21a1df6339ce83a9e6c7ce3203331f62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://fatgrammer.github.io/" class="url" rel="ugc external nofollow">FatGrammer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914208"><time datetime="2017-06-01T21:56:23+08:00">2017年06月01日 21:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>…这个缩进</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1914212" class="comment byuser comment-author-haoel bypostauthor even depth-3">
+<article id="div-comment-1914212" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914212"><time datetime="2017-06-02T09:36:09+08:00">2017年06月02日 09:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>帮你修改了一下。另外，Java的 Annotation 也是很好的修饰方式。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1914209" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914209" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00b3262fe3d762a258c856dd95444d0a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00b3262fe3d762a258c856dd95444d0a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.leyafo.com" class="url" rel="ugc external nofollow">李亚夫</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914209"><time datetime="2017-06-01T22:12:57+08:00">2017年06月01日 22:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当初我写的 http 服务端，也是用了类似的东西。不过没像博主这样用了这么多反射机制。我的做法是直接把回调函数保存在一个地方，然后需要的时候再去调用。<br/>
+博主这样写的确好看很多，目前的 go 语言也就能写成这样漂亮了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914211" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1914211" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b62f80b2115b63cc987021a817dbd2f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b62f80b2115b63cc987021a817dbd2f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Junjia He</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914211"><time datetime="2017-06-02T03:24:13+08:00">2017年06月02日 03:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们的原则是生产环境不上 reflection，加之它并没有带来可读性和复用性的显著提高，decorator 是我们的 antipattern.</p>
+<p>不过作为小技巧这篇文章还是很有趣的！</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1914213" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2 parent">
+<article id="div-comment-1914213" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914213"><time datetime="2017-06-02T09:39:46+08:00">2017年06月02日 09:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么 decorator 是 anti-pattern ？业界用的这么多。另外，为什么reflection不能上生产？能多说一些吗？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1914266" class="comment even depth-3">
+<article id="div-comment-1914266" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4eb1a82c95e65e40c52ef26df86c9895?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4eb1a82c95e65e40c52ef26df86c9895?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">purair</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914266"><time datetime="2017-06-08T21:42:07+08:00">2017年06月08日 21:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>主要原因是映射带来的性能问题，很多golang早期的web框架通过映射处理路由，比如revel。其它不用映射处理路由的一些框架性能比revel这类的要高一些，比如gin. 两者的框架路由性能上相差很大 。 所以越往后的golang框架，目前用映射的，特别是用映射处理路由的会相对少一些。当然也许以后golang的映射好了之后 又不一样了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914291" class="comment odd alt depth-3 parent">
+<article id="div-comment-1914291" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b62f80b2115b63cc987021a817dbd2f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b62f80b2115b63cc987021a817dbd2f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Junjia He</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914291"><time datetime="2017-06-11T14:00:10+08:00">2017年06月11日 14:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是指在go里用reflect做decorator应该会被我们认为是antipattern：如你所说它并不是那么“好看”。<br/>
+避免reflect确实是出于性能的考量。当然也看应用场景。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2181024" class="comment even depth-4">
+<article id="div-comment-2181024" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/675baba874aca19372e33e39590a7a52?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/675baba874aca19372e33e39590a7a52?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nlogn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-2181024"><time datetime="2020-12-10T14:23:08+08:00">2020年12月10日 14:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ok</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1914217" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914217" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2b092732c3f2d57698003aed142850f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2b092732c3f2d57698003aed142850f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">swdfish</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914217"><time datetime="2017-06-02T17:48:09+08:00">2017年06月02日 17:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大神也在学Go呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914252" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1914252" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f248aba076e61ab338558e5376f2157?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f248aba076e61ab338558e5376f2157?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">reatang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914252"><time datetime="2017-06-07T16:19:39+08:00">2017年06月07日 16:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GO语言的修饰器,感觉没啥用呀，毕竟是强类型….</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914279" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/36efbeee7a42c43afe317921b80fea6a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/36efbeee7a42c43afe317921b80fea6a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杨飞</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914279"><time datetime="2017-06-09T10:57:06+08:00">2017年06月09日 10:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看过一些go原生HandlerFunc、martini的一些源码和设计，似懂非懂，因工作比较忙，也没有去深究，之后便如鲠在喉的感觉。看完这篇文章，前后点滴串了起来，谢谢！<br/>
+但还有一点疑问：<br/>
+java中decorator模式还是比较少见的，基本被proxy替代。大部分功能框架层能透明做到的，不需要对调用者可见，如添加日志, addheader等；少部分功能需要对调用者可见，比如buffered io功能，需要调用者决定，显示调用。<br/>
+golang中使用decorator来实现职责链，很多场景对调用者来说是不友好的，是设计如此还是语言proxy技术缺陷呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914310" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1914310" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/911b9a6da83de5301bd623bbfdeb8160?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/911b9a6da83de5301bd623bbfdeb8160?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小金鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914310"><time datetime="2017-06-12T14:48:21+08:00">2017年06月12日 14:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>golang中http框架echo中的http handle也就是这样处理的。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914318" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914318" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1664efb66c406eca3e7a0e1c8a2dd9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1664efb66c406eca3e7a0e1c8a2dd9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jjwei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1914318"><time datetime="2017-06-13T17:19:56+08:00">2017年06月13日 17:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对用户太不友好的，看这样的代码想哭</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915858" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1915858" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/deaf6e87461c63df1bb50b633d86c47e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/deaf6e87461c63df1bb50b633d86c47e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/gogap" class="url" rel="ugc external nofollow">zeal</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1915858"><time datetime="2017-08-03T09:40:18+08:00">2017年08月03日 09:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之前写过一个类似AOP的东西，玩了一下反射，https://github.com/gogap/aop</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923112" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=791" class="url" rel="ugc external nofollow">Go语言、Docker 和新技术 – IT文摘</a> </div>
+</li>
+<li id="comment-1929569" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1929569" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0102ceb1cc49c3ae0ef78a147af27c6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0102ceb1cc49c3ae0ef78a147af27c6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">marks</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1929569"><time datetime="2018-05-31T15:36:55+08:00">2018年05月31日 15:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真的是相见恨晚啊！ 作为面向对象思想转到 golang，函数式编程思想一直似懂非懂，朦朦胧胧，经过博主的两篇文章，感觉迷雾又剥去了一层！ 非常感谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1934862" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1934862" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d3aef008fd412a14bf1da2d11d73e0f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d3aef008fd412a14bf1da2d11d73e0f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ft</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-1934862"><time datetime="2018-07-23T11:07:16+08:00">2018年07月23日 11:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>基于反射来编程并不是go推荐的编程方式，<br/>
+上面的装饰器也仅仅是一个闭包而已。<br/>
+go无糖不胖</p>
+</div>
+ </article>
+</li>
+<li id="comment-2041435" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wxhongbao.com/67523.html" class="url" rel="ugc external nofollow">Go语言、Docker 和新技术 - 微信红包网</a> </div>
+</li>
+<li id="comment-2082998" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2082998" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c73a598d1a5d169112e270d5d7c18798?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c73a598d1a5d169112e270d5d7c18798?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://joypanda.jp/" class="url" rel="ugc external nofollow">JoyPanda</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-2082998"><time datetime="2020-03-28T15:22:55+08:00">2020年03月28日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>私はそのような興味深い記事で著者を尊重します。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2181020" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2181020" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/675baba874aca19372e33e39590a7a52?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/675baba874aca19372e33e39590a7a52?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nlogn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-2181020"><time datetime="2020-12-10T14:20:53+08:00">2020年12月10日 14:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习到了，感谢</p>
+</div>
+ </article>
+</li>
+<li id="comment-2187510" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21228.html" class="url" rel="ugc">Go编程模式：Pipeline | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2187553" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21263.html" class="url" rel="ugc">Go 编程模式：k8s Visitor 模式 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2193461" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2193461" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5dc17a94c081b987eb3c65b7a15856c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5dc17a94c081b987eb3c65b7a15856c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">罗杰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-2193461"><time datetime="2021-01-10T21:20:15+08:00">2021年01月10日 21:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>都写了三年的 Go 了，看了博主的文章，感觉解决了我之前的好多疑惑，把知识点都串起来了，不多说了，去极客时间支持一波。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2265313" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2265313" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df45442bf2605cfc183221a3e82e0f70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df45442bf2605cfc183221a3e82e0f70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imjmj.com/" class="url" rel="ugc external nofollow">shopee刷单</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17929.html#comment-2265313"><time datetime="2021-06-17T21:24:55+08:00">2021年06月17日 21:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>支持，不错的文章</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

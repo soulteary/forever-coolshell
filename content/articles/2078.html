@@ -1,0 +1,339 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何防范密码被破解 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2078 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2078" class="post-content post-2078 post type-post status-publish format-standard hentry category-tools category-netsecurity tag-bcrypt tag-password tag-320 tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">如何防范密码被破解</span>
+<h1 class="entry-title">如何防范密码被破解</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2078.html" title="17:18" rel="bookmark"><time class="entry-date" datetime="2010-02-01T17:18:36+08:00" pubdate="">2010年02月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2078.html#comments" class="comments-link">95 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 42,889 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>你会用什么样的算法来为你的用户保存密码？如果你还在用明码的话，那么一旦你的网站被hack了，那么你所有的用户口令都会被泄露了，这意味着，你的系统或是网站就此完蛋了。所以，我们需要通过一些不可逆的算法来保存用户的密码。比如：MD5, SHA1, SHA256, SHA512, SHA-3,等Hash算法。这些算法都是不可逆的。系统在验证用户的口令时，需要把Hash加密过后的口令与后面存放口令的数据库中的口令做比较，如果一致才算验证通过。</p>
+<p>但你觉得这些算法好吗？我说的是：MD5, SHA1, SHA256, SHA512, SHA-3。如果你使用的是MD5算法来加密你的口令，如果你的口令长度只有小写字母再加上数字，假设口令的长度是6位，那么在目前一台比较新一点的PC机上，穷举所有的口令只需要40秒钟。而据我们了解，几乎有90%以上的用户只用小写字母和数字来组织其口令。对于6位长度的密码只需要最多40秒就可以破解了，这可能会吓到你。</p>
+<p>如果你愿意花2000美金和一周的时间来构建一个<a href="http://www.nvidia.com/object/cuda_home.html" target="_blank">CUDA</a>，那么，你可以在你组建的这个集群中使用进行密码穷举运算，其速度是，<a href="http://www.win.tue.nl/cccc/sha-1-challenge.html" target="_blank">1秒钟可以计算7亿个口令</a>。对于目前实际当中使用的比较复杂的口令，其破解率也可以高达每秒一个。当然，这里说的算法是MD5，SHA之类的算法。</p>
+<p>那么，对于这样的一种情况来说，我们怎么办？我们还是有办法的。</p>
+<p><span id="more-2078"></span></p>
+<p>我们知道MD5，SHA的算法速度太快了。所以，我们需要一个“慢一点”的加密算法。呵呵。bcrypt是这样的一个算法，因为它很慢，对于计算机来说，其慢得有点BT了，但却慢得刚刚好！对于验证用户口令来说是不慢的，对于穷举用户口令来说，其会让那些计算机变得如同蜗牛一样。</p>
+<p>因为bcrypt采用了一系列各种不同的Blowfish加密算法，并引入了一个work factor，这个工作因子可以让你决定这个算法的代价有多大。因为这些，这个算法不会因为计算机CPU处理速度变快了，而导致算法的时间会缩短了。因为，你可以增加work factor来把其性能降下来。呵呵。</p>
+<p>那么，bcrypt到底有多慢？如果和MD5一起来比较的话，如果使用值为12的work factor的话，如果加密“cool”的话，bcrypt需要0.3秒，而MD5只需要一微秒（百万分之一秒）。也就是说，前面我们说的那个只需要40秒就可以穷举完所有的可能的MD5编码的口令的算法，在使用bcrypt下，需要12年。</p>
+<p>这就是bcrypt给你带来的选择，<strong>你可以一个安全的口令和一个快速的加密算法，或是一个不怎么安全的口令和一个性能不好的加密算法</strong>。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2078-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程工具</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">bcrypt</a>, <a href="javascript:void(0)" rel="tag">password</a>, <a href="javascript:void(0)" rel="tag">口令</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何防范密码被破解</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-117930" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yangxiaolei.sinaapp.com/?p=19" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | yanglei的个人博客</a> </div>
+</li>
+<li id="comment-119786" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.phpcto.com/?p=166" class="url" rel="ugc external nofollow">每一个Web开发者都需要了解的知识！ | phpCTO技术网站</a> </div>
+</li>
+<li id="comment-121072" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1dapei.com/index.php/archives/461" class="url" rel="ugc external nofollow">OOPS! I GOT IT! » CSDN明文口令泄露的启示</a> </div>
+</li>
+<li id="comment-121752" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-121752" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ea44bd120ed7cf301d561bcc3e7a6c96?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ea44bd120ed7cf301d561bcc3e7a6c96?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">blackanger</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2078.html/comment-page-2#comment-121752"><time datetime="2012-01-05T17:11:10+08:00">2012年01月05日 17:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章是翻译的http://codahale.com/how-to-safely-store-a-password/ 吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-122116" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yekuke.com/index.php/2012/01/web-developers-need-to-understand-what/" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 - 黑色 | 黑色</a> </div>
+</li>
+<li id="comment-127655" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xa01.cc/50.html" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 生命在于折腾</a> </div>
+</li>
+<li id="comment-135923" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lvxinwei.sinaapp.com/683.html" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | Goldenfish</a> </div>
+</li>
+<li id="comment-136546" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tuoxie.me/blog/make-my-own-password-manager/" class="url" rel="ugc external nofollow">Blog by Xu Ke » 构建自己的密码本</a> </div>
+</li>
+<li id="comment-136961" class="comment even thread-even depth-1">
+<article id="div-comment-136961" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b7bfc4a664193b06200c9f6bca4efa77?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b7bfc4a664193b06200c9f6bca4efa77?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cccc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2078.html/comment-page-2#comment-136961"><time datetime="2012-02-12T12:32:15+08:00">2012年02月12日 12:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>固定salt加随机salt<br/>
+再整体sha512，破解需要拿到三个东西，源代码，密码数据，salt数据，然后再进行穷举破解</p>
+</div>
+ </article>
+</li>
+<li id="comment-141950" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qcqxz.com/?p=221" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 骑车去西藏</a> </div>
+</li>
+<li id="comment-143999" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://vm-192-168-17-2.shengyun.grandcloud.cn/wordpress/blog/2012/03/10/web%e5%bc%80%e5%8f%91%e4%b8%ad%e9%9c%80%e8%a6%81%e4%ba%86%e8%a7%a3%e7%9a%84%e4%b8%9c%e8%a5%bf/" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 « iPage</a> </div>
+</li>
+<li id="comment-147923" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.llxx.net/9cm/work/?p=63" class="url" rel="ugc external nofollow">信息设计 » Web开发中需要了解的东西</a> </div>
+</li>
+<li id="comment-148229" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.llxx.net/9cm/work/?p=76" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 湖南技术交流信息分享网站</a> </div>
+</li>
+<li id="comment-150113" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zihua.li/2012/03/user-auth-design/" class="url" rel="ugc external nofollow">小谈网站用户验证系统的设计 | Zihua Li</a> </div>
+</li>
+<li id="comment-200461" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.ccig.com/wanglin/2012/08/01/web%e5%bc%80%e5%8f%91%e4%b8%ad%e9%9c%80%e8%a6%81%e4%ba%86%e8%a7%a3%e7%9a%84%e4%b8%9c%e8%a5%bf/" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 王琳的博客</a> </div>
+</li>
+<li id="comment-203033" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.newxd.com/6283.html" class="url" rel="ugc external nofollow">你会做Web上的用户登录功能吗？ | 新席地网</a> </div>
+</li>
+<li id="comment-249793" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://kinbos.info/archives/37" class="url" rel="ugc external nofollow">Backspace» Blog Archive » Web开发中需要了解的东西</a> </div>
+</li>
+<li id="comment-266555" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.madeby83.com/web-login-functionality-detailed.html" class="url" rel="ugc external nofollow">web登录功能详解 | 83</a> </div>
+</li>
+<li id="comment-292522" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tannnn.tk/?p=106" class="url" rel="ugc external nofollow">你的密码有多安全？ » 吃你煮的鱼</a> </div>
+</li>
+<li id="comment-313108" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.unlearn.cn/archives/252" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 « Unlearn to Learn</a> </div>
+</li>
+<li id="comment-344149" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://linjunlong.com/?p=812" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 小林博客</a> </div>
+</li>
+<li id="comment-482798" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jida.sinaapp.com/?p=95" class="url" rel="ugc external nofollow">Web开发中需要了解的东西(1) – 集大博客</a> </div>
+</li>
+<li id="comment-506869" class="comment even thread-even depth-1">
+<article id="div-comment-506869" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa65f7021e2875f76e5906b8d59d40d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa65f7021e2875f76e5906b8d59d40d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hellokitty</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2078.html/comment-page-2#comment-506869"><time datetime="2013-05-27T21:15:14+08:00">2013年05月27日 21:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-5381" rel="nofollow">@supersonic </a><br/>
+yes, 需要一个 secrit 字段来共同进行 md5 加密就OK了， 如果secrit 字段足够长，并且足够复杂，而且对同一个用户有访问次数限制的话，理论上来说是不能被破解的</p>
+</div>
+ </article>
+</li>
+<li id="comment-535601" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://relay.programfan.info/%e6%8a%80%e6%9c%af%e7%82%b9/%e5%ae%89%e5%85%a8/443.jsp" class="url" rel="ugc external nofollow">新溪转发博客 » 你会做Web上的用户登录功能吗？</a> </div>
+</li>
+<li id="comment-565922" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://brett80.com/2012/03/web-developers-need-to-understand-thing/" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 布莱特的世界</a> </div>
+</li>
+<li id="comment-689232" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.flyfly121.org/?p=13" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 桌上两本书</a> </div>
+</li>
+<li id="comment-909488" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=129" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | multiprocess</a> </div>
+</li>
+<li id="comment-909512" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=152" class="url" rel="ugc external nofollow">你会做Web上的用户登录功能吗？ | multiprocess</a> </div>
+</li>
+<li id="comment-1244411" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://iamhiko.com/geek/88.html" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | Hiko</a> </div>
+</li>
+<li id="comment-1265284" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.helpergarden.com/2014/02/11/159.html" class="url" rel="ugc external nofollow">Web开发中需要了解的东西(转) | 助手之园</a> </div>
+</li>
+<li id="comment-1381885" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://prepoet.com/2014/01/04/blog-reading-at-2014/" class="url" rel="ugc external nofollow">blog <span class="__cf_email__" data-cfemail="8efcebefeae7e0e9cebcbebfba">[email protected]</span></a> </div>
+</li>
+<li id="comment-1454496" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xiangloveqin.cn/1554.html" class="url" rel="ugc external nofollow">湘爱琴| Web开发中需要特别注意的地方</a> </div>
+</li>
+<li id="comment-1495455" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.akmumu.com/2014/07/15/292/.html" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 木木老蔫</a> </div>
+</li>
+<li id="comment-1524945" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gshangpin.com/segment/?p=12685" class="url" rel="ugc external nofollow">针对密码泄漏事件，都有哪些相对安全的密码加密规则？ | segment-解决方案</a> </div>
+</li>
+<li id="comment-1592986" class="comment even thread-even depth-1">
+<article id="div-comment-1592986" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/737253b0d55ed7c4cdad2a0f4a159ccd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/737253b0d55ed7c4cdad2a0f4a159ccd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">叶子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2078.html/comment-page-2#comment-1592986"><time datetime="2014-11-04T21:56:17+08:00">2014年11月04日 21:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，在做一个3des加密的，然后密钥过一段时间就要变一下，那么数据库的密码就需要先解密再加密一次，那么密钥该保存在哪里呢，也保存在db？ 那不是钥匙就放锁旁边了？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1800610" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhaonew.com/plife/do-not-mess-with-the-programmer/" class="url" rel="ugc external nofollow">【永远不要相信用户的输入】千万别惹程序员 | 【zhaoNew.com 找牛网】</a> </div>
+</li>
+<li id="comment-1838520" class="comment even thread-even depth-1">
+<article id="div-comment-1838520" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/400afc0827442a2826240ded94cf6d18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/400afc0827442a2826240ded94cf6d18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.awaimai.com" class="url" rel="ugc external nofollow">歪麦博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2078.html/comment-page-2#comment-1838520"><time datetime="2016-05-28T09:21:05+08:00">2016年05月28日 09:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>据说bcrypt算法永不过时</p>
+</div>
+ </article>
+</li>
+<li id="comment-1891489" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://voyg.net/?p=1241" class="url" rel="ugc external nofollow">使用BCrypt生成强度单向加密密码 – 杭州搬砖·老维的技术修养</a> </div>
+</li>
+<li id="comment-1915572" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://collects.delphiqin.me/2011/12/17/web%e5%bc%80%e5%8f%91%e4%b8%ad%e9%9c%80%e8%a6%81%e4%ba%86%e8%a7%a3%e7%9a%84%e4%b8%9c%e8%a5%bf-%e9%85%b7%e5%a3%b3-coolshell-cn/" class="url" rel="ugc external nofollow">Web开发中需要了解的东西 | 酷壳 – CoolShell.cn | Share</a> </div>
+</li>
+<li id="comment-1916391" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1916391" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9bbfc43636413c387c0ee97906ce311?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9bbfc43636413c387c0ee97906ce311?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2078.html/comment-page-2#comment-1916391"><time datetime="2017-08-16T16:07:28+08:00">2017年08月16日 16:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>40秒有点扯了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1920569" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.youxianli.cn/blog/?p=61" class="url" rel="ugc external nofollow">WEB开发中需要了解的东西 | H5展示</a> </div>
+</li>
+<li id="comment-1947790" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wangxiaofeng.site/web-develope.html" class="url" rel="ugc external nofollow">Web开发中需要了解的东西</a> </div>
+</li>
+<li id="comment-2127000" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wp.andyiac.com/2020/01/19/4312/" class="url" rel="ugc external nofollow">你会做WEB上的用户登录功能吗？ | KIP</a> </div>
+</li>
+<li id="comment-2309612" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1291959" class="url" rel="ugc external nofollow">如何做Web上的用户登录功能 - 算法网</a> </div>
+</li>
+<li id="comment-2309615" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1291968" class="url" rel="ugc external nofollow">编写Web用户登录功能需要注意哪些？ - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/2078.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/2078.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">2078</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

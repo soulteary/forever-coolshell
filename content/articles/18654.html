@@ -1,0 +1,904 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>记一次Kubernetes/Docker网络排障 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-18654 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-18654" class="post-content post-18654 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-misc tag-docker tag-kubernetes tag-linux tag-network tag-systemd">
+<header class="entry-header">
+<span class="screen-reader-text">记一次Kubernetes/Docker网络排障</span>
+<h1 class="entry-title">记一次Kubernetes/Docker网络排障</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/18654.html" title="11:57" rel="bookmark"><time class="entry-date" datetime="2018-12-08T11:57:35+08:00" pubdate="">2018年12月08日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/18654.html#comments" class="comments-link">51 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 74,072 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-18662" src="/uploads/2018/12/docker-networking-1.png" alt="" width="300" height="238" srcset=""/>昨天周五晚上，临下班的时候，用户给我们报了一个比较怪异的Kubernetes集群下的网络不能正常访问的问题，让我们帮助查看一下，我们从下午5点半左右一直跟进到晚上十点左右，在远程不能访问用户机器只能远程遥控用户的情况找到了的问题。这个问题比较有意思，我个人觉得其中的调查用到的的命令以及排障的一些方法可以分享一下，所以写下了这篇文章。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%97%AE%E9%A2%98%E7%9A%84%E7%97%87%E7%8A%B6" title="问题的症状">问题的症状</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E9%97%AE%E9%A2%98%E7%9A%84%E6%8E%92%E6%9F%A5" title="问题的排查">问题的排查</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E9%97%AE%E9%A2%98%E5%88%9D%E6%9F%A5" title="问题初查">问题初查</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#%E9%87%8D%E6%96%B0%E6%A2%B3%E7%90%86" title="重新梳理">重新梳理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%9F%B3%E6%9A%97%E8%8A%B1%E6%98%8E" title="柳暗花明">柳暗花明</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E9%97%AE%E9%A2%98%E5%8E%9F%E5%9B%A0" title="问题原因">问题原因</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%85%B6%E5%AE%83%E4%BA%8B%E5%AE%9C" title="其它事宜">其它事宜</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98%E7%9A%84%E7%97%87%E7%8A%B6"></span>问题的症状<span class="ez-toc-section-end"></span></h4>
+<p>用户直接在微信里说，他们发现在Kuberbnetes下的某个pod被重启了几百次甚至上千次，于是开启调查这个pod，发现上面的服务时而能够访问，时而不能访问，也就是有一定概率不能访问，不知道是什么原因。而且并不是所有的pod出问题，而只是特定的一两个pod出了网络访问的问题。用户说这个pod运行着Java程序，为了排除是Java的问题，用户用 <code>docker exec -it</code> 命令直接到容器内启了一个 Python的 SimpleHttpServer来测试发现也是一样的问题。</p>
+<p>我们大概知道用户的集群是这样的版本，Kuberbnetes 是1.7，网络用的是flannel的gw模式，Docker版本未知，操作系统CentOS 7.4，直接在物理机上跑docker，物理的配置很高，512GB内存，若干CPU核，上面运行着几百个Docker容器。</p>
+<p><span id="more-18654"></span></p>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98%E7%9A%84%E6%8E%92%E6%9F%A5"></span>问题的排查<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98%E5%88%9D%E6%9F%A5"></span>问题初查<span class="ez-toc-section-end"></span></h5>
+<p>首先，我们排除了flannel的问题，因为整个集群的网络通信都正常，只有特定的某一两个pod有问题。而用 <code>telnet ip port</code> 的命令手工测试网络连接时有很大的概率出现 <code>connection refused</code> 错误，大约 1/4的概率，而3/4的情况下是可以正常连接的。</p>
+<p>当时，我们让用户抓个包看看，然后，用户抓到了有问题的TCP连接是收到了 <code>SYN</code> 后，立即返回了 <code>RST, ACK</code></p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-18655" src="/uploads/2018/12/tcpdump.png" alt="" width="700" height="80" srcset=""/></p>
+<p>我问一下用户这两个IP所在的位置，知道了，<code>10.233.14.129</code> 是 <code>docker0</code>，<code>10.233.14.145</code> 是容器内的IP。所以，这基本上可以排除了所有和kubernets或是flannel的问题，这就是本地的Docker上的网络的问题。</p>
+<p>对于这样被直接 Reset 的情况，在 <code>telnet</code> 上会显示 <code>connection refused</code> 的错误信息，对于我个人的经验，这种 <code>SYN</code>完直接返回 <code>RST, ACK</code>的情况只会有三种情况：</p>
+<ol>
+<li> TCP链接不能建立，不能建立连接的原因基本上是标识一条TCP链接的那五元组不能完成，绝大多数情况都是服务端没有相关的端口号。</li>
+<li>TCP链接建错误，有可能是因为修改了一些TCP参数，尤其是那些默认是关闭的参数，因为这些参数会导致TCP协议不完整。</li>
+<li>有防火墙iptables的设置，其中有 <code>REJECT</code> 规则。</li>
+</ol>
+<p>因为当时还在开车，在等红灯的时候，我感觉到有点像 NAT 的网络中服务端开启了 <code>tcp_tw_recycle</code> 和 <code>tcp_tw_reuse</code> 的症况（详细参看《<a href="/articles/11564.html" target="_blank" rel="noopener noreferrer">TCP的那些事（上）</a>》），所以，让用户查看了一上TCP参数，发现用户一个TCP的参数都没有改，全是默认的，于是我们排除了TCP参数的问题。</p>
+<p>然后，我也不觉得容器内还会设置上iptables，而且如果有那就是100%的问题，不会时好时坏。所以，我怀疑容器内的端口号没有侦听上，但是马上又好了，这可能会是应用的问题。于是我让用户那边看一下，应用的日志，并用 <code>kublet describe</code>看一下运行的情况，并把宿主机的 iptables 看一下。</p>
+<p>然而，我们发现并没有任何的问题。这时，<strong>我们失去了所有的调查线索，感觉不能继续下去了……</strong></p>
+<h5><span class="ez-toc-section" id="%E9%87%8D%E6%96%B0%E6%A2%B3%E7%90%86"></span>重新梳理<span class="ez-toc-section-end"></span></h5>
+<p>这个时候，回到家，大家吃完饭，和用户通了一个电话，把所有的细节再重新梳理了一遍，这个时候，用户提供了一个比较关键的信息—— “<strong>抓包这个事，在 <code>docker0</code> 上可以抓到，然而到了容器内抓不到容器返回 <code>RST, ACK</code> </strong>” ！然而，根据我的知识，我知道在 <code>docker0</code> 和容器内的 <code>veth</code> 网卡上，中间再也没有什么网络设备了（参看《<a href="/articles/17029.html" target="_blank" rel="noopener noreferrer">Docker基础技术：LINUX NAMESPACE（下）</a>》）!</p>
+<p>于是这个事把我们逼到了最后一种情况 —— IP地址冲突了！</p>
+<p>Linux下看IP地址冲突还不是一件比较简单事的，而在用户的生产环境下没有办法安装一些其它的命令，所以只能用已有的命令，这个时候，我们发现用户的机器上有 <code>arping</code> 于是我们用这个命令来检测有没有冲突的IP地址。使用了下面的命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ arping -D -I docker0 -c 2 10.233.14.145
+$ echo $?
+</pre>
+<p>根据文档，<code>-D</code> 参数是检测IP地址冲突模式，如果这个命令的退状态是 <code>0</code> 那么就有冲突。结果返回了 <code>1</code> 。而且，我们用 <code>arping</code> IP的时候，没有发现不同的mac地址。 <strong>这个时候，似乎问题的线索又断了</strong>。</p>
+<p>因为客户那边还在处理一些别的事情，所以，我们在时断时续的情况下工作，而还一些工作都需要用户完成，所以，进展有点缓慢，但是也给我们一些时间思考问题。</p>
+<h5><span class="ez-toc-section" id="%E6%9F%B3%E6%9A%97%E8%8A%B1%E6%98%8E"></span>柳暗花明<span class="ez-toc-section-end"></span></h5>
+<p>现在我们知道，IP冲突的可能性是非常大的，但是我们找不出来是和谁的IP冲突了。而且，我们知道只要把这台机器重启一下，问题一定就解决掉了，但是我们觉得这并不是解决问题的方式，因为重启机器可以暂时的解决掉到这个问题，而如果我们不知道这个问题怎么发生的，那么未来这个问题还会再来。而重启线上机器这个成本太高了。</p>
+<p>于是，我们的好奇心驱使我们继续调查。我让用户 <code>kubectl delete</code> 其中两个有问题的pod，因为本来就服务不断重启，所以，删掉也没有什么问题。删掉这两个pod后（一个是IP为 <code>10.233.14.145</code> 另一个是 <code>10.233.14.137</code>），我们发现，kubernetes在其它机器上重新启动了这两个服务的新的实例。然而，<strong>在问题机器上，这两个IP地址居然还可以ping得通</strong>。</p>
+<p>好了，IP地址冲突的问题可以确认了。因为<code>10.233.14.xxx</code> 这个网段是 docker 的，所以，这个IP地址一定是在这台机器上。所以，我们想看看所有的 network namespace 下的 veth 网卡上的IP。</p>
+<p>在这个事上，我们费了点时间，因为对相关的命令也 很熟悉，所以花了点时间Google，以及看相关的man。</p>
+<ul>
+<li>首先，我们到 <code>/var/run/netns</code>目录下查看系统的network namespace，发现什么也没有。</li>
+<li>然后，我们到 <code>/var/run/docker/netns</code> 目录下查看Docker的namespace，发现有好些。</li>
+<li>于是，我们用指定位置的方式查看Docker的network namespace里的IP地址</li>
+</ul>
+<p>这里要动用 <code>nsenter</code> 命令，这个命令可以进入到namespace里执行一些命令。比如</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ nsenter --net=/var/run/docker/netns/421bdb2accf1 ifconfig -a
+</pre>
+<p>上述的命令，到 <code>var/run/docker/netns/421bdb2accf1</code> 这个network namespace里执行了 <code>ifconfig -a</code> 命令。于是我们可以用下面 命令来遍历所有的network namespace。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ ls /var/run/docker/netns | xargs -I {} nsenter --net=/var/run/docker/netns/{} ip addr 
+</pre>
+<p>然后，我们发现了比较诡异的事情。</p>
+<ul>
+<li><code>10.233.14.145</code> 我们查到了这个IP，说明，docker的namespace下还有这个IP。</li>
+<li><code>10.233.14.137</code>，这个IP没有在docker的network namespace下查到。</li>
+</ul>
+<p>有namespace leaking？于是我上网查了一下，发现了一个docker的bug – 在docker remove/stop 一个容器的时候，没有清除相应的network namespace，这个问题被报告到了 <a href="https://github.com/moby/moby/issues/31597">Issue#31597</a> 然后被fix在了 <a href="https://github.com/moby/moby/pull/31996">PR#31996</a>，并Merge到了 Docker的 17.05版中。而用户的版本是 17.09，应该包含了这个fix。不应该是这个问题，感觉又走不下去了。</p>
+<p>不过， <code>10.233.14.137</code> 这个IP可以ping得通，说明这个IP一定被绑在某个网卡，而且被隐藏到了某个network namespace下。</p>
+<p>到这里，要查看所有network namespace，只有最后一条路了，那就是到 <code>/proc/</code> 目录下，把所有的pid下的 <code>/proc/&lt;pid&gt;/ns</code> 目录给穷举出来。好在这里有一个比较方便的命令可以干这个事 ： <code>lsns</code></p>
+<p>于是我写下了如下的命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ lsns -t net | awk ‘{print $4}&#39; | xargs -t -I {} nsenter -t {}&amp;nbsp;-n ip addr | grep -C 4 &#34;10.233.14.137&#34;
+</pre>
+<p>解释一下。</p>
+<ul>
+<li><code>lsns -t net</code> 列出所有开了network namespace的进程，其第4列是进程PID</li>
+<li>把所有开过network namespace的进程PID拿出来，转给 <code>xargs</code> 命令</li>
+<li>由 <code>xargs</code> 命令把这些PID 依次传给 <code>nsenter</code> 命令，
+<ul>
+<li><code>xargs -t</code> 的意思是会把相关的执行命令打出来，这样我知道是那个PID。</li>
+<li><code>xargs -I {}</code>  是声明一个占位符来替换相关的PID</li>
+</ul>
+</li>
+</ul>
+<p>最后，我们发现，虽然在 <code>/var/run/docker/netns</code> 下没有找到 <code>10.233.14.137</code> ，但是在 <code>lsns</code> 中找到了三个进程，他们都用了<code>10.233.14.137</code> 这个IP（冲突了这么多），<strong>而且他们的MAC地址全是一样的！</strong>（怪不得arping找不到）。通过<code>ps</code> 命令，可以查到这三个进程，有两个是java的，还有一个是<code>/pause</code> （这个应该是kubernetes的沙盒）。</p>
+<p>我们继续乘胜追击，穷追猛打，用<code>pstree</code>命令把整个进程树打出来。发现上述的三个进程的父进程都在多个同样叫 <code>docker-contiane</code> 的进程下！</p>
+<p><strong>这明显还是docker的，但是在<code>docker ps</code> 中却找不道相应的容器，什么鬼！快崩溃了……</strong></p>
+<p>继续看进程树，发现，这些 <code>docker-contiane</code> 的进程的父进程不在 <code>dockerd</code> 下面，而是在 <code>systemd</code> 这个超级父进程PID 1下，我靠！进而发现了一堆这样的野进程（这种野进程或是僵尸进程对系统是有害的，至少也是会让系统进入亚健康的状态，因为他们还在占着资源）。</p>
+<p><code>docker-contiane</code> 应该是 <code>dockerd</code> 的子进程，被挂到了 <code>pid 1</code> 只有一个原因，那就是父进程“飞”掉了，只能找 pid 1 当养父。这说明，这台机器上出现了比较严重的 <code>dockerd</code> 进程退出的问题，而且是非常规的，因为 <code>systemd</code> 之所以要成为 pid 1，其就是要监管所有进程的子子孙孙，居然也没有管理好，说明是个非常规的问题。（注，关于 systemd，请参看《<a href="/articles/17998.html" target="_blank" rel="noopener noreferrer">Linux PID 1 和 Systemd </a>》，关于父子进程的事，请参看《Unix高级环境编程》一书）</p>
+<p>接下来就要看看 <code>systemd</code> 为 <code>dockerd</code> 记录的日志了…… （然而日志只有3天的了，这3天<code>dockerd</code>没有任何异常）</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>通过这个调查，可以总结一下，</p>
+<p>1） 对于问题调查，需要比较扎实的基础知识，知道问题的成因和范围。</p>
+<p>2）如果走不下去了，要重新梳理一下，回头仔细看一下一些蛛丝马迹，认真推敲每一个细节。</p>
+<p>3） 各种诊断工具要比较熟悉，这会让你事半功倍。</p>
+<p>4）系统维护和做清洁比较类似，需要经常看看系统中是否有一些僵尸进程或是一些垃圾东西，这些东西要及时清理掉。</p>
+<p>最后，多说一下，很多人都说，<strong>Docker适合放在物理机内运行，这并不完全对，因为他们只考虑到了性能成本，没有考虑到运维成本，在这样512GB中启动几百个容器的玩法，其实并不好，因为这本质上是个大单体，因为你一理要重启某些关键进程或是机器，你的影响面是巨大的</strong>。</p>
+<p> </p>
+<p>———————— 更新 2018/12/10 —————————</p>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98%E5%8E%9F%E5%9B%A0"></span>问题原因<span class="ez-toc-section-end"></span></h4>
+<p>这两天在自己的环境下测试了一下，发现，只要是通过 <code>systemctl start/stop docker</code> 这样的命令来启停 Docker， 是可以把所有的进程和资源全部干掉的。这个是没有什么问题的。我唯一能重现用户问题的的操作就是直接 <code>kill -9 &lt;dockerd pid&gt;</code> 但是这个事用户应该不会干。而 Docker 如果有 crash 事件时，Systemd 是可以通过 <code>journalctl -u docker</code> 这样的命令查看相关的系统日志的。</p>
+<p>于是，我找用户了解一下他们在Docker在启停时的问题，用户说，<strong>他们的执行 <code>systemctl stop docker</code> 这个命令的时候，发现这个命令不响应了，有可能就直接按了 <code>Ctrl +C</code> 了</strong>！</p>
+<p>这个应该就是导致大量的 <code>docker-containe</code> 进程挂到 <code>PID 1</code> 下的原因了。前面说过，用户的一台物理机上运行着上百个容器，所以，那个进程树也是非常庞大的，我想，停服的时候，系统一定是要遍历所有的docker子进程来一个一个发退出信号的，这个过程可能会非常的长。导致操作员以为命令假死，而直接按了 <code>Ctrl + C</code> ，最后导致很多容器进程并没有终止……</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83%E4%BA%8B%E5%AE%9C"></span>其它事宜<span class="ez-toc-section-end"></span></h4>
+<p>有同学问，为什么我在这个文章里写的是 <code>docker-containe</code> 而不是 <code>containd</code> 进程？这是因为被 <code>pstree</code> 给截断了，用 <code>ps</code> 命令可以看全，只是进程名的名字有一个 <code>docker-</code>的前缀。</p>
+<p>下面是这两种不同安装包的进程树的差别（其中 <code>sleep</code> 是我用 <code>buybox</code> 镜像启动的）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">systemd───dockerd─┬─docker-contained─┬─3*[docker-contained-shim─┬─sleep]
+                  │                 │                    └─9*[{docker-containe}]]
+                  │                 ├─docker-contained-shim─┬─sleep
+                  │                 │                 └─10*[{docker-containe}]
+                  │                 └─14*[{docker-contained-shim}]
+                  └─17*[{dockerd}]
+</pre>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">systemd───dockerd─┬─containerd─┬─3*[containerd-shim─┬─sleep]
+                  │            │                 └─9*[{containerd-shim}]
+                  │            ├─2*[containerd-shim─┬─sleep]
+                  │            │                    └─9*[{containerd-shim}]]
+                  │            └─11*[{containerd}]
+                  └─10*[{dockerd}]
+
+</pre>
+<p>顺便说一下，自从 Docker 1.11版以后，Docker进程组模型就改成上面这个样子了.</p>
+<ul>
+<li><code>dockerd</code> 是 Docker Engine守护进程，直接面向操作用户。<code>dockerd</code> 启动时会启动 <code>containerd</code> 子进程，他们之前通过RPC进行通信。</li>
+<li><code>containerd</code> 是<code>dockerd</code>和<code>runc</code>之间的一个中间交流组件。他与 <code>dockerd</code> 的解耦是为了让Docker变得更为的中立，而支持OCI 的标准 。</li>
+<li><code>containerd-shim</code>  是用来真正运行的容器的，每启动一个容器都会起一个新的shim进程， 它主要通过指定的三个参数：容器id，boundle目录（containerd的对应某个容器生成的目录，一般位于：<code>/var/run/docker/libcontainerd/containerID</code>）， 和运行命令（默认为 <code>runc</code>）来创建一个容器。</li>
+<li><code>docker-proxy</code> 你有可能还会在新版本的Docker中见到这个进程，这个进程是用户级的代理路由。只要你用 <code>ps -elf</code> 这样的命令把其命令行打出来，你就可以看到其就是做端口映射的。如果你不想要这个代理的话，你可以在 <code>dockerd</code> 启动命令行参数上加上：  <code>--userland-proxy=false</code> 这个参数。</li>
+</ul>
+<p>更多的细节，大家可以自行Google。这里推荐两篇文章：</p>
+<ul>
+<li><a href="https://hackernoon.com/docker-containerd-standalone-runtimes-heres-what-you-should-know-b834ef155426" target="_blank" rel="noopener noreferrer">Docker, Containerd &amp; Standalone Runtimes — Here’s What You Should Know</a></li>
+<li><a href="http://alexander.holbreich.org/docker-components-explained/" target="_blank" rel="noopener noreferrer">Docker components explained</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-18654-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Docker</a>, <a href="javascript:void(0)" rel="tag">Kubernetes</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">network</a>, <a href="javascript:void(0)" rel="tag">Systemd</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>记一次Kubernetes/Docker网络排障</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1946987" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1946987" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9f21517a4d0e59f90001eec13d28c7ca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9f21517a4d0e59f90001eec13d28c7ca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">九龙同学</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1946987"><time datetime="2018-12-08T12:33:17+08:00">2018年12月08日 12:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果走不下去，玩重新梳理！？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1947057" class="comment odd alt depth-2">
+<article id="div-comment-1947057" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1c04777b420059321a69b37760915541?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1c04777b420059321a69b37760915541?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">james</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947057"><time datetime="2018-12-08T19:35:53+08:00">2018年12月08日 19:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那不然呢？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1946988" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1946988" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db9c411131417874d03d1fa859c040da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db9c411131417874d03d1fa859c040da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://https" class="url" rel="ugc external nofollow">chenyangguang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1946988"><time datetime="2018-12-08T12:39:21+08:00">2018年12月08日 12:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好深厚的内力，排查问题内力源源不绝地催动化为万般招式，令人眼花缭乱</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947022" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1947022" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d495207ff66b1e33a0d8290f7a40b37e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d495207ff66b1e33a0d8290f7a40b37e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">叶勇</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947022"><time datetime="2018-12-08T16:00:05+08:00">2018年12月08日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子哥终于出来了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947048" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1947048" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/72f2c797603256b0ef8e6b5fcecb1016?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/72f2c797603256b0ef8e6b5fcecb1016?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">孙伟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947048"><time datetime="2018-12-08T18:13:49+08:00">2018年12月08日 18:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看完感觉自己还有好多要学习的地方</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947062" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1947062" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b560a3dfd3c213d553881ca14efdffd7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b560a3dfd3c213d553881ca14efdffd7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">麦田</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947062"><time datetime="2018-12-08T20:52:47+08:00">2018年12月08日 20:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的棒棒的，最后咋样了啊？日志没了，还能继续走下去吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947065" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1947065" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8383ffe3cf4fc6ba529430a151648399?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8383ffe3cf4fc6ba529430a151648399?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kuring</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947065"><time datetime="2018-12-08T21:11:42+08:00">2018年12月08日 21:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>docker-contiane应该更改为docker-containe</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1947344" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-1947344" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947344"><time datetime="2018-12-10T21:01:58+08:00">2018年12月10日 21:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1947070" class="comment even thread-even depth-1">
+<article id="div-comment-1947070" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a50ee6bf9bdd5e4ebef0a28bcc504ac4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a50ee6bf9bdd5e4ebef0a28bcc504ac4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">侯名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947070"><time datetime="2018-12-08T21:28:53+08:00">2018年12月08日 21:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>666666，最后得问一下他们最近做了什么操作吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947073" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1947073" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/777ddd33cc0bf289f67c3ff45eafb191?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/777ddd33cc0bf289f67c3ff45eafb191?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sonny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947073"><time datetime="2018-12-08T22:13:00+08:00">2018年12月08日 22:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>6啊，学习了ns相关命令的用法</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947088" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1947088" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce0954e9233ed85f2af413eb0cb9d137?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce0954e9233ed85f2af413eb0cb9d137?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">狐狸</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947088"><time datetime="2018-12-09T00:30:00+08:00">2018年12月09日 00:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>酷壳的博客太有名，IP地址要不要打马赛克？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1947142" class="comment odd alt depth-2">
+<article id="div-comment-1947142" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0a677bcbaba82998ac86178730d0c07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0a677bcbaba82998ac86178730d0c07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">肖邦</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947142"><time datetime="2018-12-09T11:16:05+08:00">2018年12月09日 11:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>都是内网地址没必要吧。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1947129" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1947129" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4424a407a061eb494f89eae42f30d399?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4424a407a061eb494f89eae42f30d399?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">svtter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947129"><time datetime="2018-12-09T10:05:42+08:00">2018年12月09日 10:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有趣，之前看欧洲材料数据库，不明白为什么他们要做vmware+docker，还diss了一下，总感觉多此一举。原来如此。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947165" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1947165" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ae2a78ccb9741ad7f923ac8956521d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ae2a78ccb9741ad7f923ac8956521d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://rongweihe.github.io/" class="url" rel="ugc external nofollow">herongwei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947165"><time datetime="2018-12-09T14:31:37+08:00">2018年12月09日 14:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔好深厚的内力！<br/>
+顺着问题排查-问题梳理-问题解决思路看下来，就像在看一本侦探小说一样！<br/>
+我默默的拿起《Unix高级环境编程》重新看了起来。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947270" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1947270" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2eadddc7d625ec5a5881eb83ae35317c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2eadddc7d625ec5a5881eb83ae35317c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">killua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947270"><time datetime="2018-12-10T09:42:40+08:00">2018年12月10日 09:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>工具玩儿的溜！！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947274" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1947274" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/969e313fea953941249c339bbc239337?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/969e313fea953941249c339bbc239337?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Kevin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947274"><time datetime="2018-12-10T10:12:57+08:00">2018年12月10日 10:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后，找到引起dockerd崩溃的原因了吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947306" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1947306" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de037dbb1ff987b4263656535acd6b00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de037dbb1ff987b4263656535acd6b00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">优笛瑞博</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947306"><time datetime="2018-12-10T15:01:24+08:00">2018年12月10日 15:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>512G，羡慕啊，我想问下大家一般选择服务器时，是购买2天16G的呢，还是购买4台8G的，依据是什么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947309" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1947309" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de037dbb1ff987b4263656535acd6b00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de037dbb1ff987b4263656535acd6b00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.nndev.cn" class="url" rel="ugc external nofollow">优笛瑞博</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947309"><time datetime="2018-12-10T15:14:50+08:00">2018年12月10日 15:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们在用Docker的时候，重启某个容器时还出现“service endpoint already exists”错误，然后这样解决：“docker network disconnect -f network_name container-name”，原以为我们自己使用Docker不规范出现这样的问题，后来使用阿里云容器服务时也出现了这个问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947323" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1947323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c74da1bb46388f13fde457c7faad601?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c74da1bb46388f13fde457c7faad601?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://jiajunhuang.com" class="url" rel="ugc external nofollow">JiajunHuang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947323"><time datetime="2018-12-10T17:12:11+08:00">2018年12月10日 17:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>%s/TCP链接/TCP连接/g ?</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1950787" class="comment odd alt depth-2">
+<article id="div-comment-1950787" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12050455e5f5351ab025f8e6d8aaa556?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12050455e5f5351ab025f8e6d8aaa556?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fangzhen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1950787"><time datetime="2019-01-06T14:19:03+08:00">2019年01月06日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的吧</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1947337" class="comment even thread-even depth-1">
+<article id="div-comment-1947337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/652bd2458de5158e90dcbf919921b495?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/652bd2458de5158e90dcbf919921b495?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">松益</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947337"><time datetime="2018-12-10T19:45:37+08:00">2018年12月10日 19:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也遇到过类似的情况 一样抓幽灵ip</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947385" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1947385" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dbb6dc04f474ced370e895eae299eac2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dbb6dc04f474ced370e895eae299eac2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Wei Chen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947385"><time datetime="2018-12-11T05:31:13+08:00">2018年12月11日 05:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>两个感受：<br/>
+1. 把几百个鸡蛋(instance)放在一个大篮子（机器）永远不是好主意， 总是有这种那种的原因让这个篮子挂掉。<br/>
+2. 设置Host级别的Process monitoring, 如果有一定数量的zombie process就触发alert，产生报告给Ops.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947411" class="comment even thread-even depth-1">
+<article id="div-comment-1947411" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ce4735b776f58a0a48a74ef03fe5e68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ce4735b776f58a0a48a74ef03fe5e68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">AriesDevil</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947411"><time datetime="2018-12-11T11:02:47+08:00">2018年12月11日 11:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Systemd 杀进程难道不是先从子进程开始杀吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947549" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1947549" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d58659ea73aafe707116d3a29d8c9254?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d58659ea73aafe707116d3a29d8c9254?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://none" class="url" rel="ugc external nofollow">cai</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947549"><time datetime="2018-12-12T11:10:50+08:00">2018年12月12日 11:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个明显是开启live restore的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947567" class="comment even thread-even depth-1">
+<article id="div-comment-1947567" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8516a464b88c35c188a560e86015943?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8516a464b88c35c188a560e86015943?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eason feng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947567"><time datetime="2018-12-12T13:53:34+08:00">2018年12月12日 13:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>逻辑思维强，值得学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947573" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1947573" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f3085d21f285a7c2fbf472f6908be6e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f3085d21f285a7c2fbf472f6908be6e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">开发者头条</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947573"><time datetime="2018-12-12T14:26:02+08:00">2018年12月12日 14:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，我是开发者头条的运营。感谢您的辛苦创作。您的《记一次KUBERNETES/DOCKER网络排障》已被我们平台用户推荐到首页。为了让更多读者认识您，我们邀请您来开发者头条分享。与创作不同，您仅需复制粘贴文章链接即可完成分享。可以在各大应用市场搜索 “开发者头条” 找到我们的应用，欢迎了解。期待您的分享。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947575" class="comment even thread-even depth-1">
+<article id="div-comment-1947575" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/99b8500f89487d9aa7e487760ad82aa1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/99b8500f89487d9aa7e487760ad82aa1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ShenMin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947575"><time datetime="2018-12-12T15:30:02+08:00">2018年12月12日 15:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“然后，我们发现了比较诡异的事情。<br/>
+10.233.14.145 我们查到了这个IP，说明，docker的namespace下还有这个IP。”</p>
+<p>耗子哥，这里的145是不是不是开头的抓包哪个容器的145了，已经是重生的一个正常容器的IP地址了吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947593" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1947593" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe5636bb1f2dd362fd7ffb861b6273c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe5636bb1f2dd362fd7ffb861b6273c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cumirror</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1947593"><time datetime="2018-12-12T19:30:48+08:00">2018年12月12日 19:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>浩哥，有个问题想请教下：<br/>
+K8S集群中，如果想限制container中的资源使用，比如限制container中NOFILE/NO_PROC之类的资源，该怎么去配置？</p>
+<p>现在看到的是container会读OCI配置文件，如：<br/>
+:/var/run/docker/libcontainerd/8878fd987995b4201c39d75b1788bb3f02ab51632e7cbd6e02d3a15739bc311a# ls<br/>
+config.json init-stderr init-stdin init-stdout</p>
+<p>config.json是container的运行时配置，但k8s有方式能定义这个资源限制并传递给containerd吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1948269" class="comment even thread-even depth-1">
+<article id="div-comment-1948269" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2cfa61cc1d2c953fbfcd11017fad1db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2cfa61cc1d2c953fbfcd11017fad1db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.chunyangwen.com" class="url" rel="ugc external nofollow">chunyang.wen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1948269"><time datetime="2018-12-17T14:17:41+08:00">2018年12月17日 14:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>错别字好像比以前多了。<br/>
+kubernets, 让用户查看了一上TCP参数,因为对相关的命令也 很熟悉</p>
+</div>
+ </article>
+</li>
+<li id="comment-1948375" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1948375" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/374f05dc3e417377ce701af63965db4c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/374f05dc3e417377ce701af63965db4c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.vivps.com/" class="url" rel="ugc external nofollow">RAKSmart优惠券</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1948375"><time datetime="2018-12-18T14:19:20+08:00">2018年12月18日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>交换链接吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-1948561" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1948561" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fdd4cda042268bbd0c11c169084f4f4a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fdd4cda042268bbd0c11c169084f4f4a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://ieevee.com" class="url" rel="ugc external nofollow">伊布</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1948561"><time datetime="2018-12-20T11:57:14+08:00">2018年12月20日 11:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们遇到过类似的问题，实际是docker的一个bug。systemctl stop docker的时候，并没用关闭docker api，如果有比较多的容器需要关闭，此时会再接收kubelet发过来的pod启动请求，但这些容器不会被dockerd管理。</p>
+<p><a href="https://github.com/moby/moby/pull/38241/files" rel="nofollow ugc">https://github.com/moby/moby/pull/38241/files</a></p>
+<p>可惜这个PR没有merge。</p>
+<p>开启live restore可以规避这个问题。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2162331" class="comment odd alt depth-2">
+<article id="div-comment-2162331" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9229ec0ff52ced93383b4f6cac62df7a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9229ec0ff52ced93383b4f6cac62df7a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Eagle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2162331"><time datetime="2020-10-15T13:11:42+08:00">2020年10月15日 13:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>居然还open着！！！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1949644" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1949644" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec6a469a586897e531a10b57d4339c19?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec6a469a586897e531a10b57d4339c19?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">胡凯旋</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1949644"><time datetime="2018-12-28T16:31:10+08:00">2018年12月28日 16:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>技术点全程看不懂，但是感觉像是在看故事汇一样。<br/>
+另外，“一旦”写成了“一理”。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1992656" class="comment odd alt depth-2">
+<article id="div-comment-1992656" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1bd8e8510eb21a19e91af86d3db11658?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1bd8e8510eb21a19e91af86d3db11658?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://srers.cn/" class="url" rel="ugc external nofollow">Victor Lee</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1992656"><time datetime="2019-04-18T14:18:54+08:00">2019年04月18日 14:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>五笔，石锤了。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1952537" class="comment even thread-even depth-1">
+<article id="div-comment-1952537" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1064eb426c6fac35327b747f3e723208?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1064eb426c6fac35327b747f3e723208?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ls</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1952537"><time datetime="2019-01-22T21:41:39+08:00">2019年01月22日 21:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞</p>
+</div>
+ </article>
+</li>
+<li id="comment-1957254" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1957254" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/277b681822e2f8530a9e2d8fcfa9f4ac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/277b681822e2f8530a9e2d8fcfa9f4ac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">salamander</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1957254"><time datetime="2019-01-31T10:41:20+08:00">2019年01月31日 10:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主厉害</p>
+</div>
+ </article>
+</li>
+<li id="comment-1963347" class="comment even thread-even depth-1">
+<article id="div-comment-1963347" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cb3cb558359476f46eef2c044b52265?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cb3cb558359476f46eef2c044b52265?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">华子春新语丝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1963347"><time datetime="2019-02-12T10:47:13+08:00">2019年02月12日 10:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主解说的很详细，也很正确，向你学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1964690" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1964690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/626807d54bc550578d90e836a218f00e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/626807d54bc550578d90e836a218f00e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cezhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1964690"><time datetime="2019-02-16T11:48:09+08:00">2019年02月16日 11:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>参考下https://blog.phusion.nl/2015/01/20/docker-and-the-pid-1-zombie-reaping-problem/</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2361485" class="comment even depth-2">
+<article id="div-comment-2361485" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a04ede485bbfba28ae255ff872145041?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a04ede485bbfba28ae255ff872145041?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">owenzhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2361485"><time datetime="2022-01-26T09:37:35+08:00">2022年01月26日 09:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢分享，感觉跟容易懂些，是我太弱了，哈哈哈</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1969939" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1969939" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b0c7fbabd02c7cbf3a6ed32a884a12bd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b0c7fbabd02c7cbf3a6ed32a884a12bd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">罗才敏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1969939"><time datetime="2019-02-28T17:36:16+08:00">2019年02月28日 17:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>读开篇的时候就预感可能是ip冲突了，但没想到这么复杂。 想耗子哥哥学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1973308" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1973308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e91deaa5f40027ccee97c61153b42068?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e91deaa5f40027ccee97c61153b42068?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bobby</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1973308"><time datetime="2019-03-08T10:15:32+08:00">2019年03月08日 10:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>厉害。底层原理很精通。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1974377" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1974377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8db29ef37af40771e24990fa3493c748?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8db29ef37af40771e24990fa3493c748?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">loveshell</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1974377"><time datetime="2019-03-10T22:06:25+08:00">2019年03月10日 22:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>技术好扎实</p>
+</div>
+ </article>
+</li>
+<li id="comment-1994837" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1994837" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3063e34879599e9413bceadf1083db55?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3063e34879599e9413bceadf1083db55?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">孙悟空</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1994837"><time datetime="2019-04-29T16:53:29+08:00">2019年04月29日 16:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>查看命名空间的命令写错了；有个笔误，应该是：<br/>
+lsns -t net | awk ‘{print $4}’ | xargs -t -I {} nsenter -t {} -n ip addr| grep -C 4 “10.233.14.137”</p>
+</div>
+ </article>
+</li>
+<li id="comment-1997101" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1997101" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3d4eeee4040c4c3478f2e76324f8c678?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3d4eeee4040c4c3478f2e76324f8c678?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.csdn.net/guofangsky" class="url" rel="ugc external nofollow">轻舞飞扬</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1997101"><time datetime="2019-05-13T23:13:38+08:00">2019年05月13日 23:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我去， 眼花缭乱， 神功飞扬！</p>
+<p>神级耗子！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1997345" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1997345" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/48c7c7aabd9286eaaab8c48835d67dac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/48c7c7aabd9286eaaab8c48835d67dac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">虾毛的柔情</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-1997345"><time datetime="2019-05-15T18:17:04+08:00">2019年05月15日 18:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你好，我按照arping命令做测试。无论是哪个IP，返回值都是0。我是公有云环境，请问这是为什么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2005044" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2005044" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0d6df592b82cadd3af70bc24c5975c46?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0d6df592b82cadd3af70bc24c5975c46?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">风马</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2005044"><time datetime="2019-07-06T10:04:55+08:00">2019年07月06日 10:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有两个可能的书写问题：</p>
+<p>柳暗花明 部分</p>
+<p>原句：</p>
+<p>“在这个事上，我们费了点时间，因为对相关的命令也 很熟悉，所以花了点时间Google，以及看相关的man。”</p>
+<p>我猜您想写的是：</p>
+<p>“在这个事上，我们费了点时间，因为对相关的命令也不熟悉，所以花了点时间Google，以及看相关的man。”</p>
+<p>总结 部分</p>
+<p>原句：</p>
+<p>“因为你一理要重启某些关键进程或是机器，你的影响面是巨大的。”</p>
+<p>我猜您想写的是：</p>
+<p>“因为你一要重启某些关键进程或是机器，你的影响面是巨大的。”</p>
+<p>以上部分也可能是我理解有误，没太明白原句的意思，所以只是提出可能问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2078616" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2078616" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/479c9013d6751a1c567a2f4a537b176e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/479c9013d6751a1c567a2f4a537b176e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://basketballlegendsunblocked.us" class="url" rel="ugc external nofollow">Alexandra</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2078616"><time datetime="2020-03-17T14:59:55+08:00">2020年03月17日 14:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有些人确实做愚蠢的事情，有些人则必须清理它们。 我属于第二组。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2078878" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/docker/docker_85931.html" class="url" rel="ugc external nofollow">Linux ctrl-c explained(ctrl-c 详解) _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2210503" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2210503" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f8b41eaef699348377f03e320670a701?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f8b41eaef699348377f03e320670a701?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yanhuibin315.github.io" class="url" rel="ugc external nofollow">YG.Bingo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2210503"><time datetime="2021-02-24T16:03:26+08:00">2021年02月24日 16:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只是看文章就给我累坏了，估计真解决这事可能要至少两天…</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370712" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370712" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/52eee32ccf452b2f5bfca331c156305d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/52eee32ccf452b2f5bfca331c156305d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jim</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2370712"><time datetime="2022-09-16T16:48:19+08:00">2022年09月16日 16:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>使用 docker ps -a 可以查出来吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370717" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aef13094aabfb347608bec70ef051e0e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aef13094aabfb347608bec70ef051e0e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小周</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18654.html#comment-2370717"><time datetime="2022-09-20T10:36:52+08:00">2022年09月20日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，想请教一下，pod每过30分钟就会liveness probe和readiness probe检查失败导致重启或not ready，这个可能是什么原因呢？有什么排查思路呢？</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

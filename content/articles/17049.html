@@ -1,0 +1,632 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Docker基础技术：Linux CGroup | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17049 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17049" class="post-content post-17049 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-misc tag-cgroup tag-docker tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">Docker基础技术：Linux CGroup</span>
+<h1 class="entry-title">Docker基础技术：Linux CGroup</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17049.html" title="09:03" rel="bookmark"><time class="entry-date" datetime="2015-04-17T09:03:57+08:00" pubdate="">2015年04月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17049.html#comments" class="comments-link">87 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 124,548 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" src="/uploads/2015/04/filter.png" alt="filter" width="224" height="225" class="alignright size-full wp-image-17097" srcset="" sizes="(max-width: 224px) 100vw, 224px"/>前面，我们介绍了<a title="Docker基础技术：Linux Namespace" href="/articles/17010.html" target="_blank">Linux Namespace</a>，但是Namespace解决的问题主要是环境隔离的问题，这只是虚拟化中最最基础的一步，我们还需要解决对计算机资源使用上的隔离。也就是说，虽然你通过Namespace把我Jail到一个特定的环境中去了，但是我在其中的进程使用用CPU、内存、磁盘等这些计算资源其实还是可以随心所欲的。所以，我们希望对进程进行资源利用上的限制或控制。这就是Linux CGroup出来了的原因。</p>
+<p>Linux CGroup全称Linux Control Group， 是Linux内核的一个功能，用来限制，控制与分离一个进程组群的资源（如CPU、内存、磁盘输入输出等）。这个项目最早是由Google的工程师在2006年发起（主要是Paul Menage和Rohit Seth），最早的名称为进程容器（process containers）。在2007年时，因为在Linux内核中，容器（container）这个名词太过广泛，为避免混乱，被重命名为cgroup，并且被合并到2.6.24版的内核中去。然后，其它开始了他的发展。</p>
+<p>Linux CGroupCgroup 可​​​让​​​您​​​为​​​系​​​统​​​中​​​所​​​运​​​行​​​任​​​务​​​（进​​​程​​​）的​​​用​​​户​​​定​​​义​​​组​​​群​​​分​​​配​​​资​​​源​​​ — 比​​​如​​​ CPU 时​​​间​​​、​​​系​​​统​​​内​​​存​​​、​​​网​​​络​​​带​​​宽​​​或​​​者​​​这​​​些​​​资​​​源​​​的​​​组​​​合​​​。​​​您​​​可​​​以​​​监​​​控​​​您​​​配​​​置​​​的​​​ cgroup，拒​​​绝​​​ cgroup 访​​​问​​​某​​​些​​​资​​​源​​​，甚​​​至​​​在​​​运​​​行​​​的​​​系​​​统​​​中​​​动​​​态​​​配​​​置​​​您​​​的​​​ cgroup。</p>
+<p>主要提供了如下功能：</p>
+<p><span id="more-17049"></span></p>
+<ul>
+<li><strong>Resource limitation</strong>: 限制资源使用，比如内存使用上限以及文件系统的缓存限制。</li>
+<li><strong>Prioritization</strong>: 优先级控制，比如：CPU利用和磁盘IO吞吐。</li>
+<li><strong>Accounting</strong>: 一些审计或一些统计，主要目的是为了计费。</li>
+<li><strong>Control</strong>: 挂起进程，恢复执行进程。</li>
+</ul>
+<p>使​​​用​​​ cgroup，系​​​统​​​管​​​理​​​员​​​可​​​更​​​具​​​体​​​地​​​控​​​制​​​对​​​系​​​统​​​资​​​源​​​的​​​分​​​配​​​、​​​优​​​先​​​顺​​​序​​​、​​​拒​​​绝​​​、​​​管​​​理​​​和​​​监​​​控​​​。​​​可​​​更​​​好​​​地​​​根​​​据​​​任​​​务​​​和​​​用​​​户​​​分​​​配​​​硬​​​件​​​资​​​源​​​，提​​​高​​​总​​​体​​​效​​​率​​​。</p>
+<p>在实践中，系统管理员一般会利用CGroup做下面这些事（有点像为某个虚拟机分配资源似的）：</p>
+<ul>
+<li>隔离一个进程集合（比如：nginx的所有进程），并限制他们所消费的资源，比如绑定CPU的核。</li>
+<li>为这组进程 分配其足够使用的内存</li>
+<li>为这组进程分配相应的网络带宽和磁盘存储限制</li>
+<li>限制访问某些设备（通过设置设备的白名单）</li>
+</ul>
+<p>那么CGroup是怎么干的呢？我们先来点感性认识吧。</p>
+<p>首先，Linux把CGroup这个事实现成了一个file system，你可以mount。在我的Ubuntu 14.04下，你输入以下命令你就可以看到cgroup已为你mount好了。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a8c0cbc0cdc6e8ddcaddc6dcdd">[email protected]</a>:~$ mount -t cgroup
+cgroup on /sys/fs/cgroup/cpuset type cgroup (rw,relatime,cpuset)
+cgroup on /sys/fs/cgroup/cpu type cgroup (rw,relatime,cpu)
+cgroup on /sys/fs/cgroup/cpuacct type cgroup (rw,relatime,cpuacct)
+cgroup on /sys/fs/cgroup/memory type cgroup (rw,relatime,memory)
+cgroup on /sys/fs/cgroup/devices type cgroup (rw,relatime,devices)
+cgroup on /sys/fs/cgroup/freezer type cgroup (rw,relatime,freezer)
+cgroup on /sys/fs/cgroup/blkio type cgroup (rw,relatime,blkio)
+cgroup on /sys/fs/cgroup/net_prio type cgroup (rw,net_prio)
+cgroup on /sys/fs/cgroup/net_cls type cgroup (rw,net_cls)
+cgroup on /sys/fs/cgroup/perf_event type cgroup (rw,relatime,perf_event)
+cgroup on /sys/fs/cgroup/hugetlb type cgroup (rw,relatime,hugetlb)</pre>
+<p>或者使用lssubsys命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ lssubsys  -m
+cpuset /sys/fs/cgroup/cpuset
+cpu /sys/fs/cgroup/cpu
+cpuacct /sys/fs/cgroup/cpuacct
+memory /sys/fs/cgroup/memory
+devices /sys/fs/cgroup/devices
+freezer /sys/fs/cgroup/freezer
+blkio /sys/fs/cgroup/blkio
+net_cls /sys/fs/cgroup/net_cls
+net_prio /sys/fs/cgroup/net_prio
+perf_event /sys/fs/cgroup/perf_event
+hugetlb /sys/fs/cgroup/hugetlb</pre>
+<p>我们可以看到，在/sys/fs下有一个cgroup的目录，这个目录下还有很多子目录，比如： cpu，cpuset，memory，blkio……这些，这些都是cgroup的子系统。分别用于干不同的事的。</p>
+<p>如果你没有看到上述的目录，你可以自己mount，下面给了一个示例：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">mkdir cgroup
+mount -t tmpfs cgroup_root ./cgroup
+mkdir cgroup/cpuset
+mount -t cgroup -ocpuset cpuset ./cgroup/cpuset/
+mkdir cgroup/cpu
+mount -t cgroup -ocpu cpu ./cgroup/cpu/
+mkdir cgroup/memory
+mount -t cgroup -omemory memory ./cgroup/memory/</pre>
+<p>一旦mount成功，你就会看到这些目录下就有好文件了，比如，如下所示的cpu和cpuset的子系统：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="036b606b666d437661766d7776">[email protected]</a>:~$ ls /sys/fs/cgroup/cpu /sys/fs/cgroup/cpuset/ 
+/sys/fs/cgroup/cpu:
+cgroup.clone_children  cgroup.sane_behavior  cpu.shares         release_agent
+cgroup.event_control   cpu.cfs_period_us     cpu.stat           tasks
+cgroup.procs           cpu.cfs_quota_us      notify_on_release  user
+
+/sys/fs/cgroup/cpuset/:
+cgroup.clone_children  cpuset.mem_hardwall             cpuset.sched_load_balance
+cgroup.event_control   cpuset.memory_migrate           cpuset.sched_relax_domain_level
+cgroup.procs           cpuset.memory_pressure          notify_on_release
+cgroup.sane_behavior   cpuset.memory_pressure_enabled  release_agent
+cpuset.cpu_exclusive   cpuset.memory_spread_page       tasks
+cpuset.cpus            cpuset.memory_spread_slab       user
+cpuset.mem_exclusive   cpuset.mems</pre>
+<p>你可以到/sys/fs/cgroup的各个子目录下去make个dir，你会发现，一旦你创建了一个子目录，这个子目录里又有很多文件了。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3b5358535e557b4e594e554f4e">[email protected]</a>:/sys/fs/cgroup/cpu$ sudo mkdir haoel
+[sudo] password for hchen: 
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4c242f2429220c392e39223839">[email protected]</a>:/sys/fs/cgroup/cpu$ ls ./haoel
+cgroup.clone_children  cgroup.procs       cpu.cfs_quota_us  cpu.stat           tasks
+cgroup.event_control   cpu.cfs_period_us  cpu.shares        notify_on_release</pre>
+<p>好了，我们来看几个示例。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#CPU_%E9%99%90%E5%88%B6" title="CPU 限制">CPU 限制</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%86%85%E5%AD%98%E4%BD%BF%E7%94%A8%E9%99%90%E5%88%B6" title="内存使用限制">内存使用限制</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%A3%81%E7%9B%98IO%E9%99%90%E5%88%B6" title="磁盘I/O限制">磁盘I/O限制</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#CGroup%E7%9A%84%E5%AD%90%E7%B3%BB%E7%BB%9F" title="CGroup的子系统">CGroup的子系统</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#CGroup%E7%9A%84%E6%9C%AF%E8%AF%AD" title="CGroup的术语">CGroup的术语</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E4%B8%8B%E4%B8%80%E4%BB%A3%E7%9A%84CGroup" title="下一代的CGroup">下一代的CGroup</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%82%E8%80%83" title="参考">参考</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="CPU_%E9%99%90%E5%88%B6"></span>CPU 限制<span class="ez-toc-section-end"></span></h4>
+<p>假设，我们有一个非常吃CPU的程序，叫deadloop，其源码如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main(void)
+{
+    int i = 0;
+    for(;;) i++;
+    return 0;
+}</pre>
+<p>用sudo执行起来后，毫无疑问，CPU被干到了100%（下面是top命令的输出）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">  PID USER      PR  NI    VIRT    RES    SHR S %CPU %MEM     TIME+ COMMAND     
+ 3529 root      20   0    4196    736    656 R 99.6  0.1   0:23.13 deadloop   </pre>
+<p>然后，我们这前不是在/sys/fs/cgroup/cpu下创建了一个haoel的group。我们先设置一下这个group的cpu利用的限制：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f8909b909d96b88d9a8d968c8d">[email protected]</a>:~# cat /sys/fs/cgroup/cpu/haoel/cpu.cfs_quota_us 
+-1
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8cfee3e3f8ccf9eef9e2f8f9">[email protected]</a>:~# echo 20000 &gt; /sys/fs/cgroup/cpu/haoel/cpu.cfs_quota_us</pre>
+<p>我们看到，这个进程的PID是3529，我们把这个进程加到这个cgroup中：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW"># echo 3529 &gt;&gt; /sys/fs/cgroup/cpu/haoel/tasks</code></p>
+<p>然后，就会在top中看到CPU的利用立马下降成20%了。（前面我们设置的20000就是20%的意思）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">  PID USER      PR  NI    VIRT    RES    SHR S %CPU %MEM     TIME+ COMMAND     
+ 3529 root      20   0    4196    736    656 R 19.9  0.1   8:06.11 deadloop    </pre>
+<p>下面的代码是一个线程的示例：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#define _GNU_SOURCE         /* See feature_test_macros(7) */
+
+#include &lt;pthread.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/stat.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/syscall.h&gt;
+
+
+const int NUM_THREADS = 5;
+
+void *thread_main(void *threadid)
+{
+    /* 把自己加入cgroup中（syscall(SYS_gettid)为得到线程的系统tid） */
+    char cmd[128];
+    sprintf(cmd, &#34;echo %ld &gt;&gt; /sys/fs/cgroup/cpu/haoel/tasks&#34;, syscall(SYS_gettid));
+    system(cmd); 
+    sprintf(cmd, &#34;echo %ld &gt;&gt; /sys/fs/cgroup/cpuset/haoel/tasks&#34;, syscall(SYS_gettid));
+    system(cmd);
+
+    long tid;
+    tid = (long)threadid;
+    printf(&#34;Hello World! It&#39;s me, thread #%ld, pid #%ld!\n&#34;, tid, syscall(SYS_gettid));
+    
+    int a=0; 
+    while(1) {
+        a++;
+    }
+    pthread_exit(NULL);
+}
+int main (int argc, char *argv[])
+{
+    int num_threads;
+    if (argc &gt; 1){
+        num_threads = atoi(argv[1]);
+    }
+    if (num_threads&lt;=0 || num_threads&gt;=100){
+        num_threads = NUM_THREADS;
+    }
+
+    /* 设置CPU利用率为50% */
+    mkdir(&#34;/sys/fs/cgroup/cpu/haoel&#34;, 755);
+    system(&#34;echo 50000 &gt; /sys/fs/cgroup/cpu/haoel/cpu.cfs_quota_us&#34;);
+
+    mkdir(&#34;/sys/fs/cgroup/cpuset/haoel&#34;, 755);
+    /* 限制CPU只能使用#2核和#3核 */
+    system(&#34;echo \&#34;2,3\&#34; &gt; /sys/fs/cgroup/cpuset/haoel/cpuset.cpus&#34;);
+
+    pthread_t* threads = (pthread_t*) malloc (sizeof(pthread_t)*num_threads);
+    int rc;
+    long t;
+    for(t=0; t&lt;num_threads; t++){
+        printf(&#34;In main: creating thread %ld\n&#34;, t);
+        rc = pthread_create(&amp;threads[t], NULL, thread_main, (void *)t);
+        if (rc){
+            printf(&#34;ERROR; return code from pthread_create() is %d\n&#34;, rc);
+            exit(-1);
+        }
+    }
+
+    /* Last thing that main() should do */
+    pthread_exit(NULL);
+    free(threads);
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E5%86%85%E5%AD%98%E4%BD%BF%E7%94%A8%E9%99%90%E5%88%B6"></span>内存使用限制<span class="ez-toc-section-end"></span></h4>
+<p>我们再来看一个限制内存的例子（下面的代码是个死循环，其它不断的分配内存，每次512个字节，每次休息一秒）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(void)
+{
+    int size = 0;
+    int chunk_size = 512;
+    void *p = NULL;
+
+    while(1) {
+
+        if ((p = malloc(p, chunk_size)) == NULL) {
+            printf(&#34;out of memory!!\n&#34;);
+            break;
+        }
+        memset(p, 1, chunk_size);
+        size += chunk_size;
+        printf(&#34;[%d] - memory is allocated [%8d] bytes \n&#34;, getpid(), size);
+        sleep(1);
+    }
+    return 0;
+}</pre>
+<p>然后，在我们另外一边：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># 创建memory cgroup
+$ mkdir /sys/fs/cgroup/memory/haoel
+$ echo 64k &gt; /sys/fs/cgroup/memory/haoel/memory.limit_in_bytes
+
+# 把上面的进程的pid加入这个cgroup
+$ echo [pid] &gt; /sys/fs/cgroup/memory/haoel/tasks </pre>
+<p>你会看到，一会上面的进程就会因为内存问题被kill掉了。</p>
+<h4><span class="ez-toc-section" id="%E7%A3%81%E7%9B%98IO%E9%99%90%E5%88%B6"></span>磁盘I/O限制<span class="ez-toc-section-end"></span></h4>
+<p>我们先看一下我们的硬盘IO，我们的模拟命令如下：（从/dev/sda1上读入数据，输出到/dev/null上）</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">sudo dd if=/dev/sda1 of=/dev/null</code></p>
+<p>我们通过iotop命令我们可以看到相关的IO速度是55MB/s（虚拟机内）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">  TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO&gt;    COMMAND          
+ 8128 be/4 root       55.74 M/s    0.00 B/s  0.00 % 85.65 % dd if=/de~=/dev/null...</pre>
+<p>然后，我们先创建一个blkio（块设备IO）的cgroup</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">mkdir /sys/fs/cgroup/blkio/haoel</code></p>
+<p>并把读IO限制到1MB/s，并把前面那个dd命令的pid放进去（注：8:0 是设备号，你可以通过ls -l /dev/sda1获得）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f5879a9a81b58097809b8180">[email protected]</a>:~# echo &#39;8:0 1048576&#39;  &gt; /sys/fs/cgroup/blkio/haoel/blkio.throttle.read_bps_device 
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="40322f2f34003522352e3435">[email protected]</a>:~# echo 8128 &gt; /sys/fs/cgroup/blkio/haoel/tasks</pre>
+<p>再用iotop命令，你马上就能看到读速度被限制到了1MB/s左右。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">  TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO&gt;    COMMAND          
+ 8128 be/4 root      973.20 K/s    0.00 B/s  0.00 % 94.41 % dd if=/de~=/dev/null...</pre>
+<h4><span class="ez-toc-section" id="CGroup%E7%9A%84%E5%AD%90%E7%B3%BB%E7%BB%9F"></span>CGroup的子系统<span class="ez-toc-section-end"></span></h4>
+<p>好了，有了以上的感性认识我们来，我们来看看control group有哪些子系统：</p>
+<ul>
+<li>blkio — 这​​​个​​​子​​​系​​​统​​​为​​​块​​​设​​​备​​​设​​​定​​​输​​​入​​​/输​​​出​​​限​​​制​​​，比​​​如​​​物​​​理​​​设​​​备​​​（磁​​​盘​​​，固​​​态​​​硬​​​盘​​​，USB 等​​​等​​​）。</li>
+<li>cpu — 这​​​个​​​子​​​系​​​统​​​使​​​用​​​调​​​度​​​程​​​序​​​提​​​供​​​对​​​ CPU 的​​​ cgroup 任​​​务​​​访​​​问​​​。​​​</li>
+<li>cpuacct — 这​​​个​​​子​​​系​​​统​​​自​​​动​​​生​​​成​​​ cgroup 中​​​任​​​务​​​所​​​使​​​用​​​的​​​ CPU 报​​​告​​​。​​​</li>
+<li>cpuset — 这​​​个​​​子​​​系​​​统​​​为​​​ cgroup 中​​​的​​​任​​​务​​​分​​​配​​​独​​​立​​​ CPU（在​​​多​​​核​​​系​​​统​​​）和​​​内​​​存​​​节​​​点​​​。​​​</li>
+<li>devices — 这​​​个​​​子​​​系​​​统​​​可​​​允​​​许​​​或​​​者​​​拒​​​绝​​​ cgroup 中​​​的​​​任​​​务​​​访​​​问​​​设​​​备​​​。​​​</li>
+<li>freezer — 这​​​个​​​子​​​系​​​统​​​挂​​​起​​​或​​​者​​​恢​​​复​​​ cgroup 中​​​的​​​任​​​务​​​。​​​</li>
+<li>memory — 这​​​个​​​子​​​系​​​统​​​设​​​定​​​ cgroup 中​​​任​​​务​​​使​​​用​​​的​​​内​​​存​​​限​​​制​​​，并​​​自​​​动​​​生​​​成​​​​​内​​​存​​​资​​​源使用​​​报​​​告​​​。​​​</li>
+<li>net_cls — 这​​​个​​​子​​​系​​​统​​​使​​​用​​​等​​​级​​​识​​​别​​​符​​​（classid）标​​​记​​​网​​​络​​​数​​​据​​​包​​​，可​​​允​​​许​​​ Linux 流​​​量​​​控​​​制​​​程​​​序​​​（tc）识​​​别​​​从​​​具​​​体​​​ cgroup 中​​​生​​​成​​​的​​​数​​​据​​​包​​​。​​​</li>
+<li>net_prio — 这个子系统用来设计网络流量的优先级</li>
+<li>hugetlb — 这个子系统主要针对于HugeTLB系统进行限制，这是一个大页文件系统。</li>
+<p>​​​</p></ul>
+<p>注意，你可能在Ubuntu 14.04下看不到net_cls和net_prio这两个cgroup，你需要手动mount一下：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sudo modprobe cls_cgroup
+$ sudo mkdir /sys/fs/cgroup/net_cls
+$ sudo mount -t cgroup -o net_cls none /sys/fs/cgroup/net_cls
+
+$ sudo modprobe netprio_cgroup
+$ sudo mkdir /sys/fs/cgroup/net_prio
+$ sudo mount -t cgroup -o net_prio none /sys/fs/cgroup/net_prio</pre>
+<p>关于各个子系统的参数细节，以及更多的Linux CGroup的文档，你可以看看下面的文档：</p>
+<ul>
+<li><a href="https://www.kernel.org/doc/Documentation/cgroups/" target="_blank">Linux Kernel的官方文档</a></li>
+<li><a href="https://access.redhat.com/documentation/zh-CN/Red_Hat_Enterprise_Linux/6/html-single/Resource_Management_Guide/index.html#ch-Subsystems_and_Tunable_Parameters" target="_blank">Redhat的官方文档</a></li>
+</ul>
+<h4><span class="ez-toc-section" id="CGroup%E7%9A%84%E6%9C%AF%E8%AF%AD"></span>CGroup的术语<span class="ez-toc-section-end"></span></h4>
+<p>CGroup有下述术语：</p>
+<ul>
+<li><strong>任务（Tasks）</strong>：就是系统的一个进程。</li>
+<li><strong>控制组（Control Group）</strong>：一组按照某种标准划分的进程，比如官方文档中的Professor和Student，或是WWW和System之类的，其表示了某进程组。Cgroups中的资源控制都是以控制组为单位实现。一个进程可以加入到某个控制组。而资源的限制是定义在这个组上，就像上面示例中我用的haoel一样。简单点说，cgroup的呈现就是一个目录带一系列的可配置文件。</li>
+<li><strong>层级（Hierarchy）</strong>：控制组可以组织成hierarchical的形式，既一颗控制组的树（目录结构）。控制组树上的子节点继承父结点的属性。简单点说，hierarchy就是在一个或多个子系统上的cgroups目录树。</li>
+<li><strong>子系统（Subsystem）</strong>：一个子系统就是一个资源控制器，比如CPU子系统就是控制CPU时间分配的一个控制器。子系统必须附加到一个层级上才能起作用，一个子系统附加到某个层级以后，这个层级上的所有控制族群都受到这个子系统的控制。Cgroup的子系统可以有很多，也在不断增加中。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E4%B8%8B%E4%B8%80%E4%BB%A3%E7%9A%84CGroup"></span>下一代的CGroup<span class="ez-toc-section-end"></span></h4>
+<p>上面，我们可以看到，CGroup的一些常用方法和相关的术语。一般来说，这样的设计在一般情况下还是没什么问题的，除了操作上的用户体验不是很好，但基本满足我们的一般需求了。</p>
+<p>不过，对此，有个叫Tejun Heo的同学非常不爽，他在Linux社区里<a href="https://lwn.net/Articles/484254/" target="_blank">对cgroup吐了一把槽</a>，还引发了内核组的各种讨论。</p>
+<p>对于Tejun Heo同学来说，cgroup设计的相当糟糕。他给出了些例子，大意就是说，如果有多种层级关系，也就是说有多种对进程的分类方式，比如，我们可以按用户来分，分成Professor和Student，同时，也有按应用类似来分的，比如WWW和NFS等。那么，当一个进程即是Professor的，也是WWW的，那么就会出现多层级正交的情况，从而出现对进程上管理的混乱。另外，一个case是，如果有一个层级A绑定cpu，而层级B绑定memory，还有一个层级C绑定cputset，而有一些进程有的需要AB，有的需要AC，有的需要ABC，管理起来就相当不易。 </p>
+<p>层级操作起来比较麻烦，而且如果层级变多，更不易于操作和管理，虽然那种方式很好实现，但是在使用上有很多的复杂度。你可以想像一个图书馆的图书分类问题，你可以有各种不同的分类，分类和图书就是一种多对多的关系。</p>
+<p>所以，在Kernel 3.16后，引入了<a href="http://lwn.net/Articles/601840/" target="_blank">unified hierarchy</a>的新的设计，这个东西引入了一个叫<strong>__DEVEL__sane_behavior</strong>的特性（这个名字很明显意味目前还在开发试验阶段），它可以把所有子系统都挂载到根层级下，只有叶子节点可以存在tasks，非叶子节点只进行资源控制。</p>
+<p>我们mount一下看看：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sudo mount -t cgroup -o __DEVEL__sane_behavior cgroup ./cgroup
+
+$ ls ./cgroup
+cgroup.controllers  cgroup.procs  cgroup.sane_behavior  cgroup.subtree_control 
+
+$ cat ./cgroup/cgroup.controllers
+cpuset cpu cpuacct memory devices freezer net_cls blkio perf_event net_prio hugetlb</pre>
+<p>我们可以看到有四个文件，然后，你在这里mkdir一个子目录，里面也会有这四个文件。<strong>上级的cgroup.subtree_control控制下级的cgroup.controllers。</strong></p>
+<p>举个例子：假设我们有以下的目录结构，b代表blkio，m代码memory，其中，A是root，包括所有的子系统（）。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># A(b,m) - B(b,m) - C (b)
+#               \ - D (b) - E
+
+# 下面的命令中， +表示enable， -表示disable
+
+# 在B上的enable blkio
+# echo +blkio &gt; A/cgroup.subtree_control
+
+# 在C和D上enable blkio 
+# echo +blkio &gt; A/B/cgroup.subtree_control
+
+# 在B上enable memory  
+# echo +memory &gt; A/cgroup.subtree_control</pre>
+<p>在上述的结构中，</p>
+<ul>
+<li>cgroup只有上线控制下级，无法传递到下下级。所以，C和D中没有memory的限制，E中没有blkio和memory的限制。而本层的cgroup.controllers文件是个只读的，其中的内容就看上级的subtree_control里有什么了。</li>
+<li><strong>任何被配置过subtree_control的目录都不能绑定进程，根结点除外</strong>。所以，A,C,D,E可以绑上进程，但是B不行。</li>
+</ul>
+<p>我们可以看到，<strong>这种方式干净的区分开了两个事，一个是进程的分组，一个是对分组的资源控制</strong>（以前这两个事完全混在一起），在目录继承上增加了些限制，这样可以避免一些模棱两可的情况。</p>
+<p>当然，这个事还在演化中，cgroup的这些问题这个事目前由cgroup的吐槽人Tejun Heo和华为的Li Zefan同学负责解决中。总之，这是一个系统管理上的问题，而且改变会影响很多东西，但一旦方案确定，老的cgroup方式将一去不复返。</p>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83"></span>参考<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><a href="https://www.kernel.org/doc/Documentation/cgroups/" target="_blank">Linux Kernel Cgroup Documents</a></li>
+<li><a href="https://access.redhat.com/documentation/zh-CN/Red_Hat_Enterprise_Linux/6/html-single/Resource_Management_Guide/index.html" target="_blank">Reahat Resource Management Guide</a></li>
+<li><a href="https://lwn.net/Articles/484251/" target="_blank">Fixing control groups</a></li>
+<li><a href="http://lwn.net/Articles/601840/" target="_blank">The unified control group hierarchy in 3.16</a></li>
+<li><a href="http://events.linuxfoundation.org/sites/events/files/slides/2014-KLF.pdf" target="_blank">Cgroup v2(PDF)</a></li>
+</ul>
+<p>（全文完）<br/>
+</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17049-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">cgroup</a>, <a href="javascript:void(0)" rel="tag">Docker</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Docker基础技术：Linux CGroup</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1805004" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/08/24/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9aaufs/" class="url" rel="ugc external nofollow">Docker基础技术：AUFS – 大耳门</a> </div>
+</li>
+<li id="comment-1805014" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/04/16/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9alinux-namespace%ef%bc%88%e4%b8%8a%ef%bc%89/" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace（上） - 大耳门</a> </div>
+</li>
+<li id="comment-1805032" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2014/11/21/vfork-%e6%8c%82%e6%8e%89%e7%9a%84%e4%b8%80%e4%b8%aa%e9%97%ae%e9%a2%98/" class="url" rel="ugc external nofollow">vfork 挂掉的一个问题 | 大耳门</a> </div>
+</li>
+<li id="comment-1810814" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1810814" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b5224c27b47a9ec3717c375a3108b48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b5224c27b47a9ec3717c375a3108b48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hello</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1810814"><time datetime="2016-03-01T22:05:06+08:00">2016年03月01日 22:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好厉害！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1810815" class="comment even thread-even depth-1">
+<article id="div-comment-1810815" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b5224c27b47a9ec3717c375a3108b48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b5224c27b47a9ec3717c375a3108b48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hello</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1810815"><time datetime="2016-03-01T22:05:29+08:00">2016年03月01日 22:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1810814" rel="nofollow">@hello &lt;/a地方</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1811556" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itdadao.com/article/514922/" class="url" rel="ugc external nofollow">Docker容器对CPU资源隔离的几种方式 - IT大道</a> </div>
+</li>
+<li id="comment-1829745" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1829745" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d925971f38452a4f20eb6919cf14c86?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d925971f38452a4f20eb6919cf14c86?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">erpeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1829745"><time datetime="2016-05-10T14:15:51+08:00">2016年05月10日 14:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>内存使用限制 malloc(p,chunk_size) 有误</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1922639" class="comment byuser comment-author-minghu6 odd alt depth-2">
+<article id="div-comment-1922639" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9c134cd513348e62571b6c15f656075b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9c134cd513348e62571b6c15f656075b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">minghu6</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1922639"><time datetime="2018-01-02T13:58:52+08:00">2018年01月02日 13:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>联系上下文应该是 realloc(p,chunk_size)</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1833668" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jingyuyun.com/article/10526.html" class="url" rel="ugc external nofollow">Docker容器对CPU资源隔离的几种方式-鲸鱼云</a> </div>
+</li>
+<li id="comment-1884988" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dabaiw.cn/it/28080.html" class="url" rel="ugc external nofollow">Docker 容器使用 cgroups 限制资源使用 - 大白网</a> </div>
+</li>
+<li id="comment-1904306" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2016/12/02/cgroup-%e9%99%90%e5%88%b6%e8%ae%a1%e7%ae%97%e8%b5%84%e6%ba%90/" class="url" rel="ugc external nofollow">cgroup 限制计算资源 - 莹莹之色</a> </div>
+</li>
+<li id="comment-1915338" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17998.html" class="url" rel="ugc">Linux PID 1 和 Systemd | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1915341" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://schspa.tk/linux-kernel-reference-blogs/" class="url" rel="ugc external nofollow">Linux Kernel Reference Blogs – Schspa Blog</a> </div>
+</li>
+<li id="comment-1915346" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/07/16/linux-pid-1-%e5%92%8c-systemd/" class="url" rel="ugc external nofollow">Linux PID 1 和 Systemd - 莹莹之色</a> </div>
+</li>
+<li id="comment-1917020" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=110" class="url" rel="ugc external nofollow">Linux PID 1 和 Systemd – IT青年文摘</a> </div>
+</li>
+<li id="comment-1919290" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://os.psmeimei.com/2017/10/18/%e7%90%86%e8%a7%a3docker%ef%bc%884%ef%bc%89%ef%bc%9adocker-%e5%ae%b9%e5%99%a8%e4%bd%bf%e7%94%a8-cgroups-%e9%99%90%e5%88%b6%e8%b5%84%e6%ba%90%e4%bd%bf%e7%94%a8/" class="url" rel="ugc external nofollow">理解Docker（4）：Docker 容器使用 cgroups 限制资源使用-操作系统相关</a> </div>
+</li>
+<li id="comment-1919728" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1919728" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14df441ccf4ae21d76cafb60a41d6ee4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14df441ccf4ae21d76cafb60a41d6ee4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tech.liuchao.me" class="url" rel="ugc external nofollow">liuchao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1919728"><time datetime="2017-10-25T19:08:08+08:00">2017年10月25日 19:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天遇到一个问题，写在这里，希望看到的人能少走写弯路吧。</p>
+<p>cgroup 中的 blkio 只能限制整个disk，例如:<br/>
+“8:0 limitation”，如果写入 “8:1 limitation” 会报错：no such device。</p>
+<p>github上对应 kernel 的源码地址：<br/>
+<a href="https://github.com/torvalds/linux/blob/v4.4/block/blk-cgroup.c#L804-L809" rel="nofollow ugc">https://github.com/torvalds/linux/blob/v4.4/block/blk-cgroup.c#L804-L809</a></p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1922641" class="comment byuser comment-author-minghu6 odd alt depth-2">
+<article id="div-comment-1922641" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9c134cd513348e62571b6c15f656075b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9c134cd513348e62571b6c15f656075b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">minghu6</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1922641"><time datetime="2018-01-02T14:22:35+08:00">2018年01月02日 14:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常感谢，我正好遇到了这个问题(内核4.4)．<br/>
+另外，使用了内存限制的例子，却发现理论上进程占用的内存已经超限(65536)，under_oom 却始终为 0．<br/>
+当然进程也没有被终结．</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1921402" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yunwzs.com/1840.html" class="url" rel="ugc external nofollow">Docker 核心技术与实现原理 - 云维助手</a> </div>
+</li>
+<li id="comment-1922613" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.yzjit.com/linux-pid-1-%e5%92%8c-systemd/" class="url" rel="ugc external nofollow">LINUX PID 1 和 SYSTEMD | 精品汇</a> </div>
+</li>
+<li id="comment-1963349" class="comment even thread-even depth-1">
+<article id="div-comment-1963349" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cb3cb558359476f46eef2c044b52265?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cb3cb558359476f46eef2c044b52265?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">华子春新语丝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1963349"><time datetime="2019-02-12T10:48:49+08:00">2019年02月12日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>华子春新语丝前来学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1992999" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1992999" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2c95f877eae019d872a68b24282f428?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2c95f877eae019d872a68b24282f428?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cuckoo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-1992999"><time datetime="2019-04-19T17:07:58+08:00">2019年04月19日 17:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个让我疑惑的地方，在程序里先执行了一个shell命令开启了一个进程，获取其pid然后加入到一个cgroups组里面，结果用ps命令就看不到该进程了，这是为啥子嘞</p>
+</div>
+ </article>
+</li>
+<li id="comment-1993367" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17998.html" class="url" rel="ugc">Linux PID 1 和 Systemd | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2007284" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://wixdot.com/blog/%e4%bd%bf%e7%94%a8cgroups%e9%99%90%e5%88%b6mongodb%e7%9a%84%e5%86%85%e5%ad%98%e4%bd%bf%e7%94%a8/" class="url" rel="ugc external nofollow">使用cgroups限制MongoDB的内存使用 - 微点云</a> </div>
+</li>
+<li id="comment-2009786" class="comment even thread-even depth-1">
+<article id="div-comment-2009786" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0ee49e9d4be70bf0454996e68f6d5320?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0ee49e9d4be70bf0454996e68f6d5320?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.csdn.net/lhl_blog" class="url" rel="ugc external nofollow">Jackcy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17049.html/comment-page-2#comment-2009786"><time datetime="2019-08-07T13:58:09+08:00">2019年08月07日 13:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>线程代码示例，main最后的pthread_exit(NULL);有什么特别的用意吗？难道只是为了不让之前创建的线程退出吗？那为什么不采用while（1）+ sleep的方式。</p>
+<p>PS：上述方式，通过ps查看，进程会变成“僵尸进程”。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2011261" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/08/15/5d5514a4d5bce/" class="url" rel="ugc external nofollow">ContainerExecutor简介 | 大专栏</a> </div>
+</li>
+<li id="comment-2034161" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://sunflower.keda.io/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 可達書院</a> </div>
+</li>
+<li id="comment-2034957" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/11/02/5dbc73139ab6e/" class="url" rel="ugc external nofollow">Docker 容器管理 - 大专栏 | 大专栏</a> </div>
+</li>
+<li id="comment-2041432" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wxhongbao.com/67520.html" class="url" rel="ugc external nofollow">记一次Kubernetes/Docker网络排障 - 微信红包网</a> </div>
+</li>
+<li id="comment-2043942" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.saomahuodong.com/130787.html" class="url" rel="ugc external nofollow">记一次Kubernetes/Docker网络排障 - 扫码活动网!</a> </div>
+</li>
+<li id="comment-2073762" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/docker/docker_82822.html" class="url" rel="ugc external nofollow">Flux7 Docker 系列教程（一）：Docker 简介 _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2084210" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/docker/docker_86509.html" class="url" rel="ugc external nofollow">当Node.js遇见Docker _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2173201" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.zhulou.net/post/1189.html" class="url" rel="ugc external nofollow">Docker资源限制与Cgroups – 筑楼</a> </div>
+</li>
+<li id="comment-2370693" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.knockatdatabase.com/2022/09/05/kubernetes-in-action-chap01-introducing-kubernetes/" class="url" rel="ugc external nofollow">Kubernetes in Action读书笔记003-第一章：Kubernetes概要介绍 - 数据库敲门人</a> </div>
+</li>
+<li id="comment-2370902" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/79659.html" class="url" rel="ugc external nofollow">Docker原理：Cgroup - SEOOS技术门户</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/17049.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/17049.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">17049</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

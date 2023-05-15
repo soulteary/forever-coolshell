@@ -1,0 +1,822 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++面试中string类的一种正确写法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10478 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10478" class="post-content post-10478 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">C++面试中string类的一种正确写法</span>
+<h1 class="entry-title">C++面试中string类的一种正确写法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10478.html" title="15:40" rel="bookmark"><time class="entry-date" datetime="2013-10-09T15:40:38+08:00" pubdate="">2013年10月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/solstice" title="View all posts by Solstice" rel="author">Solstice</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10478.html#comments" class="comments-link">40 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 66,012 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 <a href="http://weibo.com/u/1701018393?source=webim" target="_blank"><img decoding="async" alt="" src="http://tp2.sinaimg.cn/1701018393/50/1297990315/1"/></a><a title="bnu_chenshuo" href="http://weibo.com/u/1701018393?source=webim" target="_blank"> @bnu_chenshuo </a>投稿）</strong></p>
+<p>C++ 的一个常见面试题是让你实现一个 String 类，限于时间，不可能要求具备 std::string 的功能，但至少要求能正确管理资源。具体来说：</p>
+<ol>
+<li>能像 int 类型那样定义变量，并且支持赋值、复制。</li>
+<li>能用作函数的参数类型及返回类型。</li>
+<li>能用作标准库容器的元素类型，即 vector/list/deque 的 value_type。（用作 std::map 的 key_type 是更进一步的要求，本文从略）。</li>
+</ol>
+<p>换言之，你的 String 能让以下代码编译运行通过，并且没有内存方面的错误。</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">void foo(String x)
+{
+}
+
+void bar(const String&amp; x)
+{
+}
+
+String baz()
+{
+  String ret(&#34;world&#34;);
+  return ret;
+}
+
+int main()
+{
+  String s0;
+  String s1(&#34;hello&#34;);
+  String s2(s0);
+  String s3 = s1;
+  s2 = s1;
+
+  foo(s1);
+  bar(s1);
+  foo(&#34;temporary&#34;);
+  bar(&#34;temporary&#34;);
+  String s4 = baz();
+
+  std::vector&lt;String&gt; svec;
+  svec.push_back(s0);
+  svec.push_back(s1);
+  svec.push_back(baz());
+  svec.push_back(&#34;good job&#34;);
+}</pre>
+<p><span id="more-10478"></span>本文给出我认为适合面试的答案，强调正确性及易实现（白板上写也不会错），不强调效率。某种意义上可以说是以时间（运行快慢）换空间（代码简洁）。</p>
+<p>首先选择数据成员，最简单的 String 只有一个 char* 成员变量。好处是容易实现，坏处是某些操作的复杂度较高（例如 size() 会是线性时间）。为了面试时写代码不出错，本文设计的 String 只有一个 char* data_成员。而且规定 invariant 如下：一个 valid 的 string 对象的 data_ 保证不为 NULL，data_ 以 <code>&#39;\0&#39;</code> 结尾，以方便配合 C 语言的 str*() 系列函数。</p>
+<p>其次决定支持哪些操作，构造、析构、拷贝构造、赋值这几样是肯定要有的（以前合称 big three，现在叫 copy control）。如果钻得深一点，C++11的移动构造和移动赋值也可以有。为了突出重点，本文就不考虑 operator[] 之类的重载了。</p>
+<p>这样代码基本上就定型了：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">#include &lt;utility&gt;
+#include &lt;string.h&gt;
+
+class String
+{
+ public:
+  String()
+    : data_(new char[1])
+  {
+    *data_ = &#39;\0&#39;;
+  }
+
+  String(const char* str)
+    : data_(new char[strlen(str) + 1])
+  {
+    strcpy(data_, str);
+  }
+
+  String(const String&amp; rhs)
+    : data_(new char[rhs.size() + 1])
+  {
+    strcpy(data_, rhs.c_str());
+  }
+  /* Delegate constructor in C++11
+  String(const String&amp; rhs)
+    : String(rhs.data_)
+  {
+  }
+  */
+
+  ~String()
+  {
+    delete[] data_;
+  }
+
+  /* Traditional:
+  String&amp; operator=(const String&amp; rhs)
+  {
+    String tmp(rhs);
+    swap(tmp);
+    return *this;
+  }
+  */
+  String&amp; operator=(String rhs) // yes, pass-by-value
+  {
+    swap(rhs);
+    return *this;
+  }
+
+  // C++ 11
+  String(String&amp;&amp; rhs)
+    : data_(rhs.data_)
+  {
+    rhs.data_ = nullptr;
+  }
+
+  String&amp; operator=(String&amp;&amp; rhs)
+  {
+    swap(rhs);
+    return *this;
+  }
+
+  // Accessors
+
+  size_t size() const
+  {
+    return strlen(data_);
+  }
+
+  const char* c_str() const
+  {
+    return data_;
+  }
+
+  void swap(String&amp; rhs)
+  {
+    std::swap(data_, rhs.data_);
+  }
+
+ private:
+  char* data_;
+};</pre>
+<p>注意代码的几个要点：</p>
+<ol>
+<li>只在构造函数里调用 new char[]，只在析构函数里调用 delete[]。</li>
+<li>赋值操作符采用了《C++编程规范》推荐的现代写法。</li>
+<li>每个函数都只有一两行代码，没有条件判断。</li>
+<li>析构函数不必检查 data_ 是否为 NULL。</li>
+<li>构造函数 <code>String(const char* str)</code> 没有检查 str 的合法性，这是一个永无止境的争论话题。这里在初始化列表里就用到了 str，因此在函数体内用 assert() 是无意义的。</li>
+</ol>
+<p>这恐怕是最简洁的 String 实现了。</p>
+<p><strong>练习1</strong>：增加 operator==、operator&lt;、operator[] 等操作符重载。</p>
+<p><strong>练习2</strong>：实现一个带 int size_; 成员的版本，以空间换时间。</p>
+<p><strong>练习3</strong>：受益于右值引用及移动语意，在 C++11 中对 String 实施直接插入排序的性能比C++98/03要高，试编程验证之。（g++的标准库也用到了此技术。）</p>
+<p>陈皓注：同时，大家可以移步看看我的一篇老文《<a href="http://blog.csdn.net/haoel/article/details/1491219" target="_blank">STL中String类的问题</a>》</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10478-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">面试</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++面试中string类的一种正确写法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-796249" class="comment even thread-even depth-1 parent">
+<article id="div-comment-796249" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e6f2405e33a44db33b15576bf612acd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e6f2405e33a44db33b15576bf612acd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">funcku1117</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796249"><time datetime="2013-10-09T17:17:59+08:00">2013年10月09日 17:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>问一下，赋值函数使用《C++编程规范》推荐的现代写法，具体是指什么？<br/>
+不使用引用传递而使用值传递，是如何考虑的呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1871734" class="comment odd alt depth-2">
+<article id="div-comment-1871734" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/824d98c420778464ca38e1aac011a944?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/824d98c420778464ca38e1aac011a944?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chentingting</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1871734"><time datetime="2016-08-21T13:04:57+08:00">2016年08月21日 13:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>使用库里swap函数直接交换</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-796292" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-796292" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cef06ca47d307365d83a4fe15839a9a7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cef06ca47d307365d83a4fe15839a9a7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">coder_L</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796292"><time datetime="2013-10-09T17:41:33+08:00">2013年10月09日 17:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C语言的包袱char *就给string类的设计带来了巨大的复杂性。</p>
+</div>
+ </article>
+</li>
+<li id="comment-796325" class="comment odd alt thread-even depth-1">
+<article id="div-comment-796325" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a2bdb44a84edb84c0852090beafd675?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a2bdb44a84edb84c0852090beafd675?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://izzyleung.github.io" class="url" rel="ugc external nofollow">Izzy Leung</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796325"><time datetime="2013-10-09T17:55:48+08:00">2013年10月09日 17:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>代码中第44行，出现“&amp;”</p>
+</div>
+ </article>
+</li>
+<li id="comment-796330" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-796330" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a2bdb44a84edb84c0852090beafd675?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a2bdb44a84edb84c0852090beafd675?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://izzyleung.github.io" class="url" rel="ugc external nofollow">Izzy Leung</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796330"><time datetime="2013-10-09T17:57:48+08:00">2013年10月09日 17:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-796325" rel="nofollow">@Izzy Leung </a> </p>
+<p>抱歉，是&amp; amp ;，HTML中的转义字符，请修正，谢谢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-796505" class="comment odd alt thread-even depth-1">
+<article id="div-comment-796505" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/facf0d82ca54bee7662ed75b94afbb47?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/facf0d82ca54bee7662ed75b94afbb47?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.沈煜.cn" class="url" rel="ugc external nofollow">Chris Niael</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796505"><time datetime="2013-10-09T19:20:09+08:00">2013年10月09日 19:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>代码第10行以及上文的描述中，字符串结束标志是” ，不应该是’ ‘，估计是在发布文章时候，被博客的排版系统给修改了吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-796564" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-796564" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9b14f8d5afa69dcc1ee0a3b6dc7762e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9b14f8d5afa69dcc1ee0a3b6dc7762e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Slark</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796564"><time datetime="2013-10-09T19:45:26+08:00">2013年10月09日 19:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-796249" rel="nofollow">@funcku1117 </a><br/>
+不使用引用而是用值传递，可以参考《effective C++》条款10、11，还可以看看C++ primer第五版关于 右值引用的部分</p>
+</div>
+ </article>
+</li>
+<li id="comment-796644" class="comment odd alt thread-even depth-1">
+<article id="div-comment-796644" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cf05803ac52b06cf817b382b54cdb3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cf05803ac52b06cf817b382b54cdb3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dog</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796644"><time datetime="2013-10-09T20:22:45+08:00">2013年10月09日 20:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>*data_ = ”;有什么深意吗，既然啥字符都没有，为什么不用data_ = NULL;呢??</p>
+</div>
+ </article>
+</li>
+<li id="comment-796794" class="comment byuser comment-author-full_of_bull even thread-odd thread-alt depth-1">
+<article id="div-comment-796794" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://oops_geekchina@googlegroups.com" class="url" rel="ugc external nofollow">Leo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796794"><time datetime="2013-10-09T21:27:49+08:00">2013年10月09日 21:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String s; s.size();立马挂掉。<a href="#comment-796644" rel="nofollow">@dog </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-796868" class="comment odd alt thread-even depth-1">
+<article id="div-comment-796868" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b642b4217b34b1e8d3bd915fc65c4452?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b642b4217b34b1e8d3bd915fc65c4452?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ddd.com" class="url" rel="ugc external nofollow">test</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-796868"><time datetime="2013-10-09T21:50:55+08:00">2013年10月09日 21:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String&amp; operator=(String&amp;&amp; rhs)<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}<br/>
+swap 会自动考虑 内存扩展的问题的嘛？比如 string1=“d”。string2=“ddddddd”，string1的_data会自动变长嘛？</p>
+</div>
+ </article>
+</li>
+<li id="comment-797147" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-797147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/37a38876240ea12623326e50b9e9668a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/37a38876240ea12623326e50b9e9668a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">crayonshine</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-797147"><time datetime="2013-10-09T23:25:05+08:00">2013年10月09日 23:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@funcku1117<br/>
+处理了拷贝构造函数中的自我赋值和异常安全性问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-799154" class="comment odd alt thread-even depth-1">
+<article id="div-comment-799154" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e6f2405e33a44db33b15576bf612acd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e6f2405e33a44db33b15576bf612acd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">funcku1117</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-799154"><time datetime="2013-10-10T14:26:17+08:00">2013年10月10日 14:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>自我赋值理解了，可不大理解异常安全性问题是指哪方面？<a href="#comment-797147" rel="nofollow">@crayonshine </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-799778" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-799778" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40ec953da53575dc545d6950a2f8d3a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40ec953da53575dc545d6950a2f8d3a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leckie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-799778"><time datetime="2013-10-10T18:41:34+08:00">2013年10月10日 18:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>string类的精髓，就在于Copy On Write啊，这个实现，根本没有考虑。</p>
+</div>
+ </article>
+</li>
+<li id="comment-806473" class="comment odd alt thread-even depth-1">
+<article id="div-comment-806473" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b144549c828c9463fe4a756eecee3a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b144549c828c9463fe4a756eecee3a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lubberland</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-806473"><time datetime="2013-10-12T18:08:46+08:00">2013年10月12日 18:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-799778"><p>
+<strong><a href="#comment-799778" rel="nofollow">leckie</a> :</strong><br/>
+string类的精髓，就在于Copy On Write啊，这个实现，根本没有考虑。
+</p></blockquote>
+<p>有没有读标题？</p>
+</div>
+ </article>
+</li>
+<li id="comment-806951" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.techpot.net/archives/50098" class="url" rel="ugc external nofollow">C++面试中string类的一种正确简明的写法 « T客网 ︱ Techpot</a> </div>
+</li>
+<li id="comment-829996" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yoese.com/?p=1756" class="url" rel="ugc external nofollow">C++11的Lambda使用一例：华容道求解 | 有益</a> </div>
+</li>
+<li id="comment-841972" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-841972" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e623f1bbd92e5d3caf390c20d8cc591?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e623f1bbd92e5d3caf390c20d8cc591?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lugesot</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-841972"><time datetime="2013-10-24T10:10:36+08:00">2013年10月24日 10:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教下，用swap（值操作下，实现copy），比strcpy高在哪里？swap内部实现只是，拷贝个指针？</p>
+</div>
+ </article>
+</li>
+<li id="comment-845086" class="comment odd alt thread-even depth-1">
+<article id="div-comment-845086" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e623f1bbd92e5d3caf390c20d8cc591?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e623f1bbd92e5d3caf390c20d8cc591?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lugesot</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-845086"><time datetime="2013-10-25T10:15:45+08:00">2013年10月25日 10:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了下，swap的好处（完整的来龙去脉，还有C++11 的 move constructor）请参考http://stackoverflow.com/questions/3279543/what-is-the-copy-and-swap-idiom<br/>
+string类的copy on write 的实现，在不同版本的C++ compiler上 不同或不实现，别太在意。</p>
+</div>
+ </article>
+</li>
+<li id="comment-845471" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-845471" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0d0666378d7fa8c609b460f0f5036c7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0d0666378d7fa8c609b460f0f5036c7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鹏鹏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-845471"><time datetime="2013-10-25T14:04:08+08:00">2013年10月25日 14:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那么多标注C++ 11意思是在C++ 11的库里面这么实现，还是说C++ 11才支持这么写呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-845510" class="comment odd alt thread-even depth-1">
+<article id="div-comment-845510" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0d0666378d7fa8c609b460f0f5036c7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0d0666378d7fa8c609b460f0f5036c7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鹏鹏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-845510"><time datetime="2013-10-25T14:19:14+08:00">2013年10月25日 14:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String&amp; operator=(String rhs) // yes, pass-by-value<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}<br/>
+这个也没看懂，不是一个复制符吗？为什么要swap呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-864026" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-864026" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f7687951837fa147cf8f277f4b07fa8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f7687951837fa147cf8f277f4b07fa8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-864026"><time datetime="2013-10-31T10:40:58+08:00">2013年10月31日 10:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String&amp; operator=(String rhs) // yes, pass-by-value<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}<br/>
+使用swap的原因是，这个String类涉及到内存分配操作，这个操作可能会抛出异常；<br/>
+上面的实现分3步：<br/>
+1 把“源对象”拷贝到参数rhs里<br/>
+2 rhs对象和this对象做一下交换（仅仅交换指针）<br/>
+3 返回this对象</p>
+<p>第一步有可能发生异常（new操作失败），然后在这一步退出；这是下两歩操作还没有进行，所以不会污染this对象。保证了：<br/>
+1 赋值操作失败，但是this对象没有被污染，或者<br/>
+2 赋值操作成功</p>
+</div>
+ </article>
+</li>
+<li id="comment-887107" class="comment odd alt thread-even depth-1">
+<article id="div-comment-887107" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c33ef0975ae75c84f5c7ecefc0fae18f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c33ef0975ae75c84f5c7ecefc0fae18f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jerry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-887107"><time datetime="2013-11-06T13:34:38+08:00">2013年11月06日 13:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String&amp; operator=(String&amp;&amp; rhs)<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}<br/>
+这个没有必要，而写你没有把rhs的内容null掉<br/>
+那个pass-by-value的operator=可以做完这里的工作<br/>
+性能没啥损失，代码还简洁</p>
+</div>
+ </article>
+</li>
+<li id="comment-887457" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-887457" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c33ef0975ae75c84f5c7ecefc0fae18f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c33ef0975ae75c84f5c7ecefc0fae18f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jerry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-887457"><time datetime="2013-11-06T15:29:41+08:00">2013年11月06日 15:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-887107"><p>
+<strong><a href="#comment-887107" rel="nofollow">jerry</a> :</strong><br/>
+String&amp; operator=(String&amp;&amp; rhs)<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}<br/>
+这个没有必要，而写你没有把rhs的内容null掉<br/>
+那个pass-by-value的operator=可以做完这里的工作<br/>
+性能没啥损失，代码还简洁
+</p></blockquote>
+<p>Sorry, 不需要null掉，脑子抽经了<br/>
+不过确实不需要写，代码多了坏事</p>
+</div>
+ </article>
+</li>
+<li id="comment-909524" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=134" class="url" rel="ugc external nofollow">面试题：火车运煤问题 | multiprocess</a> </div>
+</li>
+<li id="comment-1091794" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1091794" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/013d74d6df118431730d41e2e5b09b28?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/013d74d6df118431730d41e2e5b09b28?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tangzhnju</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1091794"><time datetime="2013-12-22T13:25:29+08:00">2013年12月22日 13:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-845510" rel="nofollow">@鹏鹏 </a><br/>
+异常安全！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1147259" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1147259" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/053e78df30a08ff6de7bd15d918edf72?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/053e78df30a08ff6de7bd15d918edf72?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.gooshell.com/" class="url" rel="ugc external nofollow">谷壳</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1147259"><time datetime="2014-01-06T11:39:02+08:00">2014年01月06日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是一个老了的程序员，看到“char* data_;”还是感觉很陌生的，因为我常写成“char* m_lpszData”，可能是我脑子里没有什么规范了。</p>
+<p>另外，第一第二个构造函数我喜欢合并到一块，会写成：<br/>
+String(const char* lpszStr = NULL)<br/>
+{<br/>
+if(lpszStr == NULL)<br/>
+{<br/>
+m_nDataSize = 0; //成员变量,记录数据长度<br/>
+m_nBuffSize = 8; //成员变量,记录内存长度</p>
+<p> m_lpszData = new char[m_nBuffSize];<br/>
+m_lpszData[0] = ”;<br/>
+}<br/>
+else //if(lpszStr != NULL)<br/>
+{<br/>
+m_nDataSize = strlen(lpszStr); //数据长度<br/>
+m_nBuffSize = 8 * (m_nDataSize / 8 + 1);//按8为粒度分配内存</p>
+<p> m_lpszData = new char[m_nBuffSize];<br/>
+strcpy(m_lpszData, lpszStr);<br/>
+}<br/>
+}<br/>
+不仅仅是字符串类，一般支持增长的数据结构我都习惯于增加两个成员变量，一个记录数据的长度，一个记录内存分配的长度，这样在一定程度上可以减少内存分配拷贝释放等操作的次数以提升性能，其它小好处还有一些，不多说了。</p>
+<p>另外，对于字符串类，不管是MFC中的CString还是各个版本的STL，我认为还有一些可以优化的空间，比如：<br/>
+一、“+=”操作，在很多项目中都会频繁地做尾部追加操作的，而这个操作如果能得到优化，那么对整体性能的提升比较明显。这个相对比较重复，我在别处有详细描述。<br/>
+二、格式化输出操作，传统的处理方案在实现上会有两次的格式化，第一次是为了获取所需要内存长度，第二次才是真正的格式化输出。在性能要求比较高的场合，比如服务器，完全可以省掉第一步的操作而获得近一倍性能的提升。</p>
+<p>还有太多的想法，不说了，这只是我个人的习惯，或者对或者错，我也不多想了，如果你有兴趣多想想或许也不差。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1173816" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1173816" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e8b2499fac4963f3029ac6c79587ce08?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e8b2499fac4963f3029ac6c79587ce08?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">昔</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1173816"><time datetime="2014-01-13T14:40:43+08:00">2014年01月13日 14:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我只会这么写<br/>
+class String : public string<br/>
+{<br/>
+};<br/>
+。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1293769" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1293769" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba8937ff76f8df4d42cd4477e418eb8e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba8937ff76f8df4d42cd4477e418eb8e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1293769"><time datetime="2014-02-20T22:31:29+08:00">2014年02月20日 22:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>热爱这项工作，开发也有十几年了，可是看了大牛的作品后，就觉得还没得精髓。总之，一步一个脚印，希望能在某个领域做到精通。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1493033" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1493033" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/723ff45d7db9c687f5014edae8cc7f0b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/723ff45d7db9c687f5014edae8cc7f0b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">欲三更</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1493033"><time datetime="2014-07-09T19:05:45+08:00">2014年07月09日 19:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@昔<br/>
+std::string是不能继承的，它没有虚析构函数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1537511" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1537511" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e17c9ba904cc5960a96ce1dd74ab46c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e17c9ba904cc5960a96ce1dd74ab46c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">哎</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1537511"><time datetime="2014-09-18T15:01:57+08:00">2014年09月18日 15:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String&amp; operator=(String rhs) // yes, pass-by-value<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}</p>
+<p> String&amp; operator=(String&amp;&amp; rhs)<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}</p>
+<p>这个重载有歧义，这么长时间了竟然没人发现？不知道都看的是什么。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1570428" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1570428" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/233cc9dc5cc97249a0c62c8c4214e7d3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/233cc9dc5cc97249a0c62c8c4214e7d3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">deng2</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1570428"><time datetime="2014-10-13T16:13:09+08:00">2014年10月13日 16:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1537511" rel="nofollow">@哎 </a><br/>
+没有歧义啊。<br/>
+如果是右值的话，第二个函数是更好匹配了，会调用第二个。<br/>
+如果是一个左值会调用第一个。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1590765" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1590765" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d0b2dca4a8173a7e933c51f0600ce33?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d0b2dca4a8173a7e933c51f0600ce33?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ello</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1590765"><time datetime="2014-11-02T16:06:51+08:00">2014年11月02日 16:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1570428" rel="nofollow">@deng2 </a><br/>
+重载的时候传值和传引用不要一起写，会造成二义性，编译期间就会报错</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1932437" class="comment even depth-2">
+<article id="div-comment-1932437" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/90073829d126197e136da974b5dfffe5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/90073829d126197e136da974b5dfffe5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rus</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1932437"><time datetime="2018-06-25T14:23:05+08:00">2018年06月25日 14:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String&amp; operator=(String rhs) // yes, pass-by-value<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}</p>
+<p>String&amp; operator=(String&amp;&amp; rhs)<br/>
+{<br/>
+swap(rhs);<br/>
+return *this;<br/>
+}</p>
+<p>我编译测试时也碰到类似问题，不调用不报错，调用时编译不过报ambiguous overload for operator=，查了下好像是编译器无法区分传值和传右值引用，但左值引用可以区分。还不是特别确定和明白为啥<br/>
+<a href="https://stackoverflow.com/questions/28701039/ambiguous-call-with-overloaded-r-value-reference-function" rel="nofollow ugc">https://stackoverflow.com/questions/28701039/ambiguous-call-with-overloaded-r-value-reference-function</a></p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1711485" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1711485" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b6f626b9d30d1262153c3d2d98dc09fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b6f626b9d30d1262153c3d2d98dc09fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bagwell</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1711485"><time datetime="2015-05-22T14:43:44+08:00">2015年05月22日 14:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有memory leak，用valgrind查了以后证明的确有，在复制一个String对象的时候，假如接收的String本身data_不为空，你的String(const char *str, std::size_t len)函数会直接把data_指向了新allocate的memory而没有释放之前allocate的memory。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1797651" class="comment even thread-even depth-1">
+<article id="div-comment-1797651" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/acf212d74327ed1ce5b68b364b2dccba?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/acf212d74327ed1ce5b68b364b2dccba?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">teddy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1797651"><time datetime="2015-12-01T17:06:34+08:00">2015年12月01日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>求问：<br/>
+类的swap方法代码如下：<br/>
+void swap(String&amp; rhs)<br/>
+{<br/>
+std::swap(data_, rhs.data_);<br/>
+}<br/>
+为什么可以直接访问 rhs参数的私有成员 data_ ？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1805596" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1805596" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/41402ade28c83307bc422bf1564cc6fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/41402ade28c83307bc422bf1564cc6fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://kamelzcs.github.io" class="url" rel="ugc external nofollow">kamel</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1805596"><time datetime="2016-01-10T14:18:02+08:00">2016年01月10日 14:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1797651" rel="nofollow">@teddy </a> </p>
+<p>private members of a class are accessible only from within other members of the same class (or from their “friends”).</p>
+<p>rhs belongs to the same String type.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1943215" class="comment even thread-even depth-1">
+<article id="div-comment-1943215" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a50c3851d4784021e5836698a37285f4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a50c3851d4784021e5836698a37285f4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">perhaps</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1943215"><time datetime="2018-11-13T23:42:17+08:00">2018年11月13日 23:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问String s4 = baz();时为什么不调用拷贝构造函数呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1947143" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1947143" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/42b54dc7a20c1e116c8ba8787f69d6f7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/42b54dc7a20c1e116c8ba8787f69d6f7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">RUIHAN</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10478.html#comment-1947143"><time datetime="2018-12-09T11:18:41+08:00">2018年12月09日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<pre data-enlighter-language="c" class="EnlighterJSRAW">const char* c_str() const
+  {
+    return data_;
+  }
+
+void swap(String&amp;amp; rhs)
+  {
+    std::swap(data_, rhs.data_);
+  }</pre>
+<p>请问为什么std::swap(data_, rhs.data_); 中rhs可以访问private呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371073" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/107852" class="url" rel="ugc external nofollow">C++面试中string类的一种正确简明的写法 | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371091" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/142612" class="url" rel="ugc external nofollow">我要好offer之 C++大总结 | 高性能架构探索</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

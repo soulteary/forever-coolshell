@@ -1,0 +1,338 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>JAVA的字符串拼接与性能 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2235 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2235" class="post-content post-2235 post type-post status-publish format-standard hentry category-javadev category-proglanguage tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">JAVA的字符串拼接与性能</span>
+<h1 class="entry-title">JAVA的字符串拼接与性能</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2235.html" title="09:42" rel="bookmark"><time class="entry-date" datetime="2010-03-28T09:42:14+08:00" pubdate="">2010年03月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2235.html#comments" class="comments-link">20 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 22,014 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>概述：</strong>本文主要研究的是JAVA的字符串拼接的性能，原文中的测试代码在功能上并不等价，导致concat的测试意义不大。不过原作者在评论栏给了新的concat结果，如果有兴趣的同学建议自己修改代码测试。</p>
+<p>原文出处:<a href="http://www.venishjoe.net/2009/11/java-string-concatenation-and.html">http://www.venishjoe.net/2009/11/java-string-concatenation-and.html</a></p>
+<p>在JAVA中拼接两个字符串的最简便的方式就是使用操作符”+”了。如果你用”+”来连接固定长度的字符串，可能性能上会稍受影响，但是如果你是在循环中来”+”多个串的话，性能将指数倍的下降。假设有一个字符串，我们将对这个字符串做大量循环拼接操作，使用”+”的话将得到最低的性能。但是究竟这个性能有多差？如果我们同时也把StringBuffer,StringBuilder或String.concat()放入性能测试中，结果又会如何呢？本文将会就这些问题给出一个答案！<br/>
+<span id="more-2235"></span></p>
+<p>我们将使用<a href="http://perf4j.codehaus.org/index.html">Per4j</a>来计算性能，因为这个工具可以给我们一个完整的性能指标集合，比如最小，最大耗时，统计时间段的标准偏差等。在测试代码中，为了得到一个准确的标准偏差值，我们将执行20个拼接”*”50,000次的测试。下面是我们将使用到的拼接字符串的方法：</p>
+<ul>
+<li>Concatenation Operator (+)</li>
+<li>String concat method – concat(String str)</li>
+<li>StringBuffer append method – append(String str)</li>
+<li>StringBuilder append method – append(String str)</li>
+</ul>
+<p>最后，我们将看看字节码，来研究这些方法到底是如何执行的。现在，让我们先开始来创建我扪的类。注意为了计算每个循环的性能，代码中的每段测试代码都需要用Per4J库进行封装。首先我们先定义迭代次数</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">private static  final int  OUTER_ITERATION=20;
+private static final int INNER_ITERATION=50000;
+</pre>
+<p>接下来，我们将使用上述4个方法来实现我们的测试代码。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">  	String addTestStr = &#34;&#34;;
+  	String concatTestStr = &#34;&#34;;
+  	StringBuffer concatTestSb = null;
+  	StringBuilder concatTestSbu = null;
+  	 
+  	for (int outerIndex=0;outerIndex&lt;=OUTER_ITERATION;outerIndex++) {
+  	    StopWatch stopWatch = new LoggingStopWatch(&#34;StringAddConcat&#34;);
+  	    addTestStr = &#34;&#34;;
+  	    for (int innerIndex=0;innerIndex&lt;=INNER_ITERATION;innerIndex++)
+  	    addTestStr += &#34;*&#34;;
+  	    stopWatch.stop();
+  	}       
+  	 
+  	for (int outerIndex=0;outerIndex&lt;=OUTER_ITERATION;outerIndex++) {
+  	    StopWatch stopWatch = new LoggingStopWatch(&#34;StringConcat&#34;);
+  	    concatTestStr = &#34;&#34;;
+  	    for (int innerIndex=0;innerIndex&lt;=INNER_ITERATION;innerIndex++)
+  	    concatTestStr.concat(&#34;*&#34;);
+  	    stopWatch.stop();
+  	}
+  	 
+  	for (int outerIndex=0;outerIndex&lt;=OUTER_ITERATION;outerIndex++) {
+  	    StopWatch stopWatch = new LoggingStopWatch(&#34;StringBufferConcat&#34;);
+  	    concatTestSb = new StringBuffer();
+  	    for (int innerIndex=0;innerIndex&lt;=INNER_ITERATION;innerIndex++)
+  	    concatTestSb.append(&#34;*&#34;);
+  	    stopWatch.stop();
+  	}
+  	 
+  	for (int outerIndex=0;outerIndex&lt;=OUTER_ITERATION;outerIndex++) {
+  	    StopWatch stopWatch = new LoggingStopWatch(&#34;StringBuilderConcat&#34;);
+  	    concatTestSbu = new StringBuilder();
+  	    for (int innerIndex=0;innerIndex&lt;=INNER_ITERATION;innerIndex++)
+  	    concatTestSbu.append(&#34;*&#34;);
+  	    stopWatch.stop();
+  	}
+</pre>
+<p>接下来通过运行程序来生成性能指标。我的运行环境是64位的Windown7操作系统，32位的JVM(7-ea) 带4GB内存，双核Quad 2.00GHz的CPU的机器.</p>
+<p>经过20次迭代后，我们得到如下的数据：<br/>
+<img decoding="async" alt="" src="/uploads/2010/03/String_Perf_Chart_217.png" title="结果" class="alignnone" width="586" height="351" srcset=""/></p>
+<p>结果非常完美如我们想象的那样。唯一比较有趣的事情是为什么String.concat也很不错，我们都知道，String是一个常类（初始化后就不会改变的类），那么为什么concat的性能会更好一些呢。(<strong>译者注</strong>：其实原文作者的测试代码有问题，对于concat()方法的测试代码应该写成concatTestStr=concatTestStr.concat(“*”)才对。)为了回答这个问题，我们应该看看concat反编译出来的字节码。在本文的下载包里面包含了所有的字节码，但是现在我们先看一下concat的这个代码片段：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">    46:  new #6; //class java/lang/StringBuilder
+    49:  dup
+    50:  invokespecial   #7; //Method java/lang/StringBuilder.&#34;&lt;init&gt;&#34;:()V
+    53:  aload_1
+    54:  invokevirtual   #8; //Method java/lang/StringBuilder.append:
+             (Ljava/lang/String;)Ljava/lang/StringBuilder;
+    57:  ldc #9; //String *
+    59:  invokevirtual   #8; //Method java/lang/StringBuilder.append:
+             (Ljava/lang/String;)Ljava/lang/StringBuilder;
+    62:  invokevirtual   #10; //Method java/lang/StringBuilder.toString:()
+             Ljava/lang/String;
+    65:  astore_1
+    66:  iinc    7, 1
+    69:  goto    38
+</pre>
+<p>这段代码是String.concat()的字节码，从这段代码中，我们可以清楚的看到，concat()方法使用了StringBuilder，concat()的性能应该和StringBuilder的一样好，但是由于额外的创建StringBuilder和做.append(str).append(str).toString()的操作，使得concate的性能会受到一些影响，所以StringBuilder和String Cancate的时间是1.8和3.3。</p>
+<p>因此，即时在做最简单的拼接时，如果我们不想创建StringBuffer或StringBuilder实例使，我们也因该使用concat。但是对于大量的字符串拼接操作，我们就不应该使用concat(<strong>译者注：</strong>因为测试代码功能上并不完全等价，更换后的测试代码concat的平均处理时间是1650.9毫秒。这个结果在原文的评论里面。)，因为concat会降低你程序的性能，消耗你的cpu。因此，在不考虑线程安全和同步的情况下，为了获得最高的性能，我们应尽量使用StringBuilder</p>
+<p>本文的源代码，编译目标文件和字节码可以通过下面的这个链接获得：</p>
+<p>下载源代码，类和字节码：<a herf="http://www.box.net/shared/hzl48ma8ne">String_Concatenation _Performance.zip</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2235-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>JAVA的字符串拼接与性能</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-6137" class="comment even thread-even depth-1">
+<article id="div-comment-6137" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/be11e29b11b9bb6be5c6b0a79052c322?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/be11e29b11b9bb6be5c6b0a79052c322?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">iblader</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-6137"><time datetime="2010-04-14T19:44:21+08:00">2010年04月14日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个和javac的实现非常相关，在sun近代的虚拟机里面，javac已经很智能的将很多字符串操作编译到StringBuilder中，这也是为什么反编译出来看到的情况会是StringBuilder的原因，用老一点的虚拟机就不是这样了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-15725" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liansi.org/2010/11/27/jdk%e9%87%8c%e7%9a%84%e8%ae%be%e8%ae%a1%e6%a8%a1%e5%bc%8f/" class="url" rel="ugc external nofollow">JDK里的设计模式 | liansi.org</a> </div>
+</li>
+<li id="comment-44209" class="comment even thread-even depth-1">
+<article id="div-comment-44209" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d82a5f82def5c35fbfbe4b0a1a427f2c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d82a5f82def5c35fbfbe4b0a1a427f2c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lijifeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-44209"><time datetime="2011-04-12T20:22:55+08:00">2011年04月12日 20:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>String_Concatenation _Performance.zip不能下载呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-84962" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-84962" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63f10b040556efad990749b23840347c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63f10b040556efad990749b23840347c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Aaron</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-84962"><time datetime="2011-09-29T08:48:33+08:00">2011年09月29日 08:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个《Thinking in java》里有讲，JVM会帮你自动优化用StringBuilder的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202208" class="comment even thread-even depth-1 parent">
+<article id="div-comment-202208" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1063f5ee10fe8b1ddd5a415ea3024a7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1063f5ee10fe8b1ddd5a415ea3024a7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小满</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-202208"><time datetime="2012-08-29T13:44:18+08:00">2012年08月29日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实+运算符的效率也很高,这个测试代码+运算符效率低的原因就是用了+=.如果不用+= 效率非常高</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1919130" class="comment odd alt depth-2">
+<article id="div-comment-1919130" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04ad204811e6dfa1423c55a361987605?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04ad204811e6dfa1423c55a361987605?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://baiwenhui.com" class="url" rel="ugc external nofollow">strongant</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-1919130"><time datetime="2017-10-16T14:00:46+08:00">2017年10月16日 14:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>自己试验一下<br/>
+long start = System.currentTimeMillis();<br/>
+String sb = “”;</p>
+<p> for (int i = 0; i &lt; 1000000; i++) {<br/>
+sb = sb + &#34;hello&#34;;<br/>
+}</p>
+<p> System.out.println(&#34;使用 String += 循环添加100万次耗时(毫秒):&#34; + String.valueOf(System.currentTimeMillis() – start));</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-304985" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2013/03/%e5%ae%9e%e4%be%8b%e5%88%86%e6%9e%90java-class%e7%9a%84%e6%96%87%e4%bb%b6%e7%bb%93%e6%9e%84/" class="url" rel="ugc external nofollow">实例分析Java Class的文件结构 | Google Reader分享</a> </div>
+</li>
+<li id="comment-570926" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1199" class="url" rel="ugc external nofollow">Java中字符串拼接操作的性能 | Steve Guan</a> </div>
+</li>
+<li id="comment-671836" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.pguishi.com/java%e7%9a%84%e5%ad%97%e7%ac%a6%e4%b8%b2%e6%8b%bc%e6%8e%a5%e4%b8%8e%e6%80%a7%e8%83%bd/" class="url" rel="ugc external nofollow">JAVA的字符串拼接与性能 | java学习文章</a> </div>
+</li>
+<li id="comment-1423289" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1423289" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/471e3f75e515e96e25f87e183111b19c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/471e3f75e515e96e25f87e183111b19c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ewew.com" class="url" rel="ugc external nofollow">edfegrgre</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-1423289"><time datetime="2014-04-14T16:28:57+08:00">2014年04月14日 16:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>他要说好几个月呢咋办</p>
+</div>
+ </article>
+</li>
+<li id="comment-1490349" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/cnblogs/2287.html" class="url" rel="ugc external nofollow">关于java发起http请求 - 博客园</a> </div>
+</li>
+<li id="comment-1490358" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ym910.com/wp/?p=5856" class="url" rel="ugc external nofollow">关于java发起http请求 | 易鸣</a> </div>
+</li>
+<li id="comment-1662164" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=15741" class="url" rel="ugc external nofollow">字符串拼接与性能分析 | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1719583" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jkeabc.com/p/1061994.html" class="url" rel="ugc external nofollow">java 字符串拼接的单元测试 – 剑客|关注科技互联网</a> </div>
+</li>
+<li id="comment-1719587" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.aliog.com/20735.html" class="url" rel="ugc external nofollow">java 字符串拼接的单元测试 - 编程语言 - 阿里欧歌</a> </div>
+</li>
+<li id="comment-1719983" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.programerhome.com/?p=18770" class="url" rel="ugc external nofollow">java 字符串拼接的单元测试 | 程序员之家</a> </div>
+</li>
+<li id="comment-1731844" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mikwei.com/?p=24912" class="url" rel="ugc external nofollow">关于java发起http请求 | 可维博客</a> </div>
+</li>
+<li id="comment-2151496" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2151496" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6302102eefa02b5061995783f88d71f2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6302102eefa02b5061995783f88d71f2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ryan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-2151496"><time datetime="2020-09-08T22:41:21+08:00">2020年09月08日 22:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章的举例中concatTestStr.concat(“<em>“);的用法是错误的，应该是str=concatTestStr.concat(“</em>“);这样去拼接，打印的结果回比“+”快上个两三倍，但不至于像文章中的结果相差那么大。<br/>
+concat方法跟StringBuffer比相差不是一个数量级的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2224852" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2224852" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af927f02fb22b23cce27734ce10c7e66?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af927f02fb22b23cce27734ce10c7e66?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yanss</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-2224852"><time datetime="2021-03-30T01:03:01+08:00">2021年03月30日 01:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“因此，即时在做最简单的拼接时，如果我们不想创建StringBuffer或StringBuilder实例使，我们也因该使用concat。”</p>
+<p>现在的jdk版本里（最低不知道，从1.8开始测试），非循环体中的拼接，排除变量引用的情况，最简单的场景：<br/>
+String s = “a” + “b” + “c”;</p>
+<p>使用+操作符，是最快的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2301039" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2301039" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d10ca8d11301c2f4993ac2279ce4b930?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d10ca8d11301c2f4993ac2279ce4b930?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">?</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2235.html#comment-2301039"><time datetime="2021-09-10T14:31:53+08:00">2021年09月10日 14:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>public String concat(String str) {<br/>
+if (str.isEmpty()) {<br/>
+return this;<br/>
+}<br/>
+int len = value.length;<br/>
+int otherLen = str.length();<br/>
+char buf[] = Arrays.copyOf(value, len + otherLen);<br/>
+str.getChars(buf, len);<br/>
+return new String(buf, true);<br/>
+}</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

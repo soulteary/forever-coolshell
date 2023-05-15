@@ -1,0 +1,367 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C技巧：结构体参数转成不定参数 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2801 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2801" class="post-content post-2801 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C技巧：结构体参数转成不定参数</span>
+<h1 class="entry-title">C技巧：结构体参数转成不定参数</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2801.html" title="08:24" rel="bookmark"><time class="entry-date" datetime="2010-08-10T08:24:52+08:00" pubdate="">2010年08月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2801.html#comments" class="comments-link">18 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 14,684 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>下面这段程序是一个C语言的小技巧，其展示了如何把一个参数为结构体的函数转成一个可变参数的函数，其中用到了宏和内建宏“<code>__VA_ARGS__</code>”，下面这段程序可以在GCC下正常编译通过：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+
+#define func(...) myfunc((struct mystru){__VA_ARGS__})
+
+struct mystru { const char *name; int number; };
+
+void myfunc(struct mystru ms )
+{
+  printf(&#34;%s: %d\n&#34;, ms.name ?: &#34;untitled&#34;, ms.number);
+}
+
+int main(int argc, char **argv)
+{
+  func(&#34;three&#34;, 3);
+  func(&#34;hello&#34;);
+  func(.name = &#34;zero&#34;);
+  func(.number = argc, .name = &#34;argc&#34;,);
+  func(.number = 42);
+  return 0;
+}
+</pre>
+<p>从上面这段程序，我们可以看到一个叫 myfunc的函数，被func的宏改变了，本来myfunc需要的是一个叫mystru的结构，然而通过宏，我们把struct mystru的这个参数，变成了不定参数列表的一个函数。上面这段程序输出入下，</p>
+<p><span id="more-2801"></span></p>
+<blockquote><p>three: 3<br/>
+hello: 0<br/>
+zero: 0<br/>
+argc: 1<br/>
+untitled: 42</p></blockquote>
+<p>虽然，这样的用法并不好，但是你可以从另外一个方面了解一下这世上对C稀奇古怪的用法。 如果你把宏展开后，你就明的为什么了。下面是宏展开的样子：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">  myfunc((struct mystru){&#34;three&#34;, 3});
+  myfunc((struct mystru){&#34;hello&#34;});
+  myfunc((struct mystru){.name = &#34;zero&#34;});
+  myfunc((struct mystru){.number = argc, .name = &#34;argc&#34;,});
+  myfunc((struct mystru){.number = 42});
+</pre>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2801-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C技巧：结构体参数转成不定参数</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-8815" class="comment even thread-even depth-1">
+<article id="div-comment-8815" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b6f767d19dd920431616134d39f1360?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b6f767d19dd920431616134d39f1360?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://glacjay.is-a-geek.org/blog/" class="url" rel="ugc external nofollow">GlacJAY</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8815"><time datetime="2010-08-10T08:38:34+08:00">2010年08月10日 08:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我倒是第一次见到那个问号紧跟冒号的用法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-8816" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8816" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e87e70457a8f84ac91d68821b67fdb41?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e87e70457a8f84ac91d68821b67fdb41?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">thornyroad</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8816"><time datetime="2010-08-10T08:43:38+08:00">2010年08月10日 08:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很强大。</p>
+<p>不过想问下，楼主说这样的用法并不好。请问：这样的用法缺点是什么？有没有可能进行改进加强，而变成一种好的惯用法？</p>
+</div>
+ </article>
+</li>
+<li id="comment-8823" class="comment even thread-even depth-1">
+<article id="div-comment-8823" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe663113ae573360f22518a49247ce74?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe663113ae573360f22518a49247ce74?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bugthat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8823"><time datetime="2010-08-10T10:28:08+08:00">2010年08月10日 10:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-8815" rel="nofollow">@GlacJAY</a><br/>
+我也是第一次见，三目运算符a?b:c的特例吧，测试了一下果真如此，这样写倒是省事，但别人不一定理解</p>
+</div>
+ </article>
+</li>
+<li id="comment-8824" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8824" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1c7da31a274ab53343a1d1b1fdc097a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1c7da31a274ab53343a1d1b1fdc097a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">电子骑士</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8824"><time datetime="2010-08-10T10:29:39+08:00">2010年08月10日 10:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-8816" rel="nofollow">@thornyroad</a><br/>
+这样写的程序，可读性会非常差，如果不是程序员本人，你说别人要看懂得花多大功夫？<br/>
+另外的局限性是，可变参数仅限于定义的结构体里面有限的参数，就灵活程序比不性真正的可变参数函数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-8826" class="comment even thread-even depth-1">
+<article id="div-comment-8826" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aadeddd5c381bbf0acb50fbd3153fbd6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aadeddd5c381bbf0acb50fbd3153fbd6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jruv</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8826"><time datetime="2010-08-10T10:49:07+08:00">2010年08月10日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个只在gcc中能编译吧， 好像那些都是gcc的extention啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-8827" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8827" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://Coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8827"><time datetime="2010-08-10T10:56:22+08:00">2010年08月10日 10:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很明显，这是一种滥用。这篇文章的主旨并不是提倡这样的做法，而是告诉你一些这世界上的怪招，让大家开开眼。</p>
+</div>
+ </article>
+</li>
+<li id="comment-8828" class="comment even thread-even depth-1">
+<article id="div-comment-8828" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aadeddd5c381bbf0acb50fbd3153fbd6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aadeddd5c381bbf0acb50fbd3153fbd6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jruv</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8828"><time datetime="2010-08-10T11:00:50+08:00">2010年08月10日 11:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-8816"><p>
+<strong><a href="#comment-8816" rel="nofollow">thornyroad</a> :</strong><br/>
+很强大。<br/>
+不过想问下，楼主说这样的用法并不好。请问：这样的用法缺点是什么？有没有可能进行改进加强，而变成一种好的惯用法？
+</p></blockquote>
+<p>移植性比较差吧，可读性还好吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-8833" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8833" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3651dd32584136119ae8597e52b708e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3651dd32584136119ae8597e52b708e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">saint23</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8833"><time datetime="2010-08-10T13:07:56+08:00">2010年08月10日 13:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这段代码错误太多了，不看也罢</p>
+</div>
+ </article>
+</li>
+<li id="comment-8839" class="comment even thread-even depth-1">
+<article id="div-comment-8839" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a80d90a92f44827e5155e569f219d827?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a80d90a92f44827e5155e569f219d827?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.leyond.info" class="url" rel="ugc external nofollow">Leyond</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8839"><time datetime="2010-08-10T15:58:08+08:00">2010年08月10日 15:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>怎么感觉像是在函数变量的初始化，但好像复杂了点。第一次见到这样写的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-8843" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8843" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8234efe9e0194e84a979d1ad54705355?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8234efe9e0194e84a979d1ad54705355?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.greatony.com" class="url" rel="ugc external nofollow">Tony Huang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8843"><time datetime="2010-08-10T18:28:04+08:00">2010年08月10日 18:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-8827" rel="nofollow">@陈皓</a><br/>
+呵呵，这个虽说是一个滥用，但从另外一个角度来说，也可以认为是一种利用c语言来开发一种dsl：）</p>
+</div>
+ </article>
+</li>
+<li id="comment-8854" class="comment even thread-even depth-1">
+<article id="div-comment-8854" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/32530753456419a5bf989c45257ddf70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/32530753456419a5bf989c45257ddf70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.pingf.me" class="url" rel="ugc external nofollow">pingf</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8854"><time datetime="2010-08-10T22:51:16+08:00">2010年08月10日 22:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个好像是c99新增的,但是gcc似乎不用-std=c99选项也能编译的……<br/>
+另外博主能把主页上上篇博文中的ui效果屏蔽掉么?弄得我现在打开很卡的….</p>
+</div>
+ </article>
+</li>
+<li id="comment-8871" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8871" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/25f168ab7293f5cc6151896bd7238af9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/25f168ab7293f5cc6151896bd7238af9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bigship</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8871"><time datetime="2010-08-11T11:57:07+08:00">2010年08月11日 11:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>又一个trick :D<br/>
+这个方法允许我们能直接以函数调用的形式对结构体中某些感兴趣的字段赋值，然后呼叫函数。<br/>
+一般情况下，我们只能先填结构体，再呼叫函数。<br/>
+struct mystru ms<br/>
+{<br/>
+.xx = xxx;<br/>
+.yy = xxx;<br/>
+.zz = xxx;<br/>
+};<br/>
+myfunc(ms);<br/>
+现在可以直接func(.xx = “zero”);<br/>
+好处嘛，代码行数减少了:D，缺点是可能这种写法不可移植，且有些晦涩，有玩弄技巧之嫌。<br/>
+Anyway, thanks for sharing</p>
+</div>
+ </article>
+</li>
+<li id="comment-8883" class="comment even thread-even depth-1">
+<article id="div-comment-8883" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/971c5311eb70bddea71b423750c81e21?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/971c5311eb70bddea71b423750c81e21?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.6e6.org/" class="url" rel="ugc external nofollow">阅网博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-8883"><time datetime="2010-08-11T20:40:29+08:00">2010年08月11日 20:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C稀奇古怪的用法确实很多，java中也有，不过如果是团队开发，还是提倡合乎规范的做法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-9103" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-9103" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a4f1af54378eed0ab21284121674474?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a4f1af54378eed0ab21284121674474?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ikbear.com" class="url" rel="ugc external nofollow">ikbear</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-9103"><time datetime="2010-08-17T11:13:48+08:00">2010年08月17日 11:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一次见这种写法，学习了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-11377" class="comment byuser comment-author-xty_seven even thread-even depth-1">
+<article id="div-comment-11377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/edafeaab0d599e79d8371eeba3a4db35?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/edafeaab0d599e79d8371eeba3a4db35?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xty_seven</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-11377"><time datetime="2010-10-09T16:46:08+08:00">2010年10月09日 16:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>长见识了！ 不过没看到实用性！</p>
+</div>
+ </article>
+</li>
+<li id="comment-791156" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-791156" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c31a43a9240bd2b3801e1b307d9b075e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c31a43a9240bd2b3801e1b307d9b075e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vorenus</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-791156"><time datetime="2013-10-07T16:16:02+08:00">2013年10月07日 16:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>linux编译出现以下错误 求解答<br/>
+test1.cpp:19: error: expected primary-expression before ‘)’ token<br/>
+在这句上 func(.name = “zero”);</p>
+</div>
+ </article>
+</li>
+<li id="comment-1494595" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/itniu/2766.html" class="url" rel="ugc external nofollow">.NET代码转换器 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-2355094" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2355094" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92b3c8d3f85819d2d61c602ee7e9bd80?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92b3c8d3f85819d2d61c602ee7e9bd80?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">WWW</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2801.html#comment-2355094"><time datetime="2021-12-31T14:42:37+08:00">2021年12月31日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种方法不值得在项目中应用。但我们应该知道，以防某天要看懂这些代码</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

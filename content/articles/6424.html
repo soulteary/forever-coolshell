@@ -1,0 +1,266 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Hash Collision DoS 问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6424 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6424" class="post-content post-6424 post type-post status-publish format-standard hentry category-itnews category-netsecurity tag-hash tag-java tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">Hash Collision DoS 问题</span>
+<h1 class="entry-title">Hash Collision DoS 问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6424.html" title="08:36" rel="bookmark"><time class="entry-date" datetime="2012-01-06T08:36:05+08:00" pubdate="">2012年01月06日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6424.html#comments" class="comments-link">119 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 60,907 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>最近，除了国内明文密码的安全事件，还有一个事是比较大的，那就是 Hash Collision DoS （Hash碰撞的拒绝式服务攻击），有恶意的人会通过这个安全弱点会让你的服务器运行巨慢无比。<strong>这个安全弱点利用了各语言的Hash算法的“非随机性”可以制造出N多的value不一样，但是key一样数据，然后让你的Hash表成为一张单向链表，而导致你的整个网站或是程序的运行性能以级数下降（可以很轻松的让你的CPU升到100%）</strong>。目前，这个问题出现于<a href="http://www.java.com/">Java</a>, <a href="http://jruby.org/">JRuby</a>, <a href="http://www.php.net/">PHP</a>, <a href="https://python.org/">Python</a>, <a href="http://rubini.us/">Rubinius</a>, <a href="http://www.ruby-lang.org/">Ruby</a>这些语言中，主要：</p>
+<ul>
+<li><a href="http://www.java.com">Java</a>, 所有版本</li>
+<li><a href="http://jruby.org/">JRuby</a> &lt;= 1.6.5 （目前fix在 1.6.5.1）</li>
+<li><a href="http://www.php.net/">PHP</a> &lt;= 5.3.8, &lt;= 5.4.0RC3 （目前fix在 5.3.9,  5.4.0RC4）</li>
+<li><a href="https://python.org/">Python</a>, all versions</li>
+<li><a href="http://rubini.us/">Rubinius</a>, all versions</li>
+<li><a href="http://www.ruby-lang.org/">Ruby</a> &lt;= 1.8.7-p356 （目前fix在 1.8.7-p357, 1.9.x）</li>
+<li><a href="http://geronimo.apache.org/">Apache Geronimo</a>, 所有版本</li>
+<li><a href="http://tomcat.apache.org/">Apache Tomcat</a> &lt;= 5.5.34, &lt;= 6.0.34, &lt;= 7.0.22 （目前fix在 5.5.35,  6.0.35,  7.0.23）</li>
+<li><a href="http://glassfish.java.net/">Oracle Glassfish</a> &lt;= 3.1.1 （目前fix在mainline）</li>
+<li><a href="http://www.eclipse.org/jetty/">Jetty</a>, 所有版本</li>
+<li><a href="http://plone.org/">Plone</a>, 所有版本</li>
+<li><a href="http://rack.rubyforge.org/">Rack</a> &lt;= 1.3.5, &lt;= 1.2.4, &lt;= 1.1.2 （目前fix 在 1.4.0, 1.3.6, 1.2.5, 1.1.3）</li>
+<li><a href="https://code.google.com/p/v8/">V8 JavaScript Engine</a>, 所有版本</li>
+<li>ASP.NET 没有打MS11-100补丁</li>
+</ul>
+<p>注意，Perl没有这个问题，因为Perl在N年前就fix了这个问题了。关于这个列表的更新，请参看 <a href="http://www.ocert.org/advisories/ocert-2011-003.html" target="_blank">oCERT的2011-003报告</a>，比较坑爹的是，这个问题早在2003 年就在论文《<a href="http://www.cs.rice.edu/~scrosby/hash/CrosbyWallach_UsenixSec2003.pdf" target="_blank">通过算法复杂性进行拒绝式服务攻击</a>》中被报告了，但是好像没有引起注意，尤其是Java。</p>
+<h4>弱点攻击解释</h4>
+<p>你可以会觉得这个问题没有什么大不了的，因为黑客是看不到hash算法的，如果你这么认为，那么你就错了，这说明对Web编程的了解还不足够底层。</p>
+<p><span id="more-6424"></span></p>
+<p>无论你用JSP，PHP，Python，Ruby来写后台网页的时候，在处理HTTP POST数据的时候，你的后台程序可以很容易地以访问表单字段名来访问表单值，就像下面这段程序一样：</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">
+
+$usrname = $_POST[&#39;username&#39;];
+$passwd = $_POST[&#39;password&#39;];
+
+</pre>
+<p>这是怎么实现的呢？这后面的东西就是Hash Map啊，所以，我可以给你后台提交一个有10K字段的表单，这些字段名都被我精心地设计过，他们全是Hash Collision ，于是你的Web Server或语言处理这个表单的时候，就会建造这个hash map，于是在每插入一个表单字段的时候，都会先遍历一遍你所有已插入的字段，于是你的服务器的CPU一下就100%了，你会觉得这10K没什么，那么我就发很多个的请求，你的服务器一下就不行了。</p>
+<p>举个例子，你可能更容易理解：</p>
+<p>如果你有n个值—— v1, v2, v3, … vn，把他们放到hash表中应该是足够散列的，这样性能才高：</p>
+<blockquote><p>0 -&gt; v2<br/>
+1 -&gt; v4<br/>
+2 -&gt; v1<br/>
+…<br/>
+…<br/>
+n -&gt; v(x)</p></blockquote>
+<p>但是，这个攻击可以让我造出N个值——  dos1, dos2, …., dosn，他们的hash key都是一样的（也就是Hash Collision），导致你的hash表成了下面这个样子：</p>
+<blockquote><p>0 – &gt; dos1 -&gt; dos2 -&gt; dos3 -&gt; …. -&gt;dosn<br/>
+1 -&gt; null<br/>
+2 -&gt; null<br/>
+…<br/>
+…<br/>
+n -&gt; null</p></blockquote>
+<p>于是，单向链接就这样出现了。这样一来，O(1)的搜索算法复杂度就成了O(n)，而插入N个数据的算法复杂度就成了O(n^2)，你想想这是什么样的性能。</p>
+<p>（关于Hash表的实现，如果你忘了，那就把大学时的《数据结构》一书拿出来看看）</p>
+<h4>  Hash Collision DoS 详解</h4>
+<p>StackOverflow.com是个好网站， 合格的程序员都应该知道这个网站。上去一查，就看到了这个贴子“<a title="Application vulnerability due to Non Random Hash Functions" href="http://stackoverflow.com/questions/8669946/application-vulnerability-due-to-non-random-hash-functions" target="_blank">Application vulnerability due to Non Random Hash Functions</a>”。我把这个贴子里的东西摘一些过来。</p>
+<p>首先，这些语言使用的Hash算法都是“非随机的”，如下所示，这个是Java和Oracle使用的Hash函数：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static int hash(int h)
+{
+h ^= (h &gt;&gt;&gt; 20) ^ (h &gt;&gt;&gt; 12);
+return h ^ (h &gt;&gt;&gt; 7) ^ (h &gt;&gt;&gt; 4);
+}</pre>
+<p>所谓“非随机的” Hash算法，就可以猜。比如：</p>
+<p>1）在Java里， Aa和BB这两个字符串的hash code(或hash key) 是一样的，也就是Collision 。</p>
+<p>2）于是，我们就可以通过这两个种子生成更多的拥有同一个hash key的字符串。如：”AaAa”, “AaBB”, “BBAa”, “BBBB”。这是第一次迭代。其实就是一个排列组合，写个程序就搞定了。</p>
+<p>3）然后，我们可以用这4个长度的字符串，构造8个长度的字符串，如下所示：</p>
+<pre style="padding-left: 30px;"><code>&#34;AaAaAaAa&#34;, &#34;AaAaBBBB&#34;, &#34;AaAaAaBB&#34;, &#34;AaAaBBAa&#34;, 
+&#34;BBBBAaAa&#34;, &#34;BBBBBBBB&#34;, &#34;BBBBAaBB&#34;, &#34;BBBBBBAa&#34;, 
+&#34;AaBBAaAa&#34;, &#34;AaBBBBBB&#34;, &#34;AaBBAaBB&#34;, &#34;AaBBBBAa&#34;, 
+&#34;BBAaAaAa&#34;, &#34;BBAaBBBB&#34;, &#34;BBAaAaBB&#34;, &#34;BBAaBBAa&#34;,</code></pre>
+<p><code>4）同理，我们就可以生成16个长度的，以及256个长度的字符串，总之，很容易生成N多的这样的值。</code></p>
+<p>在攻击时，我只需要把这些数据做成一个HTTP POST 表单，然后写一个无限循环的程序，不停地提交这个表单。你用你的浏览器就可以了。当然，如果做得更精妙一点的话，把你的这个表单做成一个跨站脚本，然后找一些网站的跨站漏洞，放上去，于是能过SNS的力量就可以找到N多个用户来帮你从不同的IP来攻击某服务器。</p>
+<p> </p>
+<h4>防守</h4>
+<p>要防守这样的攻击，有下面几个招：</p>
+<ul>
+<li>打补丁，把hash算法改了。</li>
+<li>限制POST的参数个数，限制POST的请求长度。</li>
+<li>最好还有防火墙检测异常的请求。</li>
+</ul>
+<p>不过，对于更底层的或是其它形式的攻击，可能就有点麻烦了。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6424-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">业界新闻</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Hash</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Hash Collision DoS 问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1914383" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.deeplearn.me/1086.html" class="url" rel="ugc external nofollow">hash table理解 转载 | 算法之道</a> </div>
+</li>
+<li id="comment-1919471" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e7%96%ab%e8%8b%97%ef%bc%9ajava-hashmap%e7%9a%84%e6%ad%bb%e5%be%aa%e7%8e%af.html" class="url" rel="ugc external nofollow">疫苗：JAVA HASHMAP的死循环 | Codeba</a> </div>
+</li>
+<li id="comment-1920096" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.w3pc.com/2017/11/01/%e7%96%ab%e8%8b%97%ef%bc%9ajava-hashmap%e7%9a%84%e6%ad%bb%e5%be%aa%e7%8e%af/" class="url" rel="ugc external nofollow">疫苗：JAVA HASHMAP的死循环 – 孤剑之家</a> </div>
+</li>
+<li id="comment-1927760" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://youngitman.tech/?p=158" class="url" rel="ugc external nofollow">JAVA HASHMAP的死循环 – 青年IT男技术博客</a> </div>
+</li>
+<li id="comment-1932099" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://com-it.tech/archives/107580" class="url" rel="ugc external nofollow">hashMap併發環境下存在隱患 - 程序員的後花園</a> </div>
+</li>
+<li id="comment-1940140" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dev.go2live.cn/%e6%80%a7%e8%83%bd%e8%b0%83%e4%bc%98%e6%94%bb%e7%95%a5.html" class="url" rel="ugc external nofollow">性能调优攻略 | 演道网</a> </div>
+</li>
+<li id="comment-1942880" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/10116.html" class="url" rel="ugc external nofollow">从 MongoDB “赎金事件” 看安全问题 – 西部IT科技</a> </div>
+</li>
+<li id="comment-1980966" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.nndev.cn/archives/553" class="url" rel="ugc external nofollow">性能调优攻略 – 技术人成长 – 聊技术，话成长</a> </div>
+</li>
+<li id="comment-1998505" class="comment even thread-even depth-1">
+<article id="div-comment-1998505" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8419d18fb232451a988725535b0c3b9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8419d18fb232451a988725535b0c3b9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">farta</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6424.html/comment-page-3#comment-1998505"><time datetime="2019-05-24T16:35:44+08:00">2019年05月24日 16:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>To所有楼上的：<br/>
+这个问题早已经修好了。修改Hash算法是唯一的治本之道。<br/>
+修改的思路是给<em>每一个</em>Hash表实例增加一个随机数当Hash种子，这样完全相同的一群k/v对，在不同的hash表里的布局也完全不同，这样只要你的随机数不泄露，黑客就拿你没办法了。<br/>
+这种带种子的Hash算法（如SipHash）已经成了各语言新版本的标准Hash函数。性能上有些损失，但是总比被人攻击强。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2038127" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/625995" class="url" rel="ugc external nofollow">性能调优攻略-来自酷壳陈皓 - 算法网</a> </div>
+</li>
+<li id="comment-2058445" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://tech.souyunku.com/?p=15167" class="url" rel="ugc external nofollow">JDK源码分析（九）JDK1.7源码分析【集合】HashMap的死循环 - 搜云库技术团队-搜云库技术团队</a> </div>
+</li>
+<li id="comment-2195208" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/p/01408047.html" class="url" rel="ugc external nofollow">JDK 1.7及之前——HashMap死循环问题解析 – FIXBBS</a> </div>
+</li>
+<li id="comment-2277904" class="comment even thread-even depth-1">
+<article id="div-comment-2277904" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1986f490705f356ca2688a14626e70bd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1986f490705f356ca2688a14626e70bd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.cnblogs.com/mxjhaima" class="url" rel="ugc external nofollow">mxjhaima</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6424.html/comment-page-3#comment-2277904"><time datetime="2021-07-21T16:14:01+08:00">2021年07月21日 16:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>已经修复了是说java现在没问题了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2337252" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1818533" class="url" rel="ugc external nofollow">算法的本质 - 算法网</a> </div>
+</li>
+<li id="comment-2370409" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2435207" class="url" rel="ugc external nofollow">JAVA HASHMAP并发访问出现的问题 - 算法网</a> </div>
+</li>
+<li id="comment-2370539" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2444278" class="url" rel="ugc external nofollow">JDK 1.7及之前——HashMap死循环问题解析 - 算法网</a> </div>
+</li>
+<li id="comment-2370540" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/667240" class="url" rel="ugc external nofollow">【Map】——HashMap死循环 - 内存网</a> </div>
+</li>
+<li id="comment-2370929" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/279068" class="url" rel="ugc external nofollow">Java HashMap的死循环 - Java天堂</a> </div>
+</li>
+<li id="comment-2370931" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/279536" class="url" rel="ugc external nofollow">Java HashMap的死循环 - Java天堂</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6424.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6424.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/6424.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">6424</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

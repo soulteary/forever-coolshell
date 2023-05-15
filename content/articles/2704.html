@@ -1,0 +1,142 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>检查素数的正则表达式 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2704 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2704" class="post-content post-2704 post type-post status-publish format-standard hentry category-proglanguage tag-193">
+<header class="entry-header">
+<span class="screen-reader-text">检查素数的正则表达式</span>
+<h1 class="entry-title">检查素数的正则表达式</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2704.html" title="08:22" rel="bookmark"><time class="entry-date" datetime="2010-07-23T08:22:27+08:00" pubdate="">2010年07月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2704.html#comments" class="comments-link">55 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 42,476 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>一般来说，我们会使用正规表达式来做字符串匹配，今天在网上浏览的时候，看到了有人用正则表达式来检查一个数字是否为素数（质数），让我非常感兴趣，这个正则表达式如入所示：</p>
+<figure id="attachment_2705" aria-describedby="caption-attachment-2705" style="width: 450px" class="wp-caption aligncenter"><img decoding="async" class="size-full wp-image-2705" title="检查素数的正则表达式" src="/uploads/2010/07/regexpr-for-prime-number.jpg" alt="" width="450" height="45" srcset="" sizes="(max-width: 450px) 100vw, 450px"/><figcaption id="caption-attachment-2705" class="wp-caption-text">检查素数与否的正则表达式 </figcaption></figure>
+<p>要使用这个正规则表达式，你需要把自然数转成多个1的字符串，如：2 要写成 “11”， 3 要写成 “111”, 17 要写成“11111111111111111”，这种工作使用一些脚本语言可以轻松的完成。</p>
+<p>一开始我对这个表达式持怀疑态度，但仔细研究了一下这个表达式，发现是非常合理的，下面，让我带你来细细剖析一下是这个表达式的工作原理。</p>
+<p>首先，我们看到这个表达式中有“|”，也就是说这个表达式可以分成两个部分：/^1?$/ 和 /^(11+?)\1+$/</p>
+<ul>
+<li><strong>第一部分：/^1?$/</strong>， 这个部分相信不用我多说了，其表示匹配“空串”以及字串中只有一个“1”的字符串。</li>
+<li><strong>第二部分：/^(11+?)\1+$/</strong>，这个部分是整个表达式的关键部分。其可以分成两个部分，<strong>(11+?)</strong> 和<strong>\1+$</strong>，前半部很简单了，匹配以“11”开头的并重复0或n个1的字符串，后面的部分意思是把前半部分作为一个字串去匹配还剩下的字符串1次或多次（这句话的意思是——<span style="color: #008000;">剩余的字串的1的个数要是前面字串1个数的整数倍</span>）。</li>
+</ul>
+<p>可见这个正规则表达式是取非素数，要得到素数还得要对整个表达式求反。通过上面的分析，我们知道，第二部分是最重要的，对于第二部分，举几个例子，</p>
+<p><span id="more-2704"></span></p>
+<p><strong>示例一：判断自然数8</strong>。我们可以知道，8转成我们的格式就是“11111111”，对于<strong>(11+?)</strong>，其匹配了“11”，于是还剩下“111111”，而<strong>\1+$</strong>正好匹配了剩下的“111111”，因为，“11”这个模式在“111111”出现了三次，符合模式匹配，返回true。所以，匹配成功，于是这个数不是质数。</p>
+<p><strong>示例二：判断自然数11</strong>。转成我们需要的格式是“11111111111”（十一个1），对于<strong>(11+?)</strong>，其匹配了“11”（前两个1），还剩下“111111111”（九个1），而<strong>\1+$</strong>无法为“11”匹配那“九个1”，因为“11”这个模式并没有在“九个1”这个串中正好出现N次。于是，我们的正则表达式引擎会尝试下一种方法，先匹配“111”（前三个1），然后把“111”作为模式去匹配剩下的“11111111”（八个1），很明显，那“八个1”并没有匹配“三个1”多次。所以，引擎会继续向下尝试……直至尝试所有可能都无法匹配成功。所以11是素数。</p>
+<p>通过示例二，我们可以得到这样的等价数算算法，正则表达式会匹配这若干个1中有没有出现“二个1”的整数倍，“三个1”的整数倍，“四个1”的整数倍……，而，这正好是我们需要的算素数的算法。现在大家明白了吧。</p>
+<p>下面，我们用perl来使用这个正规则表达式不停地输出素数：（关于perl的语法我就不多说了，请注意表达式前的取反操作符）</p>
+<p>[perl]perl -e’$|++;(1 x$_)!~/^1?$|^(11+?)\1+$/&amp;&amp;print&#34;$_ &#34;while ++$_&#39;[/perl]</p>
+<p>另外，让我们来举一反三，根据上述的这种方法，我们甚至可以用正则表达式来求证某方式是否有解，如：</p>
+<ul>
+<li><strong>二元方程</strong>：17x + 12y = 51   判断其是否有解的正则表达式是：<strong>^</strong><strong>(</strong><strong>.*</strong><strong>)</strong><strong>\1{16}</strong><strong>(</strong><strong>.*</strong><strong>)</strong><strong>\2{11}$</strong></li>
+<li><strong>三元方程</strong>：11x + 2y + 5z = 115 判断其是否有解的正则表达式是：<strong>^</strong><strong>(</strong><strong>.*</strong><strong>)</strong><strong>\1{10}</strong><strong>(</strong><strong>.*</strong><strong>)</strong><strong>\2{1}</strong><strong>(</strong><strong>.*</strong><strong>)</strong><strong>\3{4}$</strong></li>
+</ul>
+<p>大家不妨自己做做练习，为什么上述的两个正则表达式可以判断方程是否有解。如果无法参透其中的奥妙的话，你可以读读这篇<a href="http://blog.stevenlevithan.com/archives/algebra-with-regexes" target="_blank">英文文章</a>。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2704-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">正则表达式</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>检查素数的正则表达式</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1498323" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/js-%e6%ad%a3%e5%88%99%e4%b9%8b-%e6%a3%80%e6%b5%8b%e7%b4%a0%e6%95%b0" class="url" rel="ugc external nofollow">js 正则之 检测素数 - javascript - 开发者第2499557个问答</a> </div>
+</li>
+<li id="comment-1830177" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e7%9a%84shell%e8%84%9a%e6%9c%ac.html" class="url" rel="ugc external nofollow">面向对象的Shell脚本 | | Codeba</a> </div>
+</li>
+<li id="comment-2124467" class="comment even thread-even depth-1">
+<article id="div-comment-2124467" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/421553ac8671a10ebaa51cbb80392c5e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/421553ac8671a10ebaa51cbb80392c5e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://1991421.cn" class="url" rel="ugc external nofollow">Alan He</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2704.html/comment-page-2#comment-2124467"><time datetime="2020-06-27T18:02:35+08:00">2020年06月27日 18:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种方式高耗内存。但确实还有意思。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370311" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://niul.net/175628.html" class="url" rel="ugc external nofollow">V2EX-「野生架构师」周刊 #12 📸 Old But Good 、UNIX 艺术、互联网历史博物馆 | 牛C网(NiuL.Net)</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/2704.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/2704.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">2704</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,888 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go 语言简介（上）— 语法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8460 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8460" class="post-content post-8460 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-go tag-golang">
+<header class="entry-header">
+<span class="screen-reader-text">Go 语言简介（上）— 语法</span>
+<h1 class="entry-title">Go 语言简介（上）— 语法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8460.html" title="08:27" rel="bookmark"><time class="entry-date" datetime="2012-11-06T08:27:48+08:00" pubdate="">2012年11月06日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8460.html#comments" class="comments-link">135 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 171,263 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>周末天气不好，只能宅在家里，于是就顺便看了一下Go语言，觉得比较有意思，所以写篇文章介绍一下。<strong>我想写一篇你可以在乘坐地铁或公交车上下班时就可以初步了解一门语言的文章</strong>。所以，下面的文章主要是以代码和注释为主。只需要你对C语言，Unix，Python有一点基础，我相信你会在30分钟左右读完并对Go语言有一些初步了解的。</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-8485" title="go" src="/uploads/2012/11/go2.jpg" alt="" width="435" height="255" srcset="" sizes="(max-width: 435px) 100vw, 435px"/></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Hello_World" title="Hello World">Hello World</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E8%BF%90%E8%A1%8C" title="运行">运行</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E8%87%AA%E5%B7%B1%E7%9A%84package" title="自己的package">自己的package</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#fmt%E8%BE%93%E5%87%BA%E6%A0%BC%E5%BC%8F" title="fmt输出格式">fmt输出格式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%8F%98%E9%87%8F%E5%92%8C%E5%B8%B8%E9%87%8F" title="变量和常量">变量和常量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%95%B0%E7%BB%84" title="数组">数组</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%95%B0%E7%BB%84%E7%9A%84%E5%88%87%E7%89%87%E6%93%8D%E4%BD%9C" title="数组的切片操作">数组的切片操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%88%86%E6%94%AF%E5%BE%AA%E7%8E%AF%E8%AF%AD%E5%8F%A5" title="分支循环语句">分支循环语句</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%85%B3%E4%BA%8E%E5%88%86%E5%8F%B7" title="关于分号">关于分号</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#map" title="map">map</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#%E6%8C%87%E9%92%88" title="指针">指针</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-12" href="#%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D" title="内存分配 ">内存分配 </a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-13" href="#%E5%87%BD%E6%95%B0" title="函数">函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-14" href="#%E7%BB%93%E6%9E%84%E4%BD%93" title="结构体">结构体</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-15" href="#%E7%BB%93%E6%9E%84%E4%BD%93%E6%96%B9%E6%B3%95" title="结构体方法">结构体方法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-16" href="#%E6%8E%A5%E5%8F%A3%E5%92%8C%E5%A4%9A%E6%80%81" title="接口和多态">接口和多态</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-17" href="#%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86_%E2%80%93_Error%E6%8E%A5%E5%8F%A3" title="错误处理 – Error接口">错误处理 – Error接口</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-18" href="#%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86_%E2%80%93_Defer" title="错误处理 – Defer">错误处理 – Defer</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-19" href="#%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86_%E2%80%93_PanicRecover" title="错误处理 – Panic/Recover">错误处理 – Panic/Recover</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Hello_World"></span>Hello World<span class="ez-toc-section-end"></span></h4>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//文件名：hello.go
+package main //声明本文件的package名
+
+import &#34;fmt&#34; //import语言的fmt库——用于输出
+
+func main() {
+    fmt.Println(&#34;hello world&#34;)
+}</pre>
+<p><span id="more-8460"></span></p>
+<h4><span class="ez-toc-section" id="%E8%BF%90%E8%A1%8C"></span>运行<span class="ez-toc-section-end"></span></h4>
+<p>你可以有两种运行方式，</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">#解释执行（实际是编译成a.out再执行）
+$go run hello.go
+hello world
+
+#编译执行
+$go build hello.go
+
+$ls
+hello hello.go
+
+$./hello
+hello world</pre>
+<h4><span class="ez-toc-section" id="%E8%87%AA%E5%B7%B1%E7%9A%84package"></span>自己的package<span class="ez-toc-section-end"></span></h4>
+<p>你可以使用GOPATH环境变量，或是使用相对路径来import你自己的package。</p>
+<p>Go的规约是这样的：</p>
+<p style="padding-left: 30px;">1）<strong>在import中，你可以使用相对路径，如 ./或 ../ 来引用你的package</strong></p>
+<p style="padding-left: 30px;">2）<strong>如果没有使用相对路径，那么，go会去找$GOPATH/src/目录。</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//使用相对路径
+import &#34;./haoel&#34;  //import当前目录里haoel子目录里的所有的go文件
+</pre>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//使用GOPATH路径
+import &#34;haoel&#34;  //import 环境变量 $GOPATH/src/haoel子目录里的所有的go文件
+</pre>
+<h4><span class="ez-toc-section" id="fmt%E8%BE%93%E5%87%BA%E6%A0%BC%E5%BC%8F"></span>fmt输出格式<span class="ez-toc-section-end"></span></h4>
+<p>fmt包和libc里的那堆使用printf， scanf，fprintf，fscanf 很相似。下面的东西对于C程序员不会陌生。</p>
+<p>注意：Println不支持，Printf才支持%式的输出：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+import &#34;math&#34;
+
+func main() {
+    fmt.Println(&#34;hello world&#34;)
+
+    fmt.Printf(&#34;%t\n&#34;, 1==2)
+    fmt.Printf(&#34;二进制：%b\n&#34;, 255)
+    fmt.Printf(&#34;八进制：%o\n&#34;, 255)
+    fmt.Printf(&#34;十六进制：%X\n&#34;, 255)
+    fmt.Printf(&#34;十进制：%d\n&#34;, 255)
+    fmt.Printf(&#34;浮点数：%f\n&#34;, math.Pi)
+    fmt.Printf(&#34;字符串：%s\n&#34;, &#34;hello world&#34;)
+}</pre>
+<p>当然，也可以使用如\n\t\r这样的和C语言一样的控制字符</p>
+<h4><span class="ez-toc-section" id="%E5%8F%98%E9%87%8F%E5%92%8C%E5%B8%B8%E9%87%8F"></span>变量和常量<span class="ez-toc-section-end"></span></h4>
+<p>变量的声明很像 javascript，使用 var关键字。注意：<strong>go是静态类型的语言</strong>，下面是代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//声明初始化一个变量
+var  x int = 100
+var str string = &#34;hello world&#34;&lt;/pre&gt;
+//声明初始化多个变量
+var  i, j, k int = 1, 2, 3
+
+//不用指明类型，通过初始化值来推导
+var b = true //bool型
+</pre>
+<p>还有一种定义变量的方式（这让我想到了Pascal语言，但完全不一样）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">x := 100 //等价于 var x int = 100;
+</pre>
+<p>常量很简单，使用const关键字：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">const s string = &#34;hello world&#34;
+const pi float32 = 3.1415926
+</pre>
+<h4><span class="ez-toc-section" id="%E6%95%B0%E7%BB%84"></span>数组<span class="ez-toc-section-end"></span></h4>
+<p>直接看代码（注意其中的for语句，和C很相似吧，就是没有括号了）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main() {
+    var a [5]int
+    fmt.Println(&#34;array a:&#34;, a)
+
+    a[1] = 10
+    a[3] = 30
+    fmt.Println(&#34;assign:&#34;, a)
+
+    fmt.Println(&#34;len:&#34;, len(a))
+
+    b := [5]int{1, 2, 3, 4, 5}
+    fmt.Println(&#34;init:&#34;, b)
+
+    var c [2][3]int
+    for i := 0; i &lt; 2; i++ {
+        for j := 0; j &lt; 3; j++ {
+            c[i][j] = i + j
+        }
+    }
+    fmt.Println(&#34;2d: &#34;, c)
+}
+</pre>
+<p>运行结果：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">
+
+array a: [0 0 0 0 0]
+assign: [0 10 0 30 0]
+len: 5
+init: [1 2 3 4 5]
+2d:  [[0 1 2] [1 2 3]]
+
+</pre>
+<h4><span class="ez-toc-section" id="%E6%95%B0%E7%BB%84%E7%9A%84%E5%88%87%E7%89%87%E6%93%8D%E4%BD%9C"></span>数组的切片操作<span class="ez-toc-section-end"></span></h4>
+<p>这个很Python了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">
+
+a := [5]int{1, 2, 3, 4, 5}
+
+b := a[2:4] // a[2] 和 a[3]，但不包括a[4]
+fmt.Println(b)
+
+b = a[:4] // 从 a[0]到a[4]，但不包括a[4]
+fmt.Println(b)
+
+b = a[2:] // 从 a[2]到a[4]，且包括a[2]
+fmt.Println(b)
+
+</pre>
+<p><strong>但是，我们要记住，Golang的切片是共享内存的，也就是说，没有数据的复制，只是记录从哪切到哪的信息。</strong></p>
+<h4><span class="ez-toc-section" id="%E5%88%86%E6%94%AF%E5%BE%AA%E7%8E%AF%E8%AF%AD%E5%8F%A5"></span>分支循环语句<span class="ez-toc-section-end"></span></h4>
+<p><strong>if语句</strong></p>
+<p>注意：if 语句没有圆括号，而必需要有花括号</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//if 语句
+if x % 2 == 0 {
+    //...
+}
+//if - else
+if x % 2 == 0 {
+    //偶数...
+} else {
+    //奇数...
+}
+
+//多分支
+if num &lt; 0 {
+    //负数
+} else if num == 0 {
+    //零
+} else {
+    //正数
+}
+</pre>
+<p><strong>switch 语句</strong></p>
+<p>注意：switch语句没有break，还可以使用逗号case多个值</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">switch i {
+    case 1:
+        fmt.Println(&#34;one&#34;)
+    case 2:
+        fmt.Println(&#34;two&#34;)
+    case 3:
+        fmt.Println(&#34;three&#34;)
+    case 4,5,6:
+        fmt.Println(&#34;four, five, six&#34;)
+    default:
+        fmt.Println(&#34;invalid value!&#34;)
+}
+</pre>
+<p><strong>for 语句</strong></p>
+<p>前面你已见过了，下面再来看看for的三种形式：（注意：Go语言中没有while）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//经典的for语句 init; condition; post
+for i := 0; i&lt;10; i++{
+     fmt.Println(i)
+}
+
+//精简的for语句 condition
+i := 1
+for i&lt;10 {
+    fmt.Println(i)
+    i++
+}
+
+//死循环的for语句 相当于for(;;)
+i :=1
+for {
+    if i&gt;10 {
+        break
+    }
+    i++
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8E%E5%88%86%E5%8F%B7"></span>关于分号<span class="ez-toc-section-end"></span></h4>
+<p>从上面的代码我们可以看到代码里没有分号。其实，<strong>和C一样，Go的正式的语法使用分号来终止语句。和C不同的是，这些分号由词法分析器在扫描源代码过程中使用简单的规则自动插入分号，因此输入源代码多数时候就不需要分号了</strong>。</p>
+<p>规则是这样的：如果在一个新行前方的最后一个标记是一个标识符（包括像<code>int</code>和<code>float64</code>这样的单词）、一个基本的如数值这样的文字、或以下标记中的一个时，会自动插入分号：</p>
+<pre>break continue fallthrough return ++ -- ) }</pre>
+<p>通常Go程序仅在<code>for</code>循环语句中使用分号，以此来分开初始化器、条件和增量单元。如果你在一行中写多个语句，也需要用分号分开。</p>
+<p><strong>注意</strong>：<strong>无论任何时候，你都不应该将一个控制结构（(<code>if</code>、<code>for</code>、<code>switch</code>或<code>select</code>）的左大括号放在下一行。如果这样做，将会在大括号的前方插入一个分号，这可能导致出现不想要的结果</strong>。</p>
+<h4><span class="ez-toc-section" id="map"></span>map<span class="ez-toc-section-end"></span></h4>
+<p>map在别的语言里可能叫哈希表或叫dict，下面是和map的相关操作的代码，代码很容易懂</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main(){
+    m := make(map[string]int) //使用make创建一个空的map
+
+    m[&#34;one&#34;] = 1
+    m[&#34;two&#34;] = 2
+    m[&#34;three&#34;] = 3
+
+    fmt.Println(m) //输出 map[three:3 two:2 one:1] (顺序在运行时可能不一样)
+    fmt.Println(len(m)) //输出 3
+
+    v := m[&#34;two&#34;] //从map里取值
+    fmt.Println(v) // 输出 2
+
+    delete(m, &#34;two&#34;)
+    fmt.Println(m) //输出 map[three:3 one:1]
+
+    m1 := map[string]int{&#34;one&#34;: 1, &#34;two&#34;: 2, &#34;three&#34;: 3}
+    fmt.Println(m1) //输出 map[two:2 three:3 one:1] (顺序在运行时可能不一样)
+
+    for key, val := range m1{
+        fmt.Printf(&#34;%s =&gt; %d \n&#34;, key, val)
+        /*输出：(顺序在运行时可能不一样)
+            three =&gt; 3
+            one =&gt; 1
+            two =&gt; 2*/
+    }
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E6%8C%87%E9%92%88"></span>指针<span class="ez-toc-section-end"></span></h4>
+<p>Go语言一样有指针，看代码</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">
+
+var i int = 1
+var pInt *int = &amp;i
+//输出：i=1     pInt=0xf8400371b0       *pInt=1
+fmt.Printf(&#34;i=%d\tpInt=%p\t*pInt=%d\n&#34;, i, pInt, *pInt)
+
+*pInt = 2
+//输出：i=2     pInt=0xf8400371b0       *pInt=2
+fmt.Printf(&#34;i=%d\tpInt=%p\t*pInt=%d\n&#34;, i, pInt, *pInt)
+
+i = 3
+//输出：i=3     pInt=0xf8400371b0       *pInt=3
+fmt.Printf(&#34;i=%d\tpInt=%p\t*pInt=%d\n&#34;, i, pInt, *pInt)
+
+</pre>
+<p>Go具有两个分配内存的机制，分别是内建的函数new和make。他们所做的事不同，所应用到的类型也不同，这可能引起混淆，但规则却很简单。</p>
+<h4><span class="ez-toc-section" id="%E5%86%85%E5%AD%98%E5%88%86%E9%85%8D"></span><strong>内存分配 </strong><span class="ez-toc-section-end"></span></h4>
+<p><strong>new</strong> 是一个分配内存的内建函数，但不同于其他语言中同名的new所作的工作，<strong>它只是将内存清零，而不是初始化内存</strong>。new(T)为一个类型为T的新项目分配了值为零的存储空间并返回其地址，也就是一个类型为*T的值。用Go的术语来说，就是<strong>它返回了一个指向新分配的类型为T的零值的指针</strong>。</p>
+<p><code><strong>make</strong>(T, </code><em>args</em><code>)</code>函数的目的与<code>new(T)</code>不同。它仅用于创建切片、map和chan（消息管道），并返回类型<code>T</code>（不是<code>*T</code>）的一个<strong>被初始化了的</strong>（不是<strong>零</strong>）实例。这种差别的出现是由于这三种类型实质上是对在使用前必须进行初始化的数据结构的引用。例如，切片是一个具有三项内容的描述符，包括指向数据（在一个数组内部）的指针、长度以及容量，在这三项内容被初始化之前，切片值为<code>nil</code>。对于切片、映射和信道，<code>make</code>初始化了其内部的数据结构并准备了将要使用的值。如：</p>
+<p>下面的代码分配了一个整型数组，长度为10，容量为100，并返回前10个数组的切片</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">make([]int, 10, 100)</pre>
+<p>以下示例说明了<code>new</code>和<code>make</code>的不同。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var p *[]int = new([]int)   // 为切片结构分配内存；*p == nil；很少使用
+var v  []int = make([]int, 10) // 切片v现在是对一个新的有10个整数的数组的引用
+
+// 不必要地使问题复杂化：
+var p *[]int = new([]int)
+fmt.Println(p) //输出：&amp;[]
+*p = make([]int, 10, 10)
+fmt.Println(p) //输出：&amp;[0 0 0 0 0 0 0 0 0 0]
+fmt.Println((*p)[2]) //输出： 0
+
+// 习惯用法:
+v := make([]int, 10)
+fmt.Println(v) //输出：[0 0 0 0 0 0 0 0 0 0]
+</pre>
+<h4><span class="ez-toc-section" id="%E5%87%BD%E6%95%B0"></span>函数<span class="ez-toc-section-end"></span></h4>
+<p>老实说，我对Go语言这种反过来声明变量类型和函数返回值的做法有点不满（保持和C一样的不可以吗? 呵呵）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+import &#34;fmt&#34;
+
+func max(a int, b int) int { //注意参数和返回值是怎么声明的
+
+    if a &gt; b {
+        return a
+    }
+    return b
+}
+
+func main(){
+    fmt.Println(max(4, 5))
+}
+
+</pre>
+<p><strong>函数返回多个值</strong></p>
+<p>Go中很多Package 都会返回两个值，一个是正常值，一个是错误，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+import &#34;fmt&#34;
+
+func main(){
+    v, e := multi_ret(&#34;one&#34;)
+    fmt.Println(v,e) //输出 1 true
+
+    v, e = multi_ret(&#34;four&#34;)
+    fmt.Println(v,e) //输出 0 false
+
+    //通常的用法(注意分号后有e)
+    if v, e = multi_ret(&#34;four&#34;); e {
+        // 正常返回
+    }else{
+        // 出错返回
+    }
+}
+
+func multi_ret(key string) (int, bool){
+    m := map[string]int{&#34;one&#34;: 1, &#34;two&#34;: 2, &#34;three&#34;: 3}
+
+    var err bool
+    var val int
+
+    val, err = m[key]
+
+    return val, err
+}
+</pre>
+<p><strong>函数不定参数</strong></p>
+<p>例子很清楚了，我就不多说了</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func sum(nums ...int) {
+    fmt.Print(nums, &#34; &#34;)  //输出如 [1, 2, 3] 之类的数组
+    total := 0
+    for _, num := range nums { //要的是值而不是下标
+        total += num
+    }
+    fmt.Println(total)
+}
+func main() {
+    sum(1, 2)
+    sum(1, 2, 3)
+
+    //传数组
+    nums := []int{1, 2, 3, 4}
+    sum(nums...)
+}</pre>
+<p><strong>函数闭包</strong></p>
+<p>nextNum这个函数返回了一个匿名函数，这个匿名函数记住了nextNum中i+j的值，并改变了i,j的值，于是形成了一个闭包的用法</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func nextNum() func() int {
+    i,j := 1,1
+    return func() int {
+        var tmp = i+j
+        i, j = j, tmp
+        return tmp
+    }
+}
+//main函数中是对nextNum的调用，其主要是打出下一个斐波拉契数
+func main(){
+    nextNumFunc := nextNum()
+    for i:=0; i&lt;10; i++ {
+        fmt.Println(nextNumFunc())
+    }
+}
+</pre>
+<p><strong>函数的递归</strong></p>
+<p>和c基本是一样的</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func fact(n int) int {
+    if n == 0 {
+        return 1
+    }
+    return n * fact(n-1)
+}
+
+func main() {
+    fmt.Println(fact(7))
+}</pre>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9E%84%E4%BD%93"></span>结构体<span class="ez-toc-section-end"></span></h4>
+<p>Go的结构体和C的基本上一样，不过在初始化时有些不一样，Go支持带名字的初始化。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Person struct {
+    name string
+    age  int
+    email string
+}
+
+func main() {
+    //初始化
+    person := Person{&#34;Tom&#34;, 30, &#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="86f2e9ebc6e1ebe7efeaa8e5e9eb">[email protected]</a>&#34;}
+    person = Person{name:&#34;Tom&#34;, age: 30, email:&#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b8ccd7d5f8dfd5d9d1d496dbd7d5">[email protected]</a>&#34;}
+
+    fmt.Println(person) //输出 {Tom 30 <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="9eeaf1f3def9f3fff7f2b0fdf1f3">[email protected]</a>}
+
+    pPerson := &amp;person
+
+    fmt.Println(pPerson) //输出 &amp;{Tom 30 <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="97e3f8fad7f0faf6fefbb9f4f8fa">[email protected]</a>}
+
+    pPerson.age = 40
+    person.name = &#34;Jerry&#34;
+    fmt.Println(person) //输出 {Jerry 40 <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fe8a9193be99939f9792d09d9193">[email protected]</a>}
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9E%84%E4%BD%93%E6%96%B9%E6%B3%95"></span>结构体方法<span class="ez-toc-section-end"></span></h4>
+<p>不多说了，看代码吧。</p>
+<p>注意：Go语言中没有public, protected, private的关键字，所以，<strong>如果你想让一个方法可以被别的包访问的话，你需要把这个方法的第一个字母大写。这是一种约定</strong>。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type rect struct {
+    width, height int
+}
+
+func (r *rect) area() int { //求面积
+    return r.width * r.height
+}
+
+func (r *rect) perimeter() int{ //求周长
+    return 2*(r.width + r.height)
+}
+
+func main() {
+    r := rect{width: 10, height: 15}
+
+    fmt.Println(&#34;面积: &#34;, r.area())
+    fmt.Println(&#34;周长: &#34;, r.perimeter())
+
+    rp := &amp;r
+    fmt.Println(&#34;面积: &#34;, rp.area())
+    fmt.Println(&#34;周长: &#34;, rp.perimeter())
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E6%8E%A5%E5%8F%A3%E5%92%8C%E5%A4%9A%E6%80%81"></span>接口和多态<span class="ez-toc-section-end"></span></h4>
+<p>接口意味着多态，下面是一个经典的例子，不用多说了，自己看代码吧。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//---------- 接 口 --------//
+type shape interface {
+    area() float64 //计算面积
+    perimeter() float64 //计算周长
+}
+
+//--------- 长方形 ----------//
+type rect struct {
+    width, height float64
+}
+
+func (r *rect) area() float64 { //面积
+    return r.width * r.height
+}
+
+func (r *rect) perimeter() float64 { //周长
+    return 2*(r.width + r.height)
+}
+
+//----------- 圆  形 ----------//
+type circle struct {
+    radius float64
+}
+
+func (c *circle) area() float64 { //面积
+    return math.Pi * c.radius * c.radius
+}
+
+func (c *circle) perimeter() float64 { //周长
+    return 2 * math.Pi * c.radius
+}
+
+// ----------- 接口的使用 -----------//
+func interface_test() {
+    r := rect {width:2.9, height:4.8}
+    c := circle {radius:4.3}
+
+    s := []shape{&amp;r, &amp;c} //通过指针实现
+
+    for _, sh := range s {
+        fmt.Println(sh)
+        fmt.Println(sh.area())
+        fmt.Println(sh.perimeter())
+    }
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86_%E2%80%93_Error%E6%8E%A5%E5%8F%A3"></span>错误处理 – Error接口<span class="ez-toc-section-end"></span></h4>
+<p>函数错误返回可能是C/C++时最让人纠结的东西的，Go的多值返回可以让我们更容易的返回错误，其可以在返回一个常规的返回值之外，还能轻易地返回一个详细的错误描述。通常情况下，错误的类型是error，它有一个内建的接口。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type error interface {
+    Error() string
+}</pre>
+<p>还是看个示例吧：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import &#34;fmt&#34;
+import &#34;errors&#34;
+
+//自定义的出错结构
+type myError struct {
+    arg  int
+    errMsg string
+}
+//实现Error接口
+func (e *myError) Error() string {
+    return fmt.Sprintf(&#34;%d - %s&#34;, e.arg, e.errMsg)
+}
+
+//两种出错
+func error_test(arg int) (int, error) {
+    if arg &lt; 0  {
+         return -1, errors.New(&#34;Bad Arguments - negtive!&#34;)
+     }else if arg &gt;256 {
+        return -1, &amp;myError{arg, &#34;Bad Arguments - too large!&#34;}
+    }
+    return arg*arg, nil
+}
+
+//相关的测试
+func main() {
+    for _, i := range []int{-1, 4, 1000} {
+        if r, e := error_test(i); e != nil {
+            fmt.Println(&#34;failed:&#34;, e)
+        } else {
+            fmt.Println(&#34;success:&#34;, r)
+        }
+    }
+}</pre>
+<p>程序运行后输出：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">failed: Bad Arguments - negtive!
+success: 16
+failed: 1000 - Bad Arguments - too large!
+</pre>
+<h4><span class="ez-toc-section" id="%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86_%E2%80%93_Defer"></span>错误处理 – Defer<span class="ez-toc-section-end"></span></h4>
+<p>下面的程序对于每一个熟悉C语言的人来说都不陌生（有资源泄露的问题），C++使用RAII来解决这种问题。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func CopyFile(dstName, srcName string) (written int64, err error) {
+    src, err := os.Open(srcName)
+    if err != nil {
+        return
+    }
+
+    dst, err := os.Create(dstName)
+    if err != nil {
+        return
+    }
+
+    written, err = io.Copy(dst, src)
+    dst.Close()
+    src.Close()
+    return
+}</pre>
+<p>Go语言引入了Defer来确保那些被打开的文件能被关闭。如下所示：（这种解决方式还是比较优雅的）</p>
+<p>&lt;</p>
+<p>pre class=”EnlighterJSRAW” data-enlighter-language=”golang” data-enlighter-highlight=”6,12″&gt;<br/>
+func CopyFile(dstName, srcName string) (written int64, err error) {<br/>
+src, err := os.Open(srcName)<br/>
+if err != nil {<br/>
+return<br/>
+}<br/>
+defer src.Close()</p>
+<pre><code>dst, err := os.Create(dstName)
+if err != nil {
+    return
+}
+defer dst.Close()
+
+return io.Copy(dst, src)
+</code></pre>
+<p>}[/c]</p>
+<p>Go的defer语句预设一个函数调用（延期的函数），该调用在函数执行defer返回时立刻运行。该方法显得不同常规，但却是处理上述情况很有效，无论函数怎样返回，都必须进行资源释放。</p>
+<p>我们再来看一个defer函数的示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">for i := 0; i &lt; 5; i++ {
+    defer fmt.Printf(&#34;%d &#34;, i)
+}</pre>
+<p>被延期的函数以后进先出（LIFO）的顺行执行，因此以上代码在返回时将打印4 3 2 1 0。</p>
+<p>总之，我个人觉得defer的函数行为有点怪异，我现在还没有完全搞清楚。</p>
+<h4><span class="ez-toc-section" id="%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86_%E2%80%93_PanicRecover"></span>错误处理 – Panic/Recover<span class="ez-toc-section-end"></span></h4>
+<p>对于不可恢复的错误，Go提供了一个内建的panic函数，它将创建一个运行时错误并使程序停止（相当暴力）。该函数接收一个任意类型（往往是字符串）作为程序死亡时要打印的东西。当编译器在函数的结尾处检查到一个panic时，就会停止进行常规的return语句检查。</p>
+<p>下面的仅仅是一个示例。实际的库函数应避免panic。如果问题可以容忍，最好是让事情继续下去而不是终止整个程序。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var user = os.Getenv(&#34;USER&#34;)
+
+func init() {
+    if user == &#34;&#34; {
+        panic(&#34;no value for $USER&#34;)
+    }
+}</pre>
+<p>当panic被调用时，它将立即停止当前函数的执行并开始逐级解开函数堆栈，同时运行所有被defer的函数。如果这种解开达到堆栈的顶端，程序就死亡了。但是，也可以使用内建的recover函数来重新获得Go程的控制权并恢复正常的执行。 对recover的调用会通知解开堆栈并返回传递到panic的参量。由于仅在解开期间运行的代码处在被defer的函数之内，recover仅在被延期的函数内部才是有用的。</p>
+<p>你可以简单地理解为recover就是用来捕捉Painc的，防止程序一下子就挂掉了。</p>
+<p>下面是一个例程，很简单了，不解释了</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func g(i int) {
+    if i&gt;1 {
+        fmt.Println(&#34;Panic!&#34;)
+        panic(fmt.Sprintf(&#34;%v&#34;, i))
+    }
+
+}
+
+func f() {
+    defer func() {
+        if r := recover(); r != nil {
+            fmt.Println(&#34;Recovered in f&#34;, r)
+        }
+    }()
+
+    for i := 0; i &lt; 4; i++ {
+        fmt.Println(&#34;Calling g with &#34;, i)
+        g(i)
+        fmt.Println(&#34;Returned normally from g.&#34;)
+     }
+}
+
+func main() {
+    f()
+    fmt.Println(&#34;Returned normally from f.&#34;)
+}</pre>
+<p>运行结果如下：（我们可以看到Painc后的for循环就没有往下执行了，但是main的程序还在往下走）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">Calling g with  0
+Returned normally from g.
+Calling g with  1
+Returned normally from g.
+Calling g with  2
+Panic!
+Recovered in f 2
+Returned normally from f.
+</pre>
+<p>你习惯这种编程方式吗？我觉得有点诡异。呵呵。</p>
+<p>好了，上面是是一Go语言相关的编程语法的介绍，我没有事无巨细，只是让你了解一下Go语言是长什么样的。<strong>当然，这还没完，请期待下篇——Go语言的特性</strong>。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8460-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go 语言简介（上）— 语法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1317241" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://zend-bbxyard.rhcloud.com/blog/2014/02/%e8%bd%acawk-%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b/" class="url" rel="ugc external nofollow">[转]AWK 简明教程 | bbxyard</a> </div>
+</li>
+<li id="comment-1409283" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tuluobo.com/articles/108.html" class="url" rel="ugc external nofollow">5-8年共语言将超越java，成为语言排行榜第一 | 秃萝卜——TuLuobo.com站点</a> </div>
+</li>
+<li id="comment-1433119" class="comment even thread-even depth-1">
+<article id="div-comment-1433119" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5796a601c1efe1af01e5d3881cf91961?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5796a601c1efe1af01e5d3881cf91961?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">故城</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8460.html/comment-page-3#comment-1433119"><time datetime="2014-04-18T19:22:48+08:00">2014年04月18日 19:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子蜀黍阿里现在用go应用在哪些场景啊？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1446140" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1446140" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c40cb540178da068b4cc1ea2aa56cefa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c40cb540178da068b4cc1ea2aa56cefa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">枫杰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8460.html/comment-page-3#comment-1446140"><time datetime="2014-04-25T15:45:37+08:00">2014年04月25日 15:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1185297" rel="nofollow">@惠盈盈 </a><br/>
+你的两句defer，显然后面那句defer没有被运行，因为前面已经return 1了，后面的代码执行不了<br/>
+因此实际上只有一次defer</p>
+</div>
+ </article>
+</li>
+<li id="comment-1447643" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.ithomer.net/2013/11/simple-awk-tutorial/" class="url" rel="ugc external nofollow">IT-Homer 博客 » awk 简明教程</a> </div>
+</li>
+<li id="comment-1469452" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ourgarden.cn/linux%e4%b8%8b%e7%9a%84%e4%b8%89%e5%a4%a7%e6%96%87%e6%9c%ac%e5%a4%84%e7%90%86%e5%b7%a5%e5%85%b7%ef%bc%9agrep%e3%80%81sed%e5%92%8cawk%ef%bc%88%e4%b8%89%ef%bc%89-awk/" class="url" rel="ugc external nofollow">linux下的三大文本处理工具：grep、sed和awk（三）——awk | 草帽的后花园</a> </div>
+</li>
+<li id="comment-1483920" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.foolbird.net/4380.html" class="url" rel="ugc external nofollow">AWK简明教程 | Maker&#39;s blog</a> </div>
+</li>
+<li id="comment-1489890" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.makaidong.com/29358.html" class="url" rel="ugc external nofollow">Lua简明教程 – 马开东博客</a> </div>
+</li>
+<li id="comment-1493404" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.leoncode.com/archives/148" class="url" rel="ugc external nofollow">go语言 | Leon的代码世界</a> </div>
+</li>
+<li id="comment-1493464" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=127" class="url" rel="ugc external nofollow">go开始 | skynetdoc</a> </div>
+</li>
+<li id="comment-1638584" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tuluobo.com/2014/02/02/60" class="url" rel="ugc external nofollow">秃萝卜——一名程序猿</a> </div>
+</li>
+<li id="comment-1681345" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1681345" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/697cb9fd4571c280de158cb433da223a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/697cb9fd4571c280de158cb433da223a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Nixus</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8460.html/comment-page-3#comment-1681345"><time datetime="2015-03-27T09:57:49+08:00">2015年03月27日 09:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想请问陈老师两个问题：想成为一个优秀的程序员，必须要会或精通C/C++和Unix吗？为什么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1695732" class="comment even thread-even depth-1">
+<article id="div-comment-1695732" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/656c5da4c213f24f4863b6bef71f5016?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/656c5da4c213f24f4863b6bef71f5016?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://vimer.me" class="url" rel="ugc external nofollow">疯哥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8460.html/comment-page-3#comment-1695732"><time datetime="2015-04-23T15:01:46+08:00">2015年04月23日 15:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1681345" rel="nofollow">@Nixus </a><br/>
+因为C是所有语言的基础，涉及到内存的操作，而unix更适合让你去了解操作系统</p>
+</div>
+ </article>
+</li>
+<li id="comment-1722172" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.molloc.com/archives/468" class="url" rel="ugc external nofollow">AWK 简明教程 | 求知若饥，虚心若愚</a> </div>
+</li>
+<li id="comment-1762375" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hezhizhong.com/awk-%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b/" class="url" rel="ugc external nofollow">AWK 简明教程-致中和共</a> </div>
+</li>
+<li id="comment-1806558" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhangweijie.net/?p=2228" class="url" rel="ugc external nofollow">维摩诘</a> </div>
+</li>
+<li id="comment-1810136" class="comment even thread-even depth-1">
+<article id="div-comment-1810136" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22147a4b9bb949f46fb9a1c1308c78b9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22147a4b9bb949f46fb9a1c1308c78b9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">salt</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8460.html/comment-page-3#comment-1810136"><time datetime="2016-02-23T15:09:54+08:00">2016年02月23日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>defer在error的情况下return了，不会被执行，还是会资源泄露，希望耗子哥抽时间改一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-1812199" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.virtclouds.com/183.html" class="url" rel="ugc external nofollow">Linux命令—AWK 简明教程 | virtclouds</a> </div>
+</li>
+<li id="comment-1816184" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.superman2014.com/2016/03/31/%e6%88%91%e4%b9%9f%e5%bc%80%e5%a7%8b%e5%ad%a6%e4%b9%a0go%e4%ba%86/" class="url" rel="ugc external nofollow">我也开始学习Go了 – 日光溪流</a> </div>
+</li>
+<li id="comment-1825396" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/lua%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b-codeba-cc.html" class="url" rel="ugc external nofollow">Lua简明教程 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1869323" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.17haha.net/772/" class="url" rel="ugc external nofollow">AWK 简明教程 – 17haha-blog</a> </div>
+</li>
+<li id="comment-1891950" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.appao.top/awk-%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b.html" class="url" rel="ugc external nofollow">AWK 简明教程-运维博客</a> </div>
+</li>
+<li id="comment-1904454" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.bg7ezy.com/2016/12/01/awk-%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b-%e9%85%b7-%e5%a3%b3-coolshell-cn/" class="url" rel="ugc external nofollow">AWK 简明教程 | 酷 壳 – CoolShell.cn – Bg7ezy&#39;s Blog</a> </div>
+</li>
+<li id="comment-1906582" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://swiftshadow.cc/%e8%bd%acawk-%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b/" class="url" rel="ugc external nofollow">(转)AWK 简明教程 – 掠影</a> </div>
+</li>
+<li id="comment-1914756" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kayenre.com/go%e8%af%ad%e8%a8%80%e7%9a%84%e4%bf%ae%e9%a5%b0%e5%99%a8%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – KAYENRE Technology</a> </div>
+</li>
+<li id="comment-1916997" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=52" class="url" rel="ugc external nofollow">Go语言的修饰器编程 – IT青年文摘</a> </div>
+</li>
+<li id="comment-1934744" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wp.huangshiyang.com/awk-%e7%ae%80%e6%98%8e%e6%95%99%e7%a8%8b" class="url" rel="ugc external nofollow">AWK 简明教程 – Huang Shiyang</a> </div>
+</li>
+<li id="comment-2108418" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaozixun.com/46571.html" class="url" rel="ugc external nofollow">Go语言、Docker 和新技术 - 微信红包网</a> </div>
+</li>
+<li id="comment-2128286" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/8489.html" class="url" rel="ugc">Go 语言简介（下）— 特性 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2187478" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21128.html" class="url" rel="ugc">Go编程模式：切片，接口，时间和性能 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2199059" class="comment even thread-even depth-1">
+<article id="div-comment-2199059" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/79dea16e70052c32faa390f13f2750a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/79dea16e70052c32faa390f13f2750a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">s</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8460.html/comment-page-3#comment-2199059"><time datetime="2021-01-27T17:03:41+08:00">2021年01月27日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>单词拼错了<br/>
+错误处理 – Error接口<br/>
+19 行 negative</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370813" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/9146.html" class="url" rel="ugc external nofollow">Lua简明教程 - SEOOS技术门户</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8460.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8460.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/8460.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">8460</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,353 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>rsync 的核心算法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7425 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7425" class="post-content post-7425 post type-post status-publish format-standard hentry category-misc category-progdesign tag-adler tag-algorithm tag-checksum tag-linux tag-md5 tag-rsync">
+<header class="entry-header">
+<span class="screen-reader-text">rsync 的核心算法</span>
+<h1 class="entry-title">rsync 的核心算法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7425.html" title="08:25" rel="bookmark"><time class="entry-date" datetime="2012-05-17T08:25:38+08:00" pubdate="">2012年05月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7425.html#comments" class="comments-link">244 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 132,592 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://en.wikipedia.org/wiki/Rsync" target="_blank" rel="noopener noreferrer">rsync</a>是unix/linux下同步文件的一个高效算法，它能同步更新两处计算机的文件与目录，并适当利用查找文件中的不同块以减少数据传输。rsync中一项与其他大部分类似程序或协定中所未见的重要特性是镜像是只对有变更的部分进行传送。rsync可拷贝／显示目录属性，以及拷贝文件，并可选择性的压缩以及递归拷贝。rsync利用由<a href="https://en.wikipedia.org/wiki/Andrew_Tridgell" target="_blank" rel="noopener noreferrer">Andrew Tridgell</a>发明的算法。这里不介绍其使用方法，只介绍其核心算法。我们可以看到，Unix下的东西，一个命令，一个工具都有很多很精妙的东西，怎么学也学不完，这就是<a title="Unix传奇(上篇)" href="/articles/2322.html" target="_blank" rel="noopener noreferrer">Unix的文化</a>啊。</p>
+<p>本来不想写这篇文章的，因为原先发现有很多中文blog都说了这个算法，但是看了一下，发现这些中文blog要么翻译国外文章翻译地非常烂，要么就是介绍这个算法介绍得很乱让人看不懂，还有错误，误人不浅，所以让我觉得有必要写篇rsync算法介绍的文章。（当然，我成文比较仓促，可能会有一些错误，请指正）</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%97%AE%E9%A2%98" title="问题">问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%AE%97%E6%B3%95" title="算法">算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#rolling_checksum%E7%AE%97%E6%B3%95" title="rolling checksum算法">rolling checksum算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%9B%BE%E7%A4%BA" title="图示">图示</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98"></span>问题<span class="ez-toc-section-end"></span></h4>
+<p>首先， 我们先来想一下rsync要解决的问题，如果我们要同步的文件只想传不同的部分，我们就需要对两边的文件做diff，但是这两个问题在两台不同的机器上，无法做diff。如果我们做diff，就要把一个文件传到另一台机器上做diff，但这样一来，我们就传了整个文件，这与我们只想传输不同部的初衷相背。</p>
+<p>于是我们就要想一个办法，让这两边的文件见不到面，但还能知道它们间有什么不同。这就出现了rsync的算法。</p>
+<h4><span class="ez-toc-section" id="%E7%AE%97%E6%B3%95"></span>算法<span class="ez-toc-section-end"></span></h4>
+<p>rsync的算法如下：（<strong>假设我们同步源文件名为fileSrc，同步目的文件叫fileDst</strong>）</p>
+<p><span id="more-7425"></span></p>
+<p>1）<strong>分块Checksum算法</strong>。首先，我们会把fileDst的文件平均切分成若干个小块，比如每块512个字节（最后一块会小于这个数），然后对每块计算两个checksum，</p>
+<ul>
+<li>一个叫<a href="https://en.wikipedia.org/wiki/Rolling_hash" target="_blank" rel="noopener noreferrer">rolling checksum</a>，是弱checksum，32位的checksum，其使用的是Mark Adler发明的<a title="Adler-32" href="https://en.wikipedia.org/wiki/Adler-32">adler-32</a>算法，</li>
+<li>另一个是强checksum，128位的，以前用md4，现在用md5 hash算法。</li>
+</ul>
+<p>为什么要这样？因为若干年前的硬件上跑md4的算法太慢了，所以，我们需要一个快算法来鉴别文件块的不同，但是弱的adler32算法碰撞概率太高了，所以我们还要引入强的checksum算法以保证两文件块是相同的。<strong>也就是说，弱的checksum是用来区别不同，而强的是用来确认相同</strong>。（checksum的具体公式可以参看<a href="https://rsync.samba.org/tech_report/node3.html" target="_blank" rel="noopener noreferrer">这篇文章</a>）</p>
+<p>2）<strong>传输算法。</strong>同步目标端会把fileDst的一个checksum列表传给同步源，这个列表里包括了三个东西，<strong>rolling checksum(32bits)</strong>，<strong>md5 checksume(128bits)</strong>，<strong>文件块编号</strong>。</p>
+<p>我估计你猜到了同步源机器拿到了这个列表后，会对fileSrc做同样的checksum，然后和fileDst的checksum做对比，这样就知道哪些文件块改变了。</p>
+<p>但是，聪明的你一定会有以下两个疑问：</p>
+<ul>
+<li>如果我fileSrc这边在文件中间加了一个字符，这样后面的文件块都会位移一个字符，这样就完全和fileDst这边的不一样了，但理论上来说，我应该只需要传一个字符就好了。这个怎么解决？</li>
+</ul>
+<ul>
+<li>如果这个checksum列表特别长，而我的两边的相同的文件块可能并不是一样的顺序，那就需要查找，线性的查找起来应该特别慢吧。这个怎么解决？</li>
+</ul>
+<p>很好，让我们来看一下同步源端的算法。</p>
+<p>3）<strong>checksum查找算法</strong>。同步源端拿到fileDst的checksum数组后，会把这个数据存到一个hash table中，用rolling checksum做hash，以便获得O(1)时间复杂度的查找性能。这个hash table是16bits的，所以，hash table的尺寸是2的16次方，对rolling checksum的hash会被散列到0 到 2^16 – 1中的某个整数值。（对于hash table，如果你不清楚，建议回去看大学时的数据结构教科书）</p>
+<p>顺便说一下，我在网上看到很多文章说，“要对rolling checksum做排序”（比如<a href="http://www.yejun.cn/?p=472" target="_blank" rel="noopener noreferrer">这篇</a>和<a href="http://blog.csdn.net/tobeandnottobe/article/details/6719848" target="_blank" rel="noopener noreferrer">这篇</a>），这两篇文章都引用并翻译了<a href="https://rsync.samba.org/tech_report/node4.html" target="_blank" rel="noopener noreferrer">原作者的这篇文章</a>，但是他们都理解错了，不是排序，就只是把fileDst的checksum数据，按rolling checksum做存到2^16的hash table中，当然会发生碰撞，把碰撞的做成一个链表就好了。这就是<a href="https://rsync.samba.org/tech_report/node4.html" target="_blank" rel="noopener noreferrer">原文</a>中所说的第二步——搜索有碰撞的情况。</p>
+<p>4）<strong>比对算法</strong>。这是最关键的算法，细节如下：</p>
+<p style="padding-left: 30px;">4.1）取fileSrc的第一个文件块（我们假设的是512个长度），也就是从fileSrc的第1个字节到第512个字节，取出来后做rolling checksum计算。计算好的值到hash表中查。</p>
+<p style="padding-left: 30px;">4.2）如果查到了，说明发现在fileDst中有潜在相同的文件块，于是就再比较md5的checksum，因为rolling checksume太弱了，可能发生碰撞。于是还要算md5的128bits的checksum，这样一来，我们就有 2^-(32+128) = 2^-160的概率发生碰撞，这太小了可以忽略。<strong>如果rolling checksum和md5 checksum都相同，这说明在fileDst中有相同的块，我们需要记下这一块在fileDst下的文件编号</strong>。</p>
+<p style="padding-left: 30px;">4.3）如果fileSrc的rolling checksum 没有在hash table中找到，那就不用算md5 checksum了。表示这一块中有不同的信息。总之，只要rolling checksum 或 md5 checksum 其中有一个在fileDst的checksum hash表中找不到匹配项，那么就会触发算法对fileSrc的rolling动作。于是，<strong>算法会住后step 1个字节，取fileSrc中字节2-513的文件块要做checksum，go to (4.1) </strong>– 现在你明白什么叫rolling checksum了吧。</p>
+<p style="padding-left: 30px;">4.4）这样，我们就可以找出fileSrc相邻两次匹配中的那些文本字符，这些就是我们要往同步目标端传的文件内容了。</p>
+<h4 class="p1"><span class="ez-toc-section" id="rolling_checksum%E7%AE%97%E6%B3%95"></span><b>rolling checksum算法</b><span class="ez-toc-section-end"></span></h4>
+<p class="p1">这个算法很简单，也叫<a href="https://en.wikipedia.org/wiki/Rabin%E2%80%93Karp_string_search_algorithm" target="_blank" rel="noopener noreferrer">Rabin-Karp 算法</a>，由 Richard M. Karp 和 Michael O. Rabin 在 1987 年发表，它也是用来解决多模式串匹配问题的。其最大的精髓是，当我们往后面step 1个字符的时候，不用全部重新计算所有的checksum，也就是说，我们从 [0, 512] rolling 到 [1, 513] 时，我们不需要重新计算从1到513的checksum，而是重用 [0，512]的checksum直接算出来。</p>
+<p class="p1">这个算法比较简单，我举个例子，我们有一个数字：12345678，假设我们以5个长度作为一个块，那么，第一个块就是 12345 ，12345可以表示为：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW"> 1 * 10^4 + 2 * 10^3 + 3 * 10^2 + 4 * 10^1 + 5 * 10^0 = 12345 </code></p>
+<p class="p1">如果我们要step 1步，也就是要得到 23456， 我们不必计算：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">2 * 10^4 + 3 * 10^3 + 4 * 10^2 + 5 * 10^1 + 6 * 10^0</code></p>
+<p class="p1">而是直接计算：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">(12345 - 1 * 10^4) * 10 + 6 * 10 ^0</code></p>
+<p class="p1">我们可以看到，其中，我们把12345最左边第一位去掉，然后，再加上最右边的一位。这就是Rolling checksum的算法。</p>
+<p class="p1">实际的公式是：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">hash ( t[0, m-1] ) = t[0] * b^(m-1) + t[1] * b^[m-2] ..... t[m-1] * b^0</code></p>
+<p class="p1">其中的 b是一个常数基数，在 Rabin-Karp 算法中，我们一般取值为  256。</p>
+<p class="p1">于是，在计算 hash ( t[1, m] ) 时，只需要下面这样就可以了：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">hash( t[1, m] ) = hash ( t[0, m-1] ) - t[0] * b^(m-1) + t[m] * b ^0</code></p>
+<h4><span class="ez-toc-section" id="%E5%9B%BE%E7%A4%BA"></span>图示<span class="ez-toc-section-end"></span></h4>
+<p>怎么，你没看懂？ 好吧，我送佛送上西，画个示意图给你看看（对图中的东西我就不再解释了）。</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-7428" title="rsync algorithm" src="/uploads/2012/05/rsync-algorithm.jpg" alt="" width="650" height="463" srcset="" sizes="(max-width: 650px) 100vw, 650px"/></p>
+<p>这样，最终，在同步源这端，我们的rsync算法可能会得到下面这个样子的一个数据数组，图中，红色块表示在目标端已匹配上，不用传输（注：我专门在其中显示了两块chunk #5，相信你会懂的），而白色的地方就是需要传输的内容（注意：这些白色的块是不定长的），这样，同步源这端把这个数组（白色的就是实际内容，红色的就放一个标号）压缩传到目的端，在目的端的rsync会根据这个表重新生成文件，这样，同步完成。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7427" title="rsync algorithm result" src="/uploads/2012/05/rsync-algorithm-result.jpg" alt="" width="606" height="82" srcset="" sizes="(max-width: 606px) 100vw, 606px"/></p>
+<p>最后想说一下，对于某些压缩文件使用rsync传输可能会传得更多，因为被压缩后的文件可能会非常的不同。对此，对于gzip和bzip2这样的命令，记得开启 “rsyncalbe” 模式。</p>
+<p>（全文完，<strong>转载时请注明作者和出处</strong>）</p>
+<p><audio style="display: none;" controls="controls"></audio></p>
+<p><audio style="display: none;" controls="controls"></audio></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7425-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">adler</a>, <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">checksum</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">MD5</a>, <a href="javascript:void(0)" rel="tag">rsync</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>rsync 的核心算法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1913545" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tdqc365.net/689.html" class="url" rel="ugc external nofollow">Linux下同步工具inotify+rsync使用详解 - kashu</a> </div>
+</li>
+<li id="comment-1914373" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.jsjs.org/?p=244" class="url" rel="ugc external nofollow">Linux下同步工具inotify+rsync使用详解 – A box of chocolate</a> </div>
+</li>
+<li id="comment-1920563" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.youxianli.cn/blog/?p=19" class="url" rel="ugc external nofollow">28个UNIX/LINUX的命令行神器 | H5展示</a> </div>
+</li>
+<li id="comment-1922300" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zilin.tech/?p=59" class="url" rel="ugc external nofollow">28个UNIX/LINUX的命令行神器 –  梓霖科技 ZiLin.Tech</a> </div>
+</li>
+<li id="comment-1923401" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://liangjb.cc/2018/01/24/linux%e4%b8%8b%e5%90%8c%e6%ad%a5%e5%b7%a5%e5%85%b7inotifyrsync%e4%bd%bf%e7%94%a8%e8%af%a6%e8%a7%a3/" class="url" rel="ugc external nofollow">Linux下同步工具inotify+rsync使用详解 – 点滴积累</a> </div>
+</li>
+<li id="comment-1926616" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ruoguschool.com/2018/04/07/meituan__incre-sync-use-rsync/" class="url" rel="ugc external nofollow">基于rsync的文件增量同步方案 | 若谷学院</a> </div>
+</li>
+<li id="comment-1926860" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.chawenti.com/articles/49343.html" class="url" rel="ugc external nofollow">一键部署进化史 – 枕边书 | 查问题</a> </div>
+</li>
+<li id="comment-1927061" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://leavenotrace.cn/motherhouse/code/2018/04/16/better/" class="url" rel="ugc external nofollow">性能测试调优 – Code</a> </div>
+</li>
+<li id="comment-1928848" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.listen2more.com/?p=322" class="url" rel="ugc external nofollow">rsync命令用法 - 拎着奶瓶走江湖</a> </div>
+</li>
+<li id="comment-1929646" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ixyzero.com/blog/archives/3105.html" class="url" rel="ugc external nofollow">CentOS环境下rsync的配置和使用 | ASPIRE</a> </div>
+</li>
+<li id="comment-1932557" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1932557" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7491f7daacd74d9858ecb3d684d197e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7491f7daacd74d9858ecb3d684d197e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">heyao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7425.html/comment-page-5#comment-1932557"><time datetime="2018-06-27T15:38:35+08:00">2018年06月27日 15:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>rolling checksum每次都step 1 byte，中间插入一点东西，一定是以byte为单位的修改吗？如果只插入了1bit，岂不是之后的每个byte都变了？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1936010" class="comment odd alt depth-2">
+<article id="div-comment-1936010" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b560a3dfd3c213d553881ca14efdffd7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b560a3dfd3c213d553881ca14efdffd7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小蜻蜓</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7425.html/comment-page-5#comment-1936010"><time datetime="2018-07-30T10:35:35+08:00">2018年07月30日 10:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的，但是这种担心没有必要，现在修改文件哪个不是以字节为单位的？除非你直接修改二进制文件，类似gzip那种包，用了rsync也没啥用</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1933144" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nullbug.cn/index.php/2018/07/05/28%e4%b8%aaunix-linux%e7%9a%84%e5%91%bd%e4%bb%a4%e8%a1%8c%e7%a5%9e%e5%99%a8/" class="url" rel="ugc external nofollow">28个UNIX/LINUX的命令行神器-Ktong</a> </div>
+</li>
+<li id="comment-1949216" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://hackingforfun.online/2018/12/25/Fei-Dui-Chen-Jia-Mi-Yu-An-Quan-Zheng-Shu-Kan-Zhe-Yi-Pian-Jiu-Dong-Le/" class="url" rel="ugc external nofollow">非对称加密与安全证书看这一篇就懂了 - 黑白森林</a> </div>
+</li>
+<li id="comment-1951658" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.52xintaidu.com/?p=1020" class="url" rel="ugc external nofollow">28个UNIX/LINUX的命令行神器 – 52新态度-JAVA技术</a> </div>
+</li>
+<li id="comment-1951967" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.52xintaidu.com/linux/1020.html" class="url" rel="ugc external nofollow">28个UNIX/LINUX的命令行神器 | | 52新态度-JAVA技术</a> </div>
+</li>
+<li id="comment-1972417" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/33585.html" class="url" rel="ugc external nofollow">rsync算法原理及使用 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-2043060" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.shijiusui.com/archives/2312" class="url" rel="ugc external nofollow">RSYNC 的核心算法 – 十九岁</a> </div>
+</li>
+<li id="comment-2064786" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.seasilo.cn/?p=111" class="url" rel="ugc external nofollow">28个UNIX/LINUX的命令行神器 | 海筒研习社</a> </div>
+</li>
+<li id="comment-2067309" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2067309" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af4ec7141007f67c41350e508465b86a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af4ec7141007f67c41350e508465b86a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Windson</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7425.html/comment-page-5#comment-2067309"><time datetime="2020-02-16T17:06:55+08:00">2020年02月16日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+“顺便说一下，我在网上看到很多文章说，“要对rolling checksum做排序”（比如这篇和这篇），这两篇文章都引用并翻译了原作者的这篇文章，但是他们都理解错了，不是排序，就只是把fileDst的checksum数据，按rolling checksum做存到2^16的hash table中…”
+</p></blockquote>
+<p>首先他们翻译得并没有错，作者就是这么写的，也是这样实现的。（参考论文https://www.samba.org/~tridge/phd_thesis.pdf）<br/>
+作者并没有用 hash table 来存储 check_sum，而是将其排序来搜索。你可以看到 3.2.6作者说到“At first glance this search algorithm appears to be O(n^2) in the file size” 为什么呢？因为此算法只会搜索上一次成功 match 后面的 block，而 hash table 做不了。请参考 3.2.6 The signature search algorithm<br/>
+“If the strong signature is found to match then A emits a token telling B that a match<br/>
+was found and which block in bi was matched. The search then continues at the byte<br/>
+after the matching block.”</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2302416" class="comment even depth-2">
+<article id="div-comment-2302416" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f20d51811f5960798f2656cfff61ebc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f20d51811f5960798f2656cfff61ebc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/duanbeibei" class="url" rel="ugc external nofollow">段贝贝</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7425.html/comment-page-5#comment-2302416"><time datetime="2021-09-13T16:10:06+08:00">2021年09月13日 16:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Rsync 1.0 代码，确实对checksum进行了排序。<br/>
+但是最新版的 Rsync 3.2.3 代码，并没有对checksum排序，而是直接使用的hash链表方式，并且链表实现的还挺巧妙，当hash值冲突时，并没有使用传统意义的指针，而是通过数组索引，直接指向下一个要链接的hash块。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2122260" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/72711.html" class="url" rel="ugc external nofollow">非对称加密与安全证书看这一篇就懂了 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-2160542" class="comment even thread-even depth-1">
+<article id="div-comment-2160542" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f02b1282618ba7142ff94ae6166734b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f02b1282618ba7142ff94ae6166734b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zxc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7425.html/comment-page-5#comment-2160542"><time datetime="2020-10-08T11:16:00+08:00">2020年10月08日 11:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>rolling checksum可以递推算出来，但是md5咋办呢，每移一位，md5还要重新计算吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2168100" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://vpsgongyi.com/p/2473/" class="url" rel="ugc external nofollow">非对称加密和证书总结 - VPS攻略</a> </div>
+</li>
+<li id="comment-2168103" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://vpsgongyi.com/p/2990/" class="url" rel="ugc external nofollow">rsync复制文件的一些注意事项 - VPS攻略</a> </div>
+</li>
+<li id="comment-2200963" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://tlanyan.me/asymmetric-encryption-and-certificate-summary/" class="url" rel="ugc external nofollow">非对称加密和证书总结 - tlanyan</a> </div>
+</li>
+<li id="comment-2283901" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/960098" class="url" rel="ugc external nofollow">重复数据删除技术概述 - 算法网</a> </div>
+</li>
+<li id="comment-2365693" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ssrvps.org/archives/7599" class="url" rel="ugc external nofollow">rsync复制文件的一些注意事项 – 月下博客</a> </div>
+</li>
+<li id="comment-2370453" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://niul.net/206633.html" class="url" rel="ugc external nofollow">V2EX-文件增量同步算法有哪些可以改进的地方？ | 牛C网(NiuL.Net)</a> </div>
+</li>
+<li id="comment-2370454" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nexuson.cn/2022/05/08/107559.html" class="url" rel="ugc external nofollow">[算法] 文件增量同步算法有哪些可以改进的地方？ – 谷歌商城软件分享下载</a> </div>
+</li>
+<li id="comment-2370460" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://bibi.gebor.cn/138.html" class="url" rel="ugc external nofollow">Rsync-01.数据备份</a> </div>
+</li>
+<li id="comment-2370815" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/9390.html" class="url" rel="ugc external nofollow">28个Unix/Linux的命令行神器 - SEOOS技术门户</a> </div>
+</li>
+<li id="comment-2371060" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/56622.html" class="url" rel="ugc external nofollow">28个Unix/Linux的命令行神器 - 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371102" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/175619" class="url" rel="ugc external nofollow">28个Unix/Linux的命令行神器 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/7425.html/comment-page-4#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/7425.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/7425.html/comment-page-3#comments">3</a>
+<a class="page-numbers" href="/articles/7425.html/comment-page-4#comments">4</a>
+<span aria-current="page" class="page-numbers current">5</span> <span id="cp_post_id">7425</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,848 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>面试题：赛马问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1202 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1202" class="post-content post-1202 post type-post status-publish format-standard hentry category-progdesign category-career category-funny tag-puzzle tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">面试题：赛马问题</span>
+<h1 class="entry-title">面试题：赛马问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1202.html" title="22:35" rel="bookmark"><time class="entry-date" datetime="2009-07-30T22:35:35+08:00" pubdate="">2009年07月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1202.html#comments" class="comments-link">93 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 59,369 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://coolshell.cn/wp-content/uploads/2009/07/Question.jpg"></a>据说，这是Google的面试题。面试题目如下：</p>
+<p style="padding-left: 30px; text-align: left;"><span style="color: #008000;"><strong><a href="https://coolshell.cn/wp-content/uploads/2009/07/Question.jpg"><img decoding="async" class="alignright" title="Question" src="/uploads/2009/07/Question.jpg" alt="Question" width="158" height="158" srcset=""/></a>一共有25匹马，有一个赛场，赛场有5个赛道，就是说最多同时可以有5匹马一起比赛。假设每匹马都跑的很稳定，不用任何其他工具，只通过马与马之间的比赛，试问，最少得比多少场才能知道跑得最快的5匹马？（</strong>不能使用撞大运的算法<strong>）</strong></span></p>
+<p>很明显这是一个算法题，网上有很多贴子在讨论这个问题，不过都没有给出一个明确的答案。我想了想，想到下面的一个算法：</p>
+<p style="padding-left: 30px;">1）分成5组A，B，C，D，E，比五场。然后根据每场结果分别给这五组内的五匹马排序（从快到慢）。<br/>
+2）每组的头名再赛一场，取走第一名，然后该组第二名顶上。<br/>
+3）重复第二步，直到选出前5名。</p>
+<p>这个算法是比较笨的算法，总计需要<strong>赛10次，</strong>这个算法应该是万无一失的。现在的问题的就，如何优化这个算法，想了想，的确是有优化的空间的。也就是说，是可以少于10次的。</p>
+<p><span id="more-1202"></span></p>
+<p>想了一想，上面的那个算法自从第6次开始就使用5个排序数组的头名做“冒泡法”，总是挑一个最优秀的出来，其实，<strong><span style="color: #800000;">在第6次以后除了挑出最优秀的，我们还可以在每次比赛后淘汰一些速度不行的</span></strong>，淘汰的马匹数自然会比选出的更多，所以，一方面在找，另一方面在淘汰，找出前5名的速度应该会更快。</p>
+<p>比如：我们假设比赛完第六场后，我们得到下面的排序：（每组排序是——快马从左到右，各组头名的排序是——快马从上到下）</p>
+<p style="padding-left: 30px;">A组 A1 A2 A3 A4 A5<br/>
+B组 B1 B2 B3 B4 B5<br/>
+C组 C1 C2 C3 C4 C5<br/>
+D组 D1 D2 D3 D4 D5<br/>
+E组 E1 E2 E3 E4 E5</p>
+<p>这样，我们不但知道，A1是25匹马里最快的马，而且我们可以淘汰近一半的马，比如E2，E3，E4，E5就可以全部淘汰了，为什么呢，因为比E2快的马有A1,B1,C1,D1,E1这五匹马，所以，E2后面的马是无法进入前五名了；同理，D3和其后面的也进入不了前5；同理，C4，C5，B5都可以淘汰。</p>
+<p>于是，在第六轮后我们可以得知，除了A1外的Top 4必然在下面这些马中：</p>
+<p>A组  A2 A3 A4 A5<br/>
+B组 B1 B2 B3 B4 <br/>
+C组 C1 C2 C3 <br/>
+D组 D1 D2 <br/>
+E组 E1</p>
+<p>接下来的过程应该不必我多说了。重复前面的方法，尽可能淘汰无法进前N名的马，于是后面的马就越来越少，你所需要的比赛也会越来越少。</p>
+<p>那么，对于这个题，聪明的你知道最少要比赛几场了吗？</p>
+<p>举一反三，如果有64匹马，8个赛道呢？不失一般性，如果有N匹马，M个赛道呢？N = M*M，那么公式是什么呢？</p>
+<p>期待你的答案！</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1202-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">职场生涯</a>, <a href="javascript:void(0)" rel="category tag">趣味问题</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Puzzle</a>, <a href="javascript:void(0)" rel="tag">面试</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>面试题：赛马问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-75155" class="comment even thread-even depth-1">
+<article id="div-comment-75155" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://coder.aqualuna.me/" class="url" rel="ugc external nofollow">yuxio</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-75155"><time datetime="2011-08-19T11:08:49+08:00">2011年08月19日 11:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>剩下來的問題就是能不能再找三匹馬，來和第七場的第三名、第四名比賽，<br/>
+這第八場比賽的前兩名可以決定全部馬匹的第四名第五名</p>
+<p>如果不能只找三匹馬，那就必須再有個第九場<br/>
+只是這推導太複雜，很難完全說明<br/>
+這邊直接說一下我的結論，</p>
+<p>第七場的第五名有三種可能：A3, B2, C1<br/>
+1) 如果七場五名是 C1 的話，CDE 三組都可以排除在前五之外<br/>
+可以第八場場就決定出前五名<br/>
+（第八場剩下三匹馬的取法，需視第七場第四名所在組而決定）<br/>
+2) A3, B2 的話沒辦法，需要第九場</p>
+</div>
+ </article>
+</li>
+<li id="comment-77795" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-77795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/058e28420078c4d68bf65b8e2e29efde?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/058e28420078c4d68bf65b8e2e29efde?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nihaokid</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-77795"><time datetime="2011-08-29T15:06:19+08:00">2011年08月29日 15:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>43楼比较每组第二名，很有想法，受教了。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-87842" class="comment even thread-even depth-1">
+<article id="div-comment-87842" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad23208ac52eee7e56813ba695d3026e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad23208ac52eee7e56813ba695d3026e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.yfzhang.info" class="url" rel="ugc external nofollow">yfzhang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-87842"><time datetime="2011-10-19T17:31:42+08:00">2011年10月19日 17:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最一般的答案就是M+2<br/>
+首先M组，每组M个赛马，每组分出前三名<br/>
+然后每组第一名进行比较，假设前三名分别是A，B，C<br/>
+A是名副其实的第一<br/>
+之后要把可能为二三名的马选出，进行一场比赛<br/>
+1.选出A组的第二名，第三名，因为他们有可能会比B组C组的第一快<br/>
+2.选出B组的第一名，第三名，因为B组第一名还不能确定在总共的M*M匹马中是第二还是第三，第三名仅次于B组第一名，也就是说它还可能成为第三<br/>
+3.选出C组的第一名，它需要与以上的马匹确定第三的位置<br/>
+此时选出的5匹进行最后的比赛就可以确定最终的第二三名<br/>
+3.选出C组的</p>
+</div>
+ </article>
+</li>
+<li id="comment-94959" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-94959" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d719dcd4bae37da8611f0017628ae90?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d719dcd4bae37da8611f0017628ae90?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">WFQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-94959"><time datetime="2011-11-10T20:16:02+08:00">2011年11月10日 20:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-54568"><p>
+<strong><a href="#comment-54568" rel="nofollow">weihao</a> :</strong><br/>
+好早听说过这个题目，自习思考过方法，尽可能的让每次赛马后淘汰最多的马<br/>
+和楼主最初一样，先分成5组，每组5匹，编号ABCDE，组内赛完后，共计五场<br/>
+A1 B1 C1 D1 E1<br/>
+A2 B2 C2 D2 E2<br/>
+A3 B3 C3 D3 E3<br/>
+A4 B4 C4 D4 E4<br/>
+A5 B5 C5 D5 E5<br/>
+第六场若取每组的第一比的话，最终可以淘汰4 + 3 + 2 + 1 = 10 （+ 1选出）<br/>
+若取每组的第二比的话，最终可以淘汰4 + 4 + 4 + 2 = 14 （+ 1选出）<br/>
+若取每组的第三比的话，最终可以淘汰3 + 3 + 3 + 3 = 12<br/>
+… 后面肯定更少<br/>
+所以第六场取每组第二比最佳，不妨设第六场顺序为A2 &gt; B2 &gt; C2 &gt; D2 &gt; E2。<br/>
+这样第六场后剩余的马有10匹，只需选出前四即可<br/>
+B1 C1 D1 E1<br/>
+A2 B2<br/>
+A3 B3<br/>
+A4<br/>
+A5<br/>
+第七场还是按照上面的原则，尽可能的淘汰最多的马<br/>
+选择A3 B2 C1 D1 E1比赛，<br/>
+若A3 B2为前两名，那么这四匹马（前五）就找出了，为A2 A3 B1 B2，只用了7场<br/>
+若A3为前两名，B2不为前两名，那么就有三匹马（前五）找出了A2 A3 （C1或D1或E1）淘汰B2 B3，最后就只剩五匹马，所以只需要加赛一次，共计8场<br/>
+若A3 B2都不为前两名，A3 A4 A5 B2 B3都可以淘汰，最后A2 B1 C1 D1 E1赛一场就可以了。所以只需要8场。<br/>
+综合三种情况，最少需要8场
+</p></blockquote>
+<p>第六场取每组第二比，如设第六场顺序为A2 &gt; B2 &gt; C2 &gt; D2 &gt; E2，<br/>
+其结果，B3也可以淘汰，是吧，因为已有5匹比它快（A1/A2/A3/B1/B2）…………</p>
+</div>
+ </article>
+</li>
+<li id="comment-94962" class="comment even thread-even depth-1">
+<article id="div-comment-94962" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d719dcd4bae37da8611f0017628ae90?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d719dcd4bae37da8611f0017628ae90?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">WFQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-94962"><time datetime="2011-11-10T20:28:03+08:00">2011年11月10日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不好意思，错了，A3不一定…………</p>
+</div>
+ </article>
+</li>
+<li id="comment-116034" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-116034" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1579622092fcd8a8ec825fa4f588cd86?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1579622092fcd8a8ec825fa4f588cd86?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">风起云涌</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-116034"><time datetime="2011-12-25T18:56:47+08:00">2011年12月25日 18:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分5组、<br/>
+a1-a5\b1-b5\c1-c5\d1-d5\e1-e5,（5轮）用各组第一决出最快的1名（6轮），用最快一组的第二与各组第一名比选出最快的一名（7轮），以此类推，用10轮就可以找到最快的</p>
+</div>
+ </article>
+</li>
+<li id="comment-127556" class="comment even thread-even depth-1">
+<article id="div-comment-127556" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1faa57a7254107c10589094f248739e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1faa57a7254107c10589094f248739e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leemax</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-127556"><time datetime="2012-01-18T10:56:35+08:00">2012年01月18日 10:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分五组是没问题，但从前或者从后或者第1/2/3/4/5的“撞大运“选法总是感觉不对……瞬间的念头是：二分法……</p>
+</div>
+ </article>
+</li>
+<li id="comment-133013" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-133013" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3677353e471c4b917fa0d8924e565c1a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3677353e471c4b917fa0d8924e565c1a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">将军</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-133013"><time datetime="2012-02-01T13:18:20+08:00">2012年02月01日 13:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为,第六轮后我们可以得知<br/>
+A组 A2 A3 A4 A5<br/>
+B组 B1 B2 B3 B4<br/>
+C组 C1 C2 C3<br/>
+D组 D1 D2<br/>
+E组 E1<br/>
+此时选第二名只会从A2与B1之间单选,如果A2是第二名,则第三名只会从A3与B1之间单选,反之,第三名会从A2,B2,C1选,所以第七轮A2 A3 B1 B2 C1比赛可以选出第二名和第三名.<br/>
+………</p>
+</div>
+ </article>
+</li>
+<li id="comment-137213" class="comment even thread-even depth-1">
+<article id="div-comment-137213" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3c99b36a8ee064c22d5fa813d682707?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3c99b36a8ee064c22d5fa813d682707?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">krime</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-137213"><time datetime="2012-02-13T13:51:54+08:00">2012年02月13日 13:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>解题报告：<br/>
+定义：<br/>
+1.两匹马的速度快慢，称为一个关系，例如A比B快，则称A和B构成一个关系，用<a>表示；<br/>
+2.在一个关系中，每个比较对象有贡献，其中慢的向快的马贡献，马匹x具有的贡献称为度，用D(x)表示。如A比B快，则B向A贡献1，此时A的度为1，B的度为0，即D(A)=1, D(B)=2，度数说明了比较慢的马匹有多少匹；<br/>
+题目分析：<br/>
+求最少比赛场数应考虑每次比赛比会产生最多关系的马匹，由于不能采用撞大运的情况，考虑每次比赛后产生的关系数应为最少<br/>
+解题过程：<br/>
+前五场采分组比赛，得出以下关系<br/>
+A组：A1 &gt; A2 &gt; A3 &gt; A4 &gt; A5<br/>
+B组：B1 &gt; B2 &gt; B3 &gt; B4 &gt; B5<br/>
+C组：C1 &gt; C2 &gt; C3 &gt; C4 &gt; C5<br/>
+D组：D1 &gt; D2 &gt; D3 &gt; D4 &gt; D5<br/>
+E组：E1 &gt; E2 &gt; E3 &gt; E4 &gt; E5<br/>
+此时，每组地位平等，且每组第一名（A1,B1,C1,D1,E1）含有最多度数4，故第六场应比较每组第一名，假设得出关系如下：<br/>
+A1 &gt; B1 &gt; C1 &gt; D1 &gt; E1<br/>
+得出全局第一名A1<br/>
+往后关系和度数如下（冒号后面的是度数）（排除掉不可能进入前五名的）：<br/>
+A2:3 &gt; A3:2 &gt; A4:1 &gt; A5:0<br/>
+B1:9 &gt; B2:2 &gt; B3:1 &gt; B4:0<br/>
+C1:5 &gt; C2:1 &gt; C3:0<br/>
+D1:2 &gt; D2:0<br/>
+E1:0<br/>
+由上表，第七场应比较（B1,C1,A2,A3,X）（其中X为度数为2的马匹，这里为D1或者B2）。<br/>
+如果X=D1，考虑极端情况，增加最少的度数为以下情况（其他情况等价考虑）：<br/>
+B1 &gt; C1 &gt; A2 &gt; A3 &gt; D1<br/>
+此时增加的总度数为11（其中A2分别向B1、C1贡献4度，D1分别向A2、A3贡献3度，共4×2+3×2=14度），并选出第二、三名：B1和C1；<br/>
+如果X=B2，考虑极端情况，增加最少的度数为以下情况（其他情况等价考虑）：<br/>
+B1 &gt; C1 &gt; A2 &gt; A3 &gt; B2<br/>
+此时增加的总度数为15（其中A2分别向B1、C1贡献4度，B2分别向A2、A3、C1贡献3度，共4×2+3×3=17度），并选出第二、三名：B1和C1；<br/>
+由上述可知应比较（B1,B2,C1,A2,A3）。<br/>
+往后关系如下（极端情况考虑并排除掉不可能进入前五名的）：<br/>
+A2:3 &gt; A3:2 &gt; B2:1 &gt; B3:0<br/>
+C2:1 &gt; C3:0<br/>
+D1:2 &gt; D2:0<br/>
+E1:0<br/>
+由上表，第八场应比较（A2,A3,D1,B2,C2）。<br/>
+注意A2 &gt; A3 &gt; B2，考虑极端情况，增加最少的度数为以下情况：<br/>
+D1 &gt; C2 &gt; A2 &gt; A3 &gt; B2<br/>
+此时增加的总度数为10 （其中A2分别向D1、C2贡献4度，C2向D1贡献2度，共4×2+2=10度），并选出第四名：D1；<br/>
+最后第九场比赛（C2,D2,E1）可决出第五名。<br/>
+综上所述，至少要赛九场方能保证决出前五名。</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-137214" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-137214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3c99b36a8ee064c22d5fa813d682707?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3c99b36a8ee064c22d5fa813d682707?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">krime</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-137214"><time datetime="2012-02-13T13:57:07+08:00">2012年02月13日 13:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-54568" rel="nofollow">@weihao </a><br/>
+#43楼考虑错了，如果 B1 &gt; A1 或者 C1,D1,E1 中任何一匹马比A1快，你的推论都不能成立。</p>
+</div>
+ </article>
+</li>
+<li id="comment-158990" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/7048.html" class="url" rel="ugc">挑战无处不在 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-159576" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-159576" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/95857f1da70c92ccdc2c2af98bb3c61d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/95857f1da70c92ccdc2c2af98bb3c61d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xyan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-159576"><time datetime="2012-04-18T01:09:42+08:00">2012年04月18日 01:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赛场有5个赛道，就是说最多同时可以有5匹马一起比赛。<br/>
+5个赛道 就真的只能同时有5匹马一起比赛么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-194768" class="comment even thread-even depth-1">
+<article id="div-comment-194768" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4796c53aa455a6539b7aee30a166266?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4796c53aa455a6539b7aee30a166266?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-194768"><time datetime="2012-05-22T20:05:35+08:00">2012年05月22日 20:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>M匹马中选出前N名来，K条赛道<br/>
+无意间看到这题了，想个半个小时，想明白了。<br/>
+应该是按照森林合并的思想，分层来。每次只比最上第一个不是一个元素的层，如果最上层不足赛道数K就取下一层的马代替。<br/>
+每闪比完需要改变一下树结构，直到出现前N层元素都是一个元素，前N名就出来了。<br/>
+我觉得这是最好的答案</p>
+<p>###################################<br/>
+代码简单思想：</p>
+<p>element {<br/>
+element parent = ROOT;<br/>
+element broutherL = null;<br/>
+element broutherR = null;<br/>
+element child = null;<br/>
+}<br/>
+A 先把parent==ROOT &amp;&amp; child==null的比，不够赛道时，如果有parent==ROOT但是child!=null的加入比赛，直至只有一个元素的parent(第一名)为null<br/>
+这样就形成了初步的树了，也就是说至少第一名出现了<br/>
+B 查看最上面的每层只有一个元素的连续的层(1~CNT)，如果达到N，恭喜你选出前N来了<br/>
+C CNT+1层的马进行比赛，分组时不够K的组取CNT+2层的马加入比赛，比赛后记得调整树，然后转到B，直到找到结果</p>
+<p>在A之前要查看MNK的关系，如负数，M&lt;K岂不是不用比了，直接打印出1就行了……<br/>
+树的调整我没考虑，应该能做到吧<br/>
+（也或许我写的数据结构不对）</p>
+<p>不知道有没有人写代码实现，发我一份 <a href="/cdn-cgi/l/email-protection#57343f3e3936082633176661647934383a"><span class="__cf_email__" data-cfemail="f6959e9f9897a98792b6c7c0c5d895999b">[email protected]</span></a>，谢谢</p>
+</div>
+ </article>
+</li>
+<li id="comment-194770" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-194770" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4796c53aa455a6539b7aee30a166266?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4796c53aa455a6539b7aee30a166266?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-194770"><time datetime="2012-05-22T20:10:15+08:00">2012年05月22日 20:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>顺便说一下<br/>
+parent 是速度比自己快的，child是速度比自己慢的，brotherL与brotherR是不知道是否快慢的<br/>
+构造初始数据可以parent都为null，用brotherLR设置好，构造出初始数据来</p>
+</div>
+ </article>
+</li>
+<li id="comment-194772" class="comment even thread-even depth-1">
+<article id="div-comment-194772" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4796c53aa455a6539b7aee30a166266?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4796c53aa455a6539b7aee30a166266?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jacob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-194772"><time datetime="2012-05-22T20:12:03+08:00">2012年05月22日 20:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>补充说明，某层比赛，所有分组比赛后调整完树之的再到步骤B</p>
+</div>
+ </article>
+</li>
+<li id="comment-195815" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195815" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2d8d5c8e7891c2c56f678860f3059d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2d8d5c8e7891c2c56f678860f3059d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">t</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-195815"><time datetime="2012-05-29T18:04:16+08:00">2012年05月29日 18:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>神马是撞大运的算法。。。:p</p>
+</div>
+ </article>
+</li>
+<li id="comment-196018" class="comment even thread-even depth-1">
+<article id="div-comment-196018" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/50121c0bd5be658e9d70cca3fbcf534b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/50121c0bd5be658e9d70cca3fbcf534b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ssss" class="url" rel="ugc external nofollow">xiaoxin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-196018"><time datetime="2012-06-05T10:45:51+08:00">2012年06月05日 10:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>五场就搞定了，每场都记录一下每匹马跑的时间，比较一下不就出来了</p>
+</div>
+ </article>
+</li>
+<li id="comment-197439" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197439" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9582415c608947b367567a278369666f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9582415c608947b367567a278369666f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiangziwade</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-197439"><time datetime="2012-06-24T23:09:10+08:00">2012年06月24日 23:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>就是，科技都这么发达了。。。<br/>
+<a href="#comment-196018" rel="nofollow">@xiaoxin </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-197886" class="comment even thread-even depth-1">
+<article id="div-comment-197886" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6bde6a27780f1d34338ff55ca014f08c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6bde6a27780f1d34338ff55ca014f08c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaomi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-197886"><time datetime="2012-06-29T21:35:48+08:00">2012年06月29日 21:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>题目明确说”不借助任何工具“的啊。 <a href="#comment-197439" rel="nofollow">@xiangziwade </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-200517" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-200517" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d06546f0cd3e7c8ceaf3c63197d4499?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d06546f0cd3e7c8ceaf3c63197d4499?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">石子头</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-200517"><time datetime="2012-08-01T16:36:06+08:00">2012年08月01日 16:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最快是7场， 第七场比较 A2，B2，C2，D2，E1。 如果D2或E1第一，则直接得出前5。</p>
+<p>逻辑理解很简单，但头痛在于如何抽象成算法，再想想~</p>
+</div>
+ </article>
+</li>
+<li id="comment-201207" class="comment even thread-even depth-1">
+<article id="div-comment-201207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1484803ab3b7b5d75da3158b0d48c849?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1484803ab3b7b5d75da3158b0d48c849?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Oscar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-201207"><time datetime="2012-08-07T15:03:47+08:00">2012年08月07日 15:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为1次比赛就可以得出结果。可以把5个赛道分别分成5段距离，假设每段距离100米，这样就可以让25匹马站在5个赛道的25个起始点上同时起跑，看最先跑完各自100米的5匹马就是你要的答案了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202916" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202916" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0940fdcd9b5e6ca6204573c4e74fd064?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0940fdcd9b5e6ca6204573c4e74fd064?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">温水青蛙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-202916"><time datetime="2012-09-14T13:42:39+08:00">2012年09月14日 13:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得应该就是堆排序算法吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-203159" class="comment even thread-even depth-1">
+<article id="div-comment-203159" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c6018d29b29c677edcf6c4088d240ff1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c6018d29b29c677edcf6c4088d240ff1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">walden</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-203159"><time datetime="2012-09-28T15:14:35+08:00">2012年09月28日 15:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>题中说了不借助任何其他工具 请问你如何去5等分赛道 注意看题目好吧<a href="#comment-201207" rel="nofollow">@Oscar </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-205954" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-205954" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cook_li</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-205954"><time datetime="2012-10-22T20:18:47+08:00">2012年10月22日 20:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受#10启发，发现可以这样：<br/>
+在5场后得到五组<br/>
+A1 B1 C1 D1 E1<br/>
+A2 B2 C2 D2 E2<br/>
+A3 B3 C3 D3 E3<br/>
+A4 B4 C4 D4 E4<br/>
+A5 B5 C5 D5 E5<br/>
+如果以上面这样的阵型去跑呢？没有错，就是让它们陆续出发，第一名在前面跑，速度各不相同，肯定不会撞车，但是并列出发的就能发现不同速度了。而经过一定时间后，最快的马用看的也知道了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-205956" class="comment even thread-even depth-1">
+<article id="div-comment-205956" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cook_li</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-205956"><time datetime="2012-10-22T20:19:51+08:00">2012年10月22日 20:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以只要6场……</p>
+</div>
+ </article>
+</li>
+<li id="comment-205957" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-205957" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cook_li</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-205957"><time datetime="2012-10-22T20:29:05+08:00">2012年10月22日 20:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sorry，赛马场的硬件设备被我忽略了……如果不够大而且是圆形的话，可能在找出之前，同一列的撞了</p>
+</div>
+ </article>
+</li>
+<li id="comment-205959" class="comment even thread-even depth-1">
+<article id="div-comment-205959" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cff27bda2388e78ba158d2ec7d4c6156?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cook_li</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-205959"><time datetime="2012-10-22T20:30:01+08:00">2012年10月22日 20:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>追尾……我晕，有修改内容的么……</p>
+</div>
+ </article>
+</li>
+<li id="comment-210125" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-210125" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f44b0524b65d77560d99d2cbd93b541d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f44b0524b65d77560d99d2cbd93b541d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">freeboy1015</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-210125"><time datetime="2012-11-03T11:26:52+08:00">2012年11月03日 11:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>题目假设每匹马都跑的很稳定，那我觉得完全可以值跑5场，统计5场的结果，选出最快的前5名就行了啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-268256" class="comment even thread-even depth-1">
+<article id="div-comment-268256" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/Jack47" class="url" rel="ugc external nofollow">Jack47</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-268256"><time datetime="2013-01-15T21:40:56+08:00">2013年01月15日 21:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好题啊，挺锻炼思维的。<br/>
+不要怕麻烦，穷举+淘汰，画图把大小顺序排列成森林的形状，更容易做出来。<br/>
+评论中的某些想法也比较精彩。</p>
+</div>
+ </article>
+</li>
+<li id="comment-279748" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-279748" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3db3e63982af538480d8929451c1eda4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3db3e63982af538480d8929451c1eda4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">abc_菜鸟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-279748"><time datetime="2013-01-26T15:19:29+08:00">2013年01月26日 15:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好像还没有人给出最终答案哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-297813" class="comment even thread-even depth-1">
+<article id="div-comment-297813" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/58750590d26762c19732c90fe4f13d3f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/58750590d26762c19732c90fe4f13d3f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://twocoldzcainiao.sinaapp.com" class="url" rel="ugc external nofollow">twocoldz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-297813"><time datetime="2013-02-26T00:21:40+08:00">2013年02月26日 00:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉25匹马，只要让每一匹马与其他24匹马，都跑一次就好了。那就是6次。不过这是针对一匹马而言，不知道可否找到这样的状态对于所有马都成立。</p>
+</div>
+ </article>
+</li>
+<li id="comment-651418" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-651418" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9258f0ebdad34f96cfc10d457f5857a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9258f0ebdad34f96cfc10d457f5857a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-651418"><time datetime="2013-08-11T17:30:06+08:00">2013年08月11日 17:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-54568" rel="nofollow">@weihao </a><br/>
+43楼的，第六场过后，并不能保证A1就是第一名，B1也应该是第一名候选人吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-714540" class="comment even thread-even depth-1">
+<article id="div-comment-714540" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gcd0318.wordpress.com/" class="url" rel="ugc external nofollow">gcd0318</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-714540"><time datetime="2013-09-04T09:15:00+08:00">2013年09月04日 09:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>去掉e2-5应该不会更快，因为e组永远是e1在参赛，后面剩多少ex都没所谓</p>
+</div>
+ </article>
+</li>
+<li id="comment-728699" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-728699" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a3a0ca580a71a007cbada4dd76baebc1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a3a0ca580a71a007cbada4dd76baebc1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">奔跑的冰淇淋</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-728699"><time datetime="2013-09-11T11:10:58+08:00">2013年09月11日 11:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>M+1场过后，只剩下<br/>
+A1 A2 A3 A4 A5<br/>
+B1 B2 B3 B4<br/>
+C1 C2 C3<br/>
+D1 D2<br/>
+E1，<br/>
+第M+2场，取A2，A3，B1，B2，C1赛一场（赛道有多？没关系的），无论什么结果都能决出2，3名，<br/>
+第M+3场，不妨设上一场A3最慢，则取B2，B3，C1，C2，D１赛一场，即可决出４，５名。</p>
+</div>
+ </article>
+</li>
+<li id="comment-741262" class="comment even thread-even depth-1">
+<article id="div-comment-741262" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec6a42bc5a886d0e92b1c1b265a9d39e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec6a42bc5a886d0e92b1c1b265a9d39e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://zhangqingtian.cn" class="url" rel="ugc external nofollow">vFISHv</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-741262"><time datetime="2013-09-17T18:12:07+08:00">2013年09月17日 18:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是来黑你们的，如果有相同速度的马呢 ，没考律，负分</p>
+</div>
+ </article>
+</li>
+<li id="comment-775345" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-775345" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fcd964ea771632c8fa90aa48a3051f54?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fcd964ea771632c8fa90aa48a3051f54?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">smallnic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-775345"><time datetime="2013-09-30T17:53:24+08:00">2013年09月30日 17:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-205954"><p>
+<strong><a href="#comment-205954" rel="nofollow">cook_li </a> :</strong>受#10启发，发现可以这样：在5场后得到五组A1 B1 C1 D1 E1A2 B2 C2 D2 E2A3 B3 C3 D3 E3A4 B4 C4 D4 E4A5 B5 C5 D5 E5如果以上面这样的阵型去跑呢？没有错，就是让它们陆续出发，第一名在前面跑，速度各不相同，肯定不会撞车，但是并列出发的就能发现不同速度了。而经过一定时间后，最快的马用看的也知道了。</p></blockquote>
+<p>这个想法神了！果然NB啊……</p>
+</div>
+ </article>
+</li>
+<li id="comment-775348" class="comment even thread-even depth-1">
+<article id="div-comment-775348" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fcd964ea771632c8fa90aa48a3051f54?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fcd964ea771632c8fa90aa48a3051f54?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">smallnic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-775348"><time datetime="2013-09-30T17:55:37+08:00">2013年09月30日 17:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-205957" rel="nofollow">@cook_li </a><br/>
+没事，跑个百米直线就行了，每匹马出发距离差1米，到终点的距离也差一米，设置5条出发线和到达线。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1541949" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.xuejianbin.com/?p=121" class="url" rel="ugc external nofollow">挑战无处不在 | news snack</a> </div>
+</li>
+<li id="comment-1605146" class="comment even thread-even depth-1">
+<article id="div-comment-1605146" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c13acb4d423f8a13b001744c50903f1a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c13acb4d423f8a13b001744c50903f1a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">QinYang1104</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-1605146"><time datetime="2014-11-16T23:30:31+08:00">2014年11月16日 23:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>A1 B1 C1 D1 E1<br/>
+A2 B2 C2 D2 E2<br/>
+A3 B3 C3 D3 E3<br/>
+A4 B4 C4 D4 E4<br/>
+A5 B5 C5 D5 E5</p>
+<p>假如前五场，如上所示。</p>
+<p>第六场， A2 B2 C2 D2 E2<br/>
+假如结果是：A2 &gt; B2 &gt; C2 &gt; D2 &gt; E2</p>
+<p>此时A1 A2 B1 B2 C1一定比C2快。</p>
+<p>即，C2没必要再去竞争前五了。</p>
+<p>现在</p>
+<p>然后，第七场让A3 B3 C1 D1 E1跑<br/>
+如果 C1 D1 E1中有一个获得第一名，不妨设为D1，则第八场安排剩下的A1 B1 D1 A2 B2比赛即可。<br/>
+但是，我们要求最大比赛数，此时不妨设B3在第七场获得第一名，</p>
+<p>现在简单了，第八场安排，A1 A2 B3~5，比赛。取前三名。<br/>
+第九场决定最后名次。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1673893" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1673893" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f39ef10522fdcebb3209fa3ff2f24298?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f39ef10522fdcebb3209fa3ff2f24298?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jun</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-1673893"><time datetime="2015-03-12T14:10:48+08:00">2015年03月12日 14:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>I think this is a variant of Deterministic Select Alg.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1704217" class="comment even thread-even depth-1">
+<article id="div-comment-1704217" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4cbe56d6d0cac392309f23470e9479fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4cbe56d6d0cac392309f23470e9479fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">QJZzzzz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-1704217"><time datetime="2015-05-10T03:46:46+08:00">2015年05月10日 03:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>具体分析很多人都做出来了，我也不知道对不对，小的想了一个算法，不知对不对也请各位大神指正：</p>
+<p>这个问题里的比赛结果像是什么呢，个人觉得是一个偏序集，偏序集的问题一般都是用有向图来解决的。<br/>
+有向图顶点和边我是这样设计的：<br/>
+struct Node<br/>
+{<br/>
+Num 最好顺位 //预期最好的顺位（排名当然是越高越好），简称顺位<br/>
+List 直接后继列表 //就想里面写的那样就是直接后继列表，注意是指针类列表，用来代指边，可以知道边是排名高指向排名低的<br/>
+T 对象 //对象本身，马之类的，用来比较<br/>
+};</p>
+<p>下面说初始化：<br/>
+T当然是填上比较的对象<br/>
+Num全部置为1，说明比较还没开始谁都可以是第一<br/>
+List全置为空，表示所有对象的大小没有指定，换句话说就是这个图的边还没有</p>
+<p>第一个问题是比较元素的选择，这个问题里大概不可能出现Num值大的结点个数少于Num值小的情况（这作为一个我这个有向图的属性，下面的维护这个也是重点）。选择元素问题很简单使用一个定长的数组（长度就同时可以比较几个对象）就可以完成，选取Num值最小的那几个就可以了，（你说怎么选那几个最小的几个，我是用队列，NodeA出列那么NodeA.List内的依次入列，第一次的话就随便瞎搞都搞的出来啦）（还有为了避免一直把前面排好的一直入列的情况，就使用一个值来记录现在要找第几名，这样就可以设置一个Num值为0的Node来处理出初始的无无序情况，其List为所有Node）</p>
+<p>第二个问题是指定这几个Node的关系：<br/>
+我拿到这几个Node之后第一件事不是去比较，而是把他们之间的关系消除<br/>
+例如我拿到的是Node1~3<br/>
+我消去他们之间关系的是做法就是把所有Node.List中的所有Node1， Node2， Node3删除<br/>
+消除关系之后我再比较再指定关系，<br/>
+例如我比较完了之后结果是<br/>
+Node1.Num&lt;Node3.Num&lt;Node2.Num<br/>
+那么我就在Node1.List中插入Node3<br/>
+Node3.List中插入Node1<br/>
+然后我发现这个图的Num是乱的，我对这个图里面的Num要进行维护<br/>
+这个图里面一定会有Node的Num值是1<br/>
+就从这个元素入手，上面填1，List中的Node的Num填2，在拿出那些我填2的Node的List中的全填上3，如此往复到了那个Num等于要求的直接把List置为空不再进行下去，相当于说把太慢的马淘汰掉<br/>
+你如果看懂了上面的方法的话，你可能会有疑问：<br/>
+维护的时候一个Node会不会访问两次导致出错，我的回答是不会的，如果有需要的话我应该可以给出严谨的数学证明。</p>
+<p>我的文字非常的羞涩难懂，各位看官就凑合着看，这也是好几年前的老物，也不知会有谁还来看，说实在的我自己看自己写的东西我也会晕的Zzzzz</p>
+</div>
+ </article>
+</li>
+<li id="comment-1736912" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1736912" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/659bf3bd33fcc21b140a7440ff76a9d3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/659bf3bd33fcc21b140a7440ff76a9d3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">frank</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-1736912"><time datetime="2015-07-17T09:18:55+08:00">2015年07月17日 09:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://hxraid.iteye.com/blog/662643" rel="nofollow ugc">http://hxraid.iteye.com/blog/662643</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1759454" class="comment even thread-even depth-1">
+<article id="div-comment-1759454" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/932d5a5fb698bef372251548557973e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/932d5a5fb698bef372251548557973e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">复活也有</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1202.html/comment-page-2#comment-1759454"><time datetime="2015-09-18T16:41:07+08:00">2015年09月18日 16:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-54568" rel="nofollow">@weihao </a><br/>
+43楼分析很多，结果是对的，但是分析的细节不对。<br/>
+其中讨论：</p>
+<p>若A3为前两名，B2不为前两名，那么就有三匹马（前五）找出了A2 A3 （C1或D1或E1）</p>
+<p>这个时候如果是A3排第二，的确是可以取出来（C1或D1或E1）,但是如果是A3排名第二，这个时候很可能A组的都是飞毛腿，（C1或D1或E1 ）完全跑不过A4A5，也就是只能选出来两个。那还剩下A4,A5,B1,C1,D1,E1，要选出前2名。已经确定C1,D1,E1中的顺序，那就丢掉最末的那个马，剩下的5只再跑一次。答案还是8。</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/1202.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/1202.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">1202</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

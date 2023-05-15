@@ -1,0 +1,243 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Google 三维 JavaScript API 发布 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-599 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-599" class="post-content post-599 post type-post status-publish format-standard hentry category-webdev category-techarticle category-misc category-tools tag-google tag-javascript tag-o3d">
+<header class="entry-header">
+<span class="screen-reader-text">Google 三维 JavaScript API 发布</span>
+<h1 class="entry-title">Google 三维 JavaScript API 发布</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/599.html" title="12:01" rel="bookmark"><time class="entry-date" datetime="2009-04-22T12:01:41+08:00" pubdate="">2009年04月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/599.html#comments" class="comments-link">11 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 7,805 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>O3D 是一个开源的Web API，其可以创建相当牛X的基于浏览器的可交互式的3D应用。这个API在很有可能会形成以后的Web上的3D图形的标准。下面是这个API的主站点： <a href="https://code.google.com/apis/o3d/">http://code.google.com/apis/o3d/</a> 。O3D目前支持Windows, Mac和Linux三种平台。</p>
+<p>下面是一些简单地使用O3D的API的如何创建一个立方体，更详细的内容请访问O3D的网站。</p>
+<p>1）首选我们先创建一个比较原始的立方体。使用<span style="font-family: Courier New;">createCube()</span>方法。</p>
+<p>[javascript]</p>
+<p>function createCube(material) {<br/>
+var cubeShape = g_pack.createObject(‘Shape’);<br/>
+var cubePrimitive = g_pack.createObject(‘Primitive’);<br/>
+var streamBank = g_pack.createObject(‘StreamBank’);</p>
+<p> cubePrimitive.material = material;<br/>
+cubePrimitive.owner(cubeShape);<br/>
+cubePrimitive.streamBank = streamBank;<br/>
+.<br/>
+.<br/>
+.<br/>
+[/javascript]</p>
+<p><span id="more-599"></span><br/>
+ 2）然后，我们需要指定一些顶点信息。<br/>
+其中，我们利用三角形来构造3D图形。一个立方体有12个三角面，两个构成一个面，然后有8个顶点。<br/>
+[javascript]<br/>
+cubePrimitive.primitiveType = g_o3d.Primitive.TRIANGLELIST;<br/>
+cubePrimitive.numberPrimitives = 12; // 12 triangles<br/>
+cubePrimitive.numberVertices = 8; // 8 vertices in total<br/>
+cubePrimitive.createDrawElement(g_pack, null); // Create the draw element for this primitive.<br/>
+[/javascript]</p>
+<p>3）指定一下8个顶点的坐标。<br/>
+[javascript]<br/>
+var positionArray = [<br/>
+-0.5, -0.5, 0.5, // vertex 0<br/>
+0.5, -0.5, 0.5, // vertex 1<br/>
+-0.5, 0.5, 0.5, // vertex 2<br/>
+0.5, 0.5, 0.5, // vertex 3<br/>
+-0.5, 0.5, -0.5, // vertex 4<br/>
+0.5, 0.5, -0.5, // vertex 5<br/>
+-0.5, -0.5, -0.5, // vertex 6<br/>
+0.5, -0.5, -0.5 // vertex 7<br/>
+];<br/>
+[/javascript]</p>
+<p>4）把顶点坐标数组加入Buffer中。<br/>
+[javascript]<br/>
+// Create buffers containing the vertex data.<br/>
+var positionsBuffer = g_pack.createObject(‘VertexBuffer’);<br/>
+var positionsField = positionsBuffer.createField(‘FloatField’, 3);<br/>
+positionsBuffer.set(positionArray);<br/>
+[/javascript]</p>
+<p>5）把Buffer放到Stream Bank中。</p>
+<p>[javascript]<br/>
+// Associate the positions Buffer with the StreamBank.<br/>
+streamBank.setVertexStream(<br/>
+g_o3d.Stream.POSITION, // semantic: This stream stores vertex positions<br/>
+0, // semantic index: First (and only) position stream<br/>
+positionsField, // field: the field this stream uses.<br/>
+0); // start_index: How many elements to skip in the field.<br/>
+[/javascript] </p>
+<p>6）连接点成为三角面，并把三角面两两一组组成立方面。<br/>
+[javascript]<br/>
+var indicesArray = [<br/>
+0, 1, 2, // face 1<br/>
+2, 1, 3,<br/>
+2, 3, 4, // face 2<br/>
+4, 3, 5,<br/>
+4, 5, 6, // face 3<br/>
+6, 5, 7,<br/>
+6, 7, 0, // face 4<br/>
+0, 7, 1,<br/>
+1, 7, 3, // face 5<br/>
+3, 7, 5,<br/>
+6, 0, 4, // face 6<br/>
+4, 0, 2<br/>
+];<br/>
+[/javascript]</p>
+<p>完整的源码请参看这里：（打开网页后查看源码）<br/>
+<a href="https://o3d.googlecode.com/svn/trunk/samples/hellocube.html" target="_blank">http://o3d.googlecode.com/svn/trunk/samples/hellocube.html</a></p>
+<p>最后，让我们看一看下面YouTube上的视频，你就知道这个东西有多强了。<a href="https://www.youtube.com/watch?v=uofWfXOzX-g" target="_blank">YouTube链接</a>。</p>
+<p><object width="560" height="340" data="https://www.youtube.com/v/uofWfXOzX-g&amp;hl=zh_CN&amp;fs=1" type="application/x-shockwave-flash"><param name="allowFullScreen" value="true"/><param name="allowscriptaccess" value="always"/><param name="src" value="http://www.youtube.com/v/uofWfXOzX-g&amp;hl=zh_CN&amp;fs=1"/><param name="allowfullscreen" value="true"/></object></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-599-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程工具</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Google</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">O3D</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Google 三维 JavaScript API 发布</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-59" class="comment even thread-even depth-1">
+<article id="div-comment-59" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4e0d44075ca64b360e2a7ae0fd32d62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://claymore.phpme.info" class="url" rel="ugc external nofollow">claymore</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/599.html#comment-59"><time datetime="2009-04-22T12:30:16+08:00">2009年04月22日 12:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>需要安装O3D的插件，这样显示给用户的时候真的没问题吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-60" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-60" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/599.html#comment-60"><time datetime="2009-04-22T13:08:22+08:00">2009年04月22日 13:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的，需要装插件，就像flash一样。记住，这个东西以后可能会形成Web上的标准，所以，很有可能会成为浏览器的规范。</p>
+</div>
+ </article>
+</li>
+<li id="comment-61" class="comment even thread-even depth-1">
+<article id="div-comment-61" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/745e2419ac3c24fbd2bbeed36ddf7ac1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/745e2419ac3c24fbd2bbeed36ddf7ac1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://liuwanfang.blogspot.com/" class="url" rel="ugc external nofollow">Hello Ubuntu!</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/599.html#comment-61"><time datetime="2009-04-22T16:16:10+08:00">2009年04月22日 16:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问，O3D怎么安装啊？我的英语不好。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-65" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-65" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b5ea89922d737ead6f08085d3454b85f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b5ea89922d737ead6f08085d3454b85f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Schrodinger&#39;s Cat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/599.html#comment-65"><time datetime="2009-04-23T12:48:36+08:00">2009年04月23日 12:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Nice seeing it, but I hope the writer could share more of his opinions.</p>
+</div>
+ </article>
+</li>
+<li id="comment-7016" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.cn/?p=2497" class="url" rel="ugc">把Flash转成Javascript/HTML5 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-7029" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ooxxab.com/to-flash-conversion-javascripthtml5.html" class="url" rel="ugc external nofollow">把Flash转成Javascript/HTML5 | 创造</a> </div>
+</li>
+<li id="comment-7051" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zhuangheqing.72pines.com/2010/06/05/%e6%8a%8aflash%e8%bd%ac%e6%88%90javascripthtml5/" class="url" rel="ugc external nofollow">Hawking » 把Flash转成Javascript/HTML5</a> </div>
+</li>
+<li id="comment-7061" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.birduser.com/2010/06/07/1118/" class="url" rel="ugc external nofollow">Flash转成Javascript/HTML5的开源工具-SmokeScreen | 鸟人网</a> </div>
+</li>
+<li id="comment-11428" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.94pm.com/?p=204" class="url" rel="ugc external nofollow">泡面网 » Waterfall 软件工程</a> </div>
+</li>
+<li id="comment-1614114" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1614114" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b87dda426f9a5b7c3da2667ebe4fe59f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b87dda426f9a5b7c3da2667ebe4fe59f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">z_fox</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/599.html#comment-1614114"><time datetime="2014-11-26T09:24:03+08:00">2014年11月26日 09:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Google 2010年8月宣布放弃O3D插件，转投WebGL。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914046" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://johng.cn/20101222133836/" class="url" rel="ugc external nofollow">把Flash转成Javascript/HTML5 – John Guo – 一名技术人员的博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,990 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Eclipse开发Android应用程序入门:重装上阵 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4334 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4334" class="post-content post-4334 post type-post status-publish format-standard hentry category-javadev category-progdesign category-proglanguage tag-android tag-eclipse">
+<header class="entry-header">
+<span class="screen-reader-text">Eclipse开发Android应用程序入门:重装上阵</span>
+<h1 class="entry-title">Eclipse开发Android应用程序入门:重装上阵</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4334.html" title="08:30" rel="bookmark"><time class="entry-date" datetime="2011-04-08T08:30:09+08:00" pubdate="">2011年04月08日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4334.html#comments" class="comments-link">21 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 25,626 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>翻译:赵锟</strong><br/>
+原文：<a href="http://www.smashingmagazine.com/2011/03/28/get-started-developing-for-android-with-eclipse-reloaded/">http://www.smashingmagazine.com/2011/03/28/get-started-developing-for-android-with-eclipse-reloaded/</a></p>
+<p>在我们教程系列的<a href="/articles/4270.html">第一部分</a>中，我们使用Android和Eclipse开发了一个简单的饮茶计时器的应用程序。在第二部分，我们将继续开发这个程序，并给它增加一些其他的额外的功能。在开发的过程中，我们将给你介绍更多重要而强大的Android SDK特性，包括持久化数据存储，Activity和Intent，和共享用户首选项（译者注：类似于windows 的注册表的一种机制）。</p>
+<p>跟着本教程，你需要上一篇教程中的代码，如果你想直接使用代码，你可以使用如下的指令从<a href="https://github.com/cblunt/BrewClock">GitHub</a>上check out出tutorial_par_1标记的代码：</p>
+<p><img decoding="async" width="793" height="564" src="/uploads/2011/04/1_starting_point_full.jpg" alt="" title="1_starting_point_full" class="aligncenter size-full wp-image-4362" srcset="" sizes="(max-width: 793px) 100vw, 793px"/><br/>
+[code]<br/>
+$ git clone git://github.com/cblunt/BrewClock.git<br/>
+$ cd BrewClock<br/>
+$ git checkout tutorial_part_1<br/>
+[/code]</p>
+<p>在GitHub中检出了代码后，你需要将代码倒入到Eclipse中的项目中：</p>
+<ol>
+<li>运行 Eclipse 选择 <em>File → Import…</em></li>
+<li>在导入窗口, 选择 <em>“Existing Projects into Workspace”</em>并点击<em> “Next.”</em></li>
+<li>在下一屏，点击 <em>“Browse,”</em>选择你从GitHub上clone出的代码目录。</li>
+<li>点击“Finish” 将项目导入到Eclipse中。</li>
+</ol>
+<p><span id="more-4334"></span><br/>
+在导入项目到Eclipse之后，你有可能会看到有如下的警告信息：<br/>
+[code]<br/>
+Android required .class compatibility set to 5.0.<br/>
+Please fix project properties.<br/>
+[/code]<br/>
+如果有这种情况，右键点击“Project Explorer ”中新导入的BrewClock项目，并选择 “Fix Project Properties,” 并重启Eclipse。</p>
+<h3>数据持久化入门</h3>
+<p>当前,BrewClock 让用户为他们泡的茶设置一个定时器。这个非常棒的一个工作，但是如果对于不同的茶使用同一个泡茶时间的结果会怎样呢，是不每种茶都应该有自己的一个泡茶时间呢？如果这样，那岂不是所有的用户都需要记下每一类茶所需要泡的时间！这不是一个很好的用户体验。因此，在这篇教程中，我将新增一个功能来为用户每种不同的茶叶存放一个泡茶时间，并当用户想泡茶的时候，可以从茶叶列表中进行选择。</p>
+<p>为了实现这个目的，我们得利用Android的丰富的数据持久化的API。Android提供了几种方式来存储数据，本文将要覆盖其中的两种方式。第一种，使用SQLite数据库引擎来为我们存储数据。</p>
+<p>SQLite 是一种流行的轻量级SQL数据库引擎，它将数据存在单个文件中。SQLite经常用于桌面或在那些运行不能运行客户端-服务器SQL引擎（例如MySQL或PostgreSQL)的嵌入式的应用上。</p>
+<p>每个安装在Android上的应用都可以保存和使用多个SQLite数据库文件（由数据存储容量决定），这些数据由系统自动地进行管理。应用程序的数据是私有并且不能被其他的应用程序所访问。（数据可以通过ContentProvider(译者注：内容提供者类)类进行共享，但是我们不会在本教程中覆盖关于内容提供者的内容）。当数据应用程序被更新时，数据库文件就进行持久化，当应用程序被删除时，数据库文家就被删除。</p>
+<p>我们在BrewClock应用使用SQLite数据来维护我们的茶叶列表和泡茶所需要的时间。下面是我们我们将使用的数据表的一个总体介绍。</p>
+<p>[code]<br/>
++————————————-+<br/>
+| Table: teas |<br/>
++————+————————+<br/>
+| Column | Description |<br/>
++————+————————+<br/>
+| _ID | integer, autoincrement |<br/>
+| name | text, not null |<br/>
+| brew_time | integer, not null |<br/>
++————+————————+<br/>
+[/code]</p>
+<p>如果以前你使用过SQL，你应该熟悉这些内容。数据表有三个字段，一个唯一标示（_ID），茶叶名称(name)和泡茶时间(brew_time)字段。我们将使用Android提供给我们的API在应用中建立数据表。系统将负责在正确的位置为我们的创建数据库文件。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E6%8A%BD%E8%B1%A1%E6%95%B0%E6%8D%AE%E5%BA%93" title="抽象数据库">抽象数据库</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%9F%A5%E8%AF%A2%E6%95%B0%E6%8D%AE" title="查询数据">查询数据</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E4%BF%AE%E6%94%B9BrewClock%E7%94%A8%E6%88%B7%E7%95%8C%E9%9D%A2%EF%BC%8C%E5%85%81%E8%AE%B8%E8%BF%9B%E8%A1%8C%E8%8C%B6%E5%8F%B6%E9%80%89%E6%8B%A9" title="修改BrewClock用户界面，允许进行茶叶选择">修改BrewClock用户界面，允许进行茶叶选择</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%95%B0%E6%8D%AE%E7%BB%91%E5%AE%9A" title="数据绑定">数据绑定</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E8%AF%BB%E5%8F%96%E9%80%89%E4%B8%AD%E8%8C%B6%E5%8F%B6%E6%95%B0%E6%8D%AE%E5%B9%B6%E6%9B%B4%E6%96%B0%E6%B3%A1%E8%8C%B6%E6%97%B6%E9%97%B4" title="读取选中茶叶数据并更新泡茶时间">读取选中茶叶数据并更新泡茶时间</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E9%80%89%E9%A1%B9%E8%8F%9C%E5%8D%95" title="选项菜单">选项菜单</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%A4%84%E7%90%86%E8%8F%9C%E5%8D%95%E7%82%B9%E5%87%BB" title="处理菜单点击">处理菜单点击</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E4%BF%9D%E5%AD%98%E6%96%B0%E5%A2%9E%E8%8C%B6%E5%8F%B6" title="保存新增茶叶">保存新增茶叶</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E6%94%B9%E8%BF%9B%E7%94%A8%E6%88%B7%E4%BD%93%E9%AA%8C" title="改进用户体验">改进用户体验</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#Activities" title="Activities">Activities</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E6%8A%BD%E8%B1%A1%E6%95%B0%E6%8D%AE%E5%BA%93"></span>抽象数据库<span class="ez-toc-section-end"></span></h4>
+<p>为了确保数据库的代码容易被维护，我们用一个单独的类TeaData来抽象所有处理数据库创建，插入，和查询的代码。如果你熟悉模型-试图-控制(译者注：MVC)方法的话，这个你也应该熟悉。所有数据库代码与我们的BrewClockActitvity类隔离开来。Actitvity可以初始化一个新的TeaData实例（这个实例将连接数据库）并完成它所需要的工作。以这种方式工作保证了我们可以方便的更改我们所使用的数据库而不用修改其他那些和数据库不相关部分的代码。</p>
+<p>通过菜单File → New → Class.在BrewClock项目中创建一个TeaData的新类。确保TeaData扩展于android.database.sqlite.SQLiteOpenHelper 类，并选中“Constructors from superclass”复选框。<br/>
+<img decoding="async" src="/uploads/2011/04/2_create_teadata_class1.jpg" alt="" title="1_starting_point_full" class="aligncenter size-full wp-image-4362" srcset=""/></p>
+<p>TeaData 类将为你自动地处理SQLite数据库的创建和版本。我们需要增加一些方法来作为其他代码到数据库的接口。</p>
+<p>增加两个常量来存储数据库的名字和版本,增加表名和表中列名。我们使用Android提供的常类BaseColumns._ID来做为表的唯一id列：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/TeaData.java
+import android.app.Activity;
+import android.content.ContentValues;
+import android.content.Context;
+import android.database.Cursor;
+import android.database.DatabaseUtils;
+import android.provider.BaseColumns;
+
+public class TeaData extends SQLiteOpenHelper {
+  private static final String DATABASE_NAME = &#34;teas.db&#34;;
+  private static final int DATABASE_VERSION = 1;
+
+  public static final String TABLE_NAME = &#34;teas&#34;;
+
+  public static final String _ID = BaseColumns._ID;
+  public static final String NAME = &#34;name&#34;;
+  public static final String BREW_TIME = &#34;brew_time&#34;;
+
+  // …
+}
+</pre>
+<p>为TeaData增加一个构造方法，以数据库名称合版本号为参数调用其父类的构造方法。Android将会自动地打开数据库（如果数据库不存在就自动创建它）。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/TeaData.java
+public TeaData(Context context) {
+  super(context, DATABASE_NAME, null, DATABASE_VERSION);
+}
+</pre>
+<p>我们需要重载onCreate方法，并执行一个SQL 串执行创建数据库表的操作。Android将会在数据库文件第一次被创建时调用这个方法。</p>
+<p>在启动过程中，Android检查数据库的版本是否我们传入的版本一致。如果版本发生了改变，Android将会调用onUpgrade方法，在这个方法总，你可以编写修改数据库结构的业务逻辑。在本教程中，我们将让Android删除数据库并重建数据库。</p>
+<p>在onCreate和onUpgrade中增加如下的代码:</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/TeaData.java
+@Override
+public void onCreate(SQLiteDatabase db) {
+  // CREATE TABLE teas (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, brew_time INTEGER);
+  String sql =
+    &#34;CREATE TABLE &#34; + TABLE_NAME + &#34; (&#34;
+      + _ID + &#34; INTEGER PRIMARY KEY AUTOINCREMENT, &#34;
+      + NAME + &#34; TEXT NOT NULL, &#34;
+      + BREW_TIME + &#34; INTEGER&#34;
+      + &#34;);&#34;;
+
+  db.execSQL(sql);
+}
+
+@Override
+public void onUpgrade(SQLiteDatabase db, int oldVersion, int newVersion) {
+  db.execSQL(&#34;DROP TABLE IF EXISTS &#34; + TABLE_NAME);
+  onCreate(db);
+}
+
+</pre>
+<p>下一步，我们需要新增代码让我们方便地在数据库中新增茶叶记录。我们新增一个带茶叶名称和泡茶时间的方法来负责插入记录。Android为了尽量避免开发者使用SQL语句，提供了一堆类来处理向数据库中查入记录。首先，我们创建一个ContentValues集合，并将相关的值插入到这个集合中去。</p>
+<p>对于ContentValues集合，我们只要简单地提供一个列名和值来插入就行了。Android负责创建和运行正确的SQL。使用Android的数据类确保了你能写出安全，跨平台的数据库操作代码。</p>
+<p>Add a new method, insert(), to the TeaData class:</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/TeaData.java
+public void insert(String name, int brewTime) {
+  SQLiteDatabase db = getWritableDatabase();
+
+  ContentValues values = new ContentValues();
+  values.put(NAME, name);
+  values.put(BREW_TIME, brewTime);
+
+  db.insertOrThrow(TABLE_NAME, null, values);
+}
+
+</pre>
+<h4><span class="ez-toc-section" id="%E6%9F%A5%E8%AF%A2%E6%95%B0%E6%8D%AE"></span>查询数据<span class="ez-toc-section-end"></span></h4>
+<p>我们应用程序具有了在数据库中保存数据的能力后，我们同样也需要一种方式将数据取回来。Android提供了游标Cursor接口来完成这件工作。一个游标代表了针对数据库运行一个SQL返回的结果集，游标在这个结果集中维护了一个指针来指向结果集中的一行。这个指针可以向前，向后移动，并返回每一列的值，下面我们用图形来帮助你理解游标:</p>
+<p>SQL 查询: SELECT * from teas LIMIT 3;<br/>
+[code]<br/>
++———————————–+</p>
+<p>| _ID | name | brew_time |</p>
+<p>+———————————–+</p>
+<p>| 1 | Earl Grey | 3 |</p>
+<p>| 2 | Green | 1 | &lt;= Cursor</p>
+<p>| 3 | Assam | 5 |</p>
+<p>+——-+————-+————-+<br/>
+[/code]</p>
+<p>在这个例子中，游标指向了结果集中的第二条记录（绿茶）。我们可以通过调用cursor.moveToPrevious()方法，将游标向前移动，让它指向第一行（Earl Grey），或者调用moveToNext向前移动指向Assam。要取到游标所指向记录的茶叶的名称，我们只要调用cursor.getString(1)，1代表我们向提取数据列的下标（注意下标识从0开始的，1代表第二列，依次类推）。</p>
+<p>在了解游标后，我们增加一个创建游标对象并返回数据库中所有的茶叶信息。在TeaData中增加all方法：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/TeaData.java
+public Cursor all(Activity activity) {
+  String[] from = { _ID, NAME, BREW_TIME };
+  String order = NAME;
+
+  SQLiteDatabase db = getReadableDatabase();
+  Cursor cursor = db.query(TABLE_NAME, from, null, null, null, null, order);
+  activity.startManagingCursor(cursor);
+
+  return cursor;
+}
+</pre>
+<p>因为这个方法乍一看有点古怪，所以让我们先来关心一下这个方法的一些细节。我们没有使用SQL的查询语句，而是使用了Android提供的数据库接口方法。</p>
+<p>第一，我们需要告诉Android，我们所关心的列的信息。我们创建了一个字符串数组，数组中存放这TeaData中列的标示信息。我们还设置了我名们期望的结果集按照哪一个列进行排序的列名。</p>
+<p>第二，我们使用getReadalbeDatabase()创建了一个到数据库的只读连接，并调用query方法告诉Android我们希望用query方法运行一个查询。query()方法有很多的参数，Android在内部将这些参数转化为一个查询语句。此外，Android的抽象层保证了即使底层数据储存机制发生了变化，我们的应用程序代码也能正确的工作。</p>
+<p>由于我们只要返回表中的所有记录，所以我们没有在方法中使用到链接join，过滤filter和分组group（例如：在SQL中的WHERE，JOIN，和GROUP BY）。from和order变量告诉查询数据库需要返回那些列和提取数据时按什么列进行排序。我们使用SQLiteDatabase.query()作为和数据库的人机交互接口。</p>
+<p>最后，我们让Activity（在本例中，我们的BrewClockActivity）来管理游标。通常，游标需要人工刷新内容，因此当我们增加一个新茶信息到数据库中时，我们就需要刷新我们的游标。每当我们的应用被挂起和恢复的时候，通过调用startManagingCursor()让Android来帮我们重建结果集。</p>
+<p>在TeaData类中增加count方法:</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/TeaData.java
+  public long count() {
+    SQLiteDatabase db = getReadableDatabase();
+    return DatabaseUtils.queryNumEntries(db, TABLE_NAME);
+  }
+
+</pre>
+<p>保存TeaData类，使用修正没有import 的类(Source → Organize Imports)，在完成我们的数据类后，下一步我们将着手修改我们BrewClock的人机界面。</p>
+<h4><span class="ez-toc-section" id="%E4%BF%AE%E6%94%B9BrewClock%E7%94%A8%E6%88%B7%E7%95%8C%E9%9D%A2%EF%BC%8C%E5%85%81%E8%AE%B8%E8%BF%9B%E8%A1%8C%E8%8C%B6%E5%8F%B6%E9%80%89%E6%8B%A9"></span>修改BrewClock用户界面，允许进行茶叶选择<span class="ez-toc-section-end"></span></h4>
+<p>持久化茶和泡茶的时间的目的是让用能快速的选择他们所钟爱的预设置的茶。为了完成这个功能，我们需要再BrewClock的主界面上增加一个Spinner（类似于桌面上弹出菜单），生成一个来自于TeaData的茶列表。</p>
+<p>和前面的教程一样，我们使用了Eclipse的布局器编辑器在BrewClock的主界面布局XML文件中增加Spinner。在LinearLayout元素下面增加下面这些代码（大约在24行）。如果你打开了可视化的布局编辑器后，你可以点击窗口下面的地”Code View”进行切换。</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- /res/layout/main.xml --&gt;
+
+&lt;!-- Tea Selection --&gt;
+&lt;LinearLayout
+  android:orientation=&#34;vertical&#34;
+  android:layout_width=&#34;fill_parent&#34;
+  android:layout_height=&#34;wrap_content&#34;&gt;
+
+  &lt;Spinner
+    android:id=&#34;@+id/tea_spinner&#34;
+    android:layout_width=&#34;fill_parent&#34;
+    android:layout_height=&#34;wrap_content&#34; /&gt;
+
+&lt;/LinearLayout&gt;
+</pre>
+<p>在BrewClockActivity类里面,增加一个成员变量指向Spinner，通过使用findViewById连接界面上的控件：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+protected Spinner teaSpinner;
+protected TeaData teaData;
+
+// …
+
+public void onCreate(Bundle savedInstanceState) {
+  // …
+  teaData = new TeaData(this);
+  teaSpinner = (Spinner) findViewById(R.id.tea_spinner);
+}
+</pre>
+<p>运行你的程序以确保新的界面正确地生效。你应该在泡茶计数器下看见一个空白的弹出式菜单（或者是Spinner)。如果点击spinner，Android将显示一个弹出式的菜单并为你提供选择列表。在这时，菜单的内容因该是空的，现在让我们来绑定Spinner和我们的茶叶数据库。</p>
+<p><img decoding="async" loading="lazy" width="500" height="356" src="/uploads/2011/04/3_blank_spinner.jpg" alt="" title="3_blank_spinner" class="aligncenter size-full wp-image-4364" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<h4><span class="ez-toc-section" id="%E6%95%B0%E6%8D%AE%E7%BB%91%E5%AE%9A"></span>数据绑定<span class="ez-toc-section-end"></span></h4>
+<p>当Android从数据库中查询数据时，它将会返回一个游标Cursor对象。Cursor代表了来自数据库的结果集，并可以移动游标来提取结果中的数据。使用一类Android提供的称为“适配器Adapter”的类，我们很容易将这个结果集绑定到Spinner上。适配器完成了提取数据库结果集中的数据并在界面上显示这些数据等这些复杂而困难工作。</p>
+<p>在我们的TeaData.all()方法中已经可以返回一个带有tea表内容的游标，使用这个游标，我们所需要做的工作就是创建一个SimpleCursor适配器来绑定我们的teaSpinner，Android会负责处理将数据显示在spinner的列表中。</p>
+<p>通过创建一个SimpleCursorAdapter类来连接Spinner与teaData.all()返回的游标：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// com/example/brewclock/BrewClockActivity.java
+
+public void onCreate(Bundle savedInstanceState) {
+  // …
+  Cursor cursor = teaData.all(this);
+
+  SimpleCursorAdapter teaCursorAdapter = new SimpleCursorAdapter(
+    this,
+    android.R.layout.simple_spinner_item,
+    cursor,
+    new String[] { TeaData.NAME },
+    new int[] { android.R.id.text1 }
+  );
+
+  teaSpinner.setAdapter(teaCursorAdapter);
+  teaCursorAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+}
+
+</pre>
+<p>注意，我们使用了Android内建的android.R对象。这个对象提供了你的应用程序中的默认资源，例如视图和布局。在我们的代码中，我们使用了android.R.layout.simple_spinner_item，它是简单的文本标签布局。</p>
+<p>如果你再次运行的应用程序，你将会看到spinner中仍然是空的！虽然我们已经连接了我们的数据库，但是由于数据库中没有任何记录，所以我们任何看到了空列表。</p>
+<p>我们通过在构造方法中增加一些默认记录来让用户可以选择所需要的茶叶，为了避免重复记录，我们只有在数据库中记录为0的情况才增加默认记录。在本教程的代码中，我们使用前面增加的count()来检查数据库中表记录是否为空。</p>
+<p>增加当数据库中表为空的默认记录代码。把这些代码增加从数据库提取茶叶数据的前面（译者注：上一段的代码前）。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// com/example/brewclock/BrewClockActivity.java
+public void onCreate(Bundle savedInstanceState) {
+  // …
+
+  // Add some default tea data! (Adjust to your preference :)
+  if(teaData.count() == 0) {
+    teaData.insert(&#34;Earl Grey&#34;, 3);
+    teaData.insert(&#34;Assam&#34;, 3);
+    teaData.insert(&#34;Jasmine Green&#34;, 1);
+    teaData.insert(&#34;Darjeeling&#34;, 2);
+  }
+
+  // Code from the previous step:
+  Cursor cursor = teaData.all(this);
+
+  // …
+}
+
+</pre>
+<p>现在再次运行你的应用程序。你将会发现茶叶Spinner有了一条选择。点击Spinner让你可以从数据库选择你要的茶叶。</p>
+<p><img decoding="async" loading="lazy" src="/uploads/2011/04/4_populated_spinner.jpg" alt="" title="4_populated_spinner" width="500" height="356" class="aligncenter size-full wp-image-4365" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>恭喜你！你已经成功关联了你的界面和代码。这是任何软件开发过程中一个非常重要的方面。正如你所看见的，Android将这一步简化的非常容易，但是功能有是非常的NB。使用游标和适配器，你可以将数据源（丛简单的字符串数组到复杂的数据库查询）绑定到任何类型的视图：spinner或列表，设置是类似iTunes cover-flow gallery!</p>
+<p>虽然现在已经可以开始泡茶了，但是我们工作还远没有结束。当你从Spinner选择了不同的茶，这个选择却不会发生任何作用。我们需要根据用户所选茶叶的种类取更新我们的泡茶时间。</p>
+<h4><span class="ez-toc-section" id="%E8%AF%BB%E5%8F%96%E9%80%89%E4%B8%AD%E8%8C%B6%E5%8F%B6%E6%95%B0%E6%8D%AE%E5%B9%B6%E6%9B%B4%E6%96%B0%E6%B3%A1%E8%8C%B6%E6%97%B6%E9%97%B4"></span>读取选中茶叶数据并更新泡茶时间<span class="ez-toc-section-end"></span></h4>
+<p>为了能读取用户从数据库中选择茶叶的数据，我们必须增加一个针对此事件的监听器。类似于处理按钮点击事件的OnClickListener监听器一样，我们将实现一个OnItemSelectedListener。当用户从视图中做出一个选择的事件将触发这个监听器，例如从我们的Spinner。</p>
+<p>在BrewClockActivity中增加需要实现的接口OnItemSelectedListener。并增加其响应的处理方法onItemSelected()和onNothingSelected()：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+public class BrewClockActivity extends Activity implements OnClickListener, OnItemSelectedListener {
+  // …
+  public void onItemSelected(AdapterView&lt;?&gt; spinner, View view, int position, long id) {
+    if(spinner == teaSpinner) {
+      // Update the brew time with the selected tea’s brewtime
+      Cursor cursor = (Cursor) spinner.getSelectedItem();
+      setBrewTime(cursor.getInt(2));
+    }
+  }
+
+  public void onNothingSelected(AdapterView&lt;?&gt; adapterView) {
+    // Do nothing
+  }
+}
+
+</pre>
+<p>在这里我们要检查是触发的spinner此事件是不是BrewClock的teaSpinner。如果是，我们将提取代表选中记录的游标对象。这些都是由关联teaData和Spinner的SimpleCursorAdapter来提供我们完成的。Android知道哪个查询产生的Spinner数据，也知道用户选择的哪个数据。Android使用游标来返回数据库的一行记录，也代表了用户所选择的茶叶数据。</p>
+<p>Cursor的getInt()方法带了一个我们想提取的列的下标为参数。在我们的teaData.all()方法中创建游标的时候，我们读取的列是_ID,NAME和BREW_TIME。假设我们在teaSpinner中选择的是Jasmine Tea，那么将返回我们所选数据所对应的数据库记录。</p>
+<p>然后我们再通过传递参数2来选择此记录的第二列的整型值。这个值提供给setBrewTime()方法。这个方法用于更新界面上的泡茶时间。</p>
+<p>最后，我们需要告诉teaSpinner BrewClockActivity正在监听OnItemSelected事件。在BrewClockActivity的onCreate方法中增加下面的代码：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+public void onCreate() {
+  // …
+  teaSpinner.setOnItemSelectedListener(this);
+}
+</pre>
+<p>大功告成！再次运行你的程序，并从Spinner选择不同的茶叶。每次你所选的茶叶它所对应的泡茶时间都回显示对应的界面上。我们余下的代码中已经可以处理从当前时间开始递减计数。所以在有预先设置的茶叶种类下，我们已经可以完成我们所想要的功能。</p>
+<p>你当然可以，回到之前的代码中去增加一些茶叶种类你满足你的口味。但是如果你发布BrewClock程序到Android Market，每当有人向增加新的茶叶数据到数据库中，我就需要去手动的取更新数据中的内容并重新发布它；这样所有的人就必须去更新它，并且所有的人都有一个同样的列表。这听起来非常的不灵活，因此我们还有很多的工作需要完成！</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/5_default_teas.jpg" alt="" title="3_blank_spinner" class="aligncenter size-full wp-image-4364"/></p>
+<p>如果用户自己有方法新增茶叶种类到数据库里面，将会非常的不错的做法。因此我们将在下一章继续。。。</p>
+<h3>Activity 介绍</h3>
+<p>和你应用程序中每个屏幕关联的代码就是Activity。每次当你从一屏切换到另外一屏，Android就会创建一个新的Activity。在真实世界中，虽然一个应用程序经常由多个屏幕/Activity构成，Andriod却将每个屏幕看作独立的个体。多个Activity工作在一起形成一种关联的体验，这是因为Android让你非常容易地在屏幕/Activity之间传递数据。</p>
+<p>在本节最后，你将为你的应用程序新增一个新的Activity（AddTeaActivity）并将它注册到Android系统中。你还需要从最初的BrewClockActivity传递数据到新的Activity中。</p>
+<p>首先，我们需要给用户一种方式切换到新的Activity上。我们将使用选项菜单来完成之一步。</p>
+<h4><span class="ez-toc-section" id="%E9%80%89%E9%A1%B9%E8%8F%9C%E5%8D%95"></span>选项菜单<span class="ez-toc-section-end"></span></h4>
+<p>当用户他们的设备上的“Menu”按键时，选项菜单以弹出菜单的形式出现。Android负责菜单的自动创建和显示；你只需要告诉Android，菜单显示什么内容和当用户点击菜单时该做什么就行。</p>
+<p>然而,最好不要在代码中硬编码菜单的标题，我们可以使用Android的字符串资源。字符串资源是一个独立的文件，在这个文件中你可以维护所有用于用户阅读的字符串和标签资源，并可以在代码调用它们。这就意味着当你在未来需要修改字符串时，你只要修改这一处地方即可。.</p>
+<p>在project explorer中导航到“res/values”下，你将会看到string.xml文件已经存在。这个是你再创建新项目的时候由Eclipse创建的，这文件存放着在整个应用程序我们将要使用的字符串。</p>
+<p>双击打开<em>strings.xml</em> ,通过窗口底部的选项页切换到XML 视图。</p>
+<p>在&lt;resources&gt;…&lt;/resources&gt; 元素中增加下面的内容:</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">
+
+&lt;!-- res/values/strings.xml --&gt;
+  &lt;resources&gt;
+    &lt;!-- … --&gt;
+    &lt;string name=&#34;add_tea_label&#34;&gt;Add Tea&lt;/string&gt;
+  &lt;/resources&gt;
+
+
+</pre>
+<p>我们在这里定义了一个字符串，add_tea_label和它关联的文本，我们可以在整个程序代码中通过add_tea_label来使用其关联的文本。如果标签因为某个原因需要修改，我们只需要在这个文件修改这一个地方就能完成整个程序的修改。</p>
+<p>下一步，让我们创建一个新文件完成选项菜单的定义，如果字符串和布局一样，菜单也使用XML来定义。因此我们将在Eclipse中川建一个新的XML文件：</p>
+<p>通过选择File → New → Other, 并选择“Android XML File.”在Eclipse中创建一个新的XML文件。</p>
+<p>选择资源的类型为 “Menu”，保存文件名为main.xml。Eclipse将为你自动的创建一个目录<em>res/menu</em>, 来存放你的菜单文件。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/7_new_menu_xml.jpg"/></p>
+<p>打开<em>res/menus/main.xml</em> 文件, 通过窗口底部的“main.xml”选项页来切换到XML视图。</p>
+<p>增加菜单项， add_tea。</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- res/values/strings.xml --&gt;
+  &lt;resources&gt;
+    &lt;!-- … --&gt;
+    &lt;string name=&#34;add_tea_label&#34;&gt;Add Tea&lt;/string&gt;
+  &lt;/resources&gt;
+</pre>
+<p>注意android:title 属性被设置为@string/add_tea_label。这告诉Android在我们的strings.xml文件中查找add_tea_label并返回相关联的标签内容。在本列中我们的菜单项的标签时“Add Tea”。</p>
+<p>下一步，我们将告诉我们的Activity，当用户点击设备上的“memu”按键时来显示这个选项菜单。</p>
+<p>返回<em>BrewClockActivity.java</em>代码, 重载onCreateOptionsMenu 方法,这个方法告诉Android 当用户点击“Menu”按键时，装载我们的菜单：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {
+  MenuInflater inflater = getMenuInflater();
+  inflater.inflate(R.menu.main, menu);
+
+  return true;
+}
+
+</pre>
+<p>当用户点击他设备上的“Menu”按键时，Android将调用onCreateOptionsMenu。在这个方法中，我们创建了一个MenuInflater, 这个对象将从你的应用程序包中装载你的菜单资源。就如同按钮和文本域组成你的应用程序布局一样，main.xml资源也是通过全局对象R来生效的，因此我们将此对象提交给MenuInflater对象。</p>
+<p>为了测试菜单，保存并在模拟器中并运行应用程序。当程序运行起来使，点击“Menu”按键，你将会看到一个弹出式的菜单显示了一个“Add Tea”选项。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/8_add_teas_options_menu.jpg"/></p>
+<p>如果你点击“Add Tea”选项，Android自动地检测到点击并关闭菜单。在后台，Android将会提醒应用程序选项已经被点击。</p>
+<h4><span class="ez-toc-section" id="%E5%A4%84%E7%90%86%E8%8F%9C%E5%8D%95%E7%82%B9%E5%87%BB"></span>处理菜单点击<span class="ez-toc-section-end"></span></h4>
+<p>当用户点击 “Add Tea” 菜单选项，我们想要显示一个新的Activity以便我们能进入增加新茶叶种类的界面。通过选择File → New → Class来创建一个的Activiy。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/9_new_activity_settings.jpg"/></p>
+<p>将新类命名为 AddTeaActivity,并确保它继承于android.app.Activity类。这个类也放在com.example.brewclock包中:</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+package com.example.brewclock;
+
+import android.app.Activity;
+import android.os.Bundle;
+
+public class AddTeaActivity extends Activity {
+  @Override
+  public void onCreate(Bundle savedInstanceState) {
+    super.onCreate(savedInstanceState);
+  }
+}
+
+</pre>
+<p>上面样例中的空白Activity将不会完成任何工作。但是通过它，我们已经可以完成选项菜单的功能。</p>
+<p>在BrewClockActivity增加一个重载方法onOptionsItemSelected 。当用户点击菜单项时，这个方法被Android调用。 (注意点击的MenuItem为它的接收参数：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+@Override
+public boolean onOptionsItemSelected(MenuItem item) {
+  switch(item.getItemId()) {
+    case R.id.add_tea:
+      Intent intent = new Intent(this, AddTeaActivity.class);
+      startActivity(intent);
+      return true;
+
+    default:
+      return super.onOptionsItemSelected(item);
+  }
+}
+
+
+</pre>
+<p>通过上面的代码，我们告诉Android，当“Add Tea”被点击的时候，我们将要创建一个的Activity；在本教程中，就是AddTeaActivity。然而，不要直接创建这个类的实例，注意我们使用了Intent。Intent有着Android框架的强大特性；他们将Activity绑定在一起来组成应用程序，并允许在他们之间相互传递数据。</p>
+<p>Intent的优点甚至让你的应用程序可以使用用户安装的其他的应用程序。例如，当用户要从图库里面显示一张图片，Android自动地给显一个对话框来让用户选择应用程序来显示图片。任何注册为可以处理图片显示的应用程序都会出现在这个对话框的列表中。</p>
+<p>Intent功能强大而复杂的主体, 因此它值得你从官方的文档<a href="https://developer.android.com/guide/topics/intents/intents-filters.html">official Android SDK documentation</a>中仔细研究。</p>
+<p>让我们运行我们的应用程序，以测试我们的“Add Tea”屏幕。</p>
+<p>运行你的项目，按下Menu按键，并点击 “Add Tea.”。</p>
+<p>不如你预期的，你并没有看到 “Add Tea” Activity，出现在你面前的是一个Android开发者经常看到的对话框：</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/10_crash.jpg"/></p>
+<p>虽然我们创建了一个Intent并告诉Android启动我们的AddTeaActivity Activity, 由于我们没有将这个Activity注册到Android系统中，我们的应用程序最终还是crash掉了。系统不知道从哪里去找到我们试图运行的Activity（应该还记得Intent可以启动安装在设备上的任何Activity吧）。让我们在应用程序的mainfest文件来注册这些Acitivity。</p>
+<p>打开应用的manifest文件，在Eclipse中的AndroidManifest.xml。通过窗口底部的“AndroidManifest.xml”选项页切换到xml视图</p>
+<p>应用程序的mainfest文件是保存你应用程序全局设置和信息的地方。你将会看见里面已经有一个.BrewClockActivity 的Activity声明，并且这个Activity在程序运行的时候启动。</p>
+<p>在&lt;application&gt;中, 增加一个 &lt;activity&gt; 节点，描述为“Add Tea”的 Activity. 使用我们早先在strings.xml声明的 add_tea_label字符串作为这个Activity的标题：</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- AndroidManifest.xml --&gt;
+&lt;application …&gt;
+  …
+  &lt;activity android:name=&#34;.AddTeaActivity&#34; android:label=&#34;@string/add_tea_label&#34; /&gt;
+&lt;/application&gt;
+</pre>
+<p>在你再次运行BrewClock保存这个manifest文件。这一次，当你打开菜单并点击“Add Tea,”时Android将会启动AddTeaActivity。按下back按键返回主屏幕。</p>
+<p>完成了Activity的关联，下一步我们将要开发一个增加新茶的界面！</p>
+<h3>开发茶叶编辑器界面</h3>
+<p>开发一个增加茶叶界面和上一个教程中开发的BrewClock主界面是非常相似的。首先要创建一个布局文件，然后在按照下面的讲解添加适合的XML内容。</p>
+<p>和主界面开发所有不同的是，你可以使用Android最近改进的Eclipse布局编辑器来开界面。创建一个新的XML文件来定义你的布局。从菜单File → New然后选择 “Android XML File,” 选择 “Layout”类型。并将文件命令为<em>add_tea.xml</em>。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/11_new_layout_xml.jpg"/></p>
+<p>用下面的布局内容替换<em>add_tea.xml</em> 文件的内容：</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- res/layouts/add_tea.xml --&gt;
+&lt;?xml version=&#34;1.0&#34; encoding=&#34;utf-8&#34;?&gt;
+&lt;LinearLayout
+  xmlns:android=&#34;http://schemas.android.com/apk/res/android&#34;
+  android:layout_width=&#34;fill_parent&#34;
+  android:layout_height=&#34;fill_parent&#34;
+  android:orientation=&#34;vertical&#34;
+  android:padding=&#34;10dip&#34;&gt;
+
+  &lt;TextView
+    android:text=&#34;@string/tea_name_label&#34;
+    android:layout_width=&#34;fill_parent&#34;
+    android:layout_height=&#34;wrap_content&#34; /&gt;
+
+  &lt;EditText
+    android:id=&#34;@+id/tea_name&#34;
+    android:layout_width=&#34;fill_parent&#34;
+    android:layout_height=&#34;wrap_content&#34;/&gt;
+
+  &lt;TextView
+    android:text=&#34;@string/brew_time_label&#34;
+    android:layout_width=&#34;wrap_content&#34;
+    android:layout_height=&#34;wrap_content&#34;/&gt;
+
+  &lt;SeekBar
+    android:id=&#34;@+id/brew_time_seekbar&#34;
+    android:layout_width=&#34;fill_parent&#34;
+    android:layout_height=&#34;wrap_content&#34;
+    android:progress=&#34;2&#34;
+    android:max=&#34;9&#34; /&gt;
+
+  &lt;TextView
+    android:id=&#34;@+id/brew_time_value&#34;
+    android:text=&#34;3 m&#34;
+    android:textSize=&#34;20dip&#34;
+    android:layout_width=&#34;fill_parent&#34;
+    android:layout_height=&#34;wrap_content&#34;
+    android:gravity=&#34;center_horizontal&#34; /&gt;
+&lt;/LinearLayout&gt;
+
+</pre>
+<p>为了这个界面上使用的字符串，我们同样也需要在<em>strings.xml</em> 中增加一些新的内容：</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- res/values/strings.xml --&gt;
+&lt;resources&gt;
+  &lt;!-- … --&gt;
+  &lt;string name=&#34;tea_name_label&#34;&gt;Tea Name&lt;/string&gt;
+
+  &lt;string name=&#34;brew_time_label&#34;&gt;Brew Time&lt;/string&gt;
+&lt;/resources&gt;
+
+</pre>
+<p>在这个布局中，我们加了一个新的界面控件类型，SeekBar。这个控件可以让用户通过从左向右拖拉一个指示器thumb，非常容易的指定泡茶时间。这个值得范围从0到android:max。</p>
+<p>在这个界面中，我们使用刻度是0到9，意思是从1分钟到10分钟（泡0分钟茶等于是浪费好茶）。第一，我们需要确保AddTeaActivity能正确地加载我们的界面:</p>
+<p>在Activity的onCreate()方法中增加下面的代码用于加载和显示add_tea布局文件：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+public void onCreate(Bundle savedInstanceState) {
+  super.onCreate(savedInstanceState);
+  setContentView(R.layout.add_tea);
+}
+
+</pre>
+<p>现在通过运行项目来测试你的应用程序，按下“Menu”按键，并点击“Add Tea”菜单。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/12_add_tea_interface.jpg"/></p>
+<p>你将从“Add Tea”屏幕上看到你的新界面。你可以在文本域中输入文字和从左到右拖动SeekBar。但是由于我们没有增加相关代码，这个界面并没有实现什么具体的功能。</p>
+<p>在AddTeaActivity中增加下面这些属性，并关联到我们界面上元素：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+public class AddTeaActivity {
+  // …
+
+  /** Properties **/
+  protected EditText teaName;
+  protected SeekBar brewTimeSeekBar;
+  protected TextView brewTimeLabel;
+
+  // …
+
+</pre>
+<p>下一步,关联属性和你的界面：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public void onCreate(Bundle savedInstanceState) {
+  // …
+  // Connect interface elements to properties
+  teaName = (EditText) findViewById(R.id.tea_name);
+  brewTimeSeekBar = (SeekBar) findViewById(R.id.brew_time_seekbar);
+  brewTimeLabel = (TextView) findViewById(R.id.brew_time_value);
+}
+
+</pre>
+<p>界面非常的简单，我们只要增加相应SeekBar 改变事件的监听器。当用户从左到右移动SeekBar指示器时，我们的应用程序需要读出新值并更新SeekBar之下泡茶时间标签的内容。我们将使用一个监听器来检测SeekBar何时改变的：</p>
+<p>在AddTeaActivity类声明中增加实现 onSeekBarChangedListener接口，并添加所必要的方法：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+public class AddTeaActivity
+extends Activity
+implements OnSeekBarChangeListener {
+  // …
+
+  public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+    // TODO Detect change in progress
+  }
+
+  public void onStartTrackingTouch(SeekBar seekBar) {}
+
+  public void onStopTrackingTouch(SeekBar seekBar) {}
+}
+
+</pre>
+<p>我们唯一感兴趣的事件时onProgressChanged，因此我们需要在这个方法内增加代码更新泡茶时间标签的内容为SeekBar选中的值。之前我们说过SeekBar的刻度是0到9，因此我们需要将SeekBar的加1的值来显示给用户才有意义。</p>
+<p>在<em>AddTeaActivity.java</em>代码中增加如下的onProgressChanged()代码：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
+  if(seekBar == brewTimeSeekBar) {
+    // Update the brew time label with the chosen value.
+    brewTimeLabel.setText((progress + 1) + &#34; m&#34;);
+  }
+}
+
+</pre>
+<p>在AddTeaActivity的onCreate方法中设置监听器：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+public void onCreate(Bundle savedInstanceState) {
+  // …
+
+  // Setup Listeners
+  brewTimeSeekBar.setOnSeekBarChangeListener(this);
+}
+
+</pre>
+<p>现在运行你的程序，并拖动SeekBar,泡茶时间标签的内容将会同步更新为正确地值：</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/13_seekbar.jpg"/></p>
+<h4><span class="ez-toc-section" id="%E4%BF%9D%E5%AD%98%E6%96%B0%E5%A2%9E%E8%8C%B6%E5%8F%B6"></span>保存新增茶叶<span class="ez-toc-section-end"></span></h4>
+<p>完成了增加茶叶界面之后,剩下的工作就是让用户可以将他们新增的茶叶保存到数据库中.我们将会对界面上输入数据增加一点校验,以避免茶叶名为空的数据被保存到数据库中！</p>
+<p>在编辑器中打开<em>strings.xml</em> 增加一些我们在应用程序将要使用到的新标签。</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- res/values/strings.xml --&gt;
+&lt;string name=&#34;save_tea_label&#34;&gt;Save Tea&lt;/string&gt;
+&lt;string name=&#34;invalid_tea_title&#34;&gt;Tea could not be saved.&lt;/string&gt;
+
+&lt;string name=&#34;invalid_tea_no_name&#34;&gt;Enter a name for your tea.&lt;/string&gt;
+
+
+</pre>
+<p>如同前面的那样，我们需要为AddTeaActivity创建一个新的选项菜单来让用户可以执行保存茶叶的指令：</p>
+<p>在<em>res/menus</em> 目录，通过选择File → New 并选 Other → Android XML 文件来创建一个新的 <em>add_tea.xml</em> XML文件, 记住资源类型为“Menu”。</p>
+<p>增加保存茶叶的菜单项：</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">
+
+&lt;!-- res/menus/add_tea.xml --&gt;
+&lt;?xml version=&#34;1.0&#34; encoding=&#34;utf-8&#34;?&gt;
+&lt;menu xmlns:android=&#34;http://schemas.android.com/apk/res/android&#34;&gt;
+  &lt;item android:title=&#34;@string/save_tea_label&#34; android:id=&#34;@+id/save_tea&#34; /&gt;
+&lt;/menu&gt;
+
+
+</pre>
+<p>返回 AddTeaActivity 代码中,类似你在BrewClockActivity中一样，增加重载方法onCreateOptionsMenu 和onOptionsItemSelected。唯一的区别是这次你提供的MenuInflater的资源文件名是<em>add_tea.xml</em> ：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+@Override
+public boolean onCreateOptionsMenu(Menu menu) {
+  MenuInflater inflater = getMenuInflater();
+  inflater.inflate(R.menu.add_tea, menu);
+
+  return true;
+}
+
+@Override
+public boolean onOptionsItemSelected(MenuItem item) {
+  switch(item.getItemId()) {
+    case R.id.save_tea:
+      saveTea();
+
+    default:
+      return super.onOptionsItemSelected(item);
+  }
+}
+
+</pre>
+<p>下一步, 增加新方法, saveTea(), 来保存茶叶信息。saveTea 首先从界面上读取茶叶的名称和用户所选的泡茶时间，如果这些输入数据都能通过验证，就将这些数据保存到数据库中：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+public boolean saveTea() {
+  // Read values from the interface
+  String teaNameText = teaName.getText().toString();
+  int brewTimeValue = brewTimeSeekBar.getProgress() + 1;
+
+  // Validate a name has been entered for the tea
+  if(teaNameText.length() &lt; 2) {
+    AlertDialog.Builder dialog = new AlertDialog.Builder(this);
+    dialog.setTitle(R.string.invalid_tea_title);
+    dialog.setMessage(R.string.invalid_tea_no_name);
+    dialog.show();
+
+    return false;
+  }
+
+  // The tea is valid, so connect to the tea database and insert the tea
+  TeaData teaData = new TeaData(this);
+  teaData.insert(teaNameText, brewTimeValue);
+  teaData.close();
+
+  return true;
+}
+
+
+</pre>
+<p>大段的代码，让我们过一遍这段代码的逻辑。</p>
+<p>首先，我们从文本框中读取茶叶名称，从SeekBar读取泡茶时间（记着读的时间要加1以保证时间在1到10分钟之内）。下一步，我们验证茶叶名大于等于2个字符（这是非常简单的验证，如果想做更复杂的验证，那么就使用正则表达式吧）。</p>
+<p>如果茶叶名称非法，我们需要让用户知道。我们使用Android提供的工具类，AlertDialog.Biulder类，这个类给我们提供了一个快捷创建和显示模态窗口的方法。在设置完标题和错误信息后，通过调用show方法来显示对话框。这个对话框是模态的modal，因此用户只有按下back按键，这个对话框才会关闭。在这时，我们不想保存任何数据，所以我们的方法返回了false。</p>
+<p>如果茶名称合法，我们通过TeaData类创建一个到茶叶数据库的临时连接。这里又一次的显示出把数据库访问抽象成一个独立文件的好处：你可以从任何地方完成对数据库（译者注：其实应该是对TeaData 类）的访问。</p>
+<p>当调用完teaData.insert() 来增加记录到数据库后，我们不再需要数据库连接，因此在我们返回成功前，我们关闭了连接。</p>
+<p>在模拟器中运行你的程序，按下“Menu”按键，点击屏幕上的“Add Tea”。试图通过在此按下“Menu”和点击屏幕的 “Save Tea.”来保存空茶叶名的茶叶数据。由于是没有茶叶名，一条错误消息将出现在你的面前：</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/14_invalid_tea.jpg"/></p>
+<p>下一步，试着键入你的茶叶名，并选择合适的泡茶时间，再次从菜单选择 “Save Tea” 。这一次，你将不在看到错误的消息。事实上，你什么都看消息不到。</p>
+<h4><span class="ez-toc-section" id="%E6%94%B9%E8%BF%9B%E7%94%A8%E6%88%B7%E4%BD%93%E9%AA%8C"></span>改进用户体验<span class="ez-toc-section-end"></span></h4>
+<p>这样做不是一个很好的用户体验，用户不能知道他的茶叶是否已经成功地保存了。事实上，用户只有从“Add Tea”界面返回，去茶叶列表中查看这一个办法来检查他的是否成功的被保存。这样的做法不好，让用户知道他们的茶叶数据被成功地保存会是更好的一种方式。在茶叶数据被成功保存后，让我们在屏幕上显示一条成功信息。</p>
+<p>我们要一条被动的非模态化的信息，因此AlertDialog这次就不能满足我们的需求了。下面我们将要使用另外一个Android的非常流行的特性，Toast。</p>
+<p>Toast 在接近屏幕的下方显示一条消息，但是并不会终止用户的操作。Toast经常用于做非重要的的提醒和状态更新。.</p>
+<p>在<em>strings.xml</em> 资源文件中新增一个字符串。注意字符串中的%s。我们在下一步中将保存的茶叶名字结合到这个字符串来显示信息。</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;!-- res/values/strings.xml --&gt;
+&lt;string name=&#34;save_tea_success&#34;&gt;%s tea has been saved.&lt;/string&gt;
+</pre>
+<p>注意，在onOptionsItemSelected 代码中进行修改，当saveTea返回真时，创建并显示一条弹出式的Toast。第二参数getString()用来连接茶叶名称到Toast信息中。最后，我们需要将茶叶名称清楚，以便用户可以快速增加更多的新茶。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/AddTeaActivity.java
+// …
+switch(item.getItemId()) {
+ case R.id.save_tea:
+   if(saveTea()) {
+     Toast.makeText(this, getString(R.string.save_tea_success, teaName.getText().toString()), Toast.LENGTH_SHORT).show();
+     teaName.setText(&#34;&#34;);
+   }
+// …
+</pre>
+<p>现在，重新运行应用程序，并增加和保存一些新茶叶。你将会看到弹出式的Toast并让你知道你的茶叶信息已经被保存成功。getString()方法用于连接存在XML文件中的String和茶叶名称，并将%s替换成茶叶的名称。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/16_valid_save.jpg"/></p>
+<p>按下“Back”按键，返回应用程序的主屏幕，点击茶叶spinner。你新增的在数据库中的茶叶已近可以显示在spinner的选项中！</p>
+<h3>用户首选项</h3>
+<p>现在BrewClock已经完成了所有的功能。用户可以增加他们喜爱的茶叶和各自不同的泡茶时间到数据库中，并且他们可以快速的从选择他们并开始泡上一杯新茶。任何新增的茶叶信息都被保存在数据库中，因此，即使你退出你的程序，这些茶叶信息在你下次启动程序时仍然可以从spinner列表中找到。</p>
+<p>当你重启BrewClock的时候，有一件事你必须注意，就是泡茶计数被清为了0。这使得跟踪我们每天喝了多少茶（一条重要的数据）变得困难。作为最后一个练习，让我们将泡茶计数保存在我们设备上。</p>
+<p>我们将不通过增加茶叶数据库的表来完成这个功能，我们将使用Android的“共享首选项Shared Preferences”，一个Android提供给你应用程序用于存储简单数据的数据库（字符串，数字，等等）。例如，优秀的最高分和用户首选项等（译者注：非常类似Windows下的注册表）。</p>
+<p>我们首先在<em>BrewClockActivity.java</em> 中增加一堆常量。这些常量用于存放你的共享首选项的名称。我们将使用键的名称来访问泡茶计数。Android负责保存和持久化我们的共享首选项文件。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">
+
+// src/com/example/brewclock/BrewClockActivity.java
+
+protected static final String SHARED_PREFS_NAME = &#34;brew_count_preferences&#34;;
+
+protected static final String BREW_COUNT_SHARED_PREF = &#34;brew_count&#34;;
+
+</pre>
+<p>下一步，为了我们能在用户首选项中读写泡茶计数，而不是直接的依赖于代码中的初始值，我们将在代码中做一些修改。在BrewClockActivity 的 onCreate 方法中我们将就该setBrewCount附件的代码：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+public void onCreate() {
+  // … 
+
+  // Set the initial brew values
+  SharedPreferences sharedPreferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+  brewCount = sharedPreferences.getInt(BREW_COUNT_SHARED_PREF, 0);
+  setBrewCount(brewCount);
+
+  // …
+}
+
+</pre>
+<p>这里我们将以使用SharedPreference来获取应用程序的共享首选项的实例，并希望得到brew_count键值的值（通过我们之前定义的BREW_COUNT_SHARED_PREF常量来标示）。如果值能获取，这个值将返回给应用程序，如果没有我们使用getInt的第二参数作为默认值返回（在教程中为0）。</p>
+<p>现在我们取得存储的泡茶计数值，我们需要确保每当泡茶计数更新的时候，这个值能写回到共享首选项中。</p>
+<p>BrewClockActivity的setBrewCount中增加下面的代码：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// src/com/example/brewclock/BrewClockActivity.java
+ public void setBrewCount(int count) {
+   brewCount = count;
+   brewCountLabel.setText(String.valueOf(brewCount));
+
+   // Update the brewCount and write the value to the shared preferences.
+   SharedPreferences.Editor editor = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).edit();
+   editor.putInt(BREW_COUNT_SHARED_PREF, brewCount);
+   editor.commit();
+ }
+
+
+</pre>
+<p>共享首选项不能直接地保存。我们需要使用Android的SharedPreferences.Editor类。调用SharedPreferences的edit方法，返回一个editor实例，这个实例用来保存我们的首选项值。我们只要调用editor实例的commit方法就可以将值保存到共享首选项中。</p>
+<p>我们应用程序的所有代码都已完成，现在让我们测试一下我们的程序！</p>
+<p>在模拟器中运行应用程序，定一个泡茶时间（这真是一个良好的借口去泡一杯你自己爱喝的茶哦）并退出应用程序，试着运行模拟器上的安装的其他应用程序确保BrewClock被终止。记住，除非这个应用程序已经不在内存中，否则Android不会终止一个Activity。</p>
+<p>当你下一次运行你的应用程序时，你将看见之前的泡茶计数已经被维护了。</p>
+<h3>总结</h3>
+<p>恭喜!你已经完成了这个应用的程序的所有开发工作,并使用了Android　SDK中的数个核心组件。在本教程中，你从中学到了：</p>
+<ul>
+<li>创建一个简单的SQLite数据库，并保存你的数据；</li>
+<li>使用Android的数据库类和编写客户化类抽象数据访问；</li>
+<li>在你的应用程序中增加选项菜单。；</li>
+<li>在你应用程序中创建并注册新Activity并使用Intent将他们绑定成一组界面；</li>
+<li>使用内建的“共享首选项”数据库来保存和提取简单用户数据。</li>
+</ul>
+<p>无论你要开发神马样类型的应用程序，数据存储和持久化是一个重要的主题。从工具程序和业务工具到3-D游戏，几乎每个应用程序都需要使用到Android提供的数据工具类。</p>
+<p><img decoding="async" src=" https://coolshell.cn/wp-content/uploads/2011/04/17_brew_up.jpg"/></p>
+<h4><span class="ez-toc-section" id="Activities"></span>Activities<span class="ez-toc-section-end"></span></h4>
+<p>虽然BrewClock现在在某方面来说已经是个功能完善的应用程序了。但是我们仍然可以在增加一些功能以改进用户体验。例如你可以使用下面的方法来改进你的应用程序：</p>
+<ul>
+<li>在保存茶叶的时候检查是否存在茶叶名称重名；</li>
+<li>增加一个菜单选项以将泡茶统计清0；</li>
+<li>在共享首选项中保存最后所选的泡茶名称和时间以便程序重启时有一个有意义的默认值；</li>
+<li>增加用户从茶叶数据库中删除记录的选项。</li>
+</ul>
+<p>在<a href="https://github.com/cblunt/BrewClock">GitHub库</a> 可以获取到所有的源代码，库中的未来的分支包含着Activitiy的解决方案 你可以通过切换你的本地代码拷贝到tutorial_2分支，下载这个开发教程源代码：<br/>
+[code]</p>
+<p>$ git clone git://github.com/cblunt/BrewClock.git</p>
+<p>$ cd BrewClock</p>
+<p>$ git checkout tutorial_2</p>
+<p>[/code]<br/>
+我希望你喜欢这个教程，希望这个教程能帮助你设计和开发更棒的Android应用程序。请通过在下面的回复让我知道你的建议和意见，当然我也欢迎你将你建议写在email中并发送给我。</p>
+<p><em>感谢<a href="http://blog.anselmbradford.com/">Anselm</a>的建议和反馈！ </em></p>
+<p><em>（全文完）</em></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4334-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Android</a>, <a href="javascript:void(0)" rel="tag">Eclipse</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Eclipse开发Android应用程序入门:重装上阵</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-43195" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jaceju.net/blog/archives/1740" class="url" rel="ugc external nofollow">網站製作學習誌 » [Web] 連結分享</a> </div>
+</li>
+<li id="comment-43262" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-43262" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/410e178353b732ec7b82937ab06bc6ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/410e178353b732ec7b82937ab06bc6ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">百思寒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-43262"><time datetime="2011-04-09T17:12:38+08:00">2011年04月09日 17:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在开发AND很有钱途呀 支持博主 以后多来学学</p>
+</div>
+ </article>
+</li>
+<li id="comment-43733" class="comment even thread-even depth-1">
+<article id="div-comment-43733" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43f831d4234213a277b813f476c22547?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43f831d4234213a277b813f476c22547?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaojian623</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-43733"><time datetime="2011-04-11T10:41:11+08:00">2011年04月11日 10:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>正好有我需要的，学习了。支持楼主！</p>
+</div>
+ </article>
+</li>
+<li id="comment-46557" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-46557" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0f2b59dafab0ea8c55b6258b5f63e7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0f2b59dafab0ea8c55b6258b5f63e7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.sundq.com" class="url" rel="ugc external nofollow">sdq</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-46557"><time datetime="2011-04-22T09:48:35+08:00">2011年04月22日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“增加菜单项， add_tea。”后面的代码贴错了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-51131" class="comment even thread-even depth-1">
+<article id="div-comment-51131" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83de7ceb19757e7f2e86bc6da43418f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83de7ceb19757e7f2e86bc6da43418f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nickName</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-51131"><time datetime="2011-05-10T16:47:30+08:00">2011年05月10日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>错误太多了</p>
+</div>
+ </article>
+</li>
+<li id="comment-51572" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-51572" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/191e8496429c37ea9091d19b3eaff807?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/191e8496429c37ea9091d19b3eaff807?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kate</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-51572"><time datetime="2011-05-12T15:39:17+08:00">2011年05月12日 15:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很不错的文章，除了add—tea贴错了，其他没发现有错误的，我按照楼主的步骤都调通了</p>
+</div>
+ </article>
+</li>
+<li id="comment-74917" class="comment even thread-even depth-1">
+<article id="div-comment-74917" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/39e403fa92aa341b33268965f2205e80?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/39e403fa92aa341b33268965f2205e80?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hua3.cc" class="url" rel="ugc external nofollow">胖子的反击</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-74917"><time datetime="2011-08-18T17:23:58+08:00">2011年08月18日 17:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Open the res/menus/main.xml file, and switch to XML view by clicking the “main.xml” tab along the bottom of the window.</p>
+<p>Add a new menu item, add_tea.</p>
+<p>Notice the android:title attribute is set to @string/add_tea_label. This tells Android to look up add_tea_label in our strings.xml file and return the associated label. In this case, our menu item will have a label “Add Tea.”</p>
+</div>
+ </article>
+</li>
+<li id="comment-102620" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-102620" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24d01b78de71c03be724d089fa34f5d0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24d01b78de71c03be724d089fa34f5d0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">金色飞贼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-102620"><time datetime="2011-11-27T12:45:29+08:00">2011年11月27日 12:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>先赞一个！</p>
+</div>
+ </article>
+</li>
+<li id="comment-130241" class="comment even thread-even depth-1">
+<article id="div-comment-130241" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/148904398504a7e1da4f4fc7874e8b8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/148904398504a7e1da4f4fc7874e8b8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">koko</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-130241"><time datetime="2012-01-25T14:54:13+08:00">2012年01月25日 14:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-51572" rel="nofollow">@kate </a> 那个请问下，add_tea部分的正确代码应该是怎样的呀？我是小菜鸟，做到这步，就卡了~我模仿layout里的main.xml改了改，但是还是出不来期望效果呀…求指教</p>
+</div>
+ </article>
+</li>
+<li id="comment-130263" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-130263" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/148904398504a7e1da4f4fc7874e8b8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/148904398504a7e1da4f4fc7874e8b8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">koko</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-130263"><time datetime="2012-01-25T16:27:31+08:00">2012年01月25日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-51572" rel="nofollow">@kate </a> 哦，看到后面就知道怎么写了，呵呵~</p>
+</div>
+ </article>
+</li>
+<li id="comment-169618" class="comment even thread-even depth-1">
+<article id="div-comment-169618" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/33b11ba85ab0400fc9e5039c1e94be3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/33b11ba85ab0400fc9e5039c1e94be3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">蛟龙——止水</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-169618"><time datetime="2012-04-27T10:50:22+08:00">2012年04月27日 10:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是一个很有价值的网址，我很想加入</p>
+</div>
+ </article>
+</li>
+<li id="comment-203427" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203427" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b7112565126f6212d0baca17a582b27?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b7112565126f6212d0baca17a582b27?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zdq56</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-203427"><time datetime="2012-10-09T09:08:55+08:00">2012年10月09日 09:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>lz是个高手，鉴定完毕</p>
+</div>
+ </article>
+</li>
+<li id="comment-472080" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/android-%e7%a8%8b%e5%ba%8f%e9%9c%80%e8%a6%81%e5%af%b9sqlite%e5%bb%ba%e8%a1%a8%ef%bc%8c%e6%8f%92%e5%85%a5%e5%88%9d%e5%a7%8b%e6%95%b0%e6%8d%ae%ef%bc%8c%e5%ba%94%e8%af%a5%e6%94%be%e" class="url" rel="ugc external nofollow">android 程序需要对sqlite建表，插入初始数据，应该放在什么地方，我是放在程序启动，结果每次程序启动，就要插入相同的数据，怎么解决？ - Java - 开发者问答</a> </div>
+</li>
+<li id="comment-512293" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-512293" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5986e2942b22ad39cd2d1b336a8a55e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5986e2942b22ad39cd2d1b336a8a55e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">viking</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-512293"><time datetime="2013-05-30T15:22:06+08:00">2013年05月30日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的真不错，看完了解了很多，</p>
+</div>
+ </article>
+</li>
+<li id="comment-647035" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e6%b2%a1%e6%9c%89%e5%a4%aa%e5%a4%9a%e7%bc%96%e7%a8%8b%e8%83%8c%e6%99%af%ef%bc%8c%e5%ba%94%e8%af%a5%e5%a6%82%e4%bd%95%e5%ad%a6%e4%b9%a0%e3%80%81%e7%9d%80%e6%89%8b%e5%bc%80%e5%8f%" class="url" rel="ugc external nofollow">没有太多编程背景，应该如何学习、着手开发一款 Android 应用？ - Android - 开发者第958496个问答</a> </div>
+</li>
+<li id="comment-706842" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1757" class="url" rel="ugc external nofollow">Technical Heartbeat #13 | Steve Guan</a> </div>
+</li>
+<li id="comment-909519" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=134" class="url" rel="ugc external nofollow">面试题：火车运煤问题 | multiprocess</a> </div>
+</li>
+<li id="comment-1018965" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1018965" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a654b4701035d8440aa07bd59c309c03?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a654b4701035d8440aa07bd59c309c03?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.go-straight.co.uk/" class="url" rel="ugc external nofollow">cheap christian louboutin sale</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-1018965"><time datetime="2013-12-03T13:33:57+08:00">2013年12月03日 13:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://www.teamskyuser.co.uk/teamskyuser" rel="nofollow ugc">http://www.teamskyuser.co.uk/teamskyuser</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1537479" class="trackback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tooserious.net/ActivityFeed/MyProfile/tabid/61/UserId/148066/Default.aspx" class="url" rel="ugc external nofollow">please click the next page</a> </div>
+</li>
+<li id="comment-1582371" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1582371" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/839ba3ffdc8cb443062e07d8e23cf530?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/839ba3ffdc8cb443062e07d8e23cf530?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liyinuo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4334.html#comment-1582371"><time datetime="2014-10-24T19:52:43+08:00">2014年10月24日 19:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章很多段落是从原文google translate来的吧，文中很多硬伤，如果发表之前通读一遍做做修改会更好。<br/>
+不过还是谢谢译者的工作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2092594" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itpcb.com/a/041929410.html" class="url" rel="ugc external nofollow">Android学习手记二：程序升级加入sqlite支持！ | ITPCB</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

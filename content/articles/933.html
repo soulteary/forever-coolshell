@@ -1,0 +1,699 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何加密/混乱C源代码 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-933 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-933" class="post-content post-933 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage category-story tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">如何加密/混乱C源代码</span>
+<h1 class="entry-title">如何加密/混乱C源代码</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/933.html" title="15:30" rel="bookmark"><time class="entry-date" datetime="2009-05-30T15:30:05+08:00" pubdate="">2009年05月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/933.html#comments" class="comments-link">98 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 89,795 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>之前发表了《<strong>6个变态的C语言Hello World程序</strong>》[<a href="/articles/914.html" target="_blank">酷壳链接</a>] [<a href="http://blog.csdn.net/haoel/archive/2009/05/26/4217565.aspx" target="_blank">CSDN链接</a>]，主要是是像大家展示了一些C语言的变态玩法。也向大家展示了一下程序是可以写得让人看不懂的，在那篇文章中，可以看到很多人的留言，很多人都觉得很好玩，是的，那本来是用来<span style="color: #000000;">供朋友们“消遣作乐”，供娱乐娱东而已，不必太过认真。</span></p>
+<p>不过，通过这种极端的写法，大家可以看到源代码都可以写得那么复杂难懂的。大家也许在赞叹之余一笑了之，而我则希望，大家能够在娱乐以后认真思考一下，你不要以为咱们自己不会把代码搞得那么复杂，只不过没有像那6个Hello World一样那么极端，不过，说句老实话，<strong>咱们每个程序都有把清晰的程序搞得一团混乱的潜能，只不过程度不一样罢了，我并不是在这里危言耸听，大家好自为之</strong>。</p>
+<p>下面是一个Step by Step的教程，教你如何把一个清晰的代码变得复杂难懂的。当然，这只是一个“简明教程”了。还是那句话——“<span style="color: #800000;">本文仅供朋友们“消遣作乐”，如果你要觉得有意思的话，顶个贴。如果你觉得没什么意思的话，一笑了之。仅供娱乐而已，不必太过认真。</span>”</p>
+<p><span id="more-933"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%BC%80%E5%A7%8B%E7%A8%8B%E5%BA%8F" title="开始程序">开始程序</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%AC%AC%E4%B8%80%E6%AD%A5%E3%80%81%E6%8A%8Afor%E5%8F%98%E6%88%90while" title="第一步、把for变成while">第一步、把for变成while</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%8C%E6%8A%8A%E5%BE%AA%E5%9D%8F%E5%8F%98%E6%88%90%E9%80%92%E5%BD%92" title="第二步，把循坏变成递归">第二步，把循坏变成递归</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%8C%E5%BC%84%E4%B9%B1%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84%E4%BD%BF%E7%94%A8%E6%B2%A1%E6%9C%89%E5%90%AB%E4%B9%89%E7%9A%84%E5%8F%98%E9%87%8F%E5%90%8D" title="第三步，弄乱代码结构/使用没有含义的变量名">第三步，弄乱代码结构/使用没有含义的变量名</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%8C%E5%8F%96%E6%B6%88%E4%B8%B4%E6%97%B6%E5%8F%98%E9%87%8F" title="第四步，取消临时变量">第四步，取消临时变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%8C%E7%BB%A7%E7%BB%AD%E5%BC%84%E4%B9%B1%E5%8F%98%E9%87%8F%E5%90%8D" title="第五步，继续弄乱变量名">第五步，继续弄乱变量名</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%8C%E7%A7%BB%E9%99%A4%E5%B8%B8%E9%87%8F" title="第六步，移除常量">第六步，移除常量</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%BC%80%E5%A7%8B%E7%A8%8B%E5%BA%8F"></span>开始程序<span class="ez-toc-section-end"></span></h4>
+<p>下面是一个找出素数的程序：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void primes(int cap)
+{
+    int i, j, composite;
+
+    for(i = 2; i &lt; cap; ++i) {
+        composite = 0;
+        for(j = 2; j * j &lt; i; ++j) {
+            composite += !(i % j);
+        }
+        if(!composite){
+            printf(&#34;%dt&#34;, i);
+        }
+    }
+}
+
+int main()
+{
+    primes(100);
+}
+</pre>
+<p>下面我们来看看如何把上面这段代码搞得复杂难懂。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%80%E6%AD%A5%E3%80%81%E6%8A%8Afor%E5%8F%98%E6%88%90while"></span>第一步、把for变成while<span class="ez-toc-section-end"></span></h4>
+<p>通常来说，for循坏要以while循坏简单一些，上面的程序有二重for循环，我们不但要把其变成while循环，而且还要把二重循环的变成一重的循环，然后使用大量的if-else语句来判断。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void primes(int cap)
+{
+    int i, j, composite, t = 0;
+
+    while(t &lt; cap * cap) {
+        i = t / cap;
+        j = t++ % cap;
+        if(i &lt;= 1);
+        else if(!j)
+            composite = j;
+        else if(j == i &amp;&amp; !composite)
+            printf(&#34;%dt&#34;,i);
+        else if(j &gt; 1 &amp;&amp; j &lt; i)
+            composite += !(i % j);
+    }
+}
+
+int main()
+{
+    primes(100);
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%BA%8C%E6%AD%A5%EF%BC%8C%E6%8A%8A%E5%BE%AA%E5%9D%8F%E5%8F%98%E6%88%90%E9%80%92%E5%BD%92"></span>第二步，把循坏变成递归<span class="ez-toc-section-end"></span></h4>
+<p>递归在某些时候是可以把代码变得简单，但大多数的情况下是把代码变得复杂，而且很没有效率。下面是把上面的while循环变成了递归。变成了递归后，函数的参数都变成3个了。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void primes(int cap, int t, int composite)
+{
+    int i,j;
+    i = t / cap;
+    j = t % cap;
+    if(i &lt;= 1)
+        primes(cap,t+1,composite);
+    else if(!j)
+        primes(cap,t+1,j);
+    else if(j == i &amp;&amp; !composite)
+        (printf(&#34;%dt&#34;,i), primes(cap,t+1,composite));
+    else if(j &gt; 1 &amp;&amp; j &lt; i)
+        primes(cap,t+1, composite + !(i % j));
+    else if(t &lt; cap * cap)
+        primes(cap,t+1,composite);
+}
+
+int main()
+{
+    primes(100,0,0);
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%89%E6%AD%A5%EF%BC%8C%E5%BC%84%E4%B9%B1%E4%BB%A3%E7%A0%81%E7%BB%93%E6%9E%84%E4%BD%BF%E7%94%A8%E6%B2%A1%E6%9C%89%E5%90%AB%E4%B9%89%E7%9A%84%E5%8F%98%E9%87%8F%E5%90%8D"></span>第三步，弄乱代码结构/使用没有含义的变量名<span class="ez-toc-section-end"></span></h4>
+<p>关于如何弄乱代码结构，其中一个小技巧是，使用“？”表达式代替if-else语句。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void primes(int m, int t, int c)
+{
+    int i,j;
+    i = t / m;
+    j = t % m;
+    (i &lt;= 1) ? primes(m,t+1,c) : (!j) ? primes(m,t+1,j) : (j == i &amp;&amp; !c) ?
+    (printf(&#34;%dt&#34;,i), primes(m,t+1,c)) : (j &gt; 1 &amp;&amp; j &lt; i) ?
+    primes(m,t+1,c + !(i % j)) : (t &lt; m * m) ? primes(m,t+1,c) : 0;
+}
+
+int main()
+{
+    primes(100,0,0);
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E5%9B%9B%E6%AD%A5%EF%BC%8C%E5%8F%96%E6%B6%88%E4%B8%B4%E6%97%B6%E5%8F%98%E9%87%8F"></span>第四步，取消临时变量<span class="ez-toc-section-end"></span></h4>
+<p>临时变量一般用来保存反复使用的一个表达式的值。使用大量重复的表达式来取消这些临时变量的也可以让代码复杂起来。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void primes(int m, int t, int c)
+{
+  ((t / m) &lt;= 1) ? primes(m,t+1,c) : !(t % m) ? primes(m,t+1, t % m) :
+  ((t % m)==(t / m) &amp;&amp; !c) ? (printf(&#34;%dt&#34;,(t / m)), primes(m,t+1,c)) :
+  ((t % m)&gt; 1 &amp;&amp; (t % m) &lt; (t / m)) ? primes(m,t+1,c + !((t / m) % (t % m))) :
+  (t &lt; m * m) ? primes(m,t+1,c) : 0;
+}
+
+int main()
+{
+    primes(100,0,0);
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%BA%94%E6%AD%A5%EF%BC%8C%E7%BB%A7%E7%BB%AD%E5%BC%84%E4%B9%B1%E5%8F%98%E9%87%8F%E5%90%8D"></span>第五步，继续弄乱变量名<span class="ez-toc-section-end"></span></h4>
+<p>我们知道，下划线是合法的变量名，所以，我们不妨用__，___，____来代替m，t，c。函数名也可以使用下划线来代替。让我们来看看求素数的函数能变成什么。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void _(int __, int ___, int ____)
+{
+    ((___ / __) &lt;= 1) ? _(__,___+1,____) : !(___ % __) ? _(__,___+1,___ % __) :
+    ((___ % __)==(___ / __) &amp;&amp; !____) ? (printf(&#34;%dt&#34;,(___ / __)),
+    _(__,___+1,____)) : ((___ % __) &gt; 1 &amp;&amp; (___ % __) &lt; (___ / __)) ?
+    _(__,___+1,____ + !((___ / __) % (___ % __))) : (___ &lt; __ * __) ?
+    _(__,___+1,____) : 0;
+}
+
+int main()
+{
+    _(100,0,0);
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E5%85%AD%E6%AD%A5%EF%BC%8C%E7%A7%BB%E9%99%A4%E5%B8%B8%E9%87%8F"></span>第六步，移除常量<span class="ez-toc-section-end"></span></h4>
+<p>在上面的程序中，还有一些常量，你可以通过增加一个宏定义，或是增加一个函数的形参来取代这一常量。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void _(int __, int ___, int ____, int _____)
+{
+    ((___ / __) &lt;= _____) ? _(__,___+_____,____,_____) : !(___ % __) ? _(__,___+_____,___ % __, _____) :
+    ((___ % __)==(___ / __) &amp;&amp; !____) ? (printf(&#34;%dt&#34;,(___ / __)),
+    _(__,___+_____,____,_____)) : ((___ % __) &gt; _____ &amp;&amp; (___ % __) &lt; (___ / __)) ?
+    _(__,___+_____,____,_____ + !((___ / __) % (___ % __))) : (___ &lt; __ * __) ?
+    _(__,___+_____,____,_____) : 0;
+}
+
+int main() {
+    _(100,0,0,1);
+}
+</pre>
+<p>程序到这里应该差不多了。还是那句话——“<strong>每一个程序员都有把源代码弄复杂的潜质</strong>”，大家好自为之。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-933-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何加密/混乱C源代码</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-85781" class="comment even thread-even depth-1">
+<article id="div-comment-85781" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/19db9eeab1eb05f209eb76550b107a60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/19db9eeab1eb05f209eb76550b107a60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fancymindchaos.com/blog" class="url" rel="ugc external nofollow">Crack Life</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-85781"><time datetime="2011-10-04T13:48:18+08:00">2011年10月04日 13:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我自己以前就经常走到第一步和第二步 咩哈哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-91109" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-91109" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b4a6701607ba1a060a6b3b7eaa2b2e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b4a6701607ba1a060a6b3b7eaa2b2e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xiaomu.net" class="url" rel="ugc external nofollow">小木</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-91109"><time datetime="2011-11-01T17:17:34+08:00">2011年11月01日 17:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好强大啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-95658" class="comment even thread-even depth-1">
+<article id="div-comment-95658" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aed371d5725e09004b34dea12537430e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aed371d5725e09004b34dea12537430e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ineo.mysdut.com" class="url" rel="ugc external nofollow">斑驳</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-95658"><time datetime="2011-11-11T20:47:11+08:00">2011年11月11日 20:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>貌似最后一个得到素数有点少了~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-114008" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-114008" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/171f779e6cf7cb2863d3b5a503fcc52b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/171f779e6cf7cb2863d3b5a503fcc52b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">guyson</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-114008"><time datetime="2011-12-21T13:19:17+08:00">2011年12月21日 13:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>完全崩溃了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-114213" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/3595.html" class="url" rel="ugc">如何“加密”你的email地址 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-118695" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-118695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00b4fbeccf87e952fdb2c5a182a18e2a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00b4fbeccf87e952fdb2c5a182a18e2a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">狂且</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-118695"><time datetime="2011-12-30T20:05:03+08:00">2011年12月30日 20:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>凌乱了!!</p>
+</div>
+ </article>
+</li>
+<li id="comment-134294" class="comment even thread-even depth-1">
+<article id="div-comment-134294" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00ad53e3e27b26b924271bf48891e11e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00ad53e3e27b26b924271bf48891e11e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">柏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-134294"><time datetime="2012-02-04T10:07:28+08:00">2012年02月04日 10:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太牛了啊，高手</p>
+</div>
+ </article>
+</li>
+<li id="comment-149796" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-149796" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/495e998830e19750ea56b506dd1c7cff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/495e998830e19750ea56b506dd1c7cff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">starway</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-149796"><time datetime="2012-03-27T00:18:43+08:00">2012年03月27日 00:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>天！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-160938" class="comment even thread-even depth-1">
+<article id="div-comment-160938" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c6b81a345ae53c1aaf3dd24236035c0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c6b81a345ae53c1aaf3dd24236035c0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leexiang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-160938"><time datetime="2012-04-19T15:28:01+08:00">2012年04月19日 15:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>人才，原来可以这么玩，长见识了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-190197" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dabentu.com/399.html" class="url" rel="ugc external nofollow">（转）老手是这样教新手编程的 « 大笨兔博客</a> </div>
+</li>
+<li id="comment-200457" class="comment even thread-even depth-1">
+<article id="div-comment-200457" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fbfc0d35a3e1a04dc2a35886765bc30f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fbfc0d35a3e1a04dc2a35886765bc30f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">onixie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-200457"><time datetime="2012-08-01T10:13:02+08:00">2012年08月01日 10:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“递归在某些时候是可以把代码变得简单，但大多数的情况下是把代码变得复杂，而且很没有效率。”</p>
+<p>大多数情况下递归会把代码变得更简单。递归几乎总是比迭代容易理解。当然对没有尾调用优化的C来说，它可能会在效率上输给迭代。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201394" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201394" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3048e257798a220b1207d7be1e632e70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3048e257798a220b1207d7be1e632e70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Sherice</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-201394"><time datetime="2012-08-10T09:03:09+08:00">2012年08月10日 09:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>果然很变态，看来平时接触到的规范的东西太多，以至于看到这个突然觉得很有趣、很惊喜。编程还是乐趣无穷啊^_^</p>
+</div>
+ </article>
+</li>
+<li id="comment-201406" class="comment even thread-even depth-1">
+<article id="div-comment-201406" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdd16034ad88047e78d15f3b262c80c9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdd16034ad88047e78d15f3b262c80c9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">winway</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-201406"><time datetime="2012-08-10T11:32:24+08:00">2012年08月10日 11:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>for(j = 2; j * j &lt; i; ++j) {<br/>
+composite += !(i % j);<br/>
+}<br/>
+可能存在无谓的循环，即遇到i % j == 0，仍然继续循环下去</p>
+</div>
+ </article>
+</li>
+<li id="comment-211523" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-211523" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/373765820a4d728c65593e16a40e486c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/373765820a4d728c65593e16a40e486c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">meili</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-211523"><time datetime="2012-11-06T11:29:35+08:00">2012年11月06日 11:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常有意思</p>
+</div>
+ </article>
+</li>
+<li id="comment-231453" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.czxiat.tk/?p=476" class="url" rel="ugc external nofollow">编程真难啊 – 空气博客</a> </div>
+</li>
+<li id="comment-232123" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-232123" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.oldlinux.org/oldlinux/index.php" class="url" rel="ugc external nofollow">full_of_bullshit</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-232123"><time datetime="2012-12-08T13:55:17+08:00">2012年12月08日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的分析：http://www.oldlinux.org/oldlinux/viewthread.php?tid=14465&amp;extra=page%3D1</p>
+</div>
+ </article>
+</li>
+<li id="comment-234776" class="comment even thread-even depth-1">
+<article id="div-comment-234776" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/199b9a9d80db61dc9d725b30d32fa7dd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/199b9a9d80db61dc9d725b30d32fa7dd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Martin Wood</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-234776"><time datetime="2012-12-11T11:09:15+08:00">2012年12月11日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>debug:<br/>
+:%s/循坏/循环/</p>
+<p>在：<br/>
+第一步、把for变成while<br/>
+通常来说，for循坏要以while循坏简单一些</p>
+</div>
+ </article>
+</li>
+<li id="comment-262291" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-262291" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76977a045fb92fe98f8f42ad75b9138c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76977a045fb92fe98f8f42ad75b9138c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/happyqq" class="url" rel="ugc external nofollow">happyqq</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-262291"><time datetime="2013-01-10T11:17:36+08:00">2013年01月10日 11:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>下划线用活了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-291891" class="comment byuser comment-author-full_of_bull even thread-even depth-1">
+<article id="div-comment-291891" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e9e679d4d308a570b1e74705c026de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.oldlinux.org/" class="url" rel="ugc external nofollow">full_of_bull</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-291891"><time datetime="2013-02-14T19:48:21+08:00">2013年02月14日 19:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>把for变while这一步给人一个启发，就是如何用一重循环遍历一个二维数组，当且仅当二维数组是正方形。只要令t = i * n + j (j &lt; i &lt;= n)，代码如下<br/>
+for (i = 0; i &lt; n; i++)<br/>
+for (j = 0; j &lt; n; j++)</p>
+<p>可以转变为<br/>
+while (t &lt; n * n) {<br/>
+i = t / n;<br/>
+j = t++ % n;<br/>
+…<br/>
+}</p>
+<p>这样后面可以分别对下标i和j操作了</p>
+</div>
+ </article>
+</li>
+<li id="comment-310834" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xiaoyuming.com/wp-content/plugins/really-static/static/p=213/index.html" class="url" rel="ugc external nofollow">如何写出无法维护的代码 | Sean&#39;s Blog</a> </div>
+</li>
+<li id="comment-318707" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://miaozhiqiang.cn/400.html" class="url" rel="ugc external nofollow">恐怖的C++语言 | TheNextDeveloper</a> </div>
+</li>
+<li id="comment-553978" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-553978" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d0abf22e2ff3dae97384e9cdd7ad97e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d0abf22e2ff3dae97384e9cdd7ad97e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/cgxinyan" class="url" rel="ugc external nofollow">xyj</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-553978"><time datetime="2013-06-17T09:56:49+08:00">2013年06月17日 09:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个可以拿给大一的小学弟娱乐娱乐</p>
+</div>
+ </article>
+</li>
+<li id="comment-592902" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://scpedoc.sinaapp.com/?p=56" class="url" rel="ugc external nofollow">如何写出无法维护的代码 | pedoc private region</a> </div>
+</li>
+<li id="comment-639537" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-639537" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0dabec32a7847e967dec65d68d29f26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0dabec32a7847e967dec65d68d29f26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Thomas</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-639537"><time datetime="2013-08-06T11:38:08+08:00">2013年08月06日 11:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#include </p>
+<p>void __(int ___, int ____, int _____,int ______)<br/>
+{<br/>
+if((____ / ___) ______) &amp;&amp; ((____ % ___) &lt; (____ / ___)))<br/>
+__(___,____+______, _____ + !((____ / ___) % (____ % ___)),______);<br/>
+else if(____ &lt; ___ * ___)<br/>
+__(___,____+______,_____,______);<br/>
+}<br/>
+int main()<br/>
+{<br/>
+__(100,0,0,1);<br/>
+}</p>
+<p>应该是这样的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1339758" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11170.html" class="url" rel="ugc">如何用最有创造力的方式输出42 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1340572" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=959" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42 | 星达红</a> </div>
+</li>
+<li id="comment-1342350" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=732" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42 | zengine</a> </div>
+</li>
+<li id="comment-1342506" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.ostaste.com/archives/11243" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42 | 系统的味道</a> </div>
+</li>
+<li id="comment-1342613" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.person168.com/wordpress/?p=5212" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42 | 我爱互联网</a> </div>
+</li>
+<li id="comment-1343143" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=19448" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42</a> </div>
+</li>
+<li id="comment-1351726" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itjhwd.com/c42/" class="url" rel="ugc external nofollow">最有创造力的方式输出42 | IT江湖IT江湖</a> </div>
+</li>
+<li id="comment-1471912" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1471912" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/53be56c2db8c6156195e45595e380a2f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/53be56c2db8c6156195e45595e380a2f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">害虫</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1471912"><time datetime="2014-05-29T13:00:48+08:00">2014年05月29日 13:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>I’d like to write something into my project.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1481183" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10539.html" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1506644" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1506644" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1064be745ad557570f43d2ddf361e69d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1064be745ad557570f43d2ddf361e69d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">badboymx7</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1506644"><time datetime="2014-08-03T19:39:46+08:00">2014年08月03日 19:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>总感觉作为程序猿喜欢看这种故意刁难同行的行为是不道德的。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1508373" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11847.html" class="url" rel="ugc">谜题的答案和活动的心得体会 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1510548" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30217.html" class="url" rel="ugc external nofollow">如何用最有创造力的方式输出42 – 马开东博客</a> </div>
+</li>
+<li id="comment-1515100" class="comment even thread-even depth-1">
+<article id="div-comment-1515100" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8d82486903d929be14f4f4761d3e61aa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8d82486903d929be14f4f4761d3e61aa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">安可可</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1515100"><time datetime="2014-08-19T13:02:49+08:00">2014年08月19日 13:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，受教！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1515675" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1515675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/34052fae26da37586e5585f4cc05139e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/34052fae26da37586e5585f4cc05139e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sunchy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1515675"><time datetime="2014-08-20T11:37:34+08:00">2014年08月20日 11:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第7行少了“=”号<br/>
+for (j = 2; j * j &lt;= i; ++j)</p>
+</div>
+ </article>
+</li>
+<li id="comment-1531555" class="comment even thread-even depth-1">
+<article id="div-comment-1531555" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/79437120db7fc1cbb9340fea525d3ba8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/79437120db7fc1cbb9340fea525d3ba8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">龙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1531555"><time datetime="2014-09-11T22:18:41+08:00">2014年09月11日 22:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>下划线简直是。。。我们有个同学在教务处注册的时候用户名写了一大堆下划线 结果他都不知道有几个了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1685355" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/archives/2446" class="url" rel="ugc external nofollow">恐怖的C++语言 – 运维部落</a> </div>
+</li>
+<li id="comment-1775510" class="comment even thread-even depth-1">
+<article id="div-comment-1775510" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a855b71983022cb6a22a7d3d01e8496?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a855b71983022cb6a22a7d3d01e8496?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">batsing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1775510"><time datetime="2015-10-17T01:31:19+08:00">2015年10月17日 01:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个可以用在Javascript文件的加密上，这样别人就几乎无法阅读你的JS代码了，这个用在浏览器客户端加密的时候有独到之处</p>
+</div>
+ </article>
+</li>
+<li id="comment-1804725" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1804725" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d8ba4c3229c11766ec572489261e2fc1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d8ba4c3229c11766ec572489261e2fc1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dtn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1804725"><time datetime="2016-01-07T17:30:00+08:00">2016年01月07日 17:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不懂编程，纯属看笑话来的。我似乎看到了GF，我猜。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825091" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e8%b0%9c%e9%a2%98%e7%9a%84%e7%ad%94%e6%a1%88%e5%92%8c%e6%b4%bb%e5%8a%a8%e7%9a%84%e5%bf%83%e5%be%97%e4%bd%93%e4%bc%9a-codeba-cc.html" class="url" rel="ugc external nofollow">谜题的答案和活动的心得体会 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1828817" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2261" class="url" rel="ugc external nofollow">如何加密/混乱C源代码 – linux运维部落</a> </div>
+</li>
+<li id="comment-1901178" class="comment even thread-even depth-1">
+<article id="div-comment-1901178" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ff7f7f9855cff84e435452cda6e768b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ff7f7f9855cff84e435452cda6e768b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/933.html/comment-page-2#comment-1901178"><time datetime="2016-11-24T09:47:32+08:00">2016年11月24日 09:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>通常来说，for循坏要以while循坏简单一些，</p>
+<p>是环,不是坏.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914050" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://johng.cn/20101222004442/" class="url" rel="ugc external nofollow">编程真难啊 – John Guo – 一名技术人员的博客</a> </div>
+</li>
+<li id="comment-1914845" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iszhou.com/2017/07/04/%e7%bc%96%e7%a8%8b%e7%9c%9f%e9%9a%be%e5%95%8a/" class="url" rel="ugc external nofollow">编程真难啊-iszhou</a> </div>
+</li>
+<li id="comment-2370800" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://haodro.com/archives/133002" class="url" rel="ugc external nofollow">这些没有可读性的代码，却又体现出程序员对语言的高度理解力 – haodro.com</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/933.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/933.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">933</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

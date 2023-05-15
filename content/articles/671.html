@@ -1,0 +1,371 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Python调用C语言函数 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-671 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-671" class="post-content post-671 post type-post status-publish format-standard hentry category-pythondev category-proglanguage tag-ctypes tag-pythondev">
+<header class="entry-header">
+<span class="screen-reader-text">Python调用C语言函数</span>
+<h1 class="entry-title">Python调用C语言函数</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/671.html" title="01:29" rel="bookmark"><time class="entry-date" datetime="2009-04-26T01:29:57+08:00" pubdate="">2009年04月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/671.html#comments" class="comments-link">20 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 36,161 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>使用Python的<a href="https://docs.python.org/library/ctypes.html">ctypes</a>，我们可以直接调用由C直接编译出来的函数。其实就是调用动态链接库中的函数。为什么我们需要这样做呢，因为有些时候，我们可能需要一个性能上比较讲究的算法，有些时候，我们可以在Python中使用已经有了的现成的被封闭在动态链接库中的函数。下面是如何调用的示例。</p>
+<p>首先，我们用一个乘法来表示一个算法功能。下面是C的程序：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int
+multiply(int num1, int num2)
+{
+    return num1 * num2;
+}
+</pre>
+<p><span id="more-671"></span></p>
+<p>如果在Windows下，你可能需要写成下面这个样子：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;windows.h&gt;
+
+
+BOOL APIENTRY
+DllMain(HANDLE hModule, DWORD dwReason, LPVOID lpReserved)
+{
+    return TRUE;
+}
+
+__declspec(dllexport) int
+multiply(int num1, int num2)
+{
+    return num1 * num2;
+}
+</pre>
+<p>然后，自然是把这个C文件编成动态链接库：</p>
+<p>Linux下的编译：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">gcc -c -fPIC libtest.c
+gcc -shared libtest.o -o libtest.so
+</pre>
+<p>Windows下的编译：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">cl -LD libtest.c -libtest.dll
+</pre>
+<p>于是在我们的Python中可以这样使用：<br/>
+(其中的libtest.so在Windows下改成libtest.dll即可)</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">&gt;&gt;&gt; from ctypes import *
+&gt;&gt;&gt; import os
+&gt;&gt;&gt; libtest = cdll.LoadLibrary(os.getcwd() + &#39;/libtest.so&#39;)
+&gt;&gt;&gt; print libtest.multiply(2, 2)
+4
+</pre>
+<p>注意：上面的Python脚本中需要把动态链接库放到当前目录中。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-671-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Python</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ctypes</a>, <a href="javascript:void(0)" rel="tag">Python</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Python调用C语言函数</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-4807" class="comment even thread-even depth-1">
+<article id="div-comment-4807" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eace1ed54e81d7bd373e3be38397da9b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eace1ed54e81d7bd373e3be38397da9b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xavier</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-4807"><time datetime="2010-01-30T11:07:24+08:00">2010年01月30日 11:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>总结地不错，学习了。<br/>
+我手上有个小项目（开源那种），需要帮助，能与我联系否？</p>
+</div>
+ </article>
+</li>
+<li id="comment-8866" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-8866" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/17ef9e548cc18effca0a5b167bddd403?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/17ef9e548cc18effca0a5b167bddd403?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lalala</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-8866"><time datetime="2010-08-11T09:15:11+08:00">2010年08月11日 09:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>试了一下，这的可以，呵呵</p>
+</div>
+ </article>
+</li>
+<li id="comment-13853" class="comment even thread-even depth-1">
+<article id="div-comment-13853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f247d8655d123db884e99aee8dd7421d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f247d8655d123db884e99aee8dd7421d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">技术的吸收者</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-13853"><time datetime="2010-11-16T14:47:52+08:00">2010年11月16日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个Python 初学者。 谢谢，很喜欢你的翻译！</p>
+</div>
+ </article>
+</li>
+<li id="comment-18780" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-18780" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6fde284656733309e1c326d529e6031f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6fde284656733309e1c326d529e6031f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhangroc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-18780"><time datetime="2010-12-16T00:32:35+08:00">2010年12月16日 00:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>python 调用C语言库： 其实就是要定义号数据交换的接口，和动态链接库的加载和函数名符号解析</p>
+</div>
+ </article>
+</li>
+<li id="comment-70976" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.elftail.com/?p=141" class="url" rel="ugc external nofollow">runaway robot (3) - Python - web - 思路片段 - 计算机 - c - computer - hack - programming - python - 妖精的尾巴</a> </div>
+</li>
+<li id="comment-91750" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-91750" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aaf5609368bd3994b3900c2dcf7d09c4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aaf5609368bd3994b3900c2dcf7d09c4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">superiori46</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-91750"><time datetime="2011-11-03T13:57:56+08:00">2011年11月03日 13:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不过对于c函数中的传入参数的结构体的问题是怎么解决的？在python中是如何和C函数中的传入参数对应上的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-113109" class="comment even thread-even depth-1">
+<article id="div-comment-113109" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb8239706c0803b87f48a63d95ac5d14?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb8239706c0803b87f48a63d95ac5d14?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://qq1742626360.jimdo.com" class="url" rel="ugc external nofollow">楚公子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-113109"><time datetime="2011-12-19T22:20:06+08:00">2011年12月19日 22:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-4807" rel="nofollow">@xavier </a><br/>
+嗯嗯，好呀。。里留下你的联系方式吧。。我对你的项目很感兴趣</p>
+</div>
+ </article>
+</li>
+<li id="comment-201912" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201912" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e2d409e7fef27524dadb6ebbe0fb9d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e2d409e7fef27524dadb6ebbe0fb9d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mocuishle.net" class="url" rel="ugc external nofollow">匿名的网友</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-201912"><time datetime="2012-08-21T16:14:54+08:00">2012年08月21日 16:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-91750"><p>
+<strong><a href="#comment-91750" rel="nofollow">superiori46</a> :</strong><br/>
+不过对于c函数中的传入参数的结构体的问题是怎么解决的？在python中是如何和C函数中的传入参数对应上的？
+</p></blockquote>
+<p>用ctypes可以构建C中的结构，比如struct用ctypes可以这样构建：<br/>
+class mystr(Structure):<br/>
+_fields_ = [<br/>
+(“amt_barley”, c_int),<br/>
+(“amt_water”, c_int),<br/>
+]</p>
+</div>
+ </article>
+</li>
+<li id="comment-202951" class="comment even thread-even depth-1">
+<article id="div-comment-202951" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11d4b3486a0e2a725a30329d8668e4c5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11d4b3486a0e2a725a30329d8668e4c5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">styshoo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-202951"><time datetime="2012-09-17T10:34:25+08:00">2012年09月17日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>简介，清晰，很好。</p>
+</div>
+ </article>
+</li>
+<li id="comment-507992" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-507992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/95872f8c0f666e890757ddc3b8dfb2b1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/95872f8c0f666e890757ddc3b8dfb2b1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rex</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-507992"><time datetime="2013-05-28T08:59:18+08:00">2013年05月28日 08:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问如果我的共享库依赖于一个其他第三方共享库,在用ctypes的时候仅加载前者会导致符号未解析,这时候应该怎么办呢?ctypes能搞定吗?</p>
+</div>
+ </article>
+</li>
+<li id="comment-909618" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=315" class="url" rel="ugc external nofollow">用TCC可以干些什么？ | multiprocess</a> </div>
+</li>
+<li id="comment-952533" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-952533" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4928bff9fecbae8cdedd1991a895fb02?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4928bff9fecbae8cdedd1991a895fb02?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">木头</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-952533"><time datetime="2013-11-19T22:41:52+08:00">2013年11月19日 22:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>支持酷壳！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1087755" class="comment even thread-even depth-1">
+<article id="div-comment-1087755" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63e5546936ce7f5699952a39f26b04d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63e5546936ce7f5699952a39f26b04d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://giftbrandmaker.com/myblog" class="url" rel="ugc external nofollow">hupantingxue</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-1087755"><time datetime="2013-12-21T13:48:23+08:00">2013年12月21日 13:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>运行的时候，提示如下错误：<br/>
+&gt;&gt;&gt; print libtest.multiply(2,2)<br/>
+Traceback (most recent call last):<br/>
+File “”, line 1, in<br/>
+File “/usr/lib64/python2.6/ctypes/__init__.py”, line 366, in __getattr__<br/>
+func = self.__getitem__(name)<br/>
+File “/usr/lib64/python2.6/ctypes/__init__.py”, line 371, in __getitem__<br/>
+func = self._FuncPtr((name_or_ordinal, self))<br/>
+AttributeError: /home/jpush/Src/test/xor/python/libtest.so: undefined symbol: multiply</p>
+</div>
+ </article>
+</li>
+<li id="comment-1087759" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1087759" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63e5546936ce7f5699952a39f26b04d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63e5546936ce7f5699952a39f26b04d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://giftbrandmaker.com/myblog" class="url" rel="ugc external nofollow">hupantingxue</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-1087759"><time datetime="2013-12-21T13:51:11+08:00">2013年12月21日 13:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1087755" rel="nofollow">@hupantingxue </a><br/>
+哦，原因是我按照c++的方式去编译了，用C就可以了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1112066" class="comment even thread-even depth-1">
+<article id="div-comment-1112066" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63e5546936ce7f5699952a39f26b04d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63e5546936ce7f5699952a39f26b04d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://giftbrandmaker.com/myblog" class="url" rel="ugc external nofollow">hupantingxue</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-1112066"><time datetime="2013-12-27T13:12:18+08:00">2013年12月27日 13:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里做了个总结 <a href="http://giftbrandmaker.com/myblog/?p=315" rel="nofollow ugc">http://giftbrandmaker.com/myblog/?p=315</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1508678" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1508678" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cdfdf1d7a8456aeb222ce303b9d6c25?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cdfdf1d7a8456aeb222ce303b9d6c25?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.digglife.net" class="url" rel="ugc external nofollow">摩摩诘</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-1508678"><time datetime="2014-08-06T23:08:06+08:00">2014年08月06日 23:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之前在Windows下取磁盘信息就是用的ctype，无依赖。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1745612" class="comment even thread-even depth-1">
+<article id="div-comment-1745612" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24c20b5f0d5ef2ac226981010fb3375e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24c20b5f0d5ef2ac226981010fb3375e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://none" class="url" rel="ugc external nofollow">ironyoung</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-1745612"><time datetime="2015-08-11T16:38:33+08:00">2015年08月11日 16:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在调用C函数时，如果是int类型，本机可以通过。但是如果是float类型：<br/>
+float add(float n, float m)<br/>
+{<br/>
+return (n+m);<br/>
+}<br/>
+所需要的python文件，应该有怎样的修改？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1833047" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e7%94%a8tcc%e5%8f%af%e4%bb%a5%e5%b9%b2%e4%ba%9b%e4%bb%80%e4%b9%88%ef%bc%9f.html" class="url" rel="ugc external nofollow">用TCC可以干些什么？ | | Codeba</a> </div>
+</li>
+<li id="comment-1892430" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1892430" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/671.html#comment-1892430"><time datetime="2016-10-17T18:54:26+08:00">2016年10月17日 18:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>深入浅出</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371068" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/80230" class="url" rel="ugc external nofollow">C++程序员学Python:C与Python进行交互 | 高性能架构探索</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

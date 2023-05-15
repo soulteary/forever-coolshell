@@ -1,0 +1,902 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>持续部署，并不简单！ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7657 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7657" class="post-content post-7657 post type-post status-publish format-standard hentry category-509 category-550 category-misc category-process tag-agile tag-ci tag-492">
+<header class="entry-header">
+<span class="screen-reader-text">持续部署，并不简单！</span>
+<h1 class="entry-title">持续部署，并不简单！</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7657.html" title="08:20" rel="bookmark"><time class="entry-date" datetime="2012-06-25T08:20:08+08:00" pubdate="">2012年06月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/fakeren" title="View all posts by 马基雅弗利" rel="author">马基雅弗利</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7657.html#comments" class="comments-link">48 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 48,510 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<p style="text-align: left;">【<strong>感谢 <a href="http://weibo.com/renfake" target="_blank">@常新居士</a> 投递此文</strong> 】</p>
+<p style="text-align: left;">这几年，持续集成随着敏捷在国内的推广而持续走热，与之相伴的持续部署也一直备受关注。<strong>自前两年，持续交付这个延续性概念又闯进了国内IT圈，慢慢开始在社区和会议中展露头角。许多不明真相的群众跟风哭着喊着要“上”，而许多前CI的半吊子玩家换件衣服就接着干，有的甚至衣服都来不及换……</strong>。国内的这些土财主如果不巧请了某些所谓的战略家，除了建了一堆持续集成环境，以及每天嚷嚷着要这个要那个，混乱的状况在根本上没有得到改善。本文无意费力探讨持续集成和持续交付的概念，而是打算谈谈对于大型软件企业，以持续集成为基础实现持续部署（交付）时，所要面对的问题以及可行的解决方案。地主老财们，夜黑风正猛，山高路又远，注意脚下……</p>
+<p style="text-align: right;"><strong>And God Said, Let there be light: and there wa</strong>— GENSIS, Charpter 1, King James</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%B8%80%E3%80%81%E8%B5%B7%E6%AD%A5" title="一、起步">一、起步</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-2" href="#11%EF%BC%89%E7%BC%96%E8%AF%91%E6%97%B6%E4%BE%9D%E8%B5%96%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E4%BE%9D%E8%B5%96" title="1.1）编译时依赖和运行时依赖">1.1）编译时依赖和运行时依赖</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#12%EF%BC%89%E4%BE%9D%E8%B5%96%E6%97%B6%E7%9A%84%E5%A4%8D%E6%9D%82%E5%BA%A6" title="1.2）依赖时的复杂度">1.2）依赖时的复杂度</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#13%EF%BC%89%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B7%A5" title="1.3）任务分工">1.3）任务分工</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#14%EF%BC%89%E8%87%AA%E5%8A%A8%E5%8C%96%E9%83%A8%E7%BD%B2" title="1.4）自动化部署">1.4）自动化部署</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E4%BA%8C%E3%80%81%E5%9B%B0%E5%A2%83" title="二、困境">二、困境</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E4%B8%89%E3%80%81%E4%BB%BB%E8%84%89%E2%80%94%E2%80%94%E7%8E%AF%E5%A2%83%E7%AE%A1%E7%90%86" title="三、任脉——环境管理">三、任脉——环境管理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%9B%9B%E3%80%81%E7%9D%A3%E8%84%89%E2%80%94%E2%80%94%E9%83%A8%E7%BD%B2%E7%B3%BB%E7%BB%9F" title="四、督脉——部署系统">四、督脉——部署系统</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E4%BA%94%E3%80%81%E6%B2%A1%E5%AE%8C" title="五、没完">五、没完</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93" title="六、总结">六、总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E3%80%81%E8%B5%B7%E6%AD%A5"></span>一、起步<span class="ez-toc-section-end"></span></h4>
+<p>先来讲个故事……</p>
+<p>几年前，一对留美的夫妇通过朋友找到我，让我帮忙在国内组建一个开发团队，该团队负责为其开发一款基于社交网络的客户关系管理软件,（暂且称之为项目A）。这个项目除了尚不清晰的需求范围和很紧的期限外，作为业内人士的老公Richard根据眼下流行的软件开发过程还提了诸多额外的要求：</p>
+<ul>
+<li><strong>功能要及早交付</strong>（以便拿去和潜在的投资人洽谈）</li>
+<li><strong>功能在部署到生产环境前要先部署的一个测试环境</strong>（Richard要试用后给予反馈）</li>
+<li><strong>功能必须经过测试</strong>（长期作为软件外包的甲方，对质量要求严格）</li>
+<li><strong>要减少后期维护的工作</strong>（美国人精贵，少雇一个是一个）</li>
+<li><strong>支持协同开发</strong>（以便维护人员及早介入）</li>
+<li>……</li>
+</ul>
+<p><span style="color: #000000;"><strong>这正是持续集成所要解决的典型场景</strong></span>。针对Richard的要求，我们只要建立一个基于Hudson（现在叫Jenkins）+Maven +SVN 的持续集成环境（再加上持续集成所要求的测试和过程）就可以很好地满足上述要要求，此方案的结构如下：</p>
+<p><span id="more-7657"></span></p>
+<p><a href="https://coolshell.cn/?attachment_id=7686" rel="attachment wp-att-7686"><img decoding="async" class="alignnone  wp-image-7686 aligncenter" src="/uploads/2012/06/hudsonCI2.jpg" alt="" width="693" height="719" srcset="" sizes="(max-width: 693px) 100vw, 693px"/></a></p>
+<p>对于上述方案，让我们近距离看看各个服务器的内部情况，以及人员在这种方案下的分工协作：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7708" rel="attachment wp-att-7708"><img decoding="async" loading="lazy" class="alignnone  wp-image-7708 aligncenter" src="/uploads/2012/06/response.jpg" alt="" width="658" height="438" srcset="" sizes="(max-width: 658px) 100vw, 658px"/></a></p>
+<p>我们先谈谈上面的图中涉及的一些概念性问题：</p>
+<h5><span class="ez-toc-section" id="11%EF%BC%89%E7%BC%96%E8%AF%91%E6%97%B6%E4%BE%9D%E8%B5%96%E5%92%8C%E8%BF%90%E8%A1%8C%E6%97%B6%E4%BE%9D%E8%B5%96"></span><strong>1.1）编译时依赖</strong>和<strong>运行时依赖</strong><span class="ez-toc-section-end"></span></h5>
+<p>从字面上不难理解这两种依赖的类型。但要注意虽然编译时依赖常常也是运行时依赖，但并不能推断出一方必然是另一方。比如，在开发的过程中需要某些提供API的Jar包，而运行时可能是具体API实现的Jar包。再者，被依赖的包会有其自身的依赖，因此,项目对这些包产生间接依赖（<strong>运行时依赖</strong>），依此类推，最终形成一个<strong>依赖树</strong>。当项目运行时，这些依赖树上的包必须全部就位。</p>
+<p>Maven在POM中通scope来界定依赖的类型，从而帮助开发和运维人员摆脱手动处理依赖树的工作，然而运行时所依赖包最终是要安装到生产环境的，这部分工作Maven并不能自动完成。因此，一个常用方式是将运行时所依赖的包拷贝到项目文件中，比如Java Web应用的WEB-INF/lib，然后将项目总的打一个包。<strong>在安装项目包后，修改环境变量，将这些包所在的路径加入相应的环境变量中，如ClassPath</strong>。</p>
+<p>再看个例子，现代的操作系统和其它系统框架都考虑到了运行时依赖树的处理问题，比如Ubuntu的apt-get，CentOS的yum，Ruby的RubyGem，Node的npm等等。</p>
+<h5><span class="ez-toc-section" id="12%EF%BC%89%E4%BE%9D%E8%B5%96%E6%97%B6%E7%9A%84%E5%A4%8D%E6%9D%82%E5%BA%A6"></span>1.2）依赖时的复杂度<span class="ez-toc-section-end"></span></h5>
+<p>项目除了对程序包的依赖，对于运行环境也有些具体的要求，比如，Web应用需要安装和配置Web服务器，应用服务器，数据服务器等，企业应用中可能需要消息队列，缓存，定时作业，或是对其它系统以Web Service方式暴露的服务。这些可以看做项目在系统层面对外部的依赖。这些依赖有些可以由项目自行处理，而有些则是项目无法处理的，比如运行容器，操作系统等，这些是项目的运行环境。</p>
+<p>总之，依赖的复杂度主要有两个：</p>
+<ol>
+<li>依赖包间的版本兼容性问题。兼容性问题是软件开发的恶梦</li>
+<li>间接依赖，或多重依赖问题。这个问题可以类比想像一下C++中的多重继续种出现的很多问题。</li>
+</ol>
+<div>比如：Ａ依赖于python 2.7，A还依赖于B，但是B却依赖于python 3，而Python 2.7和Python 3不兼容。这是依赖中最恶心的事。</div>
+<h5><span class="ez-toc-section" id="13%EF%BC%89%E4%BB%BB%E5%8A%A1%E5%88%86%E5%B7%A5"></span>1.3）任务分工<span class="ez-toc-section-end"></span></h5>
+<p>由于项目简单，因此并不需要专门的运维人员。以一个100人左右以交付为主业（恩，就是做外包）的公司为例，由于没有任何历史项目和代码的拖累，且各个项目间也没有任何关联，故而只需要配备一个IT支持人员进行资源方面的管理：分配机器，报修，初始化系统，分配IP地址等。各个项目的运行环境、数据库、开发环境等都由具体项目的开发人员手动完成。 环境出问题怎么办？很简单，凉拌——重装系统。实际的运行效果不错。</p>
+<h5><span class="ez-toc-section" id="14%EF%BC%89%E8%87%AA%E5%8A%A8%E5%8C%96%E9%83%A8%E7%BD%B2"></span>1.4）自动化部署<span class="ez-toc-section-end"></span></h5>
+<p>由于Hudson这样的持续集成环境提供了自动编译（定时或触发式）的功能，而且可以在编译过程中提供了一些扩展点，因此通过提供一个部署用的脚本，就可以非常容易实现简单的自动化部署。</p>
+<p>毫无疑问，持续集成就是敏捷的魔法药，它见效快、副作用小、业界的争论少。每每运用在混乱的项目中时，几周内项目就开始持续的产出经过测试的功能。对于独立项目，以持续集成为中心的持续部署绝对是不二选择。</p>
+<p><strong>但是，我们有没有想过，这会是一个自动化部署的通用解决方案吗？持续集成应该位于持续交付的中心吗？</strong></p>
+<h4><span class="ez-toc-section" id="%E4%BA%8C%E3%80%81%E5%9B%B0%E5%A2%83"></span>二、困境<span class="ez-toc-section-end"></span></h4>
+<p>回到我们的故事：项目A上线两年后，运营业绩不错，投资人第一轮注资后，Richard的公司进行了扩张，他们对项目进行了重构，而且随着用户数量的增长，公司分别在美国、英国和日本等地建立了运营中心，并且对亚洲市场进行的定制功能开发（项目A+），接下来，公司又投入开发了团购系统（项目B）。在获得了新一轮投资后，各条本来比较简单的业务和功能线上越来越复杂，需要不断地细分，于是公司再度扩张（开发人员达到了300人，国内200多人，而运维团队主要在美国），随后又为项目A/A+的高级用户开发了问答系统（项目C）。目前，他们正准备开发手机系统。 看看下面的图，公司增长的过程中，整个项目环境也变得复杂。（注意，这里是一种逻辑结构，而在物理层面项目B和项目A的生产环境可能部署在相同的机器上）。</p>
+<p><a href="https://coolshell.cn/?attachment_id=7694" rel="attachment wp-att-7694"><img decoding="async" loading="lazy" class="alignnone  wp-image-7694 aligncenter" src="/uploads/2012/06/sampleT1-1024x529.jpg" alt="" width="717" height="370" srcset="" sizes="(max-width: 717px) 100vw, 717px"/></a></p>
+<p>同时，原本单一的项目软件结构随着业务系统的增加也不再简单： <img decoding="async" loading="lazy" class="alignnone  wp-image-7697" src="/uploads/2012/06/software.jpg" alt="" width="763" height="414" srcset="" sizes="(max-width: 763px) 100vw, 763px"/></p>
+<p>而软件间的版本依赖使这个问题变得更为复杂：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7700" rel="attachment wp-att-7700"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-7700 aligncenter" src="/uploads/2012/06/dependency.jpg" alt="" width="626" height="343" srcset="" sizes="(max-width: 626px) 100vw, 626px"/></a></p>
+<p>现在，Richard的公司已经不再是一条快乐的小鱼，而是渐渐成为一直庞大的巨兽。虽然只有四个产品，但公司却要支持几百台开发机，几十台生产服务器，还有对应的测试环境，数据库服务器，以及几十个开发小组，和一大堆的内部项目。我们尽可以使用持续集成来为我们完成自动化部署。但，<strong>当我们为各个项目建立起持续集成环境后，它能满足我们对于持续部署的要求吗？我们前期的工作可以简化我们今后项目的持续交付的工作的难度吗？它需要我们为之建立一个庞大的运维团队，还是可以让我们能节省下每一毛钱来投入到真正的业务价值中去？</strong></p>
+<p><strong>让我们先来看看复杂的项目环境中的几个场景</strong>：</p>
+<p><strong>场景1：环境升级</strong></p>
+<p style="padding-left: 30px;">项目A和项目B都依赖于Web容器，公司决定升级Web容器版本，而公司要升级的机器有上百台，依赖人肉升级已不现实，维护团队因此针对各种软件开发了相应的自动化脚本，但当新的软件出现时，必须要开发新的脚本。而且当同时升级若干环境软件时，则难度随之增大，手工调度的方式极易出错，当升级失败时仍需要大量人工处理。由于存在大量升级脚本，有一定的维护成本。</p>
+<p><strong>场景2：依赖于环境的软件升级与回滚</strong></p>
+<p style="padding-left: 30px;">针对环境升级，公司为项目A和项目B开发了新的版本。但环境的升级和软件的升级不是同步进行，出错的可能性非常大（想一想间接依赖和多重依赖的情况）。当新版本部署到生产系统时，发现问题，需要回滚到之前的版本——所有运行时版本都需要回滚，而且环境也需要同步回滚。几百台机器……</p>
+<p><strong>场景3：运行时依赖</strong></p>
+<p style="padding-left: 30px;">在第一节的方案中，我们将所有的运行时依赖都打包到一起。当项目依赖关系复杂时，这样产生的包将非常臃肿，潜在地延长了部署的时间（想一想全世有几百台服务器，一个部署计划需要部署几百兆文件的情况），而且产生冲突的可能性非常大，而且对于不同类型的项目（Java和Ruby项目）缺乏通用性。06年左右，Nortel可是拿Excel统计过运行时依赖的，牵涉若干项目组，反复多次，没有个把月真搞不定。</p>
+<p><strong>场景4：泛滥的部署</strong></p>
+<p style="padding-left: 30px;">每个项目相关的持续集成环境都需要开发自己的部署脚本，重复投入大，而且各个项目的部署过程不一致，并且对于同一个项目无法同时满足不同目的部署要求，例如，环境或系统配置参数改变后，无需安装包，只需做清理和激活的工作。最后，持续集成只是支持了和代码修改有关的部署。</p>
+<p><strong>场景5：不一致的环境</strong></p>
+<p style="padding-left: 30px;">简单项目中，开发环境和运行环境都由开发人员搭建，当公司变大时，系统的运行环境将由运维人员搭建，而开发环境如果由运维人员搭建则工作量太大，由开发人员自己搭建则操作复杂又容易产生不一致的情况。</p>
+<p><strong>场景6：热切换</strong></p>
+<p style="padding-left: 30px;">对于某些部署，需要尽量减少服务的停止时间，需要在服务的同时进行部署。</p>
+<p>这些场景只是以持续集成为中心的持续部署在面对大型企业时所遇到的部分问题。大型企业，人多，项目多，机器多，项目环境复杂，部署维护工作繁多。以持续集成为基础的部署可以解决各个项目的集成问题，却无法帮助企业应对复杂的项目环境和各种不同的部署要求。<strong>究其更本，大型企业中的部署不再是一个简单的问题，而是一个交付生态圈，基础设施和环境管理必须要纳入考虑之中。</strong>要实现真正意义上的持续部署，我们就必须<strong>把环境和项目同等对待</strong>，通通纳入管理之中。同时，部署本身要得到统一。<strong>一个好的部署机制，应该是易于建立，易于使用，易于维护。</strong></p>
+<h4><span class="ez-toc-section" id="%E4%B8%89%E3%80%81%E4%BB%BB%E8%84%89%E2%80%94%E2%80%94%E7%8E%AF%E5%A2%83%E7%AE%A1%E7%90%86"></span>三、任脉——环境管理<span class="ez-toc-section-end"></span></h4>
+<p>什么是环境？</p>
+<p>系统运行所依赖和包含的一切就是其环境：硬件、操作系统，网络资源（IP地址、域名），服务容器，服务器软件配置，环境亦是，运行时依赖的命令和包，项目本身的包和配置都是环境的一部分。对于部署而言，广义上，这些通通应该纳入环境管理的范畴，但狭义上，从软件系统的角度看，一个环境就是其运行需要的软件及其配置（我们先把操作系统和网络资源当做基础设施，其在部署时已处于就位的情况）。因此：</p>
+<p><strong>项目A的生产环境 = 项目A本身的软件包 + 项目A运行时依赖的软件包 + 项目A运行时依赖的其它软件 + 项目A的配置信息</strong></p>
+<p>由于，项目本身的软件包、项目运行时依赖的软件包，以及项目运行时依赖的其它软件在本质上没有区别——都是软件，上面的定义可以进一步抽象为：</p>
+<p><strong>环境 = 软件包 + 配置信息</strong></p>
+<p>在这个定义下，我们就必须将运行环境的软件解构，并以包的形式导入到公司的整个项目资源库中，比如Apache将作为一个包被导入，而Apache依赖的其它包也将依次被导入，并建立起正确的依赖关系。而且，在导入的过程中还必须做些相应的调整，如，环境变量的读取和设置，必须来自于环境配置模块，而不要修改系统的环境变量，防止不同环境在系统环境配置上相互影响和依赖。</p>
+<p>再回头审视我们的示例，项目A的生产环境可以部署在不同的区域，对于各个区域可能有定制化的设定。这就像面向对象中的类，可以通过继承使子类重用父类的公有属性和行为并添加自己特有的信息。因此，环境的概念模型如图：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7725" rel="attachment wp-att-7725"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-7725 aligncenter" src="/uploads/2012/06/Env.jpg" alt="" width="523" height="118" srcset="" sizes="(max-width: 523px) 100vw, 523px"/></a></p>
+<p>通过这样的关系，我们很容易为示例的复杂环境建立一种简单的结构，对于项目A：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7729" rel="attachment wp-att-7729"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-7729 aligncenter" src="/uploads/2012/06/org1.jpg" alt="" width="599" height="519" srcset="" sizes="(max-width: 599px) 100vw, 599px"/></a></p>
+<p>这里，环境依然是处于知识层面（Knowledge Level），它并未与具体的基础设施相关联。当我们将一个环境“具现化”成一个运行系统时，我们就产生了一个真正的环境实例。在这两者之间，我们还必须要考虑环境实例的使用目的（开发？测试？……）以及安装所依赖的其它信息（如机器），因此，我们需要增加一个环境目标来集中这些信息，而且由于不同目标的环境可能会有所差别，因此，环境目标也需要配置的能力。概念模型如图：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7731" rel="attachment wp-att-7731"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-7731 aligncenter" src="/uploads/2012/06/target.jpg" alt="" width="523" height="438" srcset="" sizes="(max-width: 523px) 100vw, 523px"/></a></p>
+<p>图中的环境实例是如何产生的呢？<strong>部署</strong>，<strong>一次部署可能会产生一个环境实例。</strong>一系列部署将产生对应于环境目标的多个环境实例，除去当前起作用的环境实例外（最新的），其它的是历史环境实例。<strong>通过在历史环境实例中切换，我们自然而然的就可以使整个环境回滚，因为项目所依赖的一切都已经成为的环境中的软件包，而且环境依赖的包的版本会随着部署具体确定下来。</strong>如此一来，我们便可以给每个环境实例分配一个版本号，再通过环境实例的版本号与软件包的版本对应起来，从而得知一次部署时应用的具体软件包，如图：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7732" rel="attachment wp-att-7732"><img decoding="async" loading="lazy" class="alignnone  wp-image-7732 aligncenter" src="/uploads/2012/06/version.jpg" alt="" width="669" height="394" srcset="" sizes="(max-width: 669px) 100vw, 669px"/></a></p>
+<p>目前的环境管理结构，已经可以解决场景1、2和5的问题。那<strong>么对于场景2，运行时依赖，环境管理应该如何解决呢？</strong></p>
+<p>细心的朋友，可能已经发现，<strong>在环境层面上我们确定了环境依赖的软件包</strong>，这里有两个隐藏的含义：</p>
+<ul>
+<li>环境定义的是对软件包的运行时依赖</li>
+<li>由于环境是一个逻辑上的概念，因此其所用的软件包也是一个逻辑上的概念（相对于版本控制系统中的软件包）</li>
+</ul>
+<p>我们也已经知道，在部署时，一个环境实例将具体的确定其依赖的软件包的版本。某个版本的软件包最终与代码库中的物理的软件包相关联。但软件包是运行时的安装包，因此，它应该是代码库中包编译的结果。在对代码库的包编译时，既要将结果打上版本保存起来，也好在两者的版本间建立关系，最后，编译结果应该是某种既定的安装包目录文件结构。</p>
+<p>另外，当环境包含的包比较多时，运行时版本树会非常大，手动的指定全部的包的版本将是一个非常大的体力劳动，这部分工作也要得到简化。由此，我们必须</p>
+<div>
+<ul>
+<li><strong>建立逻辑软件包版本和版本库中软件包版本间的关系</strong></li>
+<li><strong><strong>为相互依赖的包编译并打上统一的标签</strong></strong></li>
+<li><strong>简化运行时包依赖关系的生产</strong></li>
+<li><strong>简化运行时包依赖的指定（可参考apt-get和RubyGem，环境只需指定直接依赖的包，间接依赖的包从运行时依赖树中自动导入）</strong></li>
+</ul>
+<div>一个可能的简单结构如下：</div>
+<p><a href="https://coolshell.cn/?attachment_id=7736" rel="attachment wp-att-7736"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-7736 aligncenter" src="/uploads/2012/06/pkg1.jpg" alt="" width="783" height="195" srcset="" sizes="(max-width: 783px) 100vw, 783px"/></a></p>
+<p>上述讨论还没有涉及操作系统，<strong>如果我们的运行机器要支持多个系统，我们又该怎么办？？？</strong></p>
+<p>配置信息也是个大问题，大家可以思考</p>
+<ul>
+<li><strong>环境配置和应用配置如何区分？</strong></li>
+<li><strong>如何简化环境配置工作？</strong></li>
+<li><strong>如何使环境配置的效果只对具体环境有效，而不会泄露到环境外部？</strong></li>
+</ul>
+</div>
+<p>再者，</p>
+<ul>
+<li><strong>如何使应用支持多运行目标？</strong></li>
+<li><strong>环境管理如何能方便开发环境的调试？</strong></li>
+<li><strong>要如何简化版本的选择?</strong></li>
+<li><strong><strong>在多个包有编译和运行时依赖时，编译时如何检查以减少引入兼容性问题的风险？</strong></strong></li>
+</ul>
+<p>这些都留待大家思考。</p>
+<h4><span class="ez-toc-section" id="%E5%9B%9B%E3%80%81%E7%9D%A3%E8%84%89%E2%80%94%E2%80%94%E9%83%A8%E7%BD%B2%E7%B3%BB%E7%BB%9F"></span>四、督脉——部署系统<span class="ez-toc-section-end"></span></h4>
+<p>《持续集成》和《持续交付》中都对部署有详细的讨论，不在赘述。<strong>在我看来，部署其就是按照其目的执行一系列步骤将环境置于其目的所指向的状态中</strong>。我们一会再回国头来看这段文绉绉的话，先看看第一部分持续集成的环境下，我们部署的步骤可能会是下面这个样子：</p>
+<ol>
+<li>登陆目标机（ssh）</li>
+<li>停止服务</li>
+<li>清理环境</li>
+<li>准备安装环境（创建文件夹等）</li>
+<li>安装项目包（rsync，解压，权限设置等）</li>
+<li>配置环境变量</li>
+<li>启动服务</li>
+<li>……</li>
+</ol>
+<p>而在第二部分的<strong>情景4</strong>中，我们看到如果对不同的持续集成环境建立不同的部署脚本和环境维护脚本，这部署过程的维护会非常繁琐。基于第三部分的环境管理，我们可以将部署过程抽象为：</p>
+<p><a href="https://coolshell.cn/?attachment_id=7737" rel="attachment wp-att-7737"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-7737 aligncenter" src="/uploads/2012/06/deploy.jpg" alt="" width="566" height="351" srcset="" sizes="(max-width: 566px) 100vw, 566px"/></a></p>
+<p>现在回到开头那个文绉绉的描述：<strong>部署其就是按照其目的执行一系列步骤将环境置于其目的所指向的状态中</strong>。</p>
+<p>由于我们已经将部署作为环境管理的一部分，而环境又是对外提供服务的最小实体，因此，对环境的部署就是要根据部署的类型，在环境上按一定的步骤执行一系列操作，从而使环境置于部署类型所要的状态，这个过程中可能会生成对应的环境实例。举例来说，我们可能会修改环境相关的一些配置，然后重启环境，显然，这种情况下不需要下载安装软件包（没有改变），因此也就不需要生成环境实例。</p>
+<p>对于标准的部署——安装软件包并启动环境，可能的步骤将会是：</p>
+<ol>
+<li>选择将要部署的软件包的版本</li>
+<li>生成新的环境实例（确定环境实例的版本和其依赖包的版本，确定环境配置等）</li>
+<li>清理和准备目标机环境</li>
+<li>下载包</li>
+<li>设置环境配置</li>
+<li>环境实例切换</li>
+<li>生成部署报告</li>
+<li>……</li>
+</ol>
+<p>好，部署系统和环境管理各就各位，我们可以将各个项目环境纳入我们的环境管理之中，甚至是持续集成环境本身。再补充一句，要让部署系统和环境管理能很好的发挥作用，我们即需要一个简单一致的UI界面（为开发人员），也需要提供一个清晰明了的服务接口（供外部系统调用，如持续部署系统）。<strong>对于与环境管理相关的机器状态管理，网络资源的配置等等，本文不再涉及，大家可以自己思考</strong>。环境管理的实现、编译系统改造以及持续部署的具体实现，另作文章探讨。</p>
+<p>就技术而言（不考虑围绕持续部署的过程实践），环境管理、部署系统以及我们没有提及的编译系统改造才是生产线的真正引擎，持续部署不过是水到渠成的传送带而已。</p>
+<h4><span class="ez-toc-section" id="%E4%BA%94%E3%80%81%E6%B2%A1%E5%AE%8C"></span>五、没完<span class="ez-toc-section-end"></span></h4>
+<p>打通了任督二脉后，事还还没有完，还有很多细节上的问题。你想，这个工具实在是太好用了，于是公司里成百上千的工程师们都在使用这个自动化部署系统，我们又会面对很多很多问题：</p>
+<ul>
+<li><strong>部署系统的性能问题</strong>。几百号人不停地在把他们的软件部署到自己的机器上，部署到测试环境，部署到生产环境，一天之内一个人可能会要部署N次，回滚N次，不但有大量部署请求，还有大量的文件在网络上传输。你得想想这套部署系统如何解决这些性能问题，还得考虑未来更大规模的性能水平扩展问题。</li>
+</ul>
+<ul>
+<li><strong>目标机环境的管理。</strong>在目标运行机上需要解决几个问题：1）两个环境间如果有一些的一样的包，那就没有必要再下载了，这样可以节约时间。2）每次部署都需要把老的部署环境给保留下来，这样方便在新旧环境下的切换。这两点对于在生产环境下部署非常关键。（这需要环境内所有软件的绿色安装才能更容易达到这个目标，因些，Unix/Linux会比Windows更容易做到这点）</li>
+</ul>
+<ul>
+<li><strong>部署一致性事务问题</strong>。有时候，我们需要同时部署若干台服务器，比如：包A到机器MA，包B到机器MB，包C到机器MC，……（Web Service的SOA架构），这些包之间有运行依赖性和兼容性问题，要么一次性全部完成，要么就全部失败。回滚也是一样的，这是一个部署事务或部署一致性的问题。如何解决呢？</li>
+</ul>
+<ul>
+<li><strong>部署环境的版本控制问题</strong>。前面说过，我们的一个环境就会和若干个包的版本耦合，环境必需管理要部署的包的版本。于是，当你的部署越来越多的时候，各个环境的包的版本开始出现混乱，各种依赖间的版本也会出现不统一的情况，也就是说，就算你有这样的一个工具，在一个高速开发的环境下，我们的部署环境的管理还是会出现很多混乱的情况，需要你不断地统一大家的开发、测试环境。</li>
+</ul>
+<ul>
+<li><strong>部署计划</strong>。我们可能会有很多部署计划，比如：设定定时部署，提升或降低部署优先级，部署事务定义，部署策略（如：先部署10%的机器，如果没有问题，再把剩下的系统部署了），热切计划和策略…… 等等 ，等等 。</li>
+</ul>
+<ul>
+<li><strong>部署的监控和维护</strong>。任何软件和系统都会有这样的问题，当规模上去了以后，我们的自动化部署系统的监控和维护的复杂度并不亚于一个大型的互联网应用。</li>
+</ul>
+<div>这样的问题会有很多，基本上来说，<strong>这样一个持续集成持续部署的自动化系统并不是那么简单的事，其开发工作量和一个标准的大型互联网业务系统没什么两样</strong>。</div>
+<h4><span class="ez-toc-section" id="%E5%85%AD%E3%80%81%E6%80%BB%E7%BB%93"></span>六、总结<span class="ez-toc-section-end"></span></h4>
+<p>这里只谈一点自己的看法，从传统的持续集成到面向大型软件的持续部署，我们将系统所依赖的软件环境和软件包抽象为一致的实体纳入到管理之中，并将运维人员的工作真正的分摊到开发人员身上。而云计算的出现，使得计算机本身也可以自动化的创建和回收，这样环境管理的范畴将进一步扩充。相应的，部署的能力和灵活性也是一次质的飞跃，将再一次减轻运维人员的工作压力。</p>
+<p>说了这么多废话，总结一下自己的观点，对于向大型软件企业推销基于持续集成的持续部署（交付）的哥们：</p>
+<ul>
+<li><strong>你就是在耍流氓</strong>，如果你不解决环境管理！！！</li>
+<li><strong>你就是在耍流氓</strong>，如果你不建立部署系统！！！</li>
+<li><strong>你就是在耍流氓</strong>，如果你不扩展编译系统！！！</li>
+<li><strong>你就是在耍流氓</strong>，如果你只是推销小团队的实践而不考虑改造大环境！！！</li>
+<li><strong>你就是个流氓</strong>，如果你只是不断地告诉别人怎么做，自己却从来不动手写一个测试或建立一个持续集成环境！！！</li>
+</ul>
+<p>最后，用Linus最经典的话来结束本文——“ Talk is Cheap, Show me the Code！”</p>
+<p>（<strong>注：本文由<a href="http://weibo.com/renfake" target="_blank">@常新居士</a>完成初稿，我做了一些编辑，主要写了第五节“没完”</strong> ）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7657-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">企业应用</a>, <a href="javascript:void(0)" rel="category tag">技术管理</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">流程方法</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">agile</a>, <a href="javascript:void(0)" rel="tag">CI</a>, <a href="javascript:void(0)" rel="tag">部署</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>持续部署，并不简单！</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-197460" class="comment byuser comment-author-eweng even thread-even depth-1">
+<article id="div-comment-197460" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d2afe3715075fad974d7d1761cc476df?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d2afe3715075fad974d7d1761cc476df?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Eweng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197460"><time datetime="2012-06-25T09:20:25+08:00">2012年06月25日 09:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞！好文啊！</p>
+</div>
+ </article>
+</li>
+<li id="comment-197463" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b938fac56af0e10c90ae31cc1147d58?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b938fac56af0e10c90ae31cc1147d58?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">raymond</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197463"><time datetime="2012-06-25T09:24:17+08:00">2012年06月25日 09:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>板凳</p>
+</div>
+ </article>
+</li>
+<li id="comment-197469" class="comment even thread-even depth-1">
+<article id="div-comment-197469" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b5cd8f6ec62ff29566404991f035bd2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b5cd8f6ec62ff29566404991f035bd2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://vcard.cc" class="url" rel="ugc external nofollow">niko</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197469"><time datetime="2012-06-25T10:00:44+08:00">2012年06月25日 10:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>酷~~~~非常经典</p>
+</div>
+ </article>
+</li>
+<li id="comment-197474" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197474" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/357685f88de28e2697e4b2c004020acc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/357685f88de28e2697e4b2c004020acc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aochant</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197474"><time datetime="2012-06-25T10:26:41+08:00">2012年06月25日 10:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文！这才叫干货！<br/>
+分享经验才叫真正的分享！<br/>
+比贴一堆代码的那种强上百倍不止！</p>
+</div>
+ </article>
+</li>
+<li id="comment-197478" class="comment even thread-even depth-1">
+<article id="div-comment-197478" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197478"><time datetime="2012-06-25T10:45:01+08:00">2012年06月25日 10:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>后台系统居然都盘根错节到这种程度，会不会是一开始的方向、理念就错了呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-197480" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197480" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6378788041959ffa9b585d84f10ceb8e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6378788041959ffa9b585d84f10ceb8e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yongmin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197480"><time datetime="2012-06-25T11:25:43+08:00">2012年06月25日 11:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>virtualization 或者 EC2可以很好的解决platform的搭建，Koji 来管理和prompt package能很好的完成持续部署到不同环境, test -&gt; staging -&gt; production</p>
+</div>
+ </article>
+</li>
+<li id="comment-197494" class="comment even thread-even depth-1">
+<article id="div-comment-197494" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2c83a2cad0ac9fd874f57caaab395e6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2c83a2cad0ac9fd874f57caaab395e6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://guojishouji.com" class="url" rel="ugc external nofollow">牛角博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197494"><time datetime="2012-06-25T13:31:59+08:00">2012年06月25日 13:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>复制走了这篇文章了，放到word中继续读，留给脚印</p>
+</div>
+ </article>
+</li>
+<li id="comment-197505" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197505" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7ed7bd97b36f31a872e61e83c3159a79?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7ed7bd97b36f31a872e61e83c3159a79?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.suchasplus.com" class="url" rel="ugc external nofollow">suchasplus</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197505"><time datetime="2012-06-25T14:57:10+08:00">2012年06月25日 14:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-197478"><p>
+<strong><a href="#comment-197478" rel="nofollow">haitao</a> :</strong><br/>
+后台系统居然都盘根错节到这种程度，会不会是一开始的方向、理念就错了呢？
+</p></blockquote>
+<p>当你的业务逻辑和目标复杂到一定程度的时候, 实现必然会更加复杂</p>
+</div>
+ </article>
+</li>
+<li id="comment-197508" class="comment even thread-even depth-1">
+<article id="div-comment-197508" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60b283fe6f2a85b3e620d1d0ed3045b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60b283fe6f2a85b3e620d1d0ed3045b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">芡实</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197508"><time datetime="2012-06-25T15:55:42+08:00">2012年06月25日 15:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问CI服务器是干什么用的？全称是什么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-197510" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197510" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a668aecd25f6f60aabefb0b2cfcc10d1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a668aecd25f6f60aabefb0b2cfcc10d1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.linuxwind.org" class="url" rel="ugc external nofollow">平阳</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197510"><time datetime="2012-06-25T16:21:04+08:00">2012年06月25日 16:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197508" rel="nofollow">@芡实 </a><br/>
+Continuous-Integration-Server</p>
+</div>
+ </article>
+</li>
+<li id="comment-197511" class="comment even thread-even depth-1">
+<article id="div-comment-197511" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60b283fe6f2a85b3e620d1d0ed3045b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60b283fe6f2a85b3e620d1d0ed3045b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">芡实</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197511"><time datetime="2012-06-25T16:27:17+08:00">2012年06月25日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>OK，我已经google了，continuous integration Server</p>
+</div>
+ </article>
+</li>
+<li id="comment-197514" class="comment byuser comment-author-fakeren bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197514" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eda961360fe8288e34e8149ced43abf4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eda961360fe8288e34e8149ced43abf4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">马基雅弗利</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197514"><time datetime="2012-06-25T16:47:55+08:00">2012年06月25日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197505" rel="nofollow">@suchasplus </a><br/>
+如果考虑到运维系统，部署时机器的状态等，现实的情况比这个更复杂。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197517" class="comment even thread-even depth-1">
+<article id="div-comment-197517" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/16c9be6297c9a7e764797732f2ca280e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/16c9be6297c9a7e764797732f2ca280e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liaoxuefeng.com" class="url" rel="ugc external nofollow">Michael</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197517"><time datetime="2012-06-25T17:02:52+08:00">2012年06月25日 17:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一开始用Java方向就错了<br/>
+<a href="#comment-197478" rel="nofollow">@haitao </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-197521" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a668aecd25f6f60aabefb0b2cfcc10d1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a668aecd25f6f60aabefb0b2cfcc10d1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.linuxwind.org" class="url" rel="ugc external nofollow">平阳</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197521"><time datetime="2012-06-25T18:07:03+08:00">2012年06月25日 18:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们也是这个构架。很接近。所以对于，ci，deploy system，dev，test，stg，prd，这种流程很熟悉。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197579" class="comment even thread-even depth-1">
+<article id="div-comment-197579" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/56ce4cb6f1383ffa5fa854afb652d454?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/56ce4cb6f1383ffa5fa854afb652d454?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://anmanzhang.blogbus.com" class="url" rel="ugc external nofollow">Codyzhang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197579"><time datetime="2012-06-26T10:14:30+08:00">2012年06月26日 10:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益良多，摘录了不少内容，以后慢慢领会！环境管理确实重要，我推荐可以尝试使用puppet+svn(git)来解决</p>
+</div>
+ </article>
+</li>
+<li id="comment-197580" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197580" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197580"><time datetime="2012-06-26T10:15:53+08:00">2012年06月26日 10:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好长，且看不懂。还是写写C代码吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-197592" class="comment even thread-even depth-1">
+<article id="div-comment-197592" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/357685f88de28e2697e4b2c004020acc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/357685f88de28e2697e4b2c004020acc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aochant</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197592"><time datetime="2012-06-26T11:18:03+08:00">2012年06月26日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197494" rel="nofollow">@牛角博客 </a><br/>
+这年头了还这么麻烦呀，推荐wiz或者印象笔记(evernote)</p>
+</div>
+ </article>
+</li>
+<li id="comment-197605" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197605" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c4e6da0f63acad8f687d604783200817?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c4e6da0f63acad8f687d604783200817?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.sand-tower.net" class="url" rel="ugc external nofollow">afrag</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197605"><time datetime="2012-06-26T14:03:00+08:00">2012年06月26日 14:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>世界上的事情往往如此。小规模的时候，一切都不是问题。当规模增长的时候，很多原本微不足道的事情都成了大问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197649" class="comment even thread-even depth-1">
+<article id="div-comment-197649" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cb3be57eace4fc27dc8d2467709f392?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cb3be57eace4fc27dc8d2467709f392?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">阿来</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197649"><time datetime="2012-06-27T02:51:32+08:00">2012年06月27日 02:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文</p>
+</div>
+ </article>
+</li>
+<li id="comment-197669" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197669" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0366b1d5f434e6d9321dccdc1ebb1038?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0366b1d5f434e6d9321dccdc1ebb1038?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaxi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197669"><time datetime="2012-06-27T08:46:03+08:00">2012年06月27日 08:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常赞同“ Talk is Cheap, Show me the Code！”这句话啊！！！</p>
+<p>持续部署非常复杂，尤其对于大的项目而言。一些所谓的咨询师，可能也就做过一些一两百万行代码的项目。他们就会动动嘴。</p>
+</div>
+ </article>
+</li>
+<li id="comment-197737" class="comment even thread-even depth-1">
+<article id="div-comment-197737" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab9533488356a12473cf8609eb7b7664?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab9533488356a12473cf8609eb7b7664?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.mabye520.net/blog" class="url" rel="ugc external nofollow">心灵小屋</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197737"><time datetime="2012-06-27T23:15:54+08:00">2012年06月27日 23:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耐着性子看完了，虽然不太懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-197760" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197760" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04d3adc4842c9258bea29b3179299684?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04d3adc4842c9258bea29b3179299684?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">匿名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197760"><time datetime="2012-06-28T09:07:33+08:00">2012年06月28日 09:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Hi 陈皓，<br/>
+首先感谢精彩的内容及分享，我看了这篇马上想到之前看到的一篇文章，贴在这里，或许对大家有实践的帮助。<br/>
+首先，用别人的一段话作为简介，内容和链接在后</p>
+<p>“Etsy has been boasting the number of “deploys” to production per day for a while now — no surprise, given the supervision of one John Allspaw of DevOps Fame. I’ve seen people ask why they should be impressed by, say, 30 deployments per day, and whether or not this constant state of flux might not imply a certain instability, but that is missing the point. Pushing code or changes into production several times a day is not really all that exciting when you only focus on what changes might be made. What is exciting is having the ability to do so.”</p>
+<p>//////////////<br/>
+the link is here:<br/>
+<a href="http://codeascraft.etsy.com/2012/03/13/making-it-virtually-easy-to-deploy-on-day-one/" rel="nofollow ugc">http://codeascraft.etsy.com/2012/03/13/making-it-virtually-easy-to-deploy-on-day-one/</a></p>
+<p>////////////////////////////////////<br/>
+Making it Virtually Easy to Deploy on Day One</p>
+<p>Posted by John Goulah | Filed under engineering, infrastructure</p>
+<p>At Etsy we have one hard and fast rule for new Engineers on their first day: deploy to production. We’ve talked a lot in the past about our deployment, metrics, and testing processes. But how does the development environment facilitate someone coming in on day one and contributing something that takes them through the steps of committing code, running it through our tests, and deploying it with deployinator?</p>
+<p>A new engineer’s first task is to snap a photo using our in house photo booth (handmade of course) and upload it to the about page. Everyone gets a shiny new virtual machine with a working development version of the site, along with their LDAP credentials, github write access, and laptop. We use an internal cloud system for the VM’s, mostly because it was the most fun thing to build, but also gives us the advantage of our fast internal network and dedicated hardware. The goal is a consistent environment that mirrors production as closely as possible. So what is the simplest way to build something like this in house?</p>
+<p>We went with a KVM/QEMU based solution which allows for native virtualization. As an example of how you may go about building an internal cloud, here’s a little bit about our hardware setup. The hypervisor runs on HP DL380 G7 servers that provide us with a total 72G RAM and 24 cores per machine. We provision 11 guests per server, which allows each VM 2 CPU cores, 5G RAM, and a 40G hard drive. Libvirt supports live migrations across non-shared storage (in QEMU 0.12.2+) with zero downtime which makes it easy to allocate and balance VM’s across hosts if adjustments need to be made throughout the pool.</p>
+<p>We create CentOS based VM’s from a disk template that is maintained via Openstack Glance, which is a tool that provides services for discovering, registering, and retrieving virtual images. The most recent version of the disk images are kept in sync via glance, and exist locally on each server for use in the creation of a new VM. This is faster than trying to pull the image over the network on creation or building it from scratch using Kickstart like we do in production. The image itself may have been kickstarted to match our production baseline, and we template a few key files such as the network and hosts information which is substituted on creation, but in the end the template is just a disk image file that we copy and reuse.</p>
+<p>The VM creation process involves pushing a button on an internal web page that executes a series of steps. Similar to our one button deployment system, this allows us to iterate on the underlying system without disruption to the overall process. The web form only requires a username which must be valid in LDAP so that the user can later login. From there the process is logged such that it that provides realtime feedback to the browser via websockets. The first thing that happens is we find a valid IP in the subnet range, and we use nsupdate to add the DNS information about the VM. We then make a copy of the disk template which serves as the new VM image and use virt-install to provision the new machine. Knife bootstrap is then kicked off which does the rest of the VM initialization using chef. Chef is responsible for getting the machine in a working state, configuring it so that it is running the same version of libraries and services as the other VM’s, and getting a checkout of the running website.</p>
+<p>Chef is a really important part of managing all of the systems at Etsy, and we use chef environments to maintain similar cookbooks between development and production. It is extremely important that development does not drift from production in its configuration. It also makes it much easier to roll out new module dependencies or software version updates. The environment automatically stays in sync with the code and is a prime way to avoid strange bugs when moving changes from development to production. It allows for a good balance between us keeping things centralized, controlled, and in a known-state in addition to giving the developers flexibility over what they need to do.</p>
+<p>At this point the virtual machine is functional, and the website on it can be loaded using the DNS hostname we just created. Our various tools can immediately be run from the new VM, such as the try server, which is a cluster of around 60 LXC based instances that spawn tests in parallel on your upcoming patch. Given this ability to modify and test the code easily, the only thing left is to overcome any fear of deployment by hopping in line and releasing those changes to the world. Engineers can be productive from day one due to our ability to quickly create a consistent environment to write code in.</p>
+</div>
+ </article>
+</li>
+<li id="comment-197762" class="comment even thread-even depth-1">
+<article id="div-comment-197762" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e3cab5813cd4ee31e4648063ae50f81?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e3cab5813cd4ee31e4648063ae50f81?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zanfy009</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197762"><time datetime="2012-06-28T09:33:53+08:00">2012年06月28日 09:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>初学呀….几时我才能看懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-197767" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197767" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f73cf65e13b416d160a53b9843cc395?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f73cf65e13b416d160a53b9843cc395?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.icodeit.org" class="url" rel="ugc external nofollow">juntao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197767"><time datetime="2012-06-28T11:03:39+08:00">2012年06月28日 11:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197469" rel="nofollow">@niko </a><br/>
+请参看好文的最后一句，哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-197768" class="comment even thread-even depth-1">
+<article id="div-comment-197768" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f73cf65e13b416d160a53b9843cc395?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f73cf65e13b416d160a53b9843cc395?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.icodeit.org" class="url" rel="ugc external nofollow">juntao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197768"><time datetime="2012-06-28T11:05:23+08:00">2012年06月28日 11:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197474" rel="nofollow">@aochant </a><br/>
+@niko回复错了，不好意思<br/>
+@aochant 请参看好文的最后一句，哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-197782" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197782" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fa1767239c3b8876d75e98dc934fff49?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fa1767239c3b8876d75e98dc934fff49?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">klcwt</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197782"><time datetime="2012-06-28T15:40:38+08:00">2012年06月28日 15:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主的图画的真不错，请问是用什么工具？</p>
+</div>
+ </article>
+</li>
+<li id="comment-197991" class="comment even thread-even depth-1">
+<article id="div-comment-197991" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d378fdd8dd542ab16f7d64e7f99bea5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d378fdd8dd542ab16f7d64e7f99bea5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">南关的马</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-197991"><time datetime="2012-07-01T01:54:37+08:00">2012年07月01日 01:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197480" rel="nofollow">@Yongmin </a><br/>
+OS 级别的virtualization解决持续集成有点资源浪费了， 但是不virtualization的话， 资源竞争比如端口号占用什么的又不好解决。 我记得solaris有个zone的概念，如果zone这类的概念能解决掉资源问题， 而且不用OS级别虚拟化， 我觉得在云端上搞这些挺好的。 公司里目前就在推云上搞定CI，前期效果还不错。 但是规模还小。 大部分还没上云。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198071" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198071" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a717c7a82c5d39d17c1dc231848eb37?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a717c7a82c5d39d17c1dc231848eb37?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">放倒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198071"><time datetime="2012-07-02T00:39:39+08:00">2012年07月02日 00:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看完这么多文字，头很晕。<br/>
+老大是不是你们的系统少了个叫自动升级的模块？</p>
+</div>
+ </article>
+</li>
+<li id="comment-198131" class="comment even thread-even depth-1">
+<article id="div-comment-198131" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c0b8f69d8d09f920bf4d14358584a71?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c0b8f69d8d09f920bf4d14358584a71?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">虎头</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198131"><time datetime="2012-07-02T21:32:36+08:00">2012年07月02日 21:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问您的图是用什么工具画的？谢谢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-198151" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198151" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d3b61bf864967bf2ae57e7facfa08303?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d3b61bf864967bf2ae57e7facfa08303?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cppblog.com/vczh" class="url" rel="ugc external nofollow">vczh</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198151"><time datetime="2012-07-03T12:11:39+08:00">2012年07月03日 12:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得最恶心的不是A依赖于python2而B依赖于python3这个问题，而是python安装的时候非要XX的装进global配置，就不肯给一个绿色的box环境。我觉得作为一个library，根本不应该替用户决定他要如何安装和被识别的问题，应该总是由使用library的人来做。不过话说回来，如果是.net，一个包依赖于2.0，另一个包依赖于4.0，尽管runtime不一样，但是那是完全没有关系的。只有向下兼容的lib才可以做进global配置。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198271" class="comment even thread-even depth-1">
+<article id="div-comment-198271" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c49cc17a93fdaafbe63bb1771831051e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c49cc17a93fdaafbe63bb1771831051e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.arganzheng.me" class="url" rel="ugc external nofollow">argan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198271"><time datetime="2012-07-05T10:26:32+08:00">2012年07月05日 10:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198151" rel="nofollow">@vczh </a><br/>
+python的全局配置和库确实是个问题。即使用virtualenv也不能解决（你不可能在一个操作系统上装两个版本的python及其运行环境），相比来说，ruby这方面做的比较好。他每个版本都是自治的，所以可以多个版本共存，并且任意切换。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198273" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198273" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29889c12ba9fe104ad73e2e140a16795?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29889c12ba9fe104ad73e2e140a16795?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yongke</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198273"><time datetime="2012-07-05T10:49:24+08:00">2012年07月05日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>OS级别的virtualization用在持续集成里面还是很有必要的吧。virtualization制作和维护自动化脚本的成本不高， 完全可以和genkens集成。 其次物理资源的占用也不算高，一个server完全可以模拟一个4~6个虚拟机的cluster, 完全适合DEV,TST, stage 这些级别的自动编译和部署。</p>
+</div>
+ </article>
+</li>
+<li id="comment-198481" class="comment even thread-even depth-1">
+<article id="div-comment-198481" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/927c66b2f60e5d7e190bf889240f9176?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/927c66b2f60e5d7e190bf889240f9176?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">spring</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198481"><time datetime="2012-07-08T06:16:51+08:00">2012年07月08日 06:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Continus Integration持续集成<a href="#comment-197508" rel="nofollow">@芡实 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-198667" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198667" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/233a84a4920f28899fe7514c6bc43f82?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/233a84a4920f28899fe7514c6bc43f82?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://sue.li" class="url" rel="ugc external nofollow">Suley</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-198667"><time datetime="2012-07-10T15:53:43+08:00">2012年07月10日 15:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-197521" rel="nofollow">@平阳 </a><br/>
+求指导 &gt;-&lt; 我虽然搭建了 git , ci，deploy system，dev，test，stage, production, UAT 系统而且也在用，但毕竟没进过公司，不知道正规的开发是怎么样的，能分享一下贵司开发、测试、部署的流程么？ （T_T ）</p>
+</div>
+ </article>
+</li>
+<li id="comment-199176" class="comment even thread-even depth-1">
+<article id="div-comment-199176" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d62d782bd0ed42394797cff8a9adae70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d62d782bd0ed42394797cff8a9adae70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://virusswb.blog.51cto.com" class="url" rel="ugc external nofollow">virusswb</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-199176"><time datetime="2012-07-17T11:25:37+08:00">2012年07月17日 11:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>开发环境虚拟化是否可以解决一部分问题呢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-199177" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-199177" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d62d782bd0ed42394797cff8a9adae70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d62d782bd0ed42394797cff8a9adae70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://virusswb.blog.51cto.com" class="url" rel="ugc external nofollow">virusswb</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-199177"><time datetime="2012-07-17T11:41:34+08:00">2012年07月17日 11:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个部署系统也是个大项目啊，不亚于大型互联网项目。</p>
+</div>
+ </article>
+</li>
+<li id="comment-202051" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jiehuobbs.com/a/288.html" class="url" rel="ugc external nofollow">探索中的持续部署 – 云计算站</a> </div>
+</li>
+<li id="comment-202421" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-202421" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/abae92d5d3c8b9ad785a91a0ef9c2135?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/abae92d5d3c8b9ad785a91a0ef9c2135?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tonyzeng888</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-202421"><time datetime="2012-09-07T09:13:42+08:00">2012年09月07日 09:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您的图是用什么工具画的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-236748" class="comment even thread-even depth-1">
+<article id="div-comment-236748" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a167083ebfcd3cbfb32ba8d46a770cb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a167083ebfcd3cbfb32ba8d46a770cb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.sina.com.cn/97forex" class="url" rel="ugc external nofollow">97forex</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-236748"><time datetime="2012-12-13T15:02:42+08:00">2012年12月13日 15:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>敏捷适合小团队</p>
+</div>
+ </article>
+</li>
+<li id="comment-258106" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-258106" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc5d1beebf14908d2e718a1ccd8474bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc5d1beebf14908d2e718a1ccd8474bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">有点笨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-258106"><time datetime="2013-01-06T10:48:22+08:00">2013年01月06日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，很不错的文章。</p>
+</div>
+ </article>
+</li>
+<li id="comment-258115" class="comment even thread-even depth-1">
+<article id="div-comment-258115" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc5d1beebf14908d2e718a1ccd8474bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc5d1beebf14908d2e718a1ccd8474bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">有点笨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-258115"><time datetime="2013-01-06T10:53:32+08:00">2013年01月06日 10:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，我们公司使用hudson做每日构建：编译、代码检查（checkstyle、findbugs）、反馈；现加入自动化部署，但自动化数据库集成遇到了问题。开发和测试各有一套数据库，自动化数据库使用他们的数据库，还是单独一套数据库？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1279199" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cn-php.com/2013/07/150.html" class="url" rel="ugc external nofollow">7个示例科普CPU Cache | cn-php</a> </div>
+</li>
+<li id="comment-1494963" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1494963" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cbd3ed166dede6a43103583392ef4a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cbd3ed166dede6a43103583392ef4a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">米糯牛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-1494963"><time datetime="2014-07-14T02:53:57+08:00">2014年07月14日 02:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在有了 Docker，持续部署的工作量会减轻不少，作者可以针对 Docker 更新一下这篇文章</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2200215" class="comment odd alt depth-2">
+<article id="div-comment-2200215" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4c5272736cf491f42466360f39c92cd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4c5272736cf491f42466360f39c92cd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">R JK</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-2200215"><time datetime="2021-01-30T16:33:15+08:00">2021年01月30日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>初学者2021年看到这篇文章，才感受到docker的了不起，虽然docker已经要被干掉了…</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1498455" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1498455" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/118363ae716910003e2c2888e622d916?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/118363ae716910003e2c2888e622d916?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">龙井</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-1498455"><time datetime="2014-07-21T16:20:59+08:00">2014年07月21日 16:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1494963" rel="nofollow">@米糯牛 </a><br/>
+请教你一下，您们现在有在基于Docker做持续部署吗？分享分享经验吧！3Q</p>
+</div>
+ </article>
+</li>
+<li id="comment-1856850" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1856850" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d4b7ffee0726bfd8647b935645aa7a29?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d4b7ffee0726bfd8647b935645aa7a29?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">SteelWood</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-1856850"><time datetime="2016-07-09T15:45:56+08:00">2016年07月09日 15:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>读老文才发现自己跟大牛的差距至少还有4年</p>
+</div>
+ </article>
+</li>
+<li id="comment-1893811" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1893811" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f696b346966bbf9623747b0719ea1e55?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f696b346966bbf9623747b0719ea1e55?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bluven</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-1893811"><time datetime="2016-10-26T10:12:39+08:00">2016年10月26日 10:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“功能在部署到生产环境前要先部署的一个测试环境”貌似有错别字，应该是“功能在部署到生产环境前要先部署到一个测试环境”</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370690" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b83ab2b439819717360ec07bed2f21b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b83ab2b439819717360ec07bed2f21b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">石头</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7657.html#comment-2370690"><time datetime="2022-09-03T10:47:54+08:00">2022年09月03日 10:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗叔10年前的文章都这么牛逼。。。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

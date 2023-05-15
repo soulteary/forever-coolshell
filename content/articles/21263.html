@@ -1,0 +1,671 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go 编程模式：k8s Visitor 模式 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21263 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21263" class="post-content post-21263 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-design-pattern tag-go tag-golang tag-kubernetes tag-visitor-pattern series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go 编程模式：k8s Visitor 模式</span>
+<h1 class="entry-title">Go 编程模式：k8s Visitor 模式</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21263.html" title="19:25" rel="bookmark"><time class="entry-date" datetime="2020-12-26T19:25:46+08:00" pubdate="">2020年12月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21263.html#comments" class="comments-link">19 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,047 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-21270" src="/uploads/2020/12/go.k8s-265x300.png" alt="" width="265" height="300" srcset="" sizes="(max-width: 265px) 100vw, 265px"/>本篇文章主要想讨论一下，Kubernetes 的 <code>kubectl</code> 命令中的使用到到的一个编程模式 – Visitor（注：其实，<code>kubectl</code> 主要使用到了两个一个是Builder，另一个是Visitor）。本来，Visitor 是面向对象设计模英中一个很重要的设计模款（参看Wikipedia<a href="https://en.wikipedia.org/wiki/Visitor_pattern" target="_blank" rel="noopener"> Visitor Pattern词条</a>），这个模式是一种将算法与操作对象的结构分离的一种方法。这种分离的实际结果是能够在不修改结构的情况下向现有对象结构添加新操作，是遵循开放/封闭原则的一种方法。这篇文章我们重点看一下 <code>kubelet</code> 中是怎么使用函数式的方法来实现这个模式的。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第9 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go 编程模式：k8s Visitor 模式</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21228.html" rel="prev" title="Go编程模式：Pipeline">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21615.html" rel="next" title="Go编程模式 ： 泛型编程">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%A4%BA%E4%BE%8B" title="一个简单示例">一个简单示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#k8s%E7%9B%B8%E5%85%B3%E8%83%8C%E6%99%AF" title="k8s相关背景">k8s相关背景</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#kubectl%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%B3%95" title="kubectl的实现方法">kubectl的实现方法</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#Visitor%E6%A8%A1%E5%BC%8F%E5%AE%9A%E4%B9%89" title="Visitor模式定义">Visitor模式定义</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#Name_Visitor" title="Name Visitor">Name Visitor</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#Other_Visitor" title="Other Visitor">Other Visitor</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#Log_Visitor" title="Log Visitor">Log Visitor</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E4%BD%BF%E7%94%A8%E6%96%B9%E4%BB%A3%E7%A0%81" title="使用方代码">使用方代码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#Visitor%E4%BF%AE%E9%A5%B0%E5%99%A8" title="Visitor修饰器">Visitor修饰器</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E4%B8%AA%E7%AE%80%E5%8D%95%E7%A4%BA%E4%BE%8B"></span>一个简单示例<span class="ez-toc-section-end"></span></h4>
+<p>我们还是先来看一个简单设计模式的Visitor的示例。</p>
+<ul>
+<li>我们的代码中有一个<code>Visitor</code>的函数定义，还有一个<code>Shape</code>接口，其需要使用 <code>Visitor</code>函数做为参数。</li>
+<li>我们的实例的对象 <code>Circle</code>和 <code>Rectangle</code>实现了 <code>Shape</code> 的接口的 <code>accept()</code> 方法，这个方法就是等外面给我传递一个Visitor。</li>
+</ul>
+<p><span id="more-21263"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import (
+    &#34;encoding/json&#34;
+    &#34;encoding/xml&#34;
+    &#34;fmt&#34;
+)
+
+type Visitor func(shape Shape)
+
+type Shape interface {
+    accept(Visitor)
+}
+
+type Circle struct {
+    Radius int
+}
+
+func (c Circle) accept(v Visitor) {
+    v(c)
+}
+
+type Rectangle struct {
+    Width, Heigh int
+}
+
+func (r Rectangle) accept(v Visitor) {
+    v(r)
+}
+</pre>
+<p>然后，我们实现两个Visitor，一个是用来做JSON序列化的，另一个是用来做XML序列化的</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func JsonVisitor(shape Shape) {
+    bytes, err := json.Marshal(shape)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(string(bytes))
+}
+
+func XmlVisitor(shape Shape) {
+    bytes, err := xml.Marshal(shape)
+    if err != nil {
+        panic(err)
+    }
+    fmt.Println(string(bytes))
+}
+</pre>
+<p>下面是我们的使用Visitor这个模式的代码</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main() {
+  c := Circle{10}
+  r :=  Rectangle{100, 200}
+  shapes := []Shape{c, r}
+
+  for _, s := range shapes {
+    s.accept(JsonVisitor)
+    s.accept(XmlVisitor)
+  }
+
+}</pre>
+<p>其实，这段代码的目的就是想解耦 数据结构和 算法，使用 Strategy 模式也是可以完成的，而且会比较干净。<strong>但是在有些情况下，多个Visitor是来访问一个数据结构的不同部分，这种情况下，数据结构有点像一个数据库，而各个Visitor会成为一个个小应用。</strong> <code>kubectl</code>就是这种情况。</p>
+<h4><span class="ez-toc-section" id="k8s%E7%9B%B8%E5%85%B3%E8%83%8C%E6%99%AF"></span>k8s相关背景<span class="ez-toc-section-end"></span></h4>
+<p>接下来，我们再来了解一下相关的知识背景：</p>
+<ul>
+<li>对于Kubernetes，其抽象了很多种的Resource，比如：Pod, ReplicaSet, ConfigMap, Volumes, Namespace, Roles …. 种类非常繁多，这些东西构成为了Kubernetes的数据模型（点击 <a href="https://github.com/kubernauts/practical-kubernetes-problems/blob/master/images/k8s-resources-map.png" target="_blank" rel="noopener">Kubernetes Resources 地图</a> 查看其有多复杂）</li>
+<li><code>kubectl</code> 是Kubernetes中的一个客户端命令，操作人员用这个命令来操作Kubernetes。<code>kubectl</code> 会联系到 Kubernetes 的API Server，API Server会联系每个节点上的 <code>kubelet</code> ，从而达到控制每个结点。</li>
+<li><code>kubectl</code> 主要的工作是处理用户提交的东西（包括，命令行参数，yaml文件等），然后其会把用户提交的这些东西组织成一个数据结构体，然后把其发送给 API Server。</li>
+<li>相关的源代码在 <code>src/k8s.io/cli-runtime/pkg/resource/visitor.go</code> 中（<a href="https://github.com/kubernetes/kubernetes/blob/cea1d4e20b4a7886d8ff65f34c6d4f95efcb4742/staging/src/k8s.io/cli-runtime/pkg/resource/visitor.go" target="_blank" rel="noopener">源码链接</a>）</li>
+</ul>
+<p><code>kubectl</code> 的代码比较复杂，不过，其本原理简单来说，<strong>它从命令行和yaml文件中获取信息，通过Builder模式并把其转成一系列的资源，最后用 Visitor 模式模式来迭代处理这些Reources</strong>。</p>
+<p>下面我们来看看 <code>kubectl</code> 的实现，为了简化，我用一个小的示例来表明 ，而不是直接分析复杂的源码。</p>
+<h4><span class="ez-toc-section" id="kubectl%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%96%B9%E6%B3%95"></span>kubectl的实现方法<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="Visitor%E6%A8%A1%E5%BC%8F%E5%AE%9A%E4%B9%89"></span>Visitor模式定义<span class="ez-toc-section-end"></span></h5>
+<p>首先，<code>kubectl</code> 主要是用来处理 <code>Info</code>结构体，下面是相关的定义：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type VisitorFunc func(*Info, error) error
+
+type Visitor interface {
+    Visit(VisitorFunc) error
+}
+
+type Info struct {
+    Namespace   string
+    Name        string
+    OtherThings string
+}
+func (info *Info) Visit(fn VisitorFunc) error {
+  return fn(info, nil)
+}</pre>
+<p>我们可以看到，</p>
+<ul>
+<li>有一个 <code>VisitorFunc</code> 的函数类型的定义</li>
+<li>一个 <code>Visitor</code> 的接口，其中需要 <code>Visit(VisitorFunc) error</code>  的方法（这就像是我们上面那个例子的 <code>Shape</code> ）</li>
+<li>最后，为<code>Info</code> 实现 <code>Visitor</code> 接口中的 <code>Visit()</code> 方法，实现就是直接调用传进来的方法（与前面的例子相仿）</li>
+</ul>
+<p>我们再来定义几种不同类型的 Visitor。</p>
+<h5><span class="ez-toc-section" id="Name_Visitor"></span>Name Visitor<span class="ez-toc-section-end"></span></h5>
+<p>这个Visitor 主要是用来访问 <code>Info</code> 结构中的 <code>Name</code> 和 <code>NameSpace</code> 成员</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type NameVisitor struct {
+  visitor Visitor
+}
+
+func (v NameVisitor) Visit(fn VisitorFunc) error {
+  return v.visitor.Visit(func(info *Info, err error) error {
+    fmt.Println(&#34;NameVisitor() before call function&#34;)
+    err = fn(info, err)
+    if err == nil {
+      fmt.Printf(&#34;==&gt; Name=%s, NameSpace=%s\n&#34;, info.Name, info.Namespace)
+    }
+    fmt.Println(&#34;NameVisitor() after call function&#34;)
+    return err
+  })
+}</pre>
+<p>我们可以看到，上面的代码：</p>
+<ul>
+<li>声明了一个 <code>NameVisitor</code> 的结构体，这个结构体里有一个 <code>Visitor</code> 接口成员，这里意味着多态。</li>
+<li>在实现 <code>Visit()</code> 方法时，其调用了自己结构体内的那个 <code>Visitor</code>的 <code>Visitor()</code> 方法，这其实是一种修饰器的模式，用另一个Visitor修饰了自己（关于修饰器模式，参看《<a title="Go编程模式：修饰器" href="/articles/17929.html" target="_blank" rel="noopener">Go编程模式：修饰器</a>》）</li>
+</ul>
+<h5><span class="ez-toc-section" id="Other_Visitor"></span>Other Visitor<span class="ez-toc-section-end"></span></h5>
+<p>这个Visitor主要用来访问 <code>Info</code> 结构中的 <code>OtherThings</code> 成员</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type OtherThingsVisitor struct {
+  visitor Visitor
+}
+
+func (v OtherThingsVisitor) Visit(fn VisitorFunc) error {
+  return v.visitor.Visit(func(info *Info, err error) error {
+    fmt.Println(&#34;OtherThingsVisitor() before call function&#34;)
+    err = fn(info, err)
+    if err == nil {
+      fmt.Printf(&#34;==&gt; OtherThings=%s\n&#34;, info.OtherThings)
+    }
+    fmt.Println(&#34;OtherThingsVisitor() after call function&#34;)
+    return err
+  })
+}</pre>
+<p>实现逻辑同上，我就不再重新讲了</p>
+<h5><span class="ez-toc-section" id="Log_Visitor"></span>Log Visitor<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type LogVisitor struct {
+  visitor Visitor
+}
+
+func (v LogVisitor) Visit(fn VisitorFunc) error {
+  return v.visitor.Visit(func(info *Info, err error) error {
+    fmt.Println(&#34;LogVisitor() before call function&#34;)
+    err = fn(info, err)
+    fmt.Println(&#34;LogVisitor() after call function&#34;)
+    return err
+  })
+}</pre>
+<h5><span class="ez-toc-section" id="%E4%BD%BF%E7%94%A8%E6%96%B9%E4%BB%A3%E7%A0%81"></span>使用方代码<span class="ez-toc-section-end"></span></h5>
+<p>现在我们看看如果使用上面的代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func main() {
+  info := Info{}
+  var v Visitor = &amp;info
+  v = LogVisitor{v}
+  v = NameVisitor{v}
+  v = OtherThingsVisitor{v}
+
+  loadFile := func(info *Info, err error) error {
+    info.Name = &#34;Hao Chen&#34;
+    info.Namespace = &#34;MegaEase&#34;
+    info.OtherThings = &#34;We are running as remote team.&#34;
+    return nil
+  }
+  v.Visit(loadFile)
+}</pre>
+<p>上面的代码，我们可以看到</p>
+<ul>
+<li>Visitor们一层套一层</li>
+<li>我用 <code>loadFile</code> 假装从文件中读如数据</li>
+<li>最后一条 <code>v.Visit(loadfile)</code> 我们上面的代码就全部开始激活工作了。</li>
+</ul>
+<p>上面的代码输出如下的信息，你可以看到代码的执行顺序是怎么执行起来了</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">LogVisitor() before call function
+NameVisitor() before call function
+OtherThingsVisitor() before call function
+==&gt; OtherThings=We are running as remote team.
+OtherThingsVisitor() after call function
+==&gt; Name=Hao Chen, NameSpace=MegaEase
+NameVisitor() after call function
+LogVisitor() after call function</pre>
+<p>我们可以看到，上面的代码有以下几种功效：</p>
+<ul>
+<li>解耦了数据和程序。</li>
+<li>使用了修饰器模式</li>
+<li>还做出来pipeline的模式</li>
+</ul>
+<p>所以，其实，我们是可以把上面的代码重构一下的。</p>
+<h5><span class="ez-toc-section" id="Visitor%E4%BF%AE%E9%A5%B0%E5%99%A8"></span>Visitor修饰器<span class="ez-toc-section-end"></span></h5>
+<p>下面，我们用<a title="Go编程模式：修饰器" href="/articles/17929.html" target="_blank" rel="noopener">修饰器模式</a>来重构一下上面的代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type DecoratedVisitor struct {
+  visitor    Visitor
+  decorators []VisitorFunc
+}
+
+func NewDecoratedVisitor(v Visitor, fn ...VisitorFunc) Visitor {
+  if len(fn) == 0 {
+    return v
+  }
+  return DecoratedVisitor{v, fn}
+}
+
+// Visit implements Visitor
+func (v DecoratedVisitor) Visit(fn VisitorFunc) error {
+  return v.visitor.Visit(func(info *Info, err error) error {
+    if err != nil {
+      return err
+    }
+    if err := fn(info, nil); err != nil {
+      return err
+    }
+    for i := range v.decorators {
+      if err := v.decorators[i](info, nil); err != nil {
+        return err
+      }
+    }
+    return nil
+  })
+}</pre>
+<p>上面的代码并不复杂，</p>
+<ul>
+<li>用一个 <code>DecoratedVisitor</code> 的结构来存放所有的<code>VistorFunc</code>函数</li>
+<li><code>NewDecoratedVisitor</code> 可以把所有的 <code>VisitorFunc</code>转给它，构造 <code>DecoratedVisitor</code> 对象。</li>
+<li><code>DecoratedVisitor</code>实现了 <code>Visit()</code> 方法，里面就是来做一个for-loop，顺着调用所有的 <code>VisitorFunc</code></li>
+</ul>
+<p>于是，我们的代码就可以这样运作了：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">info := Info{}
+var v Visitor = &amp;info
+v = NewDecoratedVisitor(v, NameVisitor, OtherVisitor)
+
+v.Visit(LoadFile)</pre>
+<p>是不是比之前的那个简单？注意，这个<code>DecoratedVisitor</code> 同样可以成为一个Visitor来使用。</p>
+<p>好，上面的这些代码全部存在于 <code>kubectl</code> 的代码中，你看懂了这里面的代码逻辑，相信你也能够看懂 <code>kubectl</code> 的代码了。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21263-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">design pattern</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">Kubernetes</a>, <a href="javascript:void(0)" rel="tag">Visitor Pattern</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go 编程模式：k8s Visitor 模式</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187782" class="comment even thread-even depth-1">
+<article id="div-comment-2187782" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7ec32fbe1e2a3959976572a622359091?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7ec32fbe1e2a3959976572a622359091?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://music.alang.run" class="url" rel="ugc external nofollow">JumpAlang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2187782"><time datetime="2020-12-27T10:34:12+08:00">2020年12月27日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>错别字，博主看来是使用五笔。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2192602" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2192602" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a2cde1e86a8002e83f9c1f36e956555?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a2cde1e86a8002e83f9c1f36e956555?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://scp.net.cn" class="url" rel="ugc external nofollow">faker</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2192602"><time datetime="2021-01-08T19:08:58+08:00">2021年01月08日 19:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞</p>
+</div>
+ </article>
+</li>
+<li id="comment-2194430" class="comment even thread-even depth-1">
+<article id="div-comment-2194430" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f97017062f2e77dc031f3c065be1773c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f97017062f2e77dc031f3c065be1773c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yanfengfree</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2194430"><time datetime="2021-01-13T17:56:42+08:00">2021年01月13日 17:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文笔很好啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-2195179" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2195179" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0191453121803ca70a7376ba58063e9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0191453121803ca70a7376ba58063e9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李哥</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2195179"><time datetime="2021-01-15T17:16:28+08:00">2021年01月15日 17:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>爱你皓叔</p>
+</div>
+ </article>
+</li>
+<li id="comment-2210370" class="comment even thread-even depth-1">
+<article id="div-comment-2210370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.jsonformatting.com/" class="url" rel="ugc external nofollow">json formatter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2210370"><time datetime="2021-02-24T08:52:51+08:00">2021年02月24日 08:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2210534" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2210534" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6338e356cd96e06ca75d187c02bfec45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6338e356cd96e06ca75d187c02bfec45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.gov-bid.com/" class="url" rel="ugc external nofollow">商机文库</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2210534"><time datetime="2021-02-24T18:02:08+08:00">2021年02月24日 18:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章写的不错，赞一个</p>
+</div>
+ </article>
+</li>
+<li id="comment-2213217" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2213217" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/487f87505f619bf9ea08f26bb34f8118?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/487f87505f619bf9ea08f26bb34f8118?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HStar</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2213217"><time datetime="2021-03-03T16:27:04+08:00">2021年03月03日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后的：<br/>
+v = NewDecoratedVisitor(v, NameVisitor, OtherVisitor)<br/>
+这行应该有问题</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2273727" class="comment odd alt depth-2">
+<article id="div-comment-2273727" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/95045c7c161702b3e31dbb5d8521aca1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/95045c7c161702b3e31dbb5d8521aca1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Owen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2273727"><time datetime="2021-07-05T12:00:22+08:00">2021年07月05日 12:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实有问题，编译不通过：Cannot use ‘nameVisitor’ (type *NameVisitor) as the type VisitorFunc</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2216010" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2216010" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8869d046c2fc7e57562281b7634a3aed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8869d046c2fc7e57562281b7634a3aed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2216010"><time datetime="2021-03-10T13:54:27+08:00">2021年03月10日 13:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>修饰器模式的改写好像不太对</p>
+</div>
+ </article>
+</li>
+<li id="comment-2220326" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2220326" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd07451a16123f1901c57bbb24d984e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd07451a16123f1901c57bbb24d984e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2220326"><time datetime="2021-03-19T23:36:00+08:00">2021年03月19日 23:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Demo最后的这一句：<br/>
+v = NewDecoratedVisitor(v, NameVisitor, OtherVisitor)</p>
+<p>是不是应该调整为下面这个啊？<br/>
+v = NewDecoratedVisitor(v, NameVisitorFun, OtherThingsVisitorFun)</p>
+<p>func NameVisitorFun(info *Info03, err error) error {<br/>
+fmt.Printf(“==&gt; Name=%s, NameSpace=%s\n”, info.Name, info.Namespace)<br/>
+return err<br/>
+}</p>
+<p>func OtherThingsVisitorFun(info *Info03, err error) error {<br/>
+fmt.Printf(“==&gt; OtherThings=%s\n”, info.OtherThings)<br/>
+return err<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-2230816" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2230816" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3530deaf8c1bb72c4bff102699a1b6cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3530deaf8c1bb72c4bff102699a1b6cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.aliwutai.com/" class="url" rel="ugc external nofollow">阿里舞台</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2230816"><time datetime="2021-04-11T01:20:02+08:00">2021年04月11日 01:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写得非常详细，适合新人学习，有态度的博主。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2233318" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2233318" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d66b40b99043701cf23e3a35a687930f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d66b40b99043701cf23e3a35a687930f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">c</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2233318"><time datetime="2021-04-16T11:18:24+08:00">2021年04月16日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>mark</p>
+</div>
+ </article>
+</li>
+<li id="comment-2245085" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2245085" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9b08049c927af4b35dd7c069f349bea1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9b08049c927af4b35dd7c069f349bea1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Automano</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2245085"><time datetime="2021-05-10T11:46:12+08:00">2021年05月10日 11:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>陈老师半年没有更新了吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2255416" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2255416" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab9e1b45369107c60a07e6864333246a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab9e1b45369107c60a07e6864333246a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.guangwei.pro" class="url" rel="ugc external nofollow">王光卫博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2255416"><time datetime="2021-05-29T23:06:36+08:00">2021年05月29日 23:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>向博主学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-2264117" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2264117" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df45442bf2605cfc183221a3e82e0f70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df45442bf2605cfc183221a3e82e0f70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imjmj.com/" class="url" rel="ugc external nofollow">shopee虾皮代入驻开店跨境电商</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2264117"><time datetime="2021-06-15T02:59:36+08:00">2021年06月15日 02:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>新手报到，认真学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-2265051" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2265051" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f3c2a6d411e84aaf65ae4abfd9879c7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f3c2a6d411e84aaf65ae4abfd9879c7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hurricane</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2265051"><time datetime="2021-06-17T12:00:19+08:00">2021年06月17日 12:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢感谢。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2304363" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2304363" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cd68fdb17eb6824d59832a4ec4662e1f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cd68fdb17eb6824d59832a4ec4662e1f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ove</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2304363"><time datetime="2021-09-17T14:53:02+08:00">2021年09月17日 14:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实单单这篇文章来看，visitor 模式在 kubectl 没有什么很大的优势？<br/>
+我反正觉得很“花里胡哨” ？<br/>
+明明有更简单的装饰器模式（后文），为啥不写的更简单呢？？</p>
+<p>可能这需要去看源码。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370545" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370545" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/270f64e82d870933748c4dbfd01a7c96?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/270f64e82d870933748c4dbfd01a7c96?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gabe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2370545"><time datetime="2022-06-22T15:22:23+08:00">2022年06月22日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这俄罗斯套娃玩的溜！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370548" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370548" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/270f64e82d870933748c4dbfd01a7c96?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/270f64e82d870933748c4dbfd01a7c96?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gabe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21263.html#comment-2370548"><time datetime="2022-06-22T16:07:22+08:00">2022年06月22日 16:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Visitor修饰器是这样？</p>
+<p><code>package main</code></p><code>
+<p>import (<br/>
+&#34;fmt&#34;<br/>
+)</p>
+<p>type VisitorFunc func(*Info, error) error</p>
+<p>type Visitor interface {<br/>
+Visit(VisitorFunc) error<br/>
+}</p>
+<p>type Info struct {<br/>
+Namespace string<br/>
+Name string<br/>
+OtherThings string<br/>
+}</p>
+<p>func (info *Info) Visit(fn VisitorFunc) error {<br/>
+fmt.Println(&#34;Info Visit()&#34;)<br/>
+return fn(info, nil)<br/>
+}</p>
+<p>func NameVisitor(info *Info, err error) error {<br/>
+fmt.Println(&#34;NameVisitor() before call function&#34;)<br/>
+fmt.Printf(&#34;==&gt; Name=%s, NameSpace=%s\n&#34;, info.Name, info.Namespace)<br/>
+return err<br/>
+}</p>
+<p>func OtherVisitor(info *Info, err error) error {<br/>
+fmt.Println(&#34;OtherThingsVisitor() before call function&#34;)<br/>
+return err<br/>
+}</p>
+<p>type DecoratedVisitor struct {<br/>
+visitor Visitor<br/>
+decorators []VisitorFunc<br/>
+}</p>
+<p>func NewDecoratedVisitor(v Visitor, fn ...VisitorFunc) Visitor {<br/>
+if len(fn) == 0 {<br/>
+return v<br/>
+}<br/>
+return DecoratedVisitor{v, fn}<br/>
+}</p>
+<p>func (v DecoratedVisitor) Visit(fn VisitorFunc) error {<br/>
+fmt.Println(&#34;DecoratedVisitor Visit()&#34;)<br/>
+return v.visitor.Visit(func(info *Info, err error) error {<br/>
+fmt.Println(&#34;DecoratedVisitor v.visitor.Visit()&#34;)<br/>
+if err != nil {<br/>
+return err<br/>
+}<br/>
+if err := fn(info, nil); err != nil {<br/>
+return err<br/>
+}<br/>
+for i := range v.decorators {<br/>
+if err := v.decorators[i](info, nil); err != nil {<br/>
+return err<br/>
+}<br/>
+}<br/>
+return nil<br/>
+})<br/>
+}</p>
+<p>func main() {<br/>
+info := Info{}<br/>
+var v Visitor = &amp;info<br/>
+v = NewDecoratedVisitor(v, NameVisitor, OtherVisitor)</p>
+<p> loadFile := func(info *Info, err error) error {<br/>
+fmt.Println(&#34;loadFile()&#34;)<br/>
+info.Name = &#34;Hao Chen&#34;<br/>
+info.Namespace = &#34;MegaEase&#34;<br/>
+info.OtherThings = &#34;We are running as remote team.&#34;<br/>
+return nil<br/>
+}</p>
+<p> v.Visit(loadFile)<br/>
+}</p>
+</code><p><code>// DecoratedVisitor Visit()<br/>
+// Info Visit()<br/>
+// DecoratedVisitor v.visitor.Visit()<br/>
+// loadFile()<br/>
+// NameVisitor() before call function<br/>
+// ==&gt; Name=Hao Chen, NameSpace=MegaEase<br/>
+// OtherThingsVisitor() before call function<br/>
+</code></p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

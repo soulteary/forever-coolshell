@@ -1,0 +1,371 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>酷壳 – CoolShell.cn - Part 8</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="home blog paged paged-8 group-blog">
+
+<div id="page" class="hfeed site">
+<header id="masthead" role="banner">
+
+<div id="cc_spacer"></div>
+<div class="site-header">
+
+<div class="site-branding">
+<a class="home-link" href="/" title="酷 壳 – CoolShell" rel="home">
+<h1 class="site-title">酷 壳 – CoolShell</h1>
+<h2 class="site-description">享受编程和技术所带来的快乐 – Coding Your Ambition</h2>
+</a>
+</div>
+</div>
+</header>
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" class="site-main" role="main">
+<article id="post-17066" class="post-content post-17066 post type-post status-publish format-standard hentry category-webdev category-misc category-progdesign category-netsecurity tag-android tag-ios tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">关于移动端的钓鱼式攻击</span>
+<h2 class="entry-title">
+<a href="/articles/17066.html" rel="bookmark">关于移动端的钓鱼式攻击</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17066.html" title="08:13" rel="bookmark"><time class="entry-date" datetime="2015-04-14T08:13:23+08:00" pubdate="">2015年04月14日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17066.html#comments" class="comments-link">55 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 56,650 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-17069" src="/uploads/2015/04/phishing-1.jpg" alt="phishing-1" width="300" height="300" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>今天，在微博上看了一篇《<a href="http://weibo.com/p/1001603830475402664763" target="_blank">微信和淘宝到底是谁封谁</a>》的文章，我觉得文章中逻辑错乱，所以，我发了一篇<a href="http://weibo.com/p/1001603831131286939079" target="_blank">关于这篇文章逻辑问题的长微博</a>。后面，我被原博主冷嘲热讽了一番，说是什么鸡汤啊，什么我与某某之流的人在一起混淆视听啊，等等。并且也有一些网友找我讨论一下相关的钓鱼式攻击的技术问题。所以，我想写下这篇纯技术文章，因为我对那些商业利益上的东西不关心，所以，只谈技术，这样最简单。</p>
+<p>首先说明一下，<strong>我个人不是一个安全专家，也不是一个移动开发专家，按道理来说，这篇文章不应该我来写，但是我就试一试，请原谅我的无知，也期待抛砖引玉了，希望安全的同学斧正</strong>。</p>
+<p>关于钓鱼式攻击，其实是通过一种社会工程学的方式来愚弄用户的攻击式，攻击者通常会模仿一个用户信任的网站来偷取用户的机密信息，比如用户密码或是信用卡。一般来说，攻击者会通过邮件和实时通信工具完成，给被攻击者发送一个高仿的网站，然后让用户看不出来与正统网站的差别，然后收集用户的机密数据。</p>
+<h4>移动端钓鱼攻击点分析</h4>
+<p>因为钓鱼式攻击并不新鲜，所以我这里只讲移动方面的。</p>
+<p>在移动端，这个事情会更容易干，因为移动端有如下特点：</p>
+<ul>
+<li>移动端的UI只能有一个应用占据整个屏幕，你只能看到一个应用，而且用户屏幕小，能显示的信息有限，比如浏览器里的网址是显示不全的。这会给钓鱼攻击有很多可乘之机。</li>
+</ul>
+<ul>
+<li>移动端的平台有其安全的设计。每个应用都是隔离开的，一个应用无法获取另一个应用的数据。而且应用的下载基本上来说都是来自合法的地方。比如iOS的设备通过App Store下载，每个程序都有自己的签名保证不会被篡改。而且移动端的的应用有各种权限配置，这样也能很大程度提高安全性。</li>
+</ul>
+<ul>
+<li>移动端的APP有些有些是收费的，所以自然会有盗版需求，虽然在平台上做了一些安全设计，但是并不完美。用户可以越狱，可以root。这给恶意软件有了可乘之机。</li>
+</ul>
+<p>下面我们来分析下移动端的用户操作，我们重点关注用户控制权的切换过程（因为这是攻击点）</p>
+<p> <a href="/articles/17066.html#more-17066" class="more-link">…</a></p><a href="/articles/17066.html#more-17066" class="more-link">
+</a><p class="read-more"><a href="/articles/17066.html#more-17066" class="more-link"></a><a class="btn btn-default" href="/articles/17066.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-17066-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-16910" class="post-content post-16910 post type-post status-publish format-standard hentry category-progdesign category-proglanguage tag-atomic tag-concurrency tag-linus-torvalds tag-lock-free tag-parallelism">
+<header class="entry-header">
+<span class="screen-reader-text">Linus：为何对象引用计数必须是原子的</span>
+<h2 class="entry-title">
+<a href="/articles/16910.html" rel="bookmark">Linus：为何对象引用计数必须是原子的</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/16910.html" title="09:59" rel="bookmark"><time class="entry-date" datetime="2014-12-31T09:59:33+08:00" pubdate="">2014年12月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/16910.html#comments" class="comments-link">37 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 50,884 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p>Linus大神又在rant了！这次的吐槽对象是时下很火热的<strong>并行技术(parellism)</strong>，并直截了当地表示<a title="并行计算基本上就是浪费大家的时间" href="http://www.vaikan.com/linus-parallel-computing-is-a-huge-waste-of-everybodys-time/" target="_blank">并行计算是浪费所有人时间</a>(<a href="http://www.realworldtech.com/forum/?threadid=146066&amp;curpostid=146227">“The whole “let’s parallelize” thing is a huge waste of everybody’s time.”</a>)。大致意思是说<strong>乱序性能快、提高缓存容量、降功耗</strong>。当然笔者不打算正面讨论并行的是是非非（过于宏伟的主题），因为Linus在另一则<a title="reference counting" href="http://www.realworldtech.com/forum/?threadid=146066&amp;curpostid=146183" target="_blank">帖子</a>中举了对象<strong>引用计数(reference counting)</strong>的例子来说明并行的复杂性。</p>
+<p>在Linus回复之前有人指出<strong>对象需要锁机制的情况下，引用计数的原子性问题：</strong></p>
+<blockquote><p>Since it is being accessed in a multi-threaded way, via multiple access paths, generally it needs its own mutex — otherwise, reference counting would not be required to be atomic and a lock of a higher-level object would suffice.</p>
+<p>由于（对象）通过多线程方式及多种获取渠道，一般而言它需要自身维护一个互斥锁——否则引用计数就不要求是原子的，一个更高层次的对象锁足矣。</p></blockquote>
+<p>而Linus不那么认为：</p>
+<blockquote><p>The problem with reference counts is that you often need to take them *before* you take the lock that protects the object data.</p>
+<p>引用计数的问题在于你经常需要在对象数据<strong>上锁保护之前</strong>完成它。</p></blockquote>
+<p>The thing is, you have two different cases:</p>
+<p>问题有两种情况：</p>
+<p style="padding-left: 30px;"><strong>– object *reference* 对象引用</strong></p>
+<p style="padding-left: 30px;"><strong>– object data 对象数据</strong></p>
+<p>and they have completely different locking.</p>
+<p><strong>它们锁机制是完全不一样的。</strong></p>
+<p> <a href="/articles/16910.html#more-16910" class="more-link">…</a></p><a href="/articles/16910.html#more-16910" class="more-link">
+</a><p class="read-more"><a href="/articles/16910.html#more-16910" class="more-link"></a><a class="btn btn-default" href="/articles/16910.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-16910-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-12225" class="post-content post-12225 post type-post status-publish format-standard hentry category-techarticle category-misc tag-android tag-hybrid tag-ios tag-web tag-webview tag-771">
+<header class="entry-header">
+<span class="screen-reader-text">DHH 谈混合移动应用开发</span>
+<h2 class="entry-title">
+<a href="/articles/12225.html" rel="bookmark">DHH 谈混合移动应用开发</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12225.html" title="10:57" rel="bookmark"><time class="entry-date" datetime="2014-12-15T10:57:20+08:00" pubdate="">2014年12月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/jnj" title="View all posts by jnj" rel="author">jnj</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12225.html#comments" class="comments-link">27 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,684 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p> </p>
+<p style="text-align: right;"><img decoding="async" loading="lazy" class="paddging: 10px; 20px; alignright wp-image-16861" src="/uploads/2014/12/1053-DHH-150x150.jpg" alt="1053-DHH" width="80" height="80" srcset="" sizes="(max-width: 80px) 100vw, 80px"/>David，Ruby on Rails 作者，37signals 合伙人</p>
+<p style="text-align: right;">畅销书作家、演说家、赛车手、业余摄影师、顾家好男人</p>
+<p> </p>
+<p><a href="http://37signals.com/" target="_blank">37signals</a> 在2013年2月发布了 Basecamp 的 iPhone app，在此之前我们就使用原生开发（native）还是混合开发（hybrid）做了许多尝试。在2012年项目启动的时候，大多数人都倾向于原生开发。</p>
+<p>Facebook 在2012年发布了他们新的 iOS app，为了获得更好的用户体验，他们放弃了原来的 HTML5 混合开发方式。考虑到2010～2011年的时候，HTML 在移动端的性能确实不尽如人意，这个决定在当时看来也在情理之中。2010年的时候我们觉得 iPhone 3G/3GS 够眩够快，但按照现在的标准来看它们就太慢了。因此在为移动应用开发做架构设计时，我们需要考虑新的移动设备的计算能力，而不是那些老的过时的设备。</p>
+<h4>移动开发架构设计不需要过多考虑设备的性能</h4>
+<p>我们从一些测试中得出的一个结论是：现在的移动设备计算能力都很强，运行原生应用和 HTML 应用的效果差别不大，而 HTML 开发的成本则要比原生开发小得多。</p>
+<p>当然这个结论在某些领域并不太适用。如果你要开发一个 3D 游戏，原生开发方式能够带来更好的游戏体验。但如果你的移动应用象 Basecamp 一样侧重信息处理，为了降低开发成本，你就可以考虑混合开发方式。我们就是如此，下面是我们三代移动产品的发展轨迹：</p>
+<p> <a href="/articles/12225.html#more-12225" class="more-link">…</a></p><a href="/articles/12225.html#more-12225" class="more-link">
+</a><p class="read-more"><a href="/articles/12225.html#more-12225" class="more-link"></a><a class="btn btn-default" href="/articles/12225.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-12225-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-12206" class="post-content post-12206 post type-post status-publish format-standard hentry category-webdev category-techarticle tag-html tag-html5 tag-html6 tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">HTML6 展望</span>
+<h2 class="entry-title">
+<a href="/articles/12206.html" rel="bookmark">HTML6 展望</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12206.html" title="12:41" rel="bookmark"><time class="entry-date" datetime="2014-12-06T12:41:34+08:00" pubdate="">2014年12月06日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/jnj" title="View all posts by jnj" rel="author">jnj</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12206.html#comments" class="comments-link">39 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 51,492 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<h3><img decoding="async" loading="lazy" class="size-full wp-image-12211 alignright" src="/uploads/2014/12/html6.jpeg" alt="html6" width="225" height="225" srcset="" sizes="(max-width: 225px) 100vw, 225px"/></h3>
+<h3>HTML5 概述</h3>
+<p>HTML5 是 HTML 语言最受欢迎的版本之一，它支持音频和视频、离线存储、移动端、和标签属性等等。还提供了&lt;article&gt;, &lt;section&gt;, &lt;header&gt;这样的标签来帮助开发者更好地组织页面内容。然而 HTML5 规范仍然没有最后定稿，并且它并不是一个真正意义上的语义标记语言。</p>
+<h3>HTML6 展望</h3>
+<p>你有没有曾经希望能在 HTML 中使用自定义标签？比如：使用&lt;logo&gt;来显示你的网站logo，还有使用&lt;toolbar&gt;来显示工具栏等等。我们经常使用&lt;div id=”container”&gt;和&lt;div id=”wrapper”&gt;来组织页面，在 HTML6 里我们希望可以直接使用象&lt;container&gt;和&lt;wrapper&gt;这样的自定义标签。</p>
+<p>和 XML 一样，HTML6 应该支持 namespace（命名空间），如：xmlns:xhtml=”http://www.w3.org/1999/xhtml”</p>
+<p>HTML6 代码样例：</p>
+<p> <a href="/articles/12206.html#more-12206" class="more-link">…</a></p><a href="/articles/12206.html#more-12206" class="more-link">
+</a><p class="read-more"><a href="/articles/12206.html#more-12206" class="more-link"></a><a class="btn btn-default" href="/articles/12206.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-12206-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-12136" class="post-content post-12136 post type-post status-publish format-standard hentry category-techarticle category-tools tag-android tag-google tag-ios tag-web tag-291">
+<header class="entry-header">
+<span class="screen-reader-text">Google Inbox如何跨平台重用代码？</span>
+<h2 class="entry-title">
+<a href="/articles/12136.html" rel="bookmark">Google Inbox如何跨平台重用代码？</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12136.html" title="08:03" rel="bookmark"><time class="entry-date" datetime="2014-11-26T08:03:17+08:00" pubdate="">2014年11月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/jnj" title="View all posts by jnj" rel="author">jnj</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12136.html#comments" class="comments-link">31 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 30,547 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>原文链接《<a href="http://arstechnica.com/information-technology/2014/11/how-google-inbox-shares-70-of-its-code-across-android-ios-and-the-web" target="_blank">How Google Inbox shares 70% of its code across Android, iOS, and the Web</a>》</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2014/11/inbox2-640x264.jpg"><img decoding="async" loading="lazy" class="size-medium wp-image-12137 alignright" src="/uploads/2014/11/inbox2-640x264-300x123.jpg" alt="inbox2-640x264" width="300" height="123" srcset=""/></a></p>
+<p>开发一个移动应用在当下并不是一件容易的事情。如果想要获得最多的用户，你的应用通常需要覆盖 iOS, Android, 和 Web 三大平台。这就意味着同一个应用需要开发三个版本，使用 Objective-C 或者 Swift 开发 iOS 版本，使用 Java 开发 Android 版本，使用 JavaScript/CSS/HTML5 开发 Web 版本。工作量增大的同时也意味着有更多的 bug 需要修复。</p>
+<p>这个问题也是 Google 在开发 Google Inbox 时致力要解决的。在最近发布的这款应用中，Google 使用了一些工具实现了70%的代码跨平台复用。</p>
+<p>Google Inbox 覆盖 iOS, Android, Web 三个平台，它们使用的是同一个后台代码逻辑，只是前端的用户体验和平台相关特性的实现有所不同。Google 自主开发了一套辅助工具将 Android 版本的 Java 代码逻辑编译为 Objective-C (针对 iOS 平台) 和 JavaScript (针对 Web 浏览器)。 Java 到 JavaScript 的编译由 Google Web Toolkit SDK 完成，Java 到 Objective-C 的编译则由 J2ObjC （<a href="j2objc.org">j2objc.org</a>）来完成。</p>
+<p>J2ObjC 是一个开源项目，由 Google 在2013年发布。Google Sheets (Google Docs 中的电子表格部分) 也使用了 J2ObjC，而 Google Inbox 则是目前使用 J2Objc 最多的 Google 项目。</p>
+<p>Google Inbox 复用的代码逻辑包括：对话 (conversations)，提醒 (reminders)，联系人 (contacts)。还有网络相关功能和离线同步。这些代码逻辑的复用节省了大量的时间和成本。</p>
+<p>在产品设计时，Google 将这些可复用功能划分为抽象的逻辑概念，比如：提醒的逻辑放在 “reminder.java” 中，可以被 Android UI 调用。对 iOS 版本而言，J2ObjC 将 “reminder.java” 编译成 Objective-C 代码，再由 iOS UI 调用。</p>
+<p>Google 没有跨平台编译 UI 部分的代码，因为不同平台的UI特性各有不同，盲目统一会导致非常糟糕的用户体验。代码复用只是针对可以共享的后台逻辑，前端的UI实现是完全原生 (native) 的。这与 Xamarin (一个基于 Microsoft C# 的跨平台移动开发工具) 提出的概念类似。</p>
+<p>跨平台代码复用通常会带来一些性能上的问题。Garrick Toubassi，Engineering Director 和 Google Inbox 项目组成员，对此表示： “性能上的影响如果有的话，也可以说是微不足道的。我们做过大量的性能测试。因为没有加入额外的中间层来处理跨平台兼容性，所有代码最后都是平台原生代码。J2ObjC 编译生成的目标代码和 Java 源代码拥有大致相同的对象数量和对象图谱复杂度 (object graph complexity) ”。</p>
+<p>Google 使用的整套方法解决了跨平台移动开发中的一个很重要的问题，同时也推进了安卓先行 (Android-first) 的移动开发策略。</p>
+<p>更多 Google Inbox 文章请猛戳 <a href="http://gmailblog.blogspot.com.au/2014/11/going-under-hood-of-inbox.html">Gmail 官方博客</a>。</p>
+<div id="post-ratings-12136-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-12103" class="post-content post-12103 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-operatingsystem tag-fork tag-linux tag-unix tag-vfork">
+<header class="entry-header">
+<span class="screen-reader-text">vfork 挂掉的一个问题</span>
+<h2 class="entry-title">
+<a href="/articles/12103.html" rel="bookmark">vfork 挂掉的一个问题</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12103.html" title="00:48" rel="bookmark"><time class="entry-date" datetime="2014-11-21T00:48:27+08:00" pubdate="">2014年11月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12103.html#comments" class="comments-link">46 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 48,153 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright wp-image-12105" src="/uploads/2014/11/tux-fork-298x300.gif" alt="tux-fork" width="199" height="200" srcset="" sizes="(max-width: 199px) 100vw, 199px"/>在知乎上，有个人问了这样的<a href="http://www.zhihu.com/question/26591968" target="_blank">一个问题</a>——为什么vfork的子进程里用return，整个程序会挂掉，而且exit()不会？并给出了如下的代码，下面的代码一运行就挂掉了，但如果把子进程的return改成exit(0)就没事。</p>
+<p>我受邀后本来不想回答这个问题的，因为这个问题明显就是RTFM的事，后来，发现这个问题放在那里好长时间，而挂在下面的几个答案又跑偏得比较严重，我觉得可能有些朋友看到那样的答案会被误导，所以就上去回答了一下这个问题。</p>
+<p>下面我把问题和我的回答发布在这里，也供更多的人查看。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+int main(void) {
+    int var;
+    var = 88;
+    if ((pid = vfork()) &lt; 0) {
+        printf(&#34;vfork error&#34;);
+        exit(-1);
+    } else if (pid == 0) { /* 子进程 */
+        var++;
+        return 0;
+    }
+    printf(&#34;pid=%d, glob=%d, var=%d\n&#34;, getpid(), glob, var);
+    return 0;
+}
+</pre>
+<p> <a href="/articles/12103.html#more-12103" class="more-link">…</a></p><a href="/articles/12103.html#more-12103" class="more-link">
+</a><p class="read-more"><a href="/articles/12103.html#more-12103" class="more-link"></a><a class="btn btn-default" href="/articles/12103.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-12103-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-12052" class="post-content post-12052 post type-post status-publish format-standard hentry category-cplusplus category-misc category-proglanguage tag-algorithm tag-c tag-leetcode tag-programmer tag-programming tag-58 tag-77 tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">Leetcode 编程训练</span>
+<h2 class="entry-title">
+<a href="/articles/12052.html" rel="bookmark">Leetcode 编程训练</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12052.html" title="10:51" rel="bookmark"><time class="entry-date" datetime="2014-10-23T10:51:54+08:00" pubdate="">2014年10月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12052.html#comments" class="comments-link">96 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 189,099 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright wp-image-12054 size-full" src="/uploads/2014/10/LeetCodeLogo-1.png" alt="LeetCodeLogo (1)" width="121" height="100" srcset=""/>Leetcode这个网站上的题都是一些经典的公司用来面试应聘者的面试题，很多人通过刷这些题来应聘一些喜欢面试算法的公司，比如：Google、微软、Facebook、Amazon之类的这些公司，基本上是应试教育的功利主义。</p>
+<p>我做这些题目的不是为了要去应聘这些公司，而是为了锻炼一下自己的算法和编程能力。因为我开始工作的时候基本没有这样的训练算法和编程的网站，除了大学里的“算法和数据结构”里的好些最基础最基础的知识，基本上没有什么训练。所以，当我看到有人在做这些题的时候，我也蠢蠢欲动地想去刷一下。</p>
+<p>于是，我花了3-4个月的业余时间，我把<a href="https://oj.leetcode.com/problems/" target="_blank">Leetcode的154道题</a>全部做完了。（这也是最近我没有太多的时间来写博客的原因，你可以看到我之前<a title="谜题的答案和活动的心得体会" href="/articles/11847.html" target="_blank">做的那个活动</a>中有几个算法题来自于Leetcode）有人说我时间太多了，这里声明一下，我基本上都是利用了晚上10点以后的时间来做这些题的。</p>
+<p>LeetCode的题大致分成两类：</p>
+<p style="padding-left: 30px;"><strong>1）基础算法的知识</strong>。这些题里面有大量的算法题，解这些题都是有套路的，不是用递归（深度优先DFS，广度优先BFS），就是要用动态规划（Dynamic Programming），或是拆半查找（Binary Search），或是回溯（Back tracing），或是分治法（Divide and Conquer），还有大量的对树，数组、链表、字符串和hash表的操作。<strong>通过做这些题能让你对这些最基础的算法的思路有非常扎实的了解和训练</strong>。对我而言，Dynamic Programming 是我的短板，尤其是一些比较复杂的问题，在推导递推公式上总是有思维的缺陷（数学是我的硬伤），通过做了这些题后，我能感到我在DP的思路上有了很大的收获。</p>
+<p style="padding-left: 30px;"><strong>2）编程题</strong>。比如：atoi，strstr，add two num，括号匹配，字符串乘法，通配符匹配，文件路径简化，Text Justification，反转单词等等，这些题的Edge Case, Corner Case有很多。这些题需要你想清楚了再干，只要你稍有疏忽，就会有几个case让你痛不欲生，而且一不小心就会让你的代码会写得又臭又长，无法阅读。<strong>通过做这些题，可以非常好的训练你对各种情况的考虑，以及你对程序代码组织的掌控（其实就是其中的状态变量）。</strong>还记得我在《<a title="函数式编程" href="/articles/10822.html" target="_blank">函数式编程</a>》中说的，程序中的状态是你程序变得复杂难维护的直接原因。</p>
+<p>我觉得每个程序员都应该花时间和精力做这些题，因为你会从这些题中得到很大的收益。做完这些题后你一定会明白下面几个道理：</p>
+<p> <a href="/articles/12052.html#more-12052" class="more-link">…</a></p><a href="/articles/12052.html#more-12052" class="more-link">
+</a><p class="read-more"><a href="/articles/12052.html#more-12052" class="more-link"></a><a class="btn btn-default" href="/articles/12052.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-12052-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-12012" class="post-content post-12012 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-webdev category-progdesign tag-c tag-coroutine tag-edsm tag-ia tag-process-2 tag-thread tag-web tag-707">
+<header class="entry-header">
+<span class="screen-reader-text">State Threads 回调终结者</span>
+<h2 class="entry-title">
+<a href="/articles/12012.html" rel="bookmark">State Threads 回调终结者</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12012.html" title="22:48" rel="bookmark"><time class="entry-date" datetime="2014-10-12T22:48:57+08:00" pubdate="">2014年10月12日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12012.html#comments" class="comments-link">50 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 54,744 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p>上回写了篇<a title="一个“蝇量级” C 语言协程库" href="/articles/10975.html" target="_blank">《一个“蝇量级”C语言协程库》</a>，推荐了一下<a title="Protothreads" href="http://dunkels.com/adam/pt/" target="_blank">Protothreads</a>，通过coroutine模拟了用户级别的multi-threading模型，虽然本身足够“轻”，杜绝了系统开销，但这个库本身应用场合主要是内存限制的嵌入式领域，提供原生态组件太少，使用限制太多，比如依赖其它调用产生阻塞等。</p>
+<p>这回又替大家在开源界淘了个宝，推荐一个轻量级网络应用框架<strong>State Threads</strong>（以下简称ST），总共也就3000行C代码，跟Protothreads不同在于ST针对的就是<strong>高性能可扩展服务器</strong>领域（值得一提的是Protothreads官网<a title="参考链接" href="http://dunkels.com/adam/pt/links.html" target="_blank">参考链接</a>上第一条就是ST的官网）。在其<a title="FAQ" href="http://state-threads.sourceforge.net/docs/faq.html" target="_blank">FAQ</a>页面上一句引用”Perfection is achieved not when there is nothing more to add, but rather when there is nothing more to take away.”可以视为开发人员对ST源码质量的自信。</p>
+<h4>历史渊源</h4>
+<p>首先介绍一下这个库的历史渊源，从代码贡献者来看，ST不是个人作品，而是有着雄厚的商业支持和应用背景，比如服务器领域，在<a href="http://state-threads.sourceforge.net/news.html" target="_blank">这里</a>你可以看到ST曾作为Apache的多核应用模块发布。其诞生最初是由网景（Netscape）公司的MSPR（Netscape Portable Runtime library）项目中剥离出来，后由SGI（Silicon Graphic Inc）还有Yahoo!公司（前者是主力）开发维护的独立线程库。历史版本方面，作为<a title="SourceForge" href="http://sourceforge.net/projects/state-threads/files/" target="_blank">SourceForge</a>上开源项目，由2001年发布v1.0以来一直到2009年v1.9稳定版后未再变动。在平台移植方面，从Makefile的配置选项中可知ST支持多种Unix-like平台，还有专门针对Win32的源码改写。源码例子中，提供了web server、proxy以及dns三种编程实例供参考。可以说代码质量应该是相当的稳定和可靠的。</p>
+<p> <a href="/articles/12012.html#more-12012" class="more-link">…</a></p><a href="/articles/12012.html#more-12012" class="more-link">
+</a><p class="read-more"><a href="/articles/12012.html#more-12012" class="more-link"></a><a class="btn btn-default" href="/articles/12012.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-12012-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-11973" class="post-content post-11973 post type-post status-publish format-standard hentry category-unixlinux category-technews category-operatingsystem category-netsecurity tag-bash tag-env tag-export tag-318 tag-305 tag-761">
+<header class="entry-header">
+<span class="screen-reader-text">bash代码注入的安全漏洞</span>
+<h2 class="entry-title">
+<a href="/articles/11973.html" rel="bookmark">bash代码注入的安全漏洞</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11973.html" title="07:56" rel="bookmark"><time class="entry-date" datetime="2014-09-28T07:56:46+08:00" pubdate="">2014年09月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11973.html#comments" class="comments-link">136 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 107,875 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright size-medium wp-image-11979" src="/uploads/2014/09/bashbug-300x152.jpg" alt="bashbug" width="300" height="152" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>很多人或许对上半年发生的安全问题“心脏流血”（Heartbleed Bug）事件记忆颇深，这两天，又出现了另外一个“毁灭级”的漏洞——Bash软件安全漏洞。这个漏洞由法国GNU/Linux爱好者Stéphane Chazelas所发现。随后，美国电脑紧急应变中心（US-CERT）、红帽以及多家从事安全的公司于周三（北京时间9月24日）发出警告。 关于这个安全漏洞的细节可参看美国政府计算安全的这两个漏洞披露：<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271">CVE-2014-6271</a> 和 <a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-7169">CVE-2014-7169</a>。</p>
+<p>这个漏洞其实是非常经典的“注入式攻击”，也就是可以向 bash注入一段命令，从bash1.14 到4.3都存在这样的漏洞。我们先来看一下这个安全问题的症状。</p>
+<h4>Shellshock (CVE-2014-6271)</h4>
+<p>下面是一个简单的测试：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ env VAR=&#39;() { :;}; echo Bash is vulnerable!&#39; bash -c &#34;echo Bash Test&#34;</code></p>
+<p>如果你发现上面这个命令在你的bash下有这样的输出，那你就说明你的bash是有漏洞的：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">Bash is vulnerable!
+Bash Test</pre>
+<p>简单地看一下，其实就是向环境变量中注入了一段代码 <strong>echo Bash is vulnerable</strong>。关于其中的原理我会在后面给出。</p>
+<p>很快，CVE-2014-6271的官方补丁出来的了——<a href="https://lists.gnu.org/archive/html/bug-bash/2014-09/msg00081.html" target="_blank">Bash-4.3 Official Patch 25</a>。</p>
+<p> <a href="/articles/11973.html#more-11973" class="more-link">…</a></p><a href="/articles/11973.html#more-11973" class="more-link">
+</a><p class="read-more"><a href="/articles/11973.html#more-11973" class="more-link"></a><a class="btn btn-default" href="/articles/11973.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-11973-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-11928" class="post-content post-11928 post type-post status-publish format-standard hentry category-misc category-story tag-aaron-swartz tag-programmer tag-reddit tag-sopa tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">互联网之子 – Aaron Swartz</span>
+<h2 class="entry-title">
+<a href="/articles/11928.html" rel="bookmark">互联网之子 – Aaron Swartz</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11928.html" title="00:26" rel="bookmark"><time class="entry-date" datetime="2014-09-08T00:26:08+08:00" pubdate="">2014年09月08日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11928.html#comments" class="comments-link">128 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 120,997 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright size-medium wp-image-11929" src="/uploads/2014/09/Aaron_Swartz_profile-216x300.jpg" alt="Aaron_Swartz_profile" width="216" height="300" srcset="" sizes="(max-width: 216px) 100vw, 216px"/> 1986年11月8日，有个叫Aaron Swartz的人在美国芝加哥伊利诺伊州出生。因为他父母创办了一个软件公司，所以，Aaron在3岁的时候就接触到了电脑，然后就着迷了。</p>
+<p>我们先通过Aaron Swartz 的青少年时期来看一下他是怎么样的一个天才：</p>
+<p style="padding-left: 30px;">12岁的时候Aaron就创建了一个类似于Wikipedia式的网站（那时还没有Wikipedia），13岁的时候，Aaron赢得为年轻人而设，创作教育及协同非商业网站的<a class="new" title="ArsDigita Prize" href="https://en.wikipedia.org/wiki/ArsDigita_Prize">ArsDigita Prize</a>比赛首名。 奖品包括参观麻省理工学院及与网际网路界的知名人士见会。</p>
+<p style="padding-left: 30px;">14岁的时候，他就成为了<a href="https://en.wikipedia.org/wiki/RSS">RSS1.0</a>的开发组的一员。（后来，他和 <a title="John Gruber" href="https://en.wikipedia.org/wiki/John_Gruber">John Gruber</a>一起开发了Markdown）</p>
+<p style="padding-left: 30px;">15岁的时候，进入W3C的 <a title="Resource Description Framework" href="https://en.wikipedia.org/wiki/Resource_Description_Framework">RDF</a> 核心工作组，并写了RFC3870——这个文档描述了一个新的media type – “<a title="RDF/XML" href="https://en.wikipedia.org/wiki/RDF/XML">RDF/XML</a>“，用于定义互联网上的“<a href="https://en.wikipedia.org/wiki/Semantic_Web" target="_blank">语义网络</a>”</p>
+<p style="padding-left: 30px;">17岁进入斯坦福大学，1年半后，18岁的时候因为受不了教条式的教育缀学，并通过Y Combinator公司的夏季创办人计划成立Infogami软件公司，在那里，他设想了一个Wiki平台来实现他的Internet Open Library——一个开放的网络图书馆。并写了著名的web.py 开发框架。但他觉得自己太年轻，还要有一个合伙人，于是Y Combinator建议他和Reddit合并。于是他在19岁的时候成了Reddit的创始人</p>
+<p style="padding-left: 30px;">虽然Reddit不挣钱，但是相当火，当他20岁的时候（2006年10月），他们把Reddit卖给了<a class="mw-redirect" title="Condé Nast Publications" href="https://en.wikipedia.org/wiki/Cond%C3%A9_Nast_Publications">Condé Nast出版社</a>，据说挣到了百万美金。然后，他去了这家出版社工作，受不了办公室的那种工作环境，2007年1月离职。</p>
+<p>但是，你能想得到这么天才的一个人，于2013年1月11日自杀了么？那年他才26岁。</p>
+<p> <a href="/articles/11928.html#more-11928" class="more-link">…</a></p><a href="/articles/11928.html#more-11928" class="more-link">
+</a><p class="read-more"><a href="/articles/11928.html#more-11928" class="more-link"></a><a class="btn btn-default" href="/articles/11928.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-11928-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+<div class="row">
+<div class="wp-pagenavi" role="navigation">
+<span class="pages">第 8 / 74 页</span><a class="first" aria-label="First Page" href="/">« 首页</a><a class="previouspostslink" rel="prev" aria-label="上一页" href="/page/7.html">«</a><span class="extend">...</span><a class="page smaller" title="第 4 页" href="/page/4.html">4</a><a class="page smaller" title="第 5 页" href="/page/5.html">5</a><a class="page smaller" title="第 6 页" href="/page/6.html">6</a><a class="page smaller" title="第 7 页" href="/page/7.html">7</a><span aria-current="page" class="current">8</span><a class="page larger" title="第 9 页" href="/page/9.html">9</a><a class="page larger" title="第 10 页" href="/page/10.html">10</a><a class="page larger" title="第 11 页" href="/page/11.html">11</a><a class="page larger" title="第 12 页" href="/page/12.html">12</a><a class="page larger" title="第 13 页" href="/page/13.html">13</a><span class="extend">...</span><a class="larger page" title="第 20 页" href="/page/20.html">20</a><a class="larger page" title="第 30 页" href="/page/30.html">30</a><a class="larger page" title="第 40 页" href="/page/40.html">40</a><a class="larger page" title="第 50 页" href="/page/50.html">50</a><a class="larger page" title="第 60 页" href="/page/60.html">60</a><span class="extend">...</span><a class="nextpostslink" rel="next" aria-label="下一页" href="/page/9.html">»</a><a class="last" aria-label="Last Page" href="/page/74.html">末页 »</a>
+</div>
+</div>
+</div>
+</nav>
+</main>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

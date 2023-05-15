@@ -1,0 +1,591 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>eBPF 介绍 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-22320 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-22320" class="post-content post-22320 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-operatingsystem category-netsecurity tag-debug tag-ebpf tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">eBPF 介绍</span>
+<h1 class="entry-title">eBPF 介绍</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/22320.html" title="10:38" rel="bookmark"><time class="entry-date" datetime="2022-12-10T10:38:51+08:00" pubdate="">2022年12月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/22320.html#comments" class="comments-link">18 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 38,101 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-22329 size-full" src="/uploads/2022/12/eBPF.jpeg" alt="" width="301" height="167" srcset=""/>很早前就想写一篇关于eBPF的文章，但是迟迟没有动手，这两天有点时间，所以就来写一篇，这文章主要还是简单的介绍eBPF 是用来干什么的，并通过几个示例来介绍是怎么玩的，这个技术非常非常之强，Linux 操作系统的观测性实在是太强大了，并在 BCC 加持下变得一览无余。这个技术不是一般的运维人员或是系统管理员可以驾驭的，这个还是要有底层系统知识并有一定开发能力的技术人员才能驾驭的了的。<strong>我在这篇文章的最后给了个彩蛋。</strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BB%8B%E7%BB%8D" title="介绍">介绍</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%94%A8%E9%80%94" title="用途">用途</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86" title="工作原理">工作原理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%A4%BA%E4%BE%8B" title="示例">示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB" title="延伸阅读">延伸阅读</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%BD%A9%E8%9B%8B" title="彩蛋">彩蛋</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BB%8B%E7%BB%8D"></span>介绍<span class="ez-toc-section-end"></span></h4>
+<p>eBPF（extened Berkeley Packet Filter）是一种内核技术，它允许开发人员在不修改内核代码的情况下运行特定的功能。eBPF 的概念源自于 Berkeley Packet Filter（BPF），后者是由贝尔实验室开发的一种网络过滤器，可以捕获和过滤网络数据包。</p>
+<p>出于对更好的 Linux 跟踪工具的需求，eBPF 从 <a href="https://illumos.org/books/dtrace/chp-intro.html">dtrace</a>中汲取灵感，dtrace 是一种主要用于 Solaris 和 BSD 操作系统的动态跟踪工具。与 dtrace 不同，Linux 无法全面了解正在运行的系统，因为它仅限于系统调用、库调用和函数的特定框架。<a href="https://www.kernel.org/doc/html/latest/bpf/index.html">在Berkeley Packet Filter</a>  (BPF)（一种使用内核 VM 编写打包过滤代码的工具）的基础上，一小群工程师开始扩展 BPF 后端以提供与 dtrace 类似的功能集。 eBPF 诞生了。<strong>2014 年随 Linux 3.18 首次限量发布，充分利用 eBPF 至少需要 Linux 4.4 以上版本</strong>。</p>
+<p><span id="more-22320"></span></p>
+<p>eBPF 比起传统的 BPF 来说，传统的 BPF 只能用于网络过滤，而 eBPF 则可以用于更多的应用场景，包括网络监控、安全过滤和性能分析等。另外，eBPF 允许常规用户空间应用程序将要在 Linux 内核中执行的逻辑打包为字节码，当某些事件（称为挂钩）发生时，内核会调用 eBPF 程序。此类挂钩的示例包括系统调用、网络事件等。用于编写和调试 eBPF 程序的最流行的工具链称为 <a href="https://github.com/iovisor/bcc">BPF 编译器集合</a> (BCC)，它基于 LLVM 和 CLang。</p>
+<p>eBPF 有一些类似的工具。例如，SystemTap 是一种开源工具，可以帮助用户收集 Linux 内核的运行时数据。它通过动态加载内核模块来实现这一功能，类似于 eBPF。另外，DTrace 是一种动态跟踪和分析工具，可以用于收集系统的运行时数据，类似于 eBPF 和 SystemTap。<code>[1]</code></p>
+<p>以下是一个简单的比较表格，可以帮助您更好地了解 eBPF、SystemTap 和 DTrace 这三种工具的不同之处：<code>[1]</code></p>
+<table>
+<thead>
+<tr>
+<th>工具</th>
+<th>eBPF</th>
+<th>SystemTap</th>
+<th>DTrace</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>定位</td>
+<td>内核技术，可用于多种应用场景</td>
+<td>内核模块</td>
+<td>动态跟踪和分析工具</td>
+</tr>
+<tr>
+<td>工作原理</td>
+<td>动态加载和执行无损编译过的代码</td>
+<td>动态加载内核模块</td>
+<td>动态插接分析器，通过 probe 获取数据并进行分析</td>
+</tr>
+<tr>
+<td>常见用途</td>
+<td>网络监控、安全过滤、性能分析等</td>
+<td>系统性能分析、故障诊断等</td>
+<td>系统性能分析、故障诊断等</td>
+</tr>
+<tr>
+<td>优点</td>
+<td>灵活、安全、可用于多种应用场景</td>
+<td>功能强大、可视化界面</td>
+<td>功能强大、高性能、支持多种编程语言</td>
+</tr>
+<tr>
+<td>缺点</td>
+<td>学习曲线高，安全性依赖于编译器的正确性</td>
+<td>学习曲线高，安全性依赖于内核模块的正确性</td>
+<td>配置复杂，对系统性能影响较大</td>
+</tr>
+</tbody>
+</table>
+<p style="text-align: center;">对比表格<code>[1]</code></p>
+<p>从上表可以看出，eBPF、SystemTap 和 DTrace 都是非常强大的工具，可以用于收集和分析系统的运行情况。<code>[1]</code></p>
+<h4><span class="ez-toc-section" id="%E7%94%A8%E9%80%94"></span>用途<span class="ez-toc-section-end"></span></h4>
+<p>eBPF 是一种非常灵活和强大的内核技术，可以用于多种应用场景。下面是 eBPF 的一些常见用途：<code>[1]</code></p>
+<ul>
+<li>网络监控：eBPF 可以用于捕获网络数据包，并执行特定的逻辑来分析网络流量。例如，可以使用 eBPF 程序来监控网络流量，并在发现异常流量时进行警报。<code>[1]</code></li>
+<li>安全过滤：eBPF 可以用于对网络数据包进行安全过滤。例如，可以使用 eBPF 程序来阻止恶意流量的传播，或者在发现恶意流量时对其进行拦截。<code>[1]</code></li>
+<li>性能分析：eBPF 可以用于对内核的性能进行分析。例如，可以使用 eBPF 程序来收集内核的性能指标，并通过特定的接口将其可视化。这样，可以更好地了解内核的性能瓶颈，并进行优化。<code>[1]</code></li>
+<li>虚拟化：eBPF 可以用于虚拟化技术。例如，可以使用 eBPF 程序来收集虚拟机的性能指标，并进行负载均衡。这样，可以更好地利用虚拟化环境的资源，提高系统的性能和稳定性。<code>[1]</code></li>
+</ul>
+<p>总之，eBPF 的常见用途非常广泛，可以用于网络监控、安全过滤、性能分析和虚拟化等多种应用场景。<code>[1]</code></p>
+<h4><span class="ez-toc-section" id="%E5%B7%A5%E4%BD%9C%E5%8E%9F%E7%90%86"></span>工作原理<span class="ez-toc-section-end"></span></h4>
+<p>eBPF 的工作原理主要分为三个步骤：加载、编译和执行。</p>
+<p>eBPF 需要在内核中运行。这通常是由用户态的应用程序完成的，它会通过系统调用来加载 eBPF 程序。在加载过程中，内核会将 eBPF 程序的代码复制到内核空间。</p>
+<p>eBPF 程序需要经过编译和执行。这通常是由Clang/LLVM的编译器完成，然后形成字节码后，将用户态的字节码装载进内核，Verifier会对要注入内核的程序进行一些内核安全机制的检查,这是为了确保 eBPF 程序不会破坏内核的稳定性和安全性。在检查过程中，内核会对 eBPF 程序的代码进行分析，以确保它不会进行恶意操作，如系统调用、内存访问等。如果 eBPF 程序通过了内核安全机制的检查，它就可以在内核中正常运行了，其会通过通过一个JIT编译步骤将程序的通用字节码转换为机器特定指令集，以优化程序的执行速度。</p>
+<p>下图是其架构图。</p>
+<p><img decoding="async" class="aligncenter" src="https://imgopt.infoq.com/fit-in/1200x2400/filters:quality(80)/filters:no_upscale()/articles/gentle-linux-ebpf-introduction/en/resources/47image005-1619704397592.jpg"/></p>
+<p style="text-align: center;">（图片来自：<a href="https://www.infoq.com/articles/gentle-linux-ebpf-introduction/" target="_blank" rel="noopener">https://www.infoq.com/articles/gentle-linux-ebpf-introduction/</a>）</p>
+<p>在内核中运行时，eBPF 程序通常会挂载到一个内核钩子（hook）上，以便在特定的事件发生时被执行。例如，</p>
+<ul>
+<li><span>系统调用——当用户空间函数将执行转移到内核时插入</span></li>
+<li><span>函数进入和退出——拦截对预先存在的函数的调用</span></li>
+<li><span>网络事件 – 在收到数据包时执行</span></li>
+<li><span>Kprobes 和 uprobes – 附加到内核或用户函数的探测器</span></li>
+</ul>
+<p>最后 eBPF Maps，允许eBPF程序在调用之间保持状态，以便进行相关的数据统计，并与用户空间的应用程序共享数据。一个eBPF映射基本上是一个键值存储，其中的值通常被视为任意数据的二进制块。它们是通过带有BPF_MAP_CREATE参数的<code>bpf_cmd</code>系统调用来创建的，和Linux世界中的其他东西一样，它们是通过文件描述符来寻址。与地图的交互是通过查找/更新/删除系统调用进行的</p>
+<p>总之，eBPF 的工作原理是通过动态加载、执行和检查<strong>无损编译</strong>过的代码来实现的。<code>[1]</code></p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B"></span>示例<span class="ez-toc-section-end"></span></h4>
+<p>eBPF 可以用于对内核的性能进行分析。下面是一个基于 eBPF 的性能分析的 step-by-step 示例：</p>
+<p>第一步：准备工作：首先，需要确保内核已经支持 eBPF 功能。这通常需要在内核配置文件中启用 eBPF 相关的选项，并重新编译内核。检查是否支持 eBPF，你可以用这两个命令查看 <code>ls /sys/fs/bpf</code> 和 <code>lsmod | grep bpf</code></p>
+<p>第二步：写 eBPF 程序：接下来，需要编写 eBPF 程序，用于收集内核的性能指标。eBPF 程序的语言可以选择 C 或者 Python，它需要通过特定的接口访问内核的数据结构，并将收集到的数据保存到指定的位置。</p>
+<p>下面是一个Python 示例（其实还是C语言，用python来加载一段C程序到Linux内核）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">#!/usr/bin/python3
+
+from bcc import BPF
+from time import sleep
+
+# 定义 eBPF 程序
+bpf_text = &#34;&#34;&#34;
+#include &lt;uapi/linux/ptrace.h&gt;
+
+BPF_HASH(stats, u32);
+
+int count(struct pt_regs *ctx) {
+    u32 key = 0;
+    u64 *val, zero=0;
+    val = stats.lookup_or_init(&amp;key, &amp;zero);
+    (*val)++;
+    return 0;
+}
+&#34;&#34;&#34;
+
+# 编译 eBPF 程序
+b = BPF(text=bpf_text, cflags=[&#34;-Wno-macro-redefined&#34;])
+
+# 加载 eBPF 程序
+b.attach_kprobe(event=&#34;tcp_sendmsg&#34;, fn_name=&#34;count&#34;)
+
+name = {
+  0: &#34;tcp_sendmsg&#34;
+}
+# 输出统计结果
+while True:
+    try:
+        #print(&#34;Total packets: %d&#34; % b[&#34;stats&#34;][0].value)
+        for k, v in b[&#34;stats&#34;].items():
+           print(&#34;{}: {}&#34;.format(name[k.value], v.value))
+        sleep(1)
+    except KeyboardInterrupt:
+        exit()</pre>
+<p>这个 eBPF 程序的功能是统计网络中传输的数据包数量。它通过定义一个 <code>BPF_HASH</code> 数据结构来保存统计结果（eBPF Maps），并通过捕获 <code>tcp_sendmsg</code> 事件来实现实时统计。最后，它通过每秒输出一次统计结果来展示数据。这个 eBPF 程序只是一个简单的示例，实际应用中可能需要进行更复杂的统计和分析。</p>
+<p>第三步：运行 eBPF 程序：接下来，需要使用 eBPF 编译器将 eBPF 程序编译成内核可执行的格式（这个在上面的Python程序里你可以看到——Python引入了一个bcc的包，然后用这个包，把那段 C语言的程序编译成字节码加载在内核中并把某个函数 attach 到某个事件上）。这个过程可以使用 BPF Compiler Collection（BCC）工具来完成。BCC 工具可以通过命令行的方式将 eBPF 程序编译成内核可执行的格式，并将其加载到内核中。</p>
+<p>下面是运行上面的 Python3 程序的步骤：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">sudo apt install python3-bpfcc</pre>
+<p>注：在Python3下请不要使用 <code>pip3 install bcc</code> （参看：<a href="https://github.com/iovisor/bcc/issues/2278#issuecomment-825356087" target="_blank" rel="noopener">这里</a>）</p>
+<p>如果你是 Ubuntu 20.10 以上的版本，最好通过源码安装（否则程序会有编译问题），参看：<a href="https://github.com/iovisor/bcc/issues/3993#issuecomment-1228217609" target="_blank" rel="noopener">这里</a>：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="bash">apt purge bpfcc-tools libbpfcc python3-bpfcc
+wget https://github.com/iovisor/bcc/releases/download/v0.25.0/bcc-src-with-submodule.tar.gz
+tar xf bcc-src-with-submodule.tar.gz
+cd bcc/
+apt install -y python-is-python3
+apt install -y bison build-essential cmake flex git libedit-dev   libllvm11 llvm-11-dev libclang-11-dev zlib1g-dev libelf-dev libfl-dev python3-distutils
+apt install -y checkinstall
+mkdir build
+cd build/
+cmake -DCMAKE_INSTALL_PREFIX=/usr -DPYTHON_CMD=python3 ..
+make
+checkinstall</pre>
+<p>接下来，需要将上面的 Python 程序保存到本地，例如保存到文件 netstat.py。运行程序：最后，可以通过执行以下命令来运行 Python 程序：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ chmod +x ./netstat.py
+$ sudo ./netstat.py
+tcp_sendmsg: 29
+tcp_sendmsg: 216
+tcp_sendmsg: 277
+tcp_sendmsg: 379
+tcp_sendmsg: 419
+tcp_sendmsg: 468
+tcp_sendmsg: 574
+tcp_sendmsg: 645
+tcp_sendmsg: 29
+</pre>
+<p>程序开始运行后，会在控制台输出网络数据包的统计信息。可以通过按 Ctrl+C 组合键来结束程序的运行。</p>
+<p>下面我们再看一个比较复杂的示例，这个示例会计算TCP的发包时间（示例参考于Github上 <a href="https://github.com/iovisor/bcc/issues/2972" target="_blank" rel="noopener">这个issue</a>里的程序）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">#!/usr/bin/python3
+
+from bcc import BPF
+import time
+
+# 定义 eBPF 程序
+bpf_text = &#34;&#34;&#34;
+#include &lt;uapi/linux/ptrace.h&gt;
+#include &lt;net/sock.h&gt;
+#include &lt;net/inet_sock.h&gt;
+#include &lt;bcc/proto.h&gt;
+
+struct packet_t {
+    u64 ts, size;
+    u32 pid;
+    u32 saddr, daddr;
+    u16 sport, dport;
+};
+
+BPF_HASH(packets, u64, struct packet_t);
+
+int on_send(struct pt_regs *ctx, struct sock *sk, struct msghdr *msg, size_t size)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u32 pid = id;
+
+    // 记录数据包的时间戳和信息
+    struct packet_t pkt = {}; // 结构体一定要初始化，可以使用下面的方法
+                              //__builtin_memset(&amp;pkt, 0, sizeof(pkt)); 
+    pkt.ts = bpf_ktime_get_ns();
+    pkt.size = size;
+    pkt.pid = pid;
+    pkt.saddr = sk-&gt;__sk_common.skc_rcv_saddr;
+    pkt.daddr = sk-&gt;__sk_common.skc_daddr;
+    struct inet_sock *sockp = (struct inet_sock *)sk;
+    pkt.sport = sockp-&gt;inet_sport;
+    pkt.dport = sk-&gt;__sk_common.skc_dport;
+
+    packets.update(&amp;id, &amp;pkt);
+    return 0;
+}
+
+int on_recv(struct pt_regs *ctx, struct sock *sk)
+{
+    u64 id = bpf_get_current_pid_tgid();
+    u32 pid = id;
+
+    // 获取数据包的时间戳和编号
+    struct packet_t *pkt = packets.lookup(&amp;id);
+    if (!pkt) {
+        return 0;
+    }
+
+    // 计算传输时间
+    u64 delta = bpf_ktime_get_ns() - pkt-&gt;ts;
+
+    // 统计结果
+    bpf_trace_printk(&#34;tcp_time: %llu.%llums, size: %llu\\n&#34;, 
+       delta/1000, delta%1000%100, pkt-&gt;size);
+
+    // 删除统计结果
+    packets.delete(&amp;id);
+
+    return 0;
+}
+&#34;&#34;&#34;
+
+# 编译 eBPF 程序
+b = BPF(text=bpf_text, cflags=[&#34;-Wno-macro-redefined&#34;])
+
+# 注册 eBPF 程序
+b.attach_kprobe(event=&#34;tcp_sendmsg&#34;, fn_name=&#34;on_send&#34;)
+b.attach_kprobe(event=&#34;tcp_v4_do_rcv&#34;, fn_name=&#34;on_recv&#34;)
+
+# 输出统计信息
+print(&#34;Tracing TCP latency... Hit Ctrl-C to end.&#34;)
+while True:
+    try:
+        (task, pid, cpu, flags, ts, msg) = b.trace_fields()
+        print(&#34;%-18.9f %-16s %-6d %s&#34; % (ts, task, pid, msg))
+    except KeyboardInterrupt:
+        exit()</pre>
+<p>上面这个程序通过捕获每个数据包的时间戳来统计传输时间。在捕获 <code>tcp_sendmsg</code> 事件时，记录数据包的发送时间；在捕获 <code>tcp_v4_do_rcv</code> 事件时，记录数据包的接收时间；最后，通过比较两个时间戳来计算传输时间。</p>
+<p>从上面的两个程序我们可以看到，eBPF 的一个编程的基本方法，这样的在Python里向内核的某些事件挂载一段 “C语言” 的方式就是 eBPF 的编程方式。实话实说，这样的代码很不好写，而且有很多非常诡异的东西，一般人是很难驾驭的（上面的代码我也不是很容易都能写通的，把 Google 都用了个底儿掉，读了很多晦涩的文档……）好在这样的代码已经有人写了，我们不必再写了，在 <a href="https://github.com/iovisor/bcc/tree/master/tools" target="_blank" rel="noopener">Github 上的 bcc 库下的 tools 目录</a>有很多……</p>
+<p>BCC（<a href="https://github.com/iovisor/bcc" target="_blank" rel="noopener">BPF Compiler Collection</a>）是一套开源的工具集，可以在 Linux 系统中使用 BPF（Berkeley Packet Filter）程序进行系统级性能分析和监测。BCC 包含了许多实用工具，如：</p>
+<ol>
+<li>bcc-tools：一个包含许多常用的 BCC 工具的软件包。</li>
+<li>bpftrace：一个高级语言，用于编写和执行 BPF 程序。</li>
+<li>tcptop：一个实时监控和分析 TCP 流量的工具。</li>
+<li>execsnoop：一个用于监控进程执行情况的工具。</li>
+<li>filetop：一个实时监控和分析文件系统流量的工具。</li>
+<li>trace：一个用于跟踪和分析函数调用的工具。</li>
+<li>funccount：一个用于统计函数调用次数的工具。</li>
+<li>opensnoop：一个用于监控文件打开操作的工具。</li>
+<li>pidstat：一个用于监控进程性能的工具。</li>
+<li>profile：一个用于分析系统 CPU 使用情况的工具。</li>
+</ol>
+<p>下面这张图你可能见过多次了，你可以看看他可以干多少事，内核里发生什么事一览无余。</p>
+<p><img decoding="async" src="https://github.com/iovisor/bcc/raw/master/images/bcc_tracing_tools_2019.png"/></p>
+<h4><span class="ez-toc-section" id="%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"></span>延伸阅读<span class="ez-toc-section-end"></span></h4>
+<p>一些经典的文章和书籍关于 eBPF 包括：</p>
+<ul>
+<li>Brendan Gregg 的《<a href="https://book.douban.com/subject/34467459/" target="_blank" rel="noopener">BPF Performance Tools: Linux System and Application Observability</a>》一书是一个全面的指南，涵盖了 eBPF 的基础知识和实践应用。</li>
+<li>eBPF 的官网：<a href="https://ebpf.io/" target="_blank" rel="noopener">https://ebpf.io/</a> 由 <a href="https://cilium.io/" rel="nofollow">Cilium</a> 建立</li>
+<li><a href="http://docs.cilium.io/en/latest/bpf/" rel="nofollow">Cilium’s BPF and XDP Reference Guide</a></li>
+<li><a href="https://www.kernel.org/doc/html/latest/bpf/index.html" rel="nofollow">BPF Documentation</a></li>
+<li><a href="https://www.kernel.org/doc/html/latest/bpf/bpf_design_QA.html" rel="nofollow">BPF Design Q&amp;A</a></li>
+<li>还有 Github 上的 <a href="https://github.com/zoidbergwill/awesome-ebpf" target="_blank" rel="noopener">Awesome eBPF</a></li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%BD%A9%E8%9B%8B"></span>彩蛋<span class="ez-toc-section-end"></span></h4>
+<p>最后来到彩蛋环节。因为最近 ChatGPT 很火，于是，我想通过 ChatGPT 来帮助我书写这篇文章，一开始我让ChatGPT 帮我列提纲，并根据提纲生成文章内容，并查找相关的资料，非常之顺利，包括生成的代码，我以为我们以很快地完成这篇文章。</p>
+<p>但是，到了代码生成的时候，我发现，ChatGPT 生成的代码的思路和方法都是对的，但是是比较老的，而且是跑不起来的，<strong>出现了好些低级错误，如：使用了未声明的变量，没有引用完整的C语言的头文件，没有正确地初始化变量，错误地获取数据，类型没有匹配……等等</strong>，在程序调试上，挖了很多的坑，C语言本来就不好搞，挖的很多运行时的坑很难察觉，所以，耗费了我大量的时间来排除各种各样的问题，其中有环境上的问题，还有代码上的问题，这些问题即便是通过 Google 也不容易找到解决方案，我找到的解决方案都放在文章中了，尤其是第二个示例，让我调试了3个多小时，读了很多 bcc 上的issue和相关的晦涩的手册和文档，才让程序跑通。</p>
+<p>到了文章收关的阶段，我让ChatGPT 给我几个延伸阅读，也是很好的，但是没有给出链接，于是我只得人肉 Google 了一下，然后让我吃惊的是，<strong>好多ChatGPT给出来的文章是根本不存在的，完全是它伪造的</strong>。我连让它干了两次都是这样，这个让我惊掉大牙。这让我开始怀疑它之前生成的内容，于是，我不得我返回仔细Review我的文章，尤其是“介绍”、“用途”和“工作原理”这三个章节，基本都是ChatGPT生成的，在Review完后，我发现了ChatGPT 给我生造了一个叫 “无损编译器”的术语，这个术语简直了，于是我开始重写我的文章。我把一些段落重写了，有一些没有，保留下来的我都标记上了 <code>[1]</code>，大家读的时候要小心阅读。</p>
+<p>最后，<strong>我的结论是，ChatGPT只是一个不成熟的玩具，只能回答一些没有价值的日常聊天的问题，要说能取代Google，我觉得不可能，因为Google会基于基本的事实，而ChatGPT会基于内容生成的算法，在造假方面称得上是高手，可以列为电信诈骗的范畴了，我以后不会再使用ChatGPT生成文章内容或是作我的帮手了。StackOverflow把其ban了真是不能太赞了！</strong></p>
+<p><strong>附件一：ChatGPT的造假载图和样本</strong></p>
+<table width="100%">
+<tbody>
+<tr>
+<td>
+<p></p><figure id="attachment_22325" aria-describedby="caption-attachment-22325" style="width: 195px" class="wp-caption aligncenter"><a href="https://coolshell.cn/wp-content/uploads/2022/12/eBPF.ref_.1.png"><img decoding="async" loading="lazy" class="wp-image-22325 size-medium" src="/uploads/2022/12/eBPF.ref_.1-195x300.png" alt="" width="195" height="300" srcset="" sizes="(max-width: 195px) 100vw, 195px"/></a><figcaption id="caption-attachment-22325" class="wp-caption-text">点击看大图</figcaption></figure></td>
+<td>
+<p></p><figure id="attachment_22326" aria-describedby="caption-attachment-22326" style="width: 286px" class="wp-caption aligncenter"><a href="https://coolshell.cn/wp-content/uploads/2022/12/eBPF.ref_.2.png"><img decoding="async" loading="lazy" class="wp-image-22326 size-medium" src="/uploads/2022/12/eBPF.ref_.2-286x300.png" alt="" width="286" height="300" srcset="" sizes="(max-width: 286px) 100vw, 286px"/></a><figcaption id="caption-attachment-22326" class="wp-caption-text">点击看大图</figcaption></figure></td>
+</tr>
+</tbody>
+</table>
+<p><strong>ChatGPT 生成的样本一</strong></p>
+<ul>
+<li>Brendan Gregg 的《BPF Performance Tools: Linux System and Application Observability》一书是一个全面的指南，涵盖了 eBPF 的基础知识和实践应用。</li>
+<li>Alexei Starovoitov 在 2015 年的 LPC 大会上发表的《eBPF and XDP: fast programmable datapath in the Linux kernel》一文，是一个介绍 eBPF 和 XDP（eXpress Data Path）的综述。</li>
+<li>谷歌的《BPF: The Future of Linux Monitoring and Observability》一文介绍了 eBPF 的基本概念，并探讨了它对于 Linux 监控和可观察性的影响。</li>
+<li>微软的《A Survey of Techniques for Hardware Acceleration of BPF》一文，介绍了 eBPF 在硬件加速方面的研究现状。</li>
+<li>Daniel Borkmann 的《Linux kernel networking: implementation and theory》一书涵盖了 eBPF 的实现和理论。</li>
+<li>Martin KaFai Lau 在 2015 年的 SOSP 大会上发表的《eBPF: a new execution environment for the Linux kernel》一文，介绍了 eBPF 在 Linux 内核中的新执行环境。</li>
+<li>来自两名谷歌工程师的《eBPF: A New Frontier in Performance Analysis》一文，探讨了 eBPF 对性能分析的影响。</li>
+<li>《BPF Performance Tools: Linux System and Application Observability》一书中的第三章，讨论了 eBPF 的编译器和运行时系统。</li>
+<li>来自三名谷歌工程师的《eBPF: The New Solaris DTrace》一文，比较了 eBPF 和 Solaris DTrace 系统的区别。</li>
+</ul>
+<p><strong>ChatGPT 生成的样本二</strong></p>
+<ol>
+<li>eBPF 程序开发指南（<a href="https://cilium.io/doc/ebpf/ebpf-guide/" target="_new" rel="noopener">https://cilium.io/doc/ebpf/ebpf-guide/</a>）</li>
+<li>eBPF 官方文档（<a href="https://www.kernel.org/doc/Documentation/networking/filter.txt" target="_new" rel="noopener">https://www.kernel.org/doc/Documentation/networking/filter.txt</a>）</li>
+<li>Linux 内核 eBPF 介绍（<a href="https://www.ibm.com/developerworks/cn/linux/kernel/ebpf/index.html" target="_new" rel="noopener">https://www.ibm.com/developerworks/cn/linux/kernel/ebpf/index.html</a>）</li>
+<li>eBPF 性能优化技巧（<a href="https://www.infoq.com/cn/news/2018/08/ebpf-performance-tips/" target="_new" rel="noopener">https://www.infoq.com/cn/news/2018/08/ebpf-performance-tips/</a>）</li>
+<li>eBPF 实战经验分享（<a href="https://blog.cloudflare.com/ebpf-in-practice/" target="_new" rel="noopener">https://blog.cloudflare.com/ebpf-in-practice/</a>）</li>
+<li>eBPF 在网络安全中的应用（<a href="https://www.zdnet.com/article/ebpf-how-to-use-it-for-network-security/" target="_new" rel="noopener">https://www.zdnet.com/article/ebpf-how-to-use-it-for-network-security/</a>）</li>
+<li>eBPF 实现 Linux 系统性能监控（<a href="https://www.percona.com/blog/2017/08/15/how-to-use-ebpf-to-monitor-linux-system-performance/" target="_new" rel="noopener">https://www.percona.com/blog/2017/08/15/how-to-use-ebpf-to-monitor-linux-system-performance/</a>）</li>
+<li>eBPF 入门教程（<a href="https://sysdig.com/blog/ebpf-getting-started/" target="_new" rel="noopener">https://sysdig.com/blog/ebpf-getting-started/</a>）</li>
+<li>eBPF 与 BPF 比较（<a href="https://lwn.net/Articles/724647/" target="_new" rel="noopener">https://lwn.net/Articles/724647/</a>）</li>
+<li>eBPF 提高课程（<a href="https://www.pluralsight.com/courses/ebpf-advanced" target="_new" rel="noopener">https://www.pluralsight.com/courses/ebpf-advanced</a>）</li>
+</ol>
+<p><strong>附件二：发明的术语：无损编译器</strong></p>
+<table width="100%">
+<tbody>
+<tr>
+<td>
+<p></p><figure id="attachment_22328" aria-describedby="caption-attachment-22328" style="width: 180px" class="wp-caption aligncenter"><a href="https://coolshell.cn/wp-content/uploads/2022/12/fake.png"><img decoding="async" loading="lazy" class="wp-image-22328 size-medium" src="/uploads/2022/12/fake-180x300.png" alt="" width="180" height="300" srcset="" sizes="(max-width: 180px) 100vw, 180px"/></a><figcaption id="caption-attachment-22328" class="wp-caption-text">点击看大图</figcaption></figure></td>
+<td>
+<p></p><figure id="attachment_22335" aria-describedby="caption-attachment-22335" style="width: 223px" class="wp-caption aligncenter"><a href="https://coolshell.cn/wp-content/uploads/2022/12/fake.term_.png"><img decoding="async" loading="lazy" class="wp-image-22335 size-medium" src="/uploads/2022/12/fake.term_-223x300.png" alt="" width="223" height="300" srcset="" sizes="(max-width: 223px) 100vw, 223px"/></a><figcaption id="caption-attachment-22335" class="wp-caption-text">点击看大图</figcaption></figure></td>
+</tr>
+</tbody>
+</table>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-22320-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Debug</a>, <a href="javascript:void(0)" rel="tag">eBPF</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>eBPF 介绍</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2370955" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2370955" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1021f77b1e549bdf3ab369740637ec8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1021f77b1e549bdf3ab369740637ec8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.mghio.cn" class="url" rel="ugc external nofollow">mghio</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370955"><time datetime="2022-12-10T11:15:50+08:00">2022年12月10日 11:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，文中发现个 typo 。</p>
+<p>「而且是包不起来的」——&gt; 「而且是跑不起来的」</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370956" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2370956" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370956"><time datetime="2022-12-10T11:44:25+08:00">2022年12月10日 11:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，已改正</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370957" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370957" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60b283fe6f2a85b3e620d1d0ed3045b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60b283fe6f2a85b3e620d1d0ed3045b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kursk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370957"><time datetime="2022-12-10T15:05:31+08:00">2022年12月10日 15:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>chatGPT给的链接都不存在，我点了几个都是的，这货连链接都能造假？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370958" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370958" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eba1d68794731dbc5b424ad42efda26c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eba1d68794731dbc5b424ad42efda26c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">red.snapper</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370958"><time datetime="2022-12-11T00:25:30+08:00">2022年12月11日 00:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+上面的代码我也很不是很容易都能写通的<br/>
+上面的代码我也不是很容易都能写通的
+</p></blockquote>
+</div>
+ </article>
+</li>
+<li id="comment-2370959" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370959" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2add8bbb0751c64519eae88fa52797cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2add8bbb0751c64519eae88fa52797cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370959"><time datetime="2022-12-11T16:27:15+08:00">2022年12月11日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作为一个查表规律检测器，这个聊天机器人做的还算是比较好了。至于出错太正常了，而链接错误的情况更正常了，现在的绝大多数的网页都有便于搜索引擎的短链设计，照葫芦就好。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370961" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370961" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/53c046e619a9d8da7c41b82ce7a76764?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/53c046e619a9d8da7c41b82ce7a76764?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lol</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370961"><time datetime="2022-12-11T20:42:12+08:00">2022年12月11日 20:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不能幫你寫文，你就把它說成造假。<br/>
+這器量有點讓人失望啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370975" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370975" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dacf69a4a35440acf94b702fb9c7ee77?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dacf69a4a35440acf94b702fb9c7ee77?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mason</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370975"><time datetime="2022-12-14T10:31:54+08:00">2022年12月14日 10:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我之前让它推荐几本英文小说，也都搜索不到，也被欺骗了，不过我觉得它还是非常有用的，不能因为这个原因就完全否定其价值。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370978" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370978" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fa13b0b2b82997df27167680524346f6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fa13b0b2b82997df27167680524346f6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">actor168</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370978"><time datetime="2022-12-14T13:14:44+08:00">2022年12月14日 13:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里面最后一个示例程序，是不是逻辑上存在问题，tcp_send中记录了以该pid对应的发包情况，tcp_recv中记录了该pid对应的收包情况，这里面的时间求差的意义何在？因为比较的并不是同一个数据包的传输延迟</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370982" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370982" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b1fd58b612799cca713121d558cfc64a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b1fd58b612799cca713121d558cfc64a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">avlee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2370982"><time datetime="2022-12-15T15:24:17+08:00">2022年12月15日 15:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>读到“与地图的交互是通过查找/更新/删除系统调用进行的”这句的时候，我就纳闷作者怎么会出现这种低级的书写错误，等看到对[1]标注的说明，我立马回去把这些标记的地方重新扫了一眼，给自己一个警示。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370990" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ixyzero.com/blog/archives/5373.html" class="url" rel="ugc external nofollow">eBPF简单了解 – ASPIRE</a> </div>
+</li>
+<li id="comment-2371006" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371006" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/777c98f24311505eceff79eaadc0327b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/777c98f24311505eceff79eaadc0327b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hot short</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2371006"><time datetime="2022-12-27T10:36:47+08:00">2022年12月27日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>拥抱技术才能使技术进步，ChatGPT只是一个工具而已，如果我们都不使用它，这项技术就不会进步，当然出了这么多问题后，openai官方还不去改进，未来流失的优质用户会更多。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371028" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371028" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/53adc16bddd04cb132fecc8efcd30ca9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/53adc16bddd04cb132fecc8efcd30ca9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cjc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2371028"><time datetime="2023-01-17T16:19:13+08:00">2023年01月17日 16:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>了解神经网络的应该都知道ChatGPT回答问题使用的是已经训练好的权重，而不是查库，虽然这些权重是使用真实数据训练出来的但是权重里保存的是字与字的相关性并不是分类整理好的百科全书，所以它回答问题时是在不断计算前一个词和后一个词的相关性选择得分最大的，就像玩成语接龙一样，整个回答从头到尾都是都是通过概率拼接出来的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371099" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/22398.html" class="url" rel="ugc">我看ChatGPT: 为啥谷歌掉了千亿美金 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2371105" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.techfm.club/p/39808.html" class="url" rel="ugc external nofollow">我看CHATGPT: 为啥谷歌掉了千亿美金</a> </div>
+</li>
+<li id="comment-2371106" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://gmsin.com/%e6%88%91%e7%9c%8bchatgpt-%e4%b8%ba%e5%95%a5%e8%b0%b7%e6%ad%8c%e6%8e%89%e4%ba%86%e5%8d%83%e4%ba%bf%e7%be%8e%e9%87%91%ef%bc%88%e8%bd%ac%ef%bc%89.html" class="url" rel="ugc external nofollow">我看CHATGPT: 为啥谷歌掉了千亿美金（转） – 简美信投资博客</a> </div>
+</li>
+<li id="comment-2371128" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://gmsin.com/%e6%88%91%e7%9c%8bchatgpt-%e4%b8%ba%e5%95%a5%e8%b0%b7%e6%ad%8c%e6%8e%89%e4%ba%86%e5%8d%83%e4%ba%bf%e7%be%8e%e9%87%91%e8%bd%ac%e8%bd%bd.html" class="url" rel="ugc external nofollow">我看ChatGPT: 为啥谷歌掉了千亿美金(转载) – 简美信投资博客</a> </div>
+</li>
+<li id="comment-2371169" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://aigc.luomor.com/2023/03/21/ebpf-%e4%bb%8b%e7%bb%8d/" class="url" rel="ugc external nofollow">eBPF 介绍 - 文心AIGC</a> </div>
+</li>
+<li id="comment-2371208" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371208" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0808314e5ed8842885695d3b61d4db39?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0808314e5ed8842885695d3b61d4db39?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">不具名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22320.html#comment-2371208"><time datetime="2023-04-27T16:04:35+08:00">2023年04月27日 16:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢！</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何调试bash脚本 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1379 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1379" class="post-content post-1379 post type-post status-publish format-standard hentry category-unixlinux category-tools tag-bash tag-debug tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">如何调试bash脚本</span>
+<h1 class="entry-title">如何调试bash脚本</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1379.html" title="15:53" rel="bookmark"><time class="entry-date" datetime="2009-08-31T15:53:40+08:00" pubdate="">2009年08月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1379.html#comments" class="comments-link">11 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 49,139 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://en.wikipedia.org/wiki/Bash"><img decoding="async" class="alignright" title="如何调试Bash脚本" src="/uploads/2009/08/bash.jpg" alt="如何调试Bash脚本" width="120" height="120" srcset=""/>Bash</a> 是Linux操作系统的默认Shell脚本。Shell是用来处理操作系统和用户交互的一个程序。Shell的脚本可以帮助用户自动化地和操作系统进行交互。你也可以理解为一种脚本式的编程。即然有编程，那么，程序的编译器，解释器，调试器就必不可少了，Bash也一样，但在调试方面可能会有一些和编程语言不一样的东西和技术，所以，下面这篇文章主要是说明调试bash脚本的各种技术。</p>
+<h4 id="Tracing_script_execution">跟踪脚本的执行</h4>
+<p>你可以让bash打印出你脚本执行的过程中的所有语句。这很简单，只需要使用bash的-x选项就可以做到，下面让我们来看一下。</p>
+<p><span id="more-1379"></span></p>
+<p>下面的这段脚本，先是输出一个问候语句，然后输出当前的时间：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#!/bin/bash
+echo &#34;Hello $USER,&#34;
+echo &#34;Today is $(date +&#39;%Y-%m-%d&#39;)&#34;
+</pre>
+<p>下面让我们使用-x选项来运行这段脚本：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ bash -x example_script.sh
++ echo &#39;Hello chenhao,&#39;
+Hello chenhao,
+++ date +%Y-%m-%d
++ echo &#39;Today is 2009-08-31&#39;
+Today is 2009-08-31
+</pre>
+<p>这时，我们可以看到，bash在运行前打印出了每一行命令。而且每行前面的+号表明了嵌套。这样的输出可以让你看到命令执行的顺序并可以让你知道整个脚本的行为。<br/>
+<strong>在跟踪里输出行号</strong></p>
+<p>在一个很大的脚本中，你会看到很多很多的执行跟踪的输出，阅读起来非常费劲，所以，你可以在每一行前加上文件的行号，这会非常有用。要做到这样，你只需要设置下面的环境变量：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"> 
+export PS4=&#39;+${BASH_SOURCE}:${LINENO}:${FUNCNAME[0]}: &#39;
+</pre>
+<p>让我们看看设置上了PS4这个环境变量后会是什么样的输出。</p>
+<p> </p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ bash -x example_script.sh
++example_script.sh:2:: echo &#39;Hello chenhao,&#39;
+Hello chenhao,
+++example_script.sh:3:: date +%Y-%m-%d
++example_script.sh:3:: echo &#39;Today is 2009-08-31&#39;
+Today is 2009-08-31
+</pre>
+<p> <br/>
+<strong>调试部份的脚本</strong></p>
+<p>有些时候，你并不想调试整个脚本，你只要调试其中的一部份，那么，你可以在你想要调试的脚本之前，调用“set -x”，结束的时候调用“set +x”就可以了。如下面的脚本所示：</p>
+<p> </p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#!/bin/bash
+echo &#34;Hello $USER,&#34;
+set -x
+echo &#34;Today is $(date %Y-%m-%d)&#34;
+set +x
+</pre>
+<p> </p>
+<p>让我们看看运行起来是啥样？</p>
+<p> </p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ ./example_script.sh
+Hello chenhao,
+++example_script.sh:4:: date +%Y-%m-%d
++example_script.sh:4:: echo &#39;Today is 2009-08-31&#39;
+Today is 2009-08-31
++example_script.sh:5:: set +x
+</pre>
+<p> </p>
+<p>注意：我们在运行脚本的时候，不需要使用<span>bash -x了。</span></p>
+<p><span> </span></p>
+<h4 id="Logging">日志输出</h4>
+<p>跟踪日志有时候太多了，多得都受不了，而且，输出的内容很难阅读。一般来说，我们很多时候只关心于条件表达式，变量值，或是函数调用，或是循环等。。在这种情况下，log一些感兴趣的特定的信息，可能会更好。</p>
+<p>使用log前，我们先写一个函数：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">_log() {
+    if [ &#34;$_DEBUG&#34; == &#34;true&#34; ]; then
+        echo 1&gt;&amp;2 &#34;$@&#34;
+    fi
+}
+</pre>
+<p> </p>
+<p>于是，你就可以在你的脚本中如下使用：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"> 
+_log &#34;Copying files...&#34;
+cp src/* dst/
+</pre>
+<p> <br/>
+我们可以看到，上面那个_log函数，需要检查一个<span>_DEBUG</span> 变量，只有这个变量是真，才会真正开发输出日志。这样，你就只需要控制这个开关，而不需要删除你的debug信息。</p>
+<p> </p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"> 
+$ _DEBUG=true ./example_script.sh
+</pre>
+<p> </p>
+<h4 id="Using_the_Bash_debugger">使用Bash专用调试器</h4>
+<p>如果你在写一个相当复杂的脚本，并且，你需要一个完整的像调试别的语言一样的调试器，那么你可以试着用用这个开源软件—— <a href="http://bashdb.sourceforge.net/">bashdb</a>， 一个Bash的专用调试器。这个调试器很强大，你想得到的功能，他都有，比如，设置断点，单步跟踪，跳出函数，等等。它的用户接口很想GDB，这是他的<a href="http://bashdb.sourceforge.net/bashdb.html">文档</a> 。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1379-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">编程工具</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Bash</a>, <a href="javascript:void(0)" rel="tag">Debug</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何调试bash脚本</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-883" class="comment even thread-even depth-1">
+<article id="div-comment-883" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7ec415db35ad245e082f4059737964c8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7ec415db35ad245e082f4059737964c8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ostric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1379.html#comment-883"><time datetime="2009-09-03T10:51:26+08:00">2009年09月03日 10:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>日期好像还可以用@echo `date`输出</p>
+</div>
+ </article>
+</li>
+<li id="comment-189749" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-189749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ecf5a511774d2146512ff61091c2d2a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ecf5a511774d2146512ff61091c2d2a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">GS</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1379.html#comment-189749"><time datetime="2012-05-14T15:40:42+08:00">2012年05月14日 15:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>全文倒数第十个字错了</p>
+</div>
+ </article>
+</li>
+<li id="comment-241371" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog-suuuch.rhcloud.com/2012/11/23/%e4%bd%a0%e5%8f%af%e8%83%bd%e4%b8%8d%e7%9f%a5%e9%81%93%e7%9a%84shell/" class="url" rel="ugc external nofollow">你可能不知道的Shell | Suuch</a> </div>
+</li>
+<li id="comment-261577" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/linux-skills-should-be-aware-of.html" class="url" rel="ugc external nofollow">Definite Digest » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-551204" class="comment even thread-even depth-1">
+<article id="div-comment-551204" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54ccb164e2f1b79896f3e9315e714174?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54ccb164e2f1b79896f3e9315e714174?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">arp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1379.html#comment-551204"><time datetime="2013-06-15T22:31:39+08:00">2013年06月15日 22:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于我这个菜鸟来说，真的是太好的文章了；</p>
+</div>
+ </article>
+</li>
+<li id="comment-623397" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kaifazhe.com/mobile/181528.html" class="url" rel="ugc external nofollow">有关bash脚本的调试 - 移动端开发 - 开发者</a> </div>
+</li>
+<li id="comment-727814" class="comment even thread-even depth-1">
+<article id="div-comment-727814" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65fd2e58d077b634d95d35cb825b0d2c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65fd2e58d077b634d95d35cb825b0d2c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">萝卜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1379.html#comment-727814"><time datetime="2013-09-11T00:10:36+08:00">2013年09月11日 00:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常有用的tip</p>
+</div>
+ </article>
+</li>
+<li id="comment-1584333" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://nanxiao.me/bash-shell-stuff/" class="url" rel="ugc external nofollow">学习Bash shell编程资料推荐</a> </div>
+</li>
+<li id="comment-1771239" class="comment even thread-even depth-1">
+<article id="div-comment-1771239" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f73425db663648579ffa1f70ba768515?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f73425db663648579ffa1f70ba768515?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liusx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1379.html#comment-1771239"><time datetime="2015-10-10T15:33:24+08:00">2015年10月10日 15:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>强呀，很有用</p>
+</div>
+ </article>
+</li>
+<li id="comment-1965637" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1965637" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ac8f4a8e0833adc4f1aa7ff6e3802c53?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ac8f4a8e0833adc4f1aa7ff6e3802c53?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://michael728.github.io/" class="url" rel="ugc external nofollow">Michael翔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1379.html#comment-1965637"><time datetime="2019-02-18T22:16:13+08:00">2019年02月18日 22:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有收获</p>
+</div>
+ </article>
+</li>
+<li id="comment-2271015" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/768313" class="url" rel="ugc external nofollow">工作中常用的 Shell 命令及技巧 - 算法网</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

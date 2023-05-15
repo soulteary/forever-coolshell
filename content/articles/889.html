@@ -1,0 +1,774 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>20非常有用的Java程序片段 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-889 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-889" class="post-content post-889 post type-post status-publish format-standard hentry category-javadev category-proglanguage tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">20非常有用的Java程序片段</span>
+<h1 class="entry-title">20非常有用的Java程序片段</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/889.html" title="15:09" rel="bookmark"><time class="entry-date" datetime="2009-05-23T15:09:36+08:00" pubdate="">2009年05月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/889.html#comments" class="comments-link">15 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 24,007 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>下面是20个非常有用的Java程序片段，希望能对你有用。</p>
+<p><strong>1. 字符串有整型的相互转换</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+String a = String.valueOf(2);   //integer to numeric string  
+int i = Integer.parseInt(a); //numeric string to an int 
+
+</pre>
+<p><span id="more-889"></span><br/>
+<strong>2. 向文件末尾添加内容</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+BufferedWriter out = null;  
+try {  
+    out = new BufferedWriter(new FileWriter(”filename”, true));  
+    out.write(”aString”);  
+} catch (IOException e) {  
+    // error processing code  
+} finally {  
+    if (out != null) {  
+        out.close();  
+    }  
+} 
+</pre>
+<p><strong>3. 得到当前方法的名字</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">String methodName = Thread.currentThread().getStackTrace()[1].getMethodName(); 
+</pre>
+<p><strong>4. 转字符串到日期</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+java.util.Date = java.text.DateFormat.getDateInstance().parse(date String); 
+</pre>
+<p>或者是：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+SimpleDateFormat format = new SimpleDateFormat( &#34;dd.MM.yyyy&#34; );  
+Date date = format.parse( myString ); 
+</pre>
+<p><strong>5. 使用JDBC链接Oracle</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class OracleJdbcTest  
+{  
+    String driverClass = &#34;oracle.jdbc.driver.OracleDriver&#34;;  
+ 
+    Connection con;  
+ 
+    public void init(FileInputStream fs) throws ClassNotFoundException, SQLException, FileNotFoundException, IOException  
+    {  
+        Properties props = new Properties();  
+        props.load(fs);  
+        String url = props.getProperty(&#34;db.url&#34;);  
+        String userName = props.getProperty(&#34;db.user&#34;);  
+        String password = props.getProperty(&#34;db.password&#34;);  
+        Class.forName(driverClass);  
+ 
+        con=DriverManager.getConnection(url, userName, password);  
+    }  
+ 
+    public void fetch() throws SQLException, IOException  
+    {  
+        PreparedStatement ps = con.prepareStatement(&#34;select SYSDATE from dual&#34;);  
+        ResultSet rs = ps.executeQuery();  
+ 
+        while (rs.next())  
+        {  
+            // do the thing you do  
+        }  
+        rs.close();  
+        ps.close();  
+    }  
+ 
+    public static void main(String[] args)  
+    {  
+        OracleJdbcTest test = new OracleJdbcTest();  
+        test.init();  
+        test.fetch();  
+    }  
+} 
+</pre>
+<p><strong>6. 把 Java util.Date 转成 sql.Date</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">java.util.Date utilDate = new java.util.Date();  
+java.sql.Date sqlDate = new java.sql.Date(utilDate.getTime()); 
+</pre>
+<p><strong>7. 使用NIO进行快速的文件拷贝</strong><br/>
+ </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public static void fileCopy( File in, File out )  
+            throws IOException  
+    {  
+        FileChannel inChannel = new FileInputStream( in ).getChannel();  
+        FileChannel outChannel = new FileOutputStream( out ).getChannel();  
+        try 
+        {  
+//          inChannel.transferTo(0, inChannel.size(), outChannel);      // original -- apparently has trouble copying large files on Windows  
+ 
+            // magic number for Windows, 64Mb - 32Kb)  
+            int maxCount = (64 * 1024 * 1024) - (32 * 1024);  
+            long size = inChannel.size();  
+            long position = 0;  
+            while ( position &lt; size )  
+            {  
+               position += inChannel.transferTo( position, maxCount, outChannel );  
+            }  
+        }  
+        finally 
+        {  
+            if ( inChannel != null )  
+            {  
+               inChannel.close();  
+            }  
+            if ( outChannel != null )  
+            {  
+                outChannel.close();  
+            }  
+        }  
+    } 
+</pre>
+<p><strong>8. 创建图片的缩略图</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">private void createThumbnail(String filename, int thumbWidth, int thumbHeight, int quality, String outFilename)  
+        throws InterruptedException, FileNotFoundException, IOException  
+    {  
+        // load image from filename  
+        Image image = Toolkit.getDefaultToolkit().getImage(filename);  
+        MediaTracker mediaTracker = new MediaTracker(new Container());  
+        mediaTracker.addImage(image, 0);  
+        mediaTracker.waitForID(0);  
+        // use this to test for errors at this point: System.out.println(mediaTracker.isErrorAny());  
+ 
+        // determine thumbnail size from WIDTH and HEIGHT  
+        double thumbRatio = (double)thumbWidth / (double)thumbHeight;  
+        int imageWidth = image.getWidth(null);  
+        int imageHeight = image.getHeight(null);  
+        double imageRatio = (double)imageWidth / (double)imageHeight;  
+        if (thumbRatio &lt; imageRatio) {  
+            thumbHeight = (int)(thumbWidth / imageRatio);  
+        } else {  
+            thumbWidth = (int)(thumbHeight * imageRatio);  
+        }  
+ 
+        // draw original image to thumbnail image object and  
+        // scale it to the new size on-the-fly  
+        BufferedImage thumbImage = new BufferedImage(thumbWidth, thumbHeight, BufferedImage.TYPE_INT_RGB);  
+        Graphics2D graphics2D = thumbImage.createGraphics();  
+        graphics2D.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BILINEAR);  
+        graphics2D.drawImage(image, 0, 0, thumbWidth, thumbHeight, null);  
+ 
+        // save thumbnail image to outFilename  
+        BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(outFilename));  
+        JPEGImageEncoder encoder = JPEGCodec.createJPEGEncoder(out);  
+        JPEGEncodeParam param = encoder.getDefaultJPEGEncodeParam(thumbImage);  
+        quality = Math.max(0, Math.min(quality, 100));  
+        param.setQuality((float)quality / 100.0f, false);  
+        encoder.setJPEGEncodeParam(param);  
+        encoder.encode(thumbImage);  
+        out.close();  
+    } 
+</pre>
+<p><strong>9. 创建 JSON 格式的数据</strong></p>
+<p>请先阅读<a href="http://viralpatel.net/blogs/2009/02/creating-parsing-json-data-with-java-servlet-struts-jsp-json.html"><span style="color: #366799;">这篇文章</span></a> 了解一些细节，<br/>
+并下面这个JAR 文件：<a href="http://viralpatel.net/blogs/download/json/json-rpc-1.0.jar"><span style="color: #366799;">json-rpc-1.0.jar (75 kb)</span></a></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">import org.json.JSONObject;  
+...  
+...  
+JSONObject json = new JSONObject();  
+json.put(&#34;city&#34;, &#34;Mumbai&#34;);  
+json.put(&#34;country&#34;, &#34;India&#34;);  
+...  
+String output = json.toString();  
+... 
+</pre>
+<p><strong>10. 使用iText JAR生成PDF</strong></p>
+<p>阅读这篇<a href="http://viralpatel.net/blogs/2009/04/generate-pdf-file-in-java-using-itext-jar.html"><span style="color: #366799;">文章</span></a> 了解更多细节</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+import java.io.File;  
+import java.io.FileOutputStream;  
+import java.io.OutputStream;  
+import java.util.Date;  
+ 
+import com.lowagie.text.Document;  
+import com.lowagie.text.Paragraph;  
+import com.lowagie.text.pdf.PdfWriter;  
+ 
+public class GeneratePDF {  
+ 
+    public static void main(String[] args) {  
+        try {  
+            OutputStream file = new FileOutputStream(new File(&#34;C:\\Test.pdf&#34;));  
+ 
+            Document document = new Document();  
+            PdfWriter.getInstance(document, file);  
+            document.open();  
+            document.add(new Paragraph(&#34;Hello Kiran&#34;));  
+            document.add(new Paragraph(new Date().toString()));  
+ 
+            document.close();  
+            file.close();  
+ 
+        } catch (Exception e) {  
+ 
+            e.printStackTrace();  
+        }  
+    }  
+} 
+</pre>
+<p><strong>11. HTTP 代理设置</strong></p>
+<p>阅读这篇 <a href="http://viralpatel.net/blogs/2009/04/http-proxy-setting-java-setting-proxy-java.html"><span style="color: #366799;">文章</span></a> 了解更多细节。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+System.getProperties().put(&#34;http.proxyHost&#34;, &#34;someProxyURL&#34;);  
+System.getProperties().put(&#34;http.proxyPort&#34;, &#34;someProxyPort&#34;);  
+System.getProperties().put(&#34;http.proxyUser&#34;, &#34;someUserName&#34;);  
+System.getProperties().put(&#34;http.proxyPassword&#34;, &#34;somePassword&#34;); 
+</pre>
+<p><strong>12. 单实例Singleton 示例</strong></p>
+<p>请先阅读这篇<a href="http://viralpatel.net/blogs/2009/01/java-singleton-design-pattern-tutorial-example-singleton-j2ee-design-pattern.html"><span style="color: #366799;">文章</span></a> 了解更多信息</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+public class SimpleSingleton {  
+    private static SimpleSingleton singleInstance =  new SimpleSingleton();  
+ 
+    //Marking default constructor private  
+    //to avoid direct instantiation.  
+    private SimpleSingleton() {  
+    }  
+ 
+    //Get instance for class SimpleSingleton  
+    public static SimpleSingleton getInstance() {  
+ 
+        return singleInstance;  
+    }  
+} 
+</pre>
+<p>另一种实现</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public enum SimpleSingleton {  
+    INSTANCE;  
+    public void doSomething() {  
+    }  
+}  
+ 
+//Call the method from Singleton:  
+SimpleSingleton.INSTANCE.doSomething(); 
+</pre>
+<p><strong>13. 抓屏程序</strong></p>
+<p>阅读这篇<a href="http://viralpatel.net/blogs/2009/01/how-to-take-screen-shots-in-java-taking-screenshots-java.html"><span style="color: #366799;">文章</span></a> 获得更多信息。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">import java.awt.Dimension;  
+import java.awt.Rectangle;  
+import java.awt.Robot;  
+import java.awt.Toolkit;  
+import java.awt.image.BufferedImage;  
+import javax.imageio.ImageIO;  
+import java.io.File;  
+ 
+...  
+ 
+public void captureScreen(String fileName) throws Exception {  
+ 
+   Dimension screenSize = Toolkit.getDefaultToolkit().getScreenSize();  
+   Rectangle screenRectangle = new Rectangle(screenSize);  
+   Robot robot = new Robot();  
+   BufferedImage image = robot.createScreenCapture(screenRectangle);  
+   ImageIO.write(image, &#34;png&#34;, new File(fileName));  
+ 
+}  
+... 
+</pre>
+<p> </p>
+<p> </p>
+<p><strong>14. 列出文件和目录</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">File dir = new File(&#34;directoryName&#34;);  
+  String[] children = dir.list();  
+  if (children == null) {  
+      // Either dir does not exist or is not a directory  
+  } else {  
+      for (int i=0; i &lt; children.length; i++) {  
+          // Get filename of file or directory  
+          String filename = children[i];  
+      }  
+  }  
+ 
+  // It is also possible to filter the list of returned files.  
+  // This example does not return any files that start with `.&#39;.  
+  FilenameFilter filter = new FilenameFilter() {  
+      public boolean accept(File dir, String name) {  
+          return !name.startsWith(&#34;.&#34;);  
+      }  
+  };  
+  children = dir.list(filter);  
+ 
+  // The list of files can also be retrieved as File objects  
+  File[] files = dir.listFiles();  
+ 
+  // This filter only returns directories  
+  FileFilter fileFilter = new FileFilter() {  
+      public boolean accept(File file) {  
+          return file.isDirectory();  
+      }  
+  };  
+  files = dir.listFiles(fileFilter); 
+</pre>
+<p><strong>15. 创建ZIP和JAR文件<br/>
+</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+import java.util.zip.*;  
+import java.io.*;  
+ 
+public class ZipIt {  
+    public static void main(String args[]) throws IOException {  
+        if (args.length &lt; 2) {  
+            System.err.println(&#34;usage: java ZipIt Zip.zip file1 file2 file3&#34;);  
+            System.exit(-1);  
+        }  
+        File zipFile = new File(args[0]);  
+        if (zipFile.exists()) {  
+            System.err.println(&#34;Zip file already exists, please try another&#34;);  
+            System.exit(-2);  
+        }  
+        FileOutputStream fos = new FileOutputStream(zipFile);  
+        ZipOutputStream zos = new ZipOutputStream(fos);  
+        int bytesRead;  
+        byte[] buffer = new byte[1024];  
+        CRC32 crc = new CRC32();  
+        for (int i=1, n=args.length; i &lt; n; i++) {  
+            String name = args[i];  
+            File file = new File(name);  
+            if (!file.exists()) {  
+                System.err.println(&#34;Skipping: &#34; + name);  
+                continue;  
+            }  
+            BufferedInputStream bis = new BufferedInputStream(  
+                new FileInputStream(file));  
+            crc.reset();  
+            while ((bytesRead = bis.read(buffer)) != -1) {  
+                crc.update(buffer, 0, bytesRead);  
+            }  
+            bis.close();  
+            // Reset to beginning of input stream  
+            bis = new BufferedInputStream(  
+                new FileInputStream(file));  
+            ZipEntry entry = new ZipEntry(name);  
+            entry.setMethod(ZipEntry.STORED);  
+            entry.setCompressedSize(file.length());  
+            entry.setSize(file.length());  
+            entry.setCrc(crc.getValue());  
+            zos.putNextEntry(entry);  
+            while ((bytesRead = bis.read(buffer)) != -1) {  
+                zos.write(buffer, 0, bytesRead);  
+            }  
+            bis.close();  
+        }  
+        zos.close();  
+    }  
+} 
+</pre>
+<p><strong>16. 解析/读取XML 文件</strong></p>
+<p>XML文件<br/>
+ </p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;?xml version=&#34;1.0&#34;?&gt; 
+&lt;students&gt; 
+    &lt;student&gt; 
+        &lt;name&gt;John&lt;/name&gt; 
+        &lt;grade&gt;B&lt;/grade&gt; 
+        &lt;age&gt;12&lt;/age&gt; 
+    &lt;/student&gt; 
+    &lt;student&gt; 
+        &lt;name&gt;Mary&lt;/name&gt; 
+        &lt;grade&gt;A&lt;/grade&gt; 
+        &lt;age&gt;11&lt;/age&gt; 
+    &lt;/student&gt; 
+    &lt;student&gt; 
+        &lt;name&gt;Simon&lt;/name&gt; 
+        &lt;grade&gt;A&lt;/grade&gt; 
+        &lt;age&gt;18&lt;/age&gt; 
+    &lt;/student&gt; 
+&lt;/students&gt; 
+</pre>
+<p>Java代码</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+package net.viralpatel.java.xmlparser;  
+ 
+import java.io.File;  
+import javax.xml.parsers.DocumentBuilder;  
+import javax.xml.parsers.DocumentBuilderFactory;  
+ 
+import org.w3c.dom.Document;  
+import org.w3c.dom.Element;  
+import org.w3c.dom.Node;  
+import org.w3c.dom.NodeList;  
+ 
+public class XMLParser {  
+ 
+    public void getAllUserNames(String fileName) {  
+        try {  
+            DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();  
+            DocumentBuilder db = dbf.newDocumentBuilder();  
+            File file = new File(fileName);  
+            if (file.exists()) {  
+                Document doc = db.parse(file);  
+                Element docEle = doc.getDocumentElement();  
+ 
+                // Print root element of the document  
+                System.out.println(&#34;Root element of the document: &#34; 
+                        + docEle.getNodeName());  
+ 
+                NodeList studentList = docEle.getElementsByTagName(&#34;student&#34;);  
+ 
+                // Print total student elements in document  
+                System.out  
+                        .println(&#34;Total students: &#34; + studentList.getLength());  
+ 
+                if (studentList != null &amp;&amp; studentList.getLength() &gt; 0) {  
+                    for (int i = 0; i &lt; studentList.getLength(); i++) {  
+ 
+                        Node node = studentList.item(i);  
+ 
+                        if (node.getNodeType() == Node.ELEMENT_NODE) {  
+ 
+                            System.out  
+                                    .println(&#34;=====================&#34;);  
+ 
+                            Element e = (Element) node;  
+                            NodeList nodeList = e.getElementsByTagName(&#34;name&#34;);  
+                            System.out.println(&#34;Name: &#34; 
+                                    + nodeList.item(0).getChildNodes().item(0)  
+                                            .getNodeValue());  
+ 
+                            nodeList = e.getElementsByTagName(&#34;grade&#34;);  
+                            System.out.println(&#34;Grade: &#34; 
+                                    + nodeList.item(0).getChildNodes().item(0)  
+                                            .getNodeValue());  
+ 
+                            nodeList = e.getElementsByTagName(&#34;age&#34;);  
+                            System.out.println(&#34;Age: &#34; 
+                                    + nodeList.item(0).getChildNodes().item(0)  
+                                            .getNodeValue());  
+                        }  
+                    }  
+                } else {  
+                    System.exit(1);  
+                }  
+            }  
+        } catch (Exception e) {  
+            System.out.println(e);  
+        }  
+    }  
+    public static void main(String[] args) {  
+ 
+        XMLParser parser = new XMLParser();  
+        parser.getAllUserNames(&#34;c:\\test.xml&#34;);  
+    }  
+} 
+</pre>
+<p><strong>17. 把 Array 转换成 Map </strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+import java.util.Map;  
+import org.apache.commons.lang.ArrayUtils;  
+ 
+public class Main {  
+ 
+  public static void main(String[] args) {  
+    String[][] countries = { { &#34;United States&#34;, &#34;New York&#34; }, { &#34;United Kingdom&#34;, &#34;London&#34; },  
+        { &#34;Netherland&#34;, &#34;Amsterdam&#34; }, { &#34;Japan&#34;, &#34;Tokyo&#34; }, { &#34;France&#34;, &#34;Paris&#34; } };  
+ 
+    Map countryCapitals = ArrayUtils.toMap(countries);  
+ 
+    System.out.println(&#34;Capital of Japan is &#34; + countryCapitals.get(&#34;Japan&#34;));  
+    System.out.println(&#34;Capital of France is &#34; + countryCapitals.get(&#34;France&#34;));  
+  }  
+} 
+</pre>
+<p><strong>18. 发送邮件</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">import javax.mail.*;  
+import javax.mail.internet.*;  
+import java.util.*;  
+ 
+public void postMail( String recipients[ ], String subject, String message , String from) throws MessagingException  
+{  
+    boolean debug = false;  
+ 
+     //Set the host smtp address  
+     Properties props = new Properties();  
+     props.put(&#34;mail.smtp.host&#34;, &#34;smtp.example.com&#34;);  
+ 
+    // create some properties and get the default Session  
+    Session session = Session.getDefaultInstance(props, null);  
+    session.setDebug(debug);  
+ 
+    // create a message  
+    Message msg = new MimeMessage(session);  
+ 
+    // set the from and to address  
+    InternetAddress addressFrom = new InternetAddress(from);  
+    msg.setFrom(addressFrom);  
+ 
+    InternetAddress[] addressTo = new InternetAddress[recipients.length];  
+    for (int i = 0; i &lt; recipients.length; i++)  
+    {  
+        addressTo[i] = new InternetAddress(recipients[i]);  
+    }  
+    msg.setRecipients(Message.RecipientType.TO, addressTo);  
+ 
+    // Optional : You can also set your custom headers in the Email if you Want  
+    msg.addHeader(&#34;MyHeaderName&#34;, &#34;myHeaderValue&#34;);  
+ 
+    // Setting the Subject and Content Type  
+    msg.setSubject(subject);  
+    msg.setContent(message, &#34;text/plain&#34;);  
+    Transport.send(msg);  
+} 
+</pre>
+<p><strong>19. 发送代数据的HTTP 请求</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+import java.io.BufferedReader;  
+import java.io.InputStreamReader;  
+import java.net.URL;  
+ 
+public class Main {  
+    public static void main(String[] args)  {  
+        try {  
+            URL my_url = new URL(&#34;https://coolshell.cn/&#34;);  
+            BufferedReader br = new BufferedReader(new InputStreamReader(my_url.openStream()));  
+            String strTemp = &#34;&#34;;  
+            while(null != (strTemp = br.readLine())){  
+            System.out.println(strTemp);  
+        }  
+        } catch (Exception ex) {  
+            ex.printStackTrace();  
+        }  
+    }  
+}
+</pre>
+<p><strong>20. 改变数组的大小</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW"> 
+/** 
+* Reallocates an array with a new size, and copies the contents 
+* of the old array to the new array. 
+* @param oldArray  the old array, to be reallocated. 
+* @param newSize   the new array size. 
+* @return          A new array with the same contents. 
+*/ 
+private static Object resizeArray (Object oldArray, int newSize) {  
+   int oldSize = java.lang.reflect.Array.getLength(oldArray);  
+   Class elementType = oldArray.getClass().getComponentType();  
+   Object newArray = java.lang.reflect.Array.newInstance(  
+         elementType,newSize);  
+   int preserveLength = Math.min(oldSize,newSize);  
+   if (preserveLength &gt; 0)  
+      System.arraycopy (oldArray,0,newArray,0,preserveLength);  
+   return newArray;  
+}  
+ 
+// Test routine for resizeArray().  
+public static void main (String[] args) {  
+   int[] a = {1,2,3};  
+   a = (int[])resizeArray(a,5);  
+   a[3] = 4;  
+   a[4] = 5;  
+   for (int i=0; i&lt;a.length; i++)  
+      System.out.println (a[i]);  
+}
+</pre>
+<p><strong>(全文完)</strong></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-889-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>20非常有用的Java程序片段</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-137" class="comment even thread-even depth-1">
+<article id="div-comment-137" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f85a3081c5824352b9e61e3e902074d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f85a3081c5824352b9e61e3e902074d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/chrisxusheng/blog" class="url" rel="ugc external nofollow">chrisxu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-137"><time datetime="2009-05-23T16:59:48+08:00">2009年05月23日 16:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有用，收下了，呵呵</p>
+</div>
+ </article>
+</li>
+<li id="comment-6635" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-6635" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0936a2df6e437e2ed19e74c67a655186?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0936a2df6e437e2ed19e74c67a655186?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.towerinwhite.com" class="url" rel="ugc external nofollow">zephyro</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-6635"><time datetime="2010-05-13T15:56:31+08:00">2010年05月13日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“United States”, “New York”<br/>
+Washington, D.C.是美国首都。<br/>
+呵呵，我比较无聊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-20718" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://184.82.237.158/2010/facebook%e5%85%a8%e7%90%83%e5%85%b3%e7%b3%bb%e7%bd%91.html" class="url" rel="ugc external nofollow">Facebook全球关系网 | YJ Made and Design</a> </div>
+</li>
+<li id="comment-80158" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-80158" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/564dbc4e6bc320de60334c1374145801?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/564dbc4e6bc320de60334c1374145801?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">x</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-80158"><time datetime="2011-09-07T17:08:59+08:00">2011年09月07日 17:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-6635"><p>
+<strong><a href="#comment-6635" rel="nofollow">zephyro</a> :</strong><br/>
+“United States”, “New York”<br/>
+Washington, D.C.是美国首都。<br/>
+呵呵，我比较无聊。
+</p></blockquote>
+<p>…哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-86381" class="comment even thread-even depth-1">
+<article id="div-comment-86381" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cfee5cd06ccbc7a923df27101e0c8658?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cfee5cd06ccbc7a923df27101e0c8658?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">apiao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-86381"><time datetime="2011-10-10T15:48:21+08:00">2011年10月10日 15:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>单例那个是错的</p>
+</div>
+ </article>
+</li>
+<li id="comment-133211" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://panmay.com/20-very-useful-java-code-snippets.html" class="url" rel="ugc external nofollow">20非常有用的Java程序片段 | 咘叮盘丝洞</a> </div>
+</li>
+<li id="comment-284337" class="comment even thread-even depth-1">
+<article id="div-comment-284337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/803aab25652169c7ffe5dd1229369526?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/803aab25652169c7ffe5dd1229369526?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">末日双子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-284337"><time datetime="2013-02-01T20:08:19+08:00">2013年02月01日 20:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>java.util.Date = java.text.DateFormat.getDateInstance().parse(date String); 语法有错,打字的时候光标飘了吧?</p>
+</div>
+ </article>
+</li>
+<li id="comment-428690" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-428690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27c72ff891573d059bc717d7354b777f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27c72ff891573d059bc717d7354b777f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">greenmemo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-428690"><time datetime="2013-05-15T11:07:07+08:00">2013年05月15日 11:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-6635" rel="nofollow">@zephyro </a><br/>
+zan</p>
+</div>
+ </article>
+</li>
+<li id="comment-556115" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/20%e9%9d%9e%e5%b8%b8%e6%9c%89%e7%94%a8%e7%9a%84java%e7%a8%8b%e5%ba%8f%e7%89%87%e6%ae%b5-2" class="url" rel="ugc external nofollow">20非常有用的Java程序片段 - 编程语言综合 - 开发者第1373665个问答</a> </div>
+</li>
+<li id="comment-565447" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/20%e9%9d%9e%e5%b8%b8%e6%9c%89%e7%94%a8%e7%9a%84java%e7%a8%8b%e5%ba%8f%e7%89%87%e6%ae%b54" class="url" rel="ugc external nofollow">20非常有用的Java程序片段(4) - 程序员 - 开发者第1708059个问答</a> </div>
+</li>
+<li id="comment-1425243" class="comment even thread-even depth-1">
+<article id="div-comment-1425243" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cbd3ed323d66fb230e1f5f110bd354cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cbd3ed323d66fb230e1f5f110bd354cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://codecloud.net" class="url" rel="ugc external nofollow">程序员的资料库</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-1425243"><time datetime="2014-04-16T17:32:52+08:00">2014年04月16日 17:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其中有些在实际开发中都非常实用，谢谢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1759023" class="comment byuser comment-author-jkand1 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1759023" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/889.html#comment-1759023"><time datetime="2015-09-17T10:03:59+08:00">2015年09月17日 10:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>收藏了，谢谢~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1792031" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wujianrong.com/archives/2015/11/1777.html" class="url" rel="ugc external nofollow">20个非常有用的Java程序片段 | 城市胡同</a> </div>
+</li>
+<li id="comment-1792033" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wujianrong.com/archives/2013/06/1777.html" class="url" rel="ugc external nofollow">20个非常有用的Java程序片段 | 城市胡同</a> </div>
+</li>
+<li id="comment-1967846" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/32678.html" class="url" rel="ugc external nofollow">20个非常有用的Java程序片段 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

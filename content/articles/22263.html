@@ -1,0 +1,576 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>从一次经历谈 TIME_WAIT 的那些事 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-22263 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-22263" class="post-content post-22263 post type-post status-publish format-standard hentry category-go- category-unixlinux category-operatingsystem category-proglanguage tag-so_linger tag-tcp tag-time_wait">
+<header class="entry-header">
+<span class="screen-reader-text">从一次经历谈 TIME_WAIT 的那些事</span>
+<h1 class="entry-title">从一次经历谈 TIME_WAIT 的那些事</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/22263.html" title="14:43" rel="bookmark"><time class="entry-date" datetime="2022-07-19T14:43:39+08:00" pubdate="">2022年07月19日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/22263.html#comments" class="comments-link">31 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 36,477 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright" src="/uploads/2022/07/wall_clock-300x167.jpeg" alt="" width="400" height="222" srcset=""/>今天来讲一讲TCP 的 <code>TIME_WAIT</code> 的问题。这个问题尽人皆知，不过，这次遇到的是不太一样的场景，前两天也解决了，正好写篇文章，顺便把 <code>TIME_WAIT</code> 的那些事都说一说。对了，这个场景，跟我开源的探活小工具 <a href="https://github.com/megaease/easeprobe">EaseProbe</a> 有关，我先说说这个场景里的问题，然后，顺着这个场景跟大家好好说一下这个事。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF" title="问题背景">问题背景</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81_TIME_WAIT" title="为什么要 TIME_WAIT">为什么要 TIME_WAIT</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88" title="解决方案">解决方案</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Go_%E5%AE%9E%E9%99%85%E6%93%8D%E4%BD%9C" title="Go 实际操作">Go 实际操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98%E8%83%8C%E6%99%AF"></span>问题背景<span class="ez-toc-section-end"></span></h4>
+<p>先说一下背景，<a href="https://github.com/megaease/easeprobe">EaseProbe</a> 是一个轻量独立的用来探活服务健康状况的小工具，支持http/tcp/shell/ssh/tls/host以及各种中间件的探活，然后，直接发送通知到主流的IM上，如：Slack/Telegram/Discrod/Email/Team，包括国内的企业微信/钉钉/飞书， 非常好用，用过的人都说好 😏。</p>
+<p>这个探活工具在每次探活的时候，必须要从头开始建立整个网络链接，也就是说，需要从头开始进行DNS查询，建立TCP链接，然后进行通信，再关闭链接。这里，我们不会设置 TCP 的 KeepAlive 重用链接，因为探活工具除了要探活所远端的服务，还要探活整个网络的情况，所以，每次探活都需要从新来过，这样才能捕捉得到整个链路的情况。</p>
+<p><span id="more-22263"></span></p>
+<p>但是，这样不断的新建链接和关闭链接，根据TCP的状态机，我们知道这会导致在探测端这边出现的 <code>TIME_WAIT</code> 的 TCP 链接，根据 TCP 协议的定义，这个 TIME_WAIT 需要等待 2倍的MSL 时间，TCP 链接都会被系统回收，在回收之前，这个链接会占用系统的资源，主要是两个资源，一个是文件描述符，这个还好，可以调整，另一个则是端口号，这个是没法调整的，因为作为发起请求的client来说，在对同一个IP上理论上你只有64K的端口号号可用（实际上系统默认只有近30K，从32,768 到 60,999 一共 60999+1-32768=28,232，你可以通过 <code>sysctl net.ipv4.ip_local_port_range</code> 查看  ），如果 <code>TIME_WAIT</code> 过多，会导致TCP无法建立链接，还会因为资源消耗太多导致整个程序甚至整个系统异常。</p>
+<p>试想，如果我们以 10秒为周期探测10K的结点，如果TIME_WAIT的超时时间是120秒，那么在第60秒后，等着超时的 <code>TIME_WAIT</code> 我们就有可能把某个IP的端口基本用完了，就算还行，系统也有些问题。（注意：我们不仅仅只是TCP，还有HTTP协议，所以，大家不要觉得TCP的四元组只要目标地址不一样就好了，一方面，我们探的是域名，需要访问DNS服务，所以，DNS服务一般是一台服务器，还有，因为HTTPS一般是探API，而且会有网关代理API，所以链接会到同一个网关上。另外就算还可以建出站连接，但是本地程序会因为端口耗尽无法bind了。所以，现实情况并不会像理论情况那样只要四元组不冲突，端口就不会耗尽）</p>
+<h4><span class="ez-toc-section" id="%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81_TIME_WAIT"></span>为什么要 TIME_WAIT<span class="ez-toc-section-end"></span></h4>
+<p>那么，为什么TCP在 <code>TIME_WAIT</code> 上要等待一个2MSL的时间？<code></code></p>
+<p>以前写过篇比较宏观的《TCP的那些事》（<a title="TCP 的那些事儿（上）" href="/articles/11564.html" target="_blank" rel="noopener">上篇</a>，<a title="TCP 的那些事儿（下）" href="/articles/11609.html" target="_blank" rel="noopener">下篇</a>），这个访问在“上篇”里讲过，这里再说一次，TCP 断链接的时候，会有下面这个来来回回的过程。</p>
+<p>我们来看主动断链接的最后一个状态 <code>TIME_WAIT</code> 后就不需要等待对端回 ack了，而是进入了超时状态。这主要是因为，在网络上，如果要知道我们发出的数据被对方收到了，那我们就需要对方发来一个确认的Ack信息，那问题来了，对方怎么知道自己发出去的ack，被收到了？难道还要再ack一下，这样ack来ack回的，那什么谁也不要玩了……是的，这就是比较著名的【两将军问题】——两个将军需要在一个不稳定的信道上达成对敌攻击时间的协商，A向B派出信鸽，我们明早8点进攻，A怎么知道B收到了信？那需要B向A派出信鸽，ack说我收到了，明早8点开干。但是，B怎么知道A会收到自己的确认信？是不是还要A再确认一下？这样无穷无尽的确认导致这个问题是没有完美解的（我们在《<a href="/articles/10910.html#Two_Generals_Problem%EF%BC%88%E4%B8%A4%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98%EF%BC%89" target="_blank" rel="noopener">分布式事务</a>》一文中说过这个问题，这里不再重述）</p>
+<p>所以，我们只能等一个我们认为最大小时来解决两件个问题：</p>
+<p>1） 为了 <strong>防止来自一个连接的延迟段</strong>被依赖于相同四元组（源地址、源端口、目标地址、目标端口）的稍后连接接受（被接受后，就会被马上断掉，TCP状态机紊乱）。虽然，可以通过指定 TCP 的 sequence number 一定范围内才能被接受。但这也只是让问题发生的概率低了一些，对于一个吞吐量大的的应用来说，依然能够出现问题，尤其是在具有大接收窗口的快速连接上。<a title="RFC 1337：TCP 中的 TIME-WAIT 暗杀危险" href="https://tools.ietf.org/html/rfc1337">RFC 1337</a>详细解释了当 <code>TIME-WAIT</code>状态不足时会发生什么。<sup id="fnref-rfc1337"></sup><code>TIME-WAIT</code>以下是如果不缩短状态可以避免的示例：</p>
+<figure id="attachment_22267" aria-describedby="caption-attachment-22267" style="width: 456px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="wp-image-22267" src="/uploads/2022/07/duplicate-segment.png" alt="" width="456" height="467" srcset="" sizes="(max-width: 456px) 100vw, 456px"/><figcaption id="caption-attachment-22267" class="wp-caption-text">由于缩短的 TIME-WAIT 状态，后续的 TCP 段已在不相关的连接中被接受（<a href="https://vincent.bernat.ch/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="noopener">来源</a>）</figcaption></figure>
+<p> </p>
+<p>2）另一个目的是确保<strong>远端已经关闭了连接</strong>。当最后一个<em>ACK</em>​​ 丢失时，对端保持该<code>LAST-ACK</code>状态。<sup id="fnref-lastack"></sup>在没有<code>TIME-WAIT</code>状态的情况下，可以重新打开连接，而远程端仍然认为先前的连接有效。当它收到一个<em>SYN</em>段（并且序列号匹配）时，它将以<em>RST</em>应答，因为它不期望这样的段。新连接将因错误而中止：</p>
+<p> </p>
+<figure id="attachment_22268" aria-describedby="caption-attachment-22268" style="width: 559px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="wp-image-22268" src="/uploads/2022/07/last-ack.png" alt="" width="559" height="375" srcset="" sizes="(max-width: 559px) 100vw, 559px"/><figcaption id="caption-attachment-22268" class="wp-caption-text">如果远端因为最后一个 ACK​​ 丢失而停留在 LAST-ACK 状态，则打开具有相同四元组的新连接将不起作用 （<a href="https://vincent.bernat.ch/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="noopener">来源</a>）</figcaption></figure>
+<p><code>TIME_WAIT</code> 的这个超时时间的值如下所示：</p>
+<ul>
+<li>在 macOS 上是15秒， <code>sysctl net.inet.tcp | grep net.inet.tcp.msl</code></li>
+<li>在 Linux 上是 60秒 <code>cat /proc/sys/net/ipv4/tcp_fin_timeout</code></li>
+</ul>
+<h4><span class="ez-toc-section" id="%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%88"></span>解决方案<span class="ez-toc-section-end"></span></h4>
+<p>要解决这个问题，网上一般会有下面这些解法</p>
+<ul>
+<li>把这个超时间调小一些，这样就可以把TCP 的端口号回收的快一些。但是也不能太小，如果流量很大的话，TIME_WAIT一样会被耗尽。</li>
+<li>设置上 <code>tcp_tw_reuse</code> 。<a title="RFC 1323：高性能 TCP 扩展" href="https://tools.ietf.org/html/rfc1323">RFC 1323</a>提出了一组 TCP 扩展来提高高带宽路径的性能。除其他外，它定义了一个新的 TCP 选项，带有两个四字节<strong>时间戳字段</strong>。第一个是发送选项的 TCP 时间戳的当前值，而第二个是从远程主机接收到的最新时间戳。如果新时间戳严格大于为前一个连接记录的最新时间戳。Linux 将重用该状态下的现有 <code>TIME_WAIT</code> 连接用于<strong>出站的链接</strong>。也就是说，<strong>这个参数对于入站连接是没有任何用图的。</strong></li>
+<li>设置上 <code>tcp_tw_recycle</code> 。 这个参数同样依赖于时间戳选项，但会影响进站和出站链接。这个参数会影响NAT环境，也就是一个公司里的所有员工用一个IP地址访问外网的情况。在这种情况下，时间戳条件将禁止在这个公网IP后面的所有设备在一分钟内连接，因为它们不共享相同的时间戳时钟。毫无疑问，禁用此选项要好得多，因为它会导致 <strong>难以检测</strong>和<strong>诊断</strong>问题。（注：从 Linux 4.10 (commit <a title="tcp：为每个连接随机化 tcp 时间戳偏移" href="https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=95a22caee396cef0bb2ca8fafdd82966a49367bb">95a22caee396</a> ) 开始，Linux 将为每个连接随机化时间戳偏移量，从而使该选项完全失效，无论有无<abbr title="网络地址解读">NAT</abbr>。它已从 Linux 4.12中完全删除）</li>
+</ul>
+<p>对于服务器来说，上述的三个访问都不能解决服务器的 <code>TIME_WAIT</code> 过多的问题，真正解决问题的就是——<strong>不作死就不会死，也就是说，服务器不要主动断链接，而设置上KeepAlive后，让客户端主动断链接，这样服务端只会有<code>CLOSE_WAIT</code></strong>。</p>
+<p>但是对于用于建立出站连接的探活的 EaseProbe来说，设置上 <code>tcp_tw_reuse</code> 就可以重用 <code>TIME_WAIT</code> 了，但是这依然无法解决 <code>TIME_WAIT</code> 过多的问题。</p>
+<p>然后，过了几天后，我忽然想起来以前在《UNIX 网络编程》上有看到过一个Socket的参数，叫 <code data-enlighter-language="raw" class="EnlighterJSRAW">&lt;code&gt;SO_LINGER</code>，我的编程生涯中从来没有使用过这个设置，这个参数主要是为了延尽关闭来用的，也就是说你应用调用 <code>close()</code>函数时，如果还有数据没有发送完成，则需要等一个延时时间来让数据发完，但是，如果你把延时设置为 0  时，Socket就丢弃数据，并向对方发送一个 <code>RST</code> 来终止连接，因为走的是 RST 包，所以就不会有 <code>TIME_WAIT</code> 了。</p>
+<p>这个东西在服务器端永远不要设置，不然，你的客户端就总是看到 TCP 链接错误 “connnection reset by peer”，但是这个参数对于 EaseProbe 的客户来说，简直是太完美了，当EaseProbe 探测完后，直接 reset connection， 即不会有功能上的问题，也不会影响服务器，更不会有烦人的 <code> TIME_WAIT</code> 问题。</p>
+<h4><span class="ez-toc-section" id="Go_%E5%AE%9E%E9%99%85%E6%93%8D%E4%BD%9C"></span>Go 实际操作<span class="ez-toc-section-end"></span></h4>
+<p>在 Golang的标准库代码里，<code>net.TCPConn</code> 有个方法 <code>SetLinger()</code>可以完成这个事，使用起来也比较简单：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">conn, _ := net.DialTimeout(&#34;tcp&#34;, t.Host, t.Timeout())
+
+if tcpCon, ok := conn.(*net.TCPConn); ok {
+    tcpCon.SetLinger(0)
+}</pre>
+<p>你需要把一个 <code>net.Conn</code>  转型成 <code>net.TCPConn</code>，然后就可以调用方法了。</p>
+<p>但是对于Golang 的标准库中的 HTTP 对象来说，就有点麻烦了，Golang的 http 库把底层的这边连接对象全都包装成私有变量了，你在外面根本获取不到。这篇《<a href="https://iximiuz.com/en/posts/go-net-http-setsockopt-example/" target="_blank" rel="noopener">How to Set Go net/http Socket Options – setsockopt() example</a> 》中给出了下面的方法：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">dialer := &amp;net.Dialer{
+    Control: func(network, address string, conn syscall.RawConn) error {
+        var operr error
+        if err := conn.Control(func(fd uintptr) {
+            operr = syscall.SetsockoptInt(int(fd), unix.SOL_SOCKET, unix.TCP_QUICKACK, 1)
+        }); err != nil {
+            return err
+        }
+        return operr
+    },
+}
+
+client := &amp;http.Client{
+    Transport: &amp;http.Transport{
+        DialContext: dialer.DialContext,
+    },
+}</pre>
+<p>上面这个方法非常的低层，需要直接使用setsocketopt这样的系统调用，我其实，还是想使用 <code>TCPConn.SetLinger(0)</code> 来完成这个事，即然都被封装好了，最好还是别破坏封闭性碰底层的东西。</p>
+<p>经过Golang http包的源码阅读和摸索，我使用了下面的方法：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">client := &amp;http.Client{
+    Timeout: h.Timeout(),
+    Transport: &amp;http.Transport{
+      TLSClientConfig:   tls,
+      DisableKeepAlives: true,
+      DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+        d := net.Dialer{Timeout: h.Timeout()}
+        conn, err := d.DialContext(ctx, network, addr)
+        if err != nil {
+          return nil, err
+        }
+        tcpConn, ok := conn.(*net.TCPConn)
+        if ok {
+          tcpConn.SetLinger(0)
+          return tcpConn, nil
+        }
+        return conn, nil
+      },
+    },
+  }</pre>
+<p>然后，我找来了全球 T0p 100W的域名，然后在AWS上开了一台服务器，用脚本生成了 TOP 10K 和 20K 的网站来以5s, 10s, 30s, 60s的间隔进行探活，搞到Cloudflare 的 1.1.1.1 DNS 时不时就把我拉黑，最后的测试结果也非常不错，根本 没有 TIME_WAIT 的链接，相关的测试方法、测试数据和测试报告可以参看：<a href="https://github.com/megaease/easeprobe/blob/main/docs/Benchmark.md" target="_blank" rel="noopener">Benchmark Report</a></p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>下面是几点总结</p>
+<ul>
+<li><code>TIME_WAIT</code> 是一个TCP 协议完整性的手段，虽然会有一定的副作用，但是这个设计是非常关键的，最好不要妥协掉。</li>
+<li>永远不要使用  <code>tcp_tw_recycle</code> ，这个参数是个巨龙，破坏力极大。</li>
+<li>服务器端永远不要使用  <code>SO_LINGER(0)</code>，而且使用 <code>tcp_tw_reuse</code> 对服务端意义不大，因为它只对出站流量有用。</li>
+<li>在服务端上最好不要主动断链接，设置好KeepAlive，重用链接，让客户端主动断链接。</li>
+<li>在客户端上可以使用 <code>tcp_tw_reuse</code>  和 <code>SO_LINGER(0)</code>。</li>
+</ul>
+<p>最后强烈推荐阅读这篇文章 – <a href="https://vincent.bernat.ch/en/blog/2014-tcp-time-wait-state-linux" target="_blank" rel="noopener">Coping with the TCP TIME-WAIT state on busy Linux servers</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-22263-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">SO_LINGER</a>, <a href="javascript:void(0)" rel="tag">TCP</a>, <a href="javascript:void(0)" rel="tag">TIME_WAIT</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>从一次经历谈 TIME_WAIT 的那些事</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2370595" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2370595" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2fbec06b8a342359f3cacc411399d9c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2fbec06b8a342359f3cacc411399d9c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">loser</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370595"><time datetime="2022-07-19T16:17:19+08:00">2022年07月19日 16:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看完了，感觉又像什么也没看，能力不够，我需要多学习</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370653" class="comment odd alt depth-2 parent">
+<article id="div-comment-2370653" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ddc4b286b32a519c40172924cb7000e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ddc4b286b32a519c40172924cb7000e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">M</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370653"><time datetime="2022-08-20T23:13:56+08:00">2022年08月20日 23:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>点了右上角的 High 一下，好有意思，，哈哈哈</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370707" class="comment even depth-3">
+<article id="div-comment-2370707" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9187bc822363435a8d2893db6cdd2eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9187bc822363435a8d2893db6cdd2eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dajevu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370707"><time datetime="2022-09-14T16:42:04+08:00">2022年09月14日 16:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>多学习就好了，刚开始都是不懂的</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370829" class="comment odd alt depth-2">
+<article id="div-comment-2370829" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a04ede485bbfba28ae255ff872145041?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a04ede485bbfba28ae255ff872145041?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.owenzhang.com" class="url" rel="ugc external nofollow">owenzhang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370829"><time datetime="2022-10-19T10:31:21+08:00">2022年10月19日 10:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>hahha +1+1</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370596" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370596" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/579cbb5a378c507315355d602529c7e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/579cbb5a378c507315355d602529c7e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jonathan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370596"><time datetime="2022-07-19T21:28:40+08:00">2022年07月19日 21:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“支持http/tcp/shell/ssh/tls/host以及各种中间件的控活”</p>
+<p>控活是什么意思呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370597" class="comment odd alt depth-2">
+<article id="div-comment-2370597" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7968a61bea13ff77a16fd19e9db05842?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7968a61bea13ff77a16fd19e9db05842?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">thundear</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370597"><time datetime="2022-07-20T08:38:52+08:00">2022年07月20日 08:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我猜测可能是“探活”。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370600" class="comment even thread-even depth-1">
+<article id="div-comment-2370600" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/240671e60f62bc2d085ecdd88a85daed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/240671e60f62bc2d085ecdd88a85daed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tom</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370600"><time datetime="2022-07-20T11:21:49+08:00">2022年07月20日 11:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>永完不要使用—&gt; 永远</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370601" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370601" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8741a1f616990e23c91cdef40a6ec7eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8741a1f616990e23c91cdef40a6ec7eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhisheng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370601"><time datetime="2022-07-20T17:54:20+08:00">2022年07月20日 17:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“上面这个方法非常的低层，需要直接使用setsocketopt这样的系统调用，我其实，还是想使用 TCPConn.SetLinger(0) 来完成这个事，我不是很难碰底层的事。”这里是想写“我不是很想”么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370602" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2370602" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5fff4f484298b1550e42b1cc5c310aa6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5fff4f484298b1550e42b1cc5c310aa6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">突然的高歌</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370602"><time datetime="2022-07-20T22:34:44+08:00">2022年07月20日 22:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“ 试想，如果我们以 10秒为周期探测10K的结点，如果TIME_WAIT的超时时间是120秒，那么在第60秒后，等着超时的 TIME_WAIT 我们就有可会把端口基本用完了。 ”<br/>
+tcp连接是五元组，本地端口的数量限制是对同一目的ip+目的端口，这里探测10k节点，如果是指10k不同的目的ip、端口元组，应该还不会出现无端口可用的问题？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370613" class="comment odd alt depth-2">
+<article id="div-comment-2370613" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b6485022b09ccf423f53e6020288df57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b6485022b09ccf423f53e6020288df57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ENOCH</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370613"><time datetime="2022-07-25T14:25:41+08:00">2022年07月25日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中有提到,还有dns的问题, 探测的时候可能要先经过dns, 这一步就已经会遇到同一个目标的问题.</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370603" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370603" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7cd87ef38e7791bab5b6b5c7489a709a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7cd87ef38e7791bab5b6b5c7489a709a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">E7</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370603"><time datetime="2022-07-21T06:39:51+08:00">2022年07月21日 06:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>linger选项比较常用吧，为啥不让在服务端用？比如非法连接长时间占用资源，不发数据或者发些非协议随机数据</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370604" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370604" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ef906735f69467689afefdcf6e95074?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ef906735f69467689afefdcf6e95074?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Fung Kao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370604"><time datetime="2022-07-21T07:49:33+08:00">2022年07月21日 07:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Team -&gt; Teams</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370605" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370605" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b097ad55a795479d31bcc60ee709146?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b097ad55a795479d31bcc60ee709146?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">跳刀</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370605"><time datetime="2022-07-21T10:02:07+08:00">2022年07月21日 10:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用图 -&gt; 用途</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370608" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370608" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/72e41872bd573d67a7d277c68b64884c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/72e41872bd573d67a7d277c68b64884c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">scriptkids</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370608"><time datetime="2022-07-21T15:16:18+08:00">2022年07月21日 15:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>linger close，作为直接面临公网的服务端，还是挺经常遇到的，防攻击、封禁等等场景，一般都会用linger close</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370609" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370609" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a02a7c490ce519b23995e97632e48919?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a02a7c490ce519b23995e97632e48919?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Korben</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370609"><time datetime="2022-07-21T17:13:28+08:00">2022年07月21日 17:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>the net.ipv4.tcp_tw_recycle option is quite problematic for public-facing servers as it won’t handle connections from two different computers behind the same NAT device, which is a problem hard to detect and waiting to bite you:</p>
+<p>被咬了不止一次了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370610" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370610" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0e5d23c7a1dc64262680d93e498b6539?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0e5d23c7a1dc64262680d93e498b6539?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chengwen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370610"><time datetime="2022-07-22T15:52:06+08:00">2022年07月22日 15:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>使用SO_REUSEADDR是不是也能解决问题？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370612" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://idushu.com/weekly-issue-2022-07-24/" class="url" rel="ugc external nofollow">Weekly Issue 2022-07-24 – 爱读书网</a> </div>
+</li>
+<li id="comment-2370642" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370642" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdd5004d3164417345036c69ff830b79?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdd5004d3164417345036c69ff830b79?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">superryanguo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370642"><time datetime="2022-08-14T21:40:54+08:00">2022年08月14日 21:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的挺好，虽然看不完全懂，但大受震撼，期待以后继续</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370649" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370649" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d8ca20d6be3f04542ab5b0d0135250a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d8ca20d6be3f04542ab5b0d0135250a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Chenghao.li</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370649"><time datetime="2022-08-18T17:19:08+08:00">2022年08月18日 17:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看不懂先从找错别字开始哈哈哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370652" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2370652" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8923cc730d36318ed5e437dc15a3a50a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8923cc730d36318ed5e437dc15a3a50a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370652"><time datetime="2022-08-20T16:12:51+08:00">2022年08月20日 16:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+上面这个方法非常的低层，需要直接使用setsocketopt这样的系统调用，我其实，还是想使用 TCPConn.SetLinger(0) 来完成这个事，我不是很难碰底层的事。
+</p></blockquote>
+<p>“我不是很难碰底层的事。”这句话没看明白。是“不是很愿意”么</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370655" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2370655" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370655"><time datetime="2022-08-21T00:12:47+08:00">2022年08月21日 00:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，原意是，因为都被封装好，所以，最好不要破坏封装裸用底层的东西。我修改了一下描述。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370679" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://fenq.com/talking-about-time_wait-from-an-experience/" class="url" rel="ugc external nofollow">Talking about TIME_WAIT from an experience – FENQ</a> </div>
+</li>
+<li id="comment-2370702" class="comment even thread-even depth-1">
+<article id="div-comment-2370702" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/826c48381c20ea6cec02afcfc2310999?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/826c48381c20ea6cec02afcfc2310999?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://post.techwavelabs.org/" class="url" rel="ugc external nofollow">Mr. Cui</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370702"><time datetime="2022-09-13T19:51:36+08:00">2022年09月13日 19:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“永远不要使用 tcp_tw_recycle ，这个参数是个巨龙，破坏力极大”，如果已经在巨龙上了, 是否真的要屠龙?</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370708" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370708" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/722075e4c384b34ee3be5f704d9d78c0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/722075e4c384b34ee3be5f704d9d78c0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bob</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370708"><time datetime="2022-09-14T23:24:18+08:00">2022年09月14日 23:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很好，愈来愈浮躁的行业需要这样的底层技术细节文章。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370710" class="comment even thread-even depth-1">
+<article id="div-comment-2370710" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fc3816bd7bf87e73d5f21aa6192b9ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fc3816bd7bf87e73d5f21aa6192b9ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cilicili</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370710"><time datetime="2022-09-15T20:04:21+08:00">2022年09月15日 20:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看有些资料上面说/proc/sys/net/ipv4/tcp_fin_timeout这个参数不能控制TIME_WAIT的时长，TIME_WAIT的时长是靠内核中的一个宏定义来控制的，是这样的吗？陈老师</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370714" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370714" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/25785ff4658a0c974b52ce64f4438a27?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/25785ff4658a0c974b52ce64f4438a27?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.china-sunrider.com.cn/" class="url" rel="ugc external nofollow">kevin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370714"><time datetime="2022-09-17T12:13:50+08:00">2022年09月17日 12:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这么多年了，你的博客一直更新，真是不简单。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370729" class="comment even thread-even depth-1">
+<article id="div-comment-2370729" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f54e1a3183f9d4422801d3488c27cccf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f54e1a3183f9d4422801d3488c27cccf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ALLENK</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370729"><time datetime="2022-09-23T18:12:39+08:00">2022年09月23日 18:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想看耗子哥讲ddd，或者面对复杂业务时的建模思考</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370755" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370755" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3df7af68878fbdf7905a21fc149a6c76?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3df7af68878fbdf7905a21fc149a6c76?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370755"><time datetime="2022-10-06T21:50:34+08:00">2022年10月06日 21:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为啥这篇文章没在rss里出现呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370807" class="comment even thread-even depth-1">
+<article id="div-comment-2370807" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6c77b637eb75ef5515248740c6ba088c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6c77b637eb75ef5515248740c6ba088c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">killua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370807"><time datetime="2022-10-16T16:06:58+08:00">2022年10月16日 16:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个参数对于入站连接是没有任何用图的<br/>
+用图–&gt;用途</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370984" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370984" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce01616ba1dc5b651a3986f3d03e4e02?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce01616ba1dc5b651a3986f3d03e4e02?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">saiyn chen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22263.html#comment-2370984"><time datetime="2022-12-16T10:48:48+08:00">2022年12月16日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>像nmap这样的扫描工具，SO_LINGER都是标配</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371168" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://aigc.luomor.com/2023/03/21/%e4%bb%8e%e4%b8%80%e6%ac%a1%e7%bb%8f%e5%8e%86%e8%b0%88-time_wait-%e7%9a%84%e9%82%a3%e4%ba%9b%e4%ba%8b/" class="url" rel="ugc external nofollow">从一次经历谈 TIME_WAIT 的那些事 - 文心AIGC</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

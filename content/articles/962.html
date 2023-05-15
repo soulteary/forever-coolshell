@@ -1,0 +1,172 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>【原创】SQL栏目树的代码 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-962 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-962" class="post-content post-962 post type-post status-publish format-standard hentry category-datebase category-proglanguage tag-oracle tag-sql tag-133">
+<header class="entry-header">
+<span class="screen-reader-text">【原创】SQL栏目树的代码</span>
+<h1 class="entry-title">【原创】SQL栏目树的代码</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/962.html" title="00:03" rel="bookmark"><time class="entry-date" datetime="2009-06-05T00:03:13+08:00" pubdate="">2009年06月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/whl" title="View all posts by whl" rel="author">whl</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/962.html#comments" class="comments-link">1 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 6,937 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文由网友whl供稿，特此感谢！<br/>
+/**<br/>
+  * Desc: 取栏目树 ,过滤用户权限和无效栏目<br/>
+  * Author: WHL<br/>
+  * Date: 2009-05-31 15:17<br/>
+  */<br/>
+<span id="more-962"></span><br/>
+ <br/>
+/** 1. 取某用户有权限（np_cms_column_security表有记录且t.action_1 = ‘1’）的栏目的树 **/</p>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">create or replace view V_NP_CTREE_BS as
+select B.* from (
+select A.*, lag(A.column_id) over(partition by A.column_id order by 0 ) RK
+  from (select /*+choose */
+         t.*
+          from np_cms_column t
+         where t.is_active = &#39;1&#39;
+        connect by prior t.column_id = t.parent_id
+         start with t.column_id in (select t.column_id
+                                      from np_cms_column_security t
+                                     where t.subject_id = &#39;mazj&#39;
+                                          /*这里添加角色过滤*/
+                                       and t.action_1 = &#39;1&#39;))A) B
+ where not exists
+ (select 0
+          from (select distinct d.column_id
+                  from np_cms_column d
+                connect by prior d.column_id = d.parent_id
+                 start with d.column_id in
+                    (select t.column_id
+                       from np_cms_column_security t
+                      where t.subject_id = &#39;mazj&#39;
+                           /* 这里添加角色过滤*/
+                        and t.action_1 = &#39;0&#39;
+                           /* 排除有权限树下的非授权ID,既 Action_1=0的*/
+                        and exists
+                      (select 0
+                               from (select distinct d.column_id
+                                       from np_cms_column d
+                                     connect by prior d.column_id =
+                                                 d.parent_id
+                                      start with d.column_id in
+                                                 (select t.column_id
+                                                    from np_cms_column_security t
+                                                   where t.subject_id =
+                                                         &#39;mazj&#39;
+                                                        /*这里添加角色过滤*/
+                                                     and t.action_1 = &#39;1&#39;)) C1
+                              where C1.column_id = t.column_id))
+                        and d.is_active = &#39;1&#39;) C
+         where C.column_id = B.column_id and B.RK is null) and B.RK is null
+union all
+select c.*, 0 RK from np_cms_column c where c.parent_id = 0;
+</pre>
+<p>————————————————————————<br/>
+/** 2.得到栏目的虚拟父亲ID（考虑到把断层的节点接起来）**/</p>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">create or replace view V_NP_CTREE_PA as
+select B.*,
+       (case B.column_id
+         when 1 then 0 else nvl(B.father, 1) end) VFA
+  from (select v.*,
+               (select vv.column_id
+                  from V_NP_CTREE_BS vv
+                 where vv.column_id = v.parent_id) FATHER
+          from V_NP_CTREE_BS v) B;
+</pre>
+<p>————————————————————————<br/>
+/** 3. 取出门户需要的栏目树 **/</p>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">--create or replace view V_NP_CTREE_RS as
+select
+ D.*, LPAD(&#39; &#39;, 2 * level - 1) || SYS_CONNECT_BY_PATH(D.COLUMN_NAME, &#39;/&#39;) &amp;quot;Path&amp;quot;
+  from (select c.*
+          from V_NP_CTREE_PA c
+         order by c.VFA, c.disorder desc, c.column_id desc) D
+connect by prior D.column_id = D.VFA
+ start with D.column_id = 1;
+ 
+</pre>
+<p>————————————————————————<br/>
+（<strong>本文版权由whl所，转载时请注明作者和出处</strong>）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-962-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">数据库</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Oracle</a>, <a href="javascript:void(0)" rel="tag">SQL</a>, <a href="javascript:void(0)" rel="tag">栏目树</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>【原创】SQL栏目树的代码</span>》 的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1220819" class="comment even thread-even depth-1">
+<article id="div-comment-1220819" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6d2c5e0d943b7e64f157f8425972e640?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://WWW.OMG.COM" class="url" rel="ugc external nofollow">OMG</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/962.html#comment-1220819"><time datetime="2014-01-24T10:09:29+08:00">2014年01月24日 10:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看到一个这么长的sql，起初就会想起数据表设计不合理了，还有谁想直接在这上面维护。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

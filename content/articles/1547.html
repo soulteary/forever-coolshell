@@ -1,0 +1,1122 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>使用Flex Bison 和LLVM编写自己的编译器 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1547 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1547" class="post-content post-1547 post type-post status-publish format-standard hentry category-cplusplus category-progdesign tag-213">
+<header class="entry-header">
+<span class="screen-reader-text">使用Flex Bison 和LLVM编写自己的编译器</span>
+<h1 class="entry-title">使用Flex Bison 和LLVM编写自己的编译器</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1547.html" title="12:47" rel="bookmark"><time class="entry-date" datetime="2009-10-12T12:47:18+08:00" pubdate="">2009年10月12日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1547.html#comments" class="comments-link">31 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 54,416 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>使用Flex Bison 和 LLVM编写你自己的编译器</strong><br/>
+原文出处：<a href="http://gnuu.org/2009/09/18/writing-your-own-toy-compiler/">http://gnuu.org/2009/09/18/writing-your-own-toy-compiler</a></p>
+<h2> 1、介绍</h2>
+<p>我总是对编译器和语言非常感兴趣，但是兴趣并不会让你走的更远。大量的编译器的设计概念可以搞的任何一个程序员迷失在这些概念之中。不用说，我也曾今尝试过，但是并没有取得太大的成功，我以前的尝试都停留在语义分析阶段。本文的灵感主要来源于我最近一次的尝试，并且在这一次中我取得一点成就。</p>
+<p>幸运的是，最近的几年，我参加了一些项目，这些项目给了我在建立编译器上很多有用的经验和观点。另外一件事是，我非常幸运得到<a href="http://llvm.org/">LLVM</a>的帮助。对于这个工具，我不知道改怎么去形容它，但是他给我的这个编译器的确带来非常大的帮助。<br/>
+<span id="more-1547"></span></p>
+<h3>1.1、你为什么要阅读本文</h3>
+<p>你也许想看看我正在做的事情，但是更有可能的是，你也是和我一样对编译器和语言非常感兴趣，并且也可能遇到了一些在探索的过程中遇到了一些难题，你可能正打算解决这些难题，但是却没有发现好的资源。本文的目标就是提供这些资源，并以一种手把手的方式教你从头到尾的去创建一个具有基本功能的语言编译器。</p>
+<p>在本文，我不会去解释一些编译器基本理论，所以你要在开始本文前去了解什么是<a href="https://en.wikipedia.org/wiki/Backus%E2%80%93Naur_Form">BNF语法</a>，什么是<a href="https://en.wikipedia.org/wiki/Abstract_syntax_tree">抽象语法树数据结构 AST data structure</a>，什么是基础<a href="https://en.wikipedia.org/wiki/Compiler">编译器流水线 complier pipline</a>。就是说，我会把本文描述的尽量简单。本文的目的就是以一种简单易懂的方式来介绍相关编译器资源的方式来帮助那些从来没有编译器经验的人。</p>
+<h3>1.2、达到的成果</h3>
+<p>如果你根据文章内容一步步来，你将会得到一个能定义函数，调用函数，定义变量，给变量赋值执行基本数学操作的语言。这门语言支持两种基本类型，double和integer类型。还有一些功能还未实现，因此，你可以通过自己去实现这些功能得到你满意的功能并且能为你理解编写一个编译器提供不少的帮助。</p>
+<p></p><h3>1.3 问题解答</h3>
+<p></p>
+<h4>1.3.1 我需要了解什么样的语言</h4>
+<p>我们使用的工具是基于C/C++的。LLVM是基于C++的，我们的这个语言也基于C++，因为C++具有很多面向对象的优点和可以被重用的STL。此外对于C，Lex和Bison都具有那些初看起来令人迷惑的语法，但是我将尽可能的去解释他。我们需要处理的语法非常小，最多就100行，因此它是比较容易理解的。</p>
+<h4>1.3.2 很复杂吗？</h4>
+<p>是或否，这里面有很多的东西你需要了解，甚至多的让人感觉到害怕，但是老实说，其实这些都非常简单，我们同样会使用很多工具分解这些层次的复杂性，并使得这些内容可管理。</p>
+<h4>1.3.3 完成它需要多长时间</h4>
+<p>我们将要完成的编译器花了我三天的时间。但是如果你按“follow me”的方式来完成这个编译器的话，你将会花费更少的时间。如果要全部理解这里面的内容可能会花去稍微长一点的时间，但是你至少应该在一个下午就将整个编译器运行起来。</p>
+<p>好，如果你已经准备好，我们开始吧。</p>
+<p></p><h2>2、准备开始</h2>
+<p></p>
+<h3>2.1 构成编译器的最基本的要素</h3>
+<p>一个编译器是由一组有三个到四个组件(还有一些子组件)构成，数据以管道的方式从一个组件输入并流向下一个组件。在我们这个编译器中，可能会用到一些稍微不同的工具。下面这个图展示了我们构造一个编译器的步骤，和每个步骤中将使用的工具。</p>
+<p><img decoding="async" alt="Compiler Pipeline" src="http://gnuu.org/wp-content/uploads/2009/09/pipeline.png" width="620" height="76"/> </p>
+<p>从上图你可以看到在Linking这一步是灰掉的。我们的语言将不支持编译器的连接(很多的语言都不支持编译器的连接)。在文法分析阶段，我们将使用开源工具Lex，即如今的<a href="http://flex.sourceforge.net/">Flex</a>，文法分析一般都伴随者语法分析，我们使用的语法分析工具将会是Yacc，或者说是<a href="http://www.gnu.org/software/bison/">Bison</a>，最后一旦语义分析完成，我们将遍历我们的抽象语法树，并生成我们的”bytecode 字节码”，或”机器码 matchine code”。做这一步，我们将使用<a href="http://llvm.org/">LLVM</a>，它能生成快速字节码，我们将使用LLVM的JIT(Just In Tinme)来在我们的机器上编译执行它</p>
+<p>总结一下，步骤如下：</p>
+<ol>
+<li><strong>文法分析用<em>Flex</em></strong>:将数据分隔成一个个的标记token (标示符identifiers，关键字keywords，数字numbers, 中括号brackets, 大括号braces, 等等etc.) </li>
+<li><strong>语法分析用<em>Bison</em></strong>: 在分析标记的时候生成抽象语法树. Bison 将会做掉几乎所有的这些工作, 我们定义好我们的抽象语法树就OK了. </li>
+<li><strong>组装用<em>LLVM</em></strong>: 这里我们将遍历我们的抽象语法树，并未每一个节点生成字节/机器码。 这听起来似乎很疯狂，但是这几乎就是<em>最简单的</em> 一步了. </li>
+</ol>
+<p>在我们开始下一步之前，你应该准备安装好Flex,Bison和LLVM。因为我们马上就要使用到它们。</p>
+<p></p><h3>2.2 定义我们的语法</h3>
+<p></p>
+<p>我们语法是我们语言中最核心的部分，我们的语法使用类似标准C的语法，因为这样的语法非常熟悉，而且简单。我们语法的一个典型的例子如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int do_math(int a) {
+  int x = a * 5 + 3
+}
+
+do_math(10)
+</pre>
+<p>看起来很简单。它和C非常相似，但是它没有使用分号做语句的分隔，同时你也会注意到我们的语法中没有return语句。这就是你可以自己实现的部分。</p>
+<p>现在我们还没有任何机制来验证结果。我们将通过检查我们编译之后LLVM打印出的字节码验证我们程序的正确性。</p>
+<p></p><h2>3、 第一步，使用Flex进行文法分析 </h2>
+<p></p>
+<p>这是最简单的一步，给定语法之后，我们需要将我们的输入转换一系列内部标记token。如前所述，我们的语法具有非常基础的标记token:标示符identifier ，数字常量(整型和浮点型)，数学运算符号，括号，中括号，我们的文法定义文件称为token.l，它具有一些固定的语法。定义如下：</p>
+<pre>%{
+#include <string>
+#include &#34;node.h&#34;
+#include &#34;parser.hpp&#34;
+#define SAVE_TOKEN yylval.string = new std::string(yytext, yyleng)
+#define TOKEN(t) (yylval.token = t)
+extern &#34;C&#34; int yywrap() { }
+%}
+
+%%
+
+[ \t\n]                 ;
+[a-zA-Z_][a-zA-Z0-9_]*  SAVE_TOKEN; return TIDENTIFIER;
+[0-9]+\.[0-9]*          SAVE_TOKEN; return TDOUBLE;
+[0-9]+                  SAVE_TOKEN; return TINTEGER;
+&#34;=&#34;                     return TOKEN(TEQUAL);
+&#34;==&#34;                    return TOKEN(TCEQ);
+&#34;!=&#34;                    return TOKEN(TCNE);
+&#34;&lt;&#34;                     return TOKEN(TCLT);
+&#34;&lt;=&#34;                    return TOKEN(TCLE);
+&#34;&gt;&#34;                     return TOKEN(TCGT);
+&#34;&gt;=&#34;                    return TOKEN(TCGE);
+&#34;(&#34;                     return TOKEN(TLPAREN);
+&#34;)&#34;                     return TOKEN(TRPAREN);
+&#34;{&#34;                     return TOKEN(TLBRACE);
+&#34;}&#34;                     return TOKEN(TRBRACE);
+&#34;.&#34;                     return TOKEN(TDOT);
+&#34;,&#34;                     return TOKEN(TCOMMA);
+&#34;+&#34;                     return TOKEN(TPLUS);
+&#34;-&#34;                     return TOKEN(TMINUS);
+&#34;*&#34;                     return TOKEN(TMUL);
+&#34;/&#34;                     return TOKEN(TDIV);
+.                       printf(&#34;Unknown token!\n&#34;); yyterminate();
+
+%%
+</string></pre>
+<p>在第一节(译者注：即%{%}中定义的部分)声明了一些特定的C代码。由于Bison不会去访问我门的yytext变量，我们使用宏”SAVE_TOKEN”来保证标示符的文本和文本长度是安全的(而不是靠标记本身来保证)。第一个token告诉我们要忽略掉那些空白字符。你会注意到我们有些一些等价性比较的标记和其他。还有一些标记还没有实现，你可以非常自由的将这些标记加到你自己的编译器中去。</p>
+<p>现在我们在这里做的是定义这些标记和他们的符号名。符号(比如TIDENTFIER)将成为我们语法中的终结符。我们只是返回它，我们从未定义它，他们是在什么地方定义的？当然是在bison语法文件中。我们包含的parser.hpp头文件将会被bison所生成，并且里面的所有符号都将被生成，并被我们在这里使用。</p>
+<p>我们对这个token.l运行flex命令，并生成tokens.cpp文件，这个程序将会和我们的语法分析器一起编译并提供yylex()函数来识别这些标记。我们将在稍后运行这个命令，因为现在我们需要从bison那里生成头文件。</p>
+<p></p><h2>4、第2步 使用Bison进行语法分析</h2>
+<p></p>
+<p>这是我们工作中最富有挑战性的一部分。生成一个正确的无二义的语法并不是一项简单的工作，要经过很多实践努力。庆幸的是，我们例子中的语法是简单而完整的。在我们实现我们的语法之前，我们需要详细的讲解一下我们的设计。</p>
+<p></p><h3>4.1、设计AST(抽象语法树)</h3>
+<p></p>
+<p>语法分析的最终结果是抽象语法树AST，正如我们将看到的，Bison生成抽象语法树的最优工具；我们唯一需要做的事情就是将我们的代码插入到语法中去。</p>
+<p>文本形式字符串，例如”int x”代表了我们语言的文本形式，和这个类似，抽象语法树AST则代表了我们语言在内存中的表现形式一样(在语言在组装成而进程码之前)。正因如此，我们要在把这些插入在语法分析中的数据结构首先设计好。这个过程是非常直接的，因为我们为语法中的每个语义单元创建了一个结构。方法声明、方法调用，变量声明，引用，这些都构成了抽象语法树的节点。我们语言的抽象语法树的节点如下图：<br/>
+<img decoding="async" loading="lazy" border="0" alt="Our Toy Language AST" src="http://gnuu.org/wp-content/uploads/2009/09/ClassDiagram.png" width="640" height="505"/><br/>
+上图的C++代码如下：<br/>
+node.h文件</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;iostream&gt;
+#include &lt;vector&gt;
+#include &lt;llvm/Value.h&gt;
+
+class CodeGenContext;
+class NStatement;
+class NExpression;
+class NVariableDeclaration;
+
+typedef std::vector&lt;NStatement*&gt; StatementList;
+typedef std::vector&lt;NExpression*&gt; ExpressionList;
+typedef std::vector&lt;NVariableDeclaration*&gt; VariableList;
+
+class Node {
+public:
+    virtual ~Node() {}
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context) { }
+};
+
+class NExpression : public Node {
+};
+
+class NStatement : public Node {
+};
+
+class NInteger : public NExpression {
+public:
+    long long value;
+    NInteger(long long value) : value(value) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NDouble : public NExpression {
+public:
+    double value;
+    NDouble(double value) : value(value) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NIdentifier : public NExpression {
+public:
+    std::string name;
+    NIdentifier(const std::string&amp; name) : name(name) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NMethodCall : public NExpression {
+public:
+    const NIdentifier&amp; id;
+    ExpressionList arguments;
+    NMethodCall(const NIdentifier&amp; id, ExpressionList&amp; arguments) :
+        id(id), arguments(arguments) { }
+    NMethodCall(const NIdentifier&amp; id) : id(id) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NBinaryOperator : public NExpression {
+public:
+    int op;
+    NExpression&amp; lhs;
+    NExpression&amp; rhs;
+    NBinaryOperator(NExpression&amp; lhs, int op, NExpression&amp; rhs) :
+        lhs(lhs), rhs(rhs), op(op) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NAssignment : public NExpression {
+public:
+    NIdentifier&amp; lhs;
+    NExpression&amp; rhs;
+    NAssignment(NIdentifier&amp; lhs, NExpression&amp; rhs) :
+        lhs(lhs), rhs(rhs) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NBlock : public NExpression {
+public:
+    StatementList statements;
+    NBlock() { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NExpressionStatement : public NStatement {
+public:
+    NExpression&amp; expression;
+    NExpressionStatement(NExpression&amp; expression) :
+        expression(expression) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NVariableDeclaration : public NStatement {
+public:
+    const NIdentifier&amp; type;
+    NIdentifier&amp; id;
+    NExpression *assignmentExpr;
+    NVariableDeclaration(const NIdentifier&amp; type, NIdentifier&amp; id) :
+        type(type), id(id) { }
+    NVariableDeclaration(const NIdentifier&amp; type, NIdentifier&amp; id, NExpression *assignmentExpr) :
+        type(type), id(id), assignmentExpr(assignmentExpr) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+class NFunctionDeclaration : public NStatement {
+public:
+    const NIdentifier&amp; type;
+    const NIdentifier&amp; id;
+    VariableList arguments;
+    NBlock&amp; block;
+    NFunctionDeclaration(const NIdentifier&amp; type, const NIdentifier&amp; id,
+            const VariableList&amp; arguments, NBlock&amp; block) :
+        type(type), id(id), arguments(arguments), block(block) { }
+    virtual llvm::Value* codeGen(CodeGenContext&amp; context);
+};
+
+</pre>
+<p>非常的清晰明了，我们省略了getter和setter方法，这里只列出了共有成员；这些类也不需要影藏私有数据，并省略了codeGen方法。在我们导出AST成LLVM的字节码时，就需要使用到这个方法。</p>
+<p></p><h3>4.2、Bison介绍</h3>
+<p></p>
+<p>bison的语法定义文件同样是由这些标记构成的最复杂的部分。这并不是说技术上有多复杂，但是我也会花一些时间来讨论一下Bison的语法细节，好，现在让我们立刻来熟悉一下Bison的语法。我们将使用基于类似于BNF的语法，使用定义的好终结符和非终结符来组成我们有效的每一个语句和表达式(这些语句和表达式就代表我们之前定义的AST节点)。例如：</p>
+<pre>if_stmt : IF &#39;(&#39; condition &#39;)&#39; block { /* do stuff when this rule is encountered */ }
+        | IF &#39;(&#39; condition &#39;)&#39;       { ... }
+        ;
+</pre>
+<p>在上面例子中，我们定义了一个if语句(如果我们支持if语句话)，它和BNF不同之处在于，每个语法后面都跟了一系列动作(在&#39;{‘和’}’之间的内容)。这个动作将在此条语法被识别(译者注：归约)的时候被执行。这个过程将会递归地按从叶子符号到根节点符号的次序执行，在这个过程，每一个非终结符最终会被合并为一棵大的语法树。你将会看到的’$$’符号代表着当前树的跟节点(译者注：’$$’代表本条语法规则中冒号左边的部分的语义内容)。此外’$1’代表了本条规则叶子中的第一个符号(译者注：’$1’代表了本条语法规则冒号右边的内容，$1代表冒号右边的第一个符号的语义值)。在上面的例子中，当’condition’有效时我们将会把$3 赋值给$$。这个例子可以解释如何将我们AST和语法规则关联起来。我们将在每一条规则中通常赋值一个节点到$$，最后这些规则会合并成一个大的抽象语法树。Bison的部分是我们语言最复杂的部分，你需要花一点时间去理解它。此外到此为止，你还没有看到完整的代码。下面就是完整的Bison部分的代码：<br/>
+parser.y</p>
+<pre>%{
+    #include &#34;node.h&#34;
+    NBlock *programBlock; /* the top level root node of our final AST */
+
+    extern int yylex();
+    void yyerror(const char *s) { printf(&#34;ERROR: %s\n&#34;, s); }
+%}
+
+/* Represents the many different ways we can access our data */
+%union {
+    Node *node;
+    NBlock *block;
+    NExpression *expr;
+    NStatement *stmt;
+    NIdentifier *ident;
+    NVariableDeclaration *var_decl;
+    std::vector<nvariabledeclaration*> *varvec;
+    std::vector<nexpression*> *exprvec;
+    std::string *string;
+    int token;
+}
+
+/* Define our terminal symbols (tokens). This should
+   match our tokens.l lex file. We also define the node type
+   they represent.
+ */
+%token <string> TIDENTIFIER TINTEGER TDOUBLE
+%token <token> TCEQ TCNE TCLT TCLE TCGT TCGE TEQUAL
+%token <token> TLPAREN TRPAREN TLBRACE TRBRACE TCOMMA TDOT
+%token <token> TPLUS TMINUS TMUL TDIV
+
+/* Define the type of node our nonterminal symbols represent.
+   The types refer to the %union declaration above. Ex: when
+   we call an ident (defined by union type ident) we are really
+   calling an (NIdentifier*). It makes the compiler happy.
+ */
+%type <ident> ident
+%type <expr> numeric expr
+%type <varvec> func_decl_args
+%type <exprvec> call_args
+%type <block> program stmts block
+%type <stmt> stmt var_decl func_decl
+%type <token> comparison
+
+/* Operator precedence for mathematical operators */
+%left TPLUS TMINUS
+%left TMUL TDIV
+
+%start program
+
+%%
+
+program : stmts { programBlock = $1; }
+        ;
+
+stmts : stmt { $$ = new NBlock(); $$-&gt;statements.push_back($<stmt>1); }
+      | stmts stmt { $1-&gt;statements.push_back($<stmt>2); }
+      ;
+
+stmt : var_decl | func_decl
+     | expr { $$ = new NExpressionStatement(*$1); }
+     ;
+
+block : TLBRACE stmts TRBRACE { $$ = $2; }
+      | TLBRACE TRBRACE { $$ = new NBlock(); }
+      ;
+
+var_decl : ident ident { $$ = new NVariableDeclaration(*$1, *$2); }
+         | ident ident TEQUAL expr { $$ = new NVariableDeclaration(*$1, *$2, $4); }
+         ;
+
+func_decl : ident ident TLPAREN func_decl_args TRPAREN block
+            { $$ = new NFunctionDeclaration(*$1, *$2, *$4, *$6); delete $4; }
+          ;
+
+func_decl_args : /*blank*/  { $$ = new VariableList(); }
+          | var_decl { $$ = new VariableList(); $$-&gt;push_back($<var_decl>1); }
+          | func_decl_args TCOMMA var_decl { $1-&gt;push_back($<var_decl>3); }
+          ;
+
+ident : TIDENTIFIER { $$ = new NIdentifier(*$1); delete $1; }
+      ;
+
+numeric : TINTEGER { $$ = new NInteger(atol($1-&gt;c_str())); delete $1; }
+        | TDOUBLE { $$ = new NDouble(atof($1-&gt;c_str())); delete $1; }
+        ;
+
+expr : ident TEQUAL expr { $$ = new NAssignment(*$<ident>1, *$3); }
+     | ident TLPAREN call_args TRPAREN { $$ = new NMethodCall(*$1, *$3); delete $3; }
+     | ident { $<ident>$ = $1; }
+     | numeric
+     | expr comparison expr { $$ = new NBinaryOperator(*$1, $2, *$3); }
+     | TLPAREN expr TRPAREN { $$ = $2; }
+     ;
+
+call_args : /*blank*/  { $$ = new ExpressionList(); }
+          | expr { $$ = new ExpressionList(); $$-&gt;push_back($1); }
+          | call_args TCOMMA expr  { $1-&gt;push_back($3); }
+          ;
+
+comparison : TCEQ | TCNE | TCLT | TCLE | TCGT | TCGE
+           | TPLUS | TMINUS | TMUL | TDIV
+           ;
+
+%%
+</ident></ident></var_decl></var_decl></stmt></stmt></token></stmt></block></exprvec></varvec></expr></ident></token></token></token></string></nexpression*></nvariabledeclaration*></pre>
+<p></p><h2>5、生成Flex和Bison代码</h2>
+<p></p>
+<p>现在我们有了Flex的token.l文件和Bison的parser.y文件。我们需要将这两个文件传递给工具，并由工具来生成c++代码文件。注意Bison同时会为Flex生成parser.hpp头文件；这样做是通过-d开关实现的，这个开关是的我们的标记声明和源文件分开，这样就是的我们可以让这些token标记被其他的程序使用。下面的命令创建parser.cpp，parser.hpp和tokens.cpp源文件。</p>
+<pre>$ bison -d -o parser.cpp parser.y
+$ lex -o tokens.cpp tokens.l
+</pre>
+<p>如果上述工作都没有出错的话，我们现在位置已经完成了我们编译器工作总量的2/3。如果你现在想测试一下我们的代码，你可以编译一个简单的main.cpp程序：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;iostream&gt;
+#include &#34;node.h&#34;
+extern NBlock* programBlock;
+extern int yyparse();
+
+int main(int argc, char **argv)
+{
+    yyparse();
+    std::cout &lt;&lt; programBlock &lt;&lt; endl;
+    return 0;
+}
+</pre>
+<p>你可以编译这些文件：<br/>
+$ g++ -o parser parser.cpp tokens.cpp main.cpp<br/>
+现在你需要安装LLVM了，因为llvm::Value被node.h引用了。如果你不想这么做，只是想测试一下Flex和Bison部分，你可以注释掉node.h中codeGen()方法。</p>
+<p>如果上述工作都完成了，你现在将有一个语法分析器，这个语法分析器将从标准输入读入，并打出在内存中代表抽象语法树跟节点的内存非零地址。</p>
+<h2>6、组装AST和LLVM</h2>
+<p>编译器的下一步很自然地是应该将AST转换成机器码。这意味着将每一个语义节点转换成等价的机器指令。LLVM将帮助我们把这步变得非常简单，因为LLVM将真实的指令抽象成类似AST的指令。这意味着我们真正要做的事就是将AST转换成抽象指令。<br/>
+你可以想象这个过程是从抽象语法树的根节点开始遍历每一个树上节点并产生字节码的过程。现在就是使用我们在Node中定义的codeGen方法的时候了。例如，当我们遍历NBlock代码的时候(语义上NBlock代表一组我们语言的语句的集合)，我们将调用列表中每条语句的codeGen方法。上面步骤代码类似如下的形式：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Value* NBlock::codeGen(CodeGenContext&amp; context)
+{
+    StatementList::const_iterator it;
+    Value *last = NULL;
+    for (it = statements.begin(); it != statements.end(); it++) {
+        std::cout &lt;&lt; &#34;Generating code for &#34; &lt;&lt; typeid(**it).name() &lt;&lt; endl;
+        last = (**it).codeGen(context);
+    }
+    std::cout &lt;&lt; &#34;Creating block&#34; &lt;&lt; endl;
+    return last;
+}
+</pre>
+<p>我们将实现抽象语法树上所有节点的codeGen方法，然后在向下遍历树的时候调用它，并隐式的遍历我们整个抽象语法树。在这个过程中，我们在CodeGenContext类来告诉我们生成字节码的位置。</p>
+<p></p><h3> 6.1、关于LLVM要注意的一些信息</h3>
+<p></p>
+<p>LLVM最大的一个确定就是，你很难找到LLVM的相关文档。在线手册、教程、或其他的文档都没有及时的得到相关维护，这些文档大部分都是过期的文档。除非你去深入研究，否则你很难找到关于C++ API的信息。如果你自己安装LLVM，docs<br/>
+是最新的文档。</p>
+<p>我发现最好学习LLVM的方法就是通过LLVM的例子去学习。在LLVM的压缩包的’example’目录下有很多快速生成字节码的例子。在<a href="http://llvm.org/demo/">LLVM demo site</a>上可以将C做输入，然后生成C++ API的例子。以这些例子提供的方法，我找到了类似于int x = 5 ;的指令的生成方法。我使用这些工具实现大部分的节点。</p>
+<p>关于LLVM的问题描述到此为止，我将在下面罗列出codegen.h和codegen.cpp的源代码</p>
+<p>codegen.h的内容。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stack&gt;
+#include &lt;llvm/Module.h&gt;
+#include &lt;llvm/Function.h&gt;
+#include &lt;llvm/PassManager.h&gt;
+#include &lt;llvm/CallingConv.h&gt;
+#include &lt;llvm/Bitcode/ReaderWriter.h&gt;
+#include &lt;llvm/Analysis/Verifier.h&gt;
+#include &lt;llvm/Assembly/PrintModulePass.h&gt;
+#include &lt;llvm/Support/IRBuilder.h&gt;
+#include &lt;llvm/ModuleProvider.h&gt;
+#include &lt;llvm/ExecutionEngine/GenericValue.h&gt;
+#include &lt;llvm/ExecutionEngine/JIT.h&gt;
+#include &lt;llvm/Support/raw_ostream.h&gt;
+
+using namespace llvm;
+
+class NBlock;
+
+class CodeGenBlock {
+public:
+    BasicBlock *block;
+    std::map&lt;std::string , Value*&gt; locals;
+};
+
+class CodeGenContext {
+    std::stack&lt;codegenblock  *&gt; blocks;
+    Function *mainFunction;
+
+public:
+    Module *module;
+    CodeGenContext() { module = new Module(&#34;main&#34;); }
+
+    void generateCode(NBlock&amp; root);
+    GenericValue runCode();
+    std::map&lt;std::string , Value*&gt;&amp; locals() { return blocks.top()-&gt;locals; }
+    BasicBlock *currentBlock() { return blocks.top()-&gt;block; }
+    void pushBlock(BasicBlock *block) { blocks.push(new CodeGenBlock()); blocks.top()-&gt;block = block; }
+    void popBlock() { CodeGenBlock *top = blocks.top(); blocks.pop(); delete top; }
+};
+</pre>
+<p>codegen.cpp的内容。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &#34;node.h&#34;
+#include &#34;codegen.h&#34;
+#include &#34;parser.hpp&#34;
+
+using namespace std;
+
+/* Compile the AST into a module */
+void CodeGenContext::generateCode(NBlock&amp; root)
+{
+    std::cout &lt;&lt; &#34;Generating code...\n&#34;;
+
+    /* Create the top level interpreter function to call as entry */
+    vector&lt;const type*&gt; argTypes;
+    FunctionType *ftype = FunctionType::get(Type::VoidTy, argTypes, false);
+    mainFunction = Function::Create(ftype, GlobalValue::InternalLinkage, &#34;main&#34;, module);
+    BasicBlock *bblock = BasicBlock::Create(&#34;entry&#34;, mainFunction, 0);
+
+    /* Push a new variable/block context */
+    pushBlock(bblock);
+    root.codeGen(*this); /* emit bytecode for the toplevel block */
+    ReturnInst::Create(bblock);
+    popBlock();
+
+    /* Print the bytecode in a human-readable format
+       to see if our program compiled properly
+     */
+    std::cout &lt;&lt; &#34;Code is generated.\n&#34;;
+    PassManager pm;
+    pm.add(createPrintModulePass(&amp;outs()));
+    pm.run(*module);
+}
+
+/* Executes the AST by running the main function */
+GenericValue CodeGenContext::runCode() {
+    std::cout &lt;&lt; &#34;Running code...\n&#34;;
+    ExistingModuleProvider *mp = new ExistingModuleProvider(module);
+    ExecutionEngine *ee = ExecutionEngine::create(mp, false);
+    vector&lt;genericvalue&gt; noargs;
+    GenericValue v = ee-&gt;runFunction(mainFunction, noargs);
+    std::cout &lt;&lt; &#34;Code was run.\n&#34;;
+    return v;
+}
+
+/* Returns an LLVM type based on the identifier */
+static const Type *typeOf(const NIdentifier&amp; type)
+{
+    if (type.name.compare(&#34;int&#34;) == 0) {
+        return Type::Int64Ty;
+    }
+    else if (type.name.compare(&#34;double&#34;) == 0) {
+        return Type::FP128Ty;
+    }
+    return Type::VoidTy;
+}
+
+/* -- Code Generation -- */
+
+Value* NInteger::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Creating integer: &#34; &lt;&lt; value &lt;&lt; endl;
+    return ConstantInt::get(Type::Int64Ty, value, true);
+}
+
+Value* NDouble::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Creating double: &#34; &lt;&lt; value &lt;&lt; endl;
+    return ConstantFP::get(Type::FP128Ty, value);
+}
+
+Value* NIdentifier::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Creating identifier reference: &#34; &lt;&lt; name &lt;&lt; endl;
+    if (context.locals().find(name) == context.locals().end()) {
+        std::cerr &lt;&lt; &#34;undeclared variable &#34; &lt;&lt; name &lt;&lt; endl;
+        return NULL;
+    }
+    return new LoadInst(context.locals()[name], &#34;&#34;, false, context.currentBlock());
+}
+
+Value* NMethodCall::codeGen(CodeGenContext&amp; context)
+{
+    Function *function = context.module-&gt;getFunction(id.name.c_str());
+    if (function == NULL) {
+        std::cerr &lt;&lt; &#34;no such function &#34; &lt;&lt; id.name &lt;&lt; endl;
+    }
+    std::vector&lt;value *&gt; args;
+    ExpressionList::const_iterator it;
+    for (it = arguments.begin(); it != arguments.end(); it++) {
+        args.push_back((**it).codeGen(context));
+    }
+    CallInst *call = CallInst::Create(function, args.begin(), args.end(), &#34;&#34;, context.currentBlock());
+    std::cout &lt;&lt; &#34;Creating method call: &#34; &lt;&lt; id.name &lt;&lt; endl;
+    return call;
+}
+
+Value* NBinaryOperator::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Creating binary operation &#34; &lt;&lt; op &lt;&lt; endl;
+    Instruction::BinaryOps instr;
+    switch (op) {
+        case TPLUS:     instr = Instruction::Add; goto math;
+        case TMINUS:    instr = Instruction::Sub; goto math;
+        case TMUL:      instr = Instruction::Mul; goto math;
+        case TDIV:      instr = Instruction::SDiv; goto math;
+
+        /* TODO comparison */
+    }
+
+    return NULL;
+math:
+    return BinaryOperator::Create(instr, lhs.codeGen(context),
+        rhs.codeGen(context), &#34;&#34;, context.currentBlock());
+}
+
+Value* NAssignment::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Creating assignment for &#34; &lt;&lt; lhs.name &lt;&lt; endl;
+    if (context.locals().find(lhs.name) == context.locals().end()) {
+        std::cerr &lt;&lt; &#34;undeclared variable &#34; &lt;&lt; lhs.name &lt;&lt; endl;
+        return NULL;
+    }
+    return new StoreInst(rhs.codeGen(context), context.locals()[lhs.name], false, context.currentBlock());
+}
+
+Value* NBlock::codeGen(CodeGenContext&amp; context)
+{
+    StatementList::const_iterator it;
+    Value *last = NULL;
+    for (it = statements.begin(); it != statements.end(); it++) {
+        std::cout &lt;&lt; &#34;Generating code for &#34; &lt;&lt; typeid(**it).name() &lt;&lt; endl;
+        last = (**it).codeGen(context);
+    }
+    std::cout &lt;&lt; &#34;Creating block&#34; &lt;&lt; endl;
+    return last;
+}
+
+Value* NExpressionStatement::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Generating code for &#34; &lt;&lt; typeid(expression).name() &lt;&lt; endl;
+    return expression.codeGen(context);
+}
+
+Value* NVariableDeclaration::codeGen(CodeGenContext&amp; context)
+{
+    std::cout &lt;&lt; &#34;Creating variable declaration &#34; &lt;&lt; type.name &lt;&lt; &#34; &#34; &lt;&lt; id.name &lt;&lt; endl;
+    AllocaInst *alloc = new AllocaInst(typeOf(type), id.name.c_str(), context.currentBlock());
+    context.locals()[id.name] = alloc;
+    if (assignmentExpr != NULL) {
+        NAssignment assn(id, *assignmentExpr);
+        assn.codeGen(context);
+    }
+    return alloc;
+}
+
+Value* NFunctionDeclaration::codeGen(CodeGenContext&amp; context)
+{
+    vector&lt;const type*&gt; argTypes;
+    VariableList::const_iterator it;
+    for (it = arguments.begin(); it != arguments.end(); it++) {
+        argTypes.push_back(typeOf((**it).type));
+    }
+    FunctionType *ftype = FunctionType::get(typeOf(type), argTypes, false);
+    Function *function = Function::Create(ftype, GlobalValue::InternalLinkage, id.name.c_str(), context.module);
+    BasicBlock *bblock = BasicBlock::Create(&#34;entry&#34;, function, 0);
+
+    context.pushBlock(bblock);
+
+    for (it = arguments.begin(); it != arguments.end(); it++) {
+        (**it).codeGen(context);
+    }
+
+    block.codeGen(context);
+    ReturnInst::Create(bblock);
+
+    context.popBlock();
+    std::cout &lt;&lt; &#34;Creating function: &#34; &lt;&lt; id.name &lt;&lt; endl;
+    return function;
+}
+</pre>
+<p>上述罗列很多的代码，然而这部份代码的含义需要你自己去探索。我在这里只会提及一下你需要注意的内容：</p>
+<ul>
+<li>我们在CodeGenContext类中使用一个语句块的栈来保存最后进入的block(因为语句都被增加到blocks中)
+</li><li>我们同样用个堆栈来保存每组语句块中的<a href="https://en.wikipedia.org/wiki/Symbol_table">符号表</a> </li>
+<li>我们设计的语言只会知道他当前范围内的内容.要支持“全局”上下的做法，你必须向上搜索整个堆栈中每一个语句块，知道你最后发现你匹配的符号(现在我们只是简单地搜索堆栈中最顶层的符号表)。 </li>
+<li>在我们进入一个语句块之前，我们需要将语句块压栈，离开语句块时将语句块出栈 </li>
+</ul>
+<p>剩下的内容都LLVM相关了，在这个主题上我并不是专家。但是迄今为止，我们已经有了编译和运行我们语言的所有代码。</p>
+<p></p><h2>7、编译和运行我们的语言</h2>
+<p></p>
+<p></p><h3>7.1、编译我们的语言</h3>
+<p></p>
+<p>我们已经有了代码，现在我们怎么运行它？LLVM有着非常复杂的联接link，幸运的是，如果你是自己安装的LLVM，那么你就应该有一个llvm-config二进制程序，这个程序返回你需要的所有编译和联接选项。<br/>
+我们也要同时更新我们的main.cpp的内容使之可以编译和运行我们的代码，这次我们main.cpp的内容如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;iostream&gt;
+#include &#34;codegen.h&#34;
+#include &#34;node.h&#34;
+
+using namespace std;
+
+extern int yyparse();
+extern NBlock* programBlock;
+
+int main(int argc, char **argv)
+{
+    yyparse();
+    std::cout &lt;&lt; programBlock &lt;&lt; endl;
+
+    CodeGenContext context;
+    context.generateCode(*programBlock);
+    context.runCode();
+
+    return 0;
+}
+</pre>
+<p>现在我们需要这样来编译这些代码<br/>
+$ g++ -o parser <code data-enlighter-language="raw" class="EnlighterJSRAW">llvm-config --libs core jit native --cxxflags --ldflags</code> *.cpp<br/>
+你也可以编写一个Makefile来进行编译</p>
+<pre>all: parser
+
+clean:
+	rm parser.cpp parser.hpp parser tokens.cpp
+
+parser.cpp: parser.y
+	bison -d -o $@ $^
+
+parser.hpp: parser.cpp
+
+tokens.cpp: tokens.l parser.hpp
+	lex -o $@ $^
+
+parser: parser.cpp codegen.cpp main.cpp tokens.cpp
+	g++ -o $@ <code data-enlighter-language="raw" class="EnlighterJSRAW">llvm-config --libs core jit native --cxxflags --ldflags</code> *.cpp
+</pre>
+<p></p><h3>7.2、运行我们的语言</h3>
+<p></p>
+<p>假设上述所有工作都圆满完成，那么现在你将有一个名为parser的二进制程序。运行它，还记得我们那个典型例子吗？让我们看看我们的编译器工作的如何。</p>
+<pre>$ echo &#39;int do_math(int a) { int x = a * 5 + 3 } do_math(10)&#39; | ./parser
+0x100a00f10
+Generating code...
+Generating code for 20NFunctionDeclaration
+Creating variable declaration int a
+Generating code for 20NVariableDeclaration
+Creating variable declaration int x
+Creating assignment for x
+Creating binary operation 276
+Creating binary operation 274
+Creating integer: 3
+Creating integer: 5
+Creating identifier reference: a
+Creating block
+Creating function: do_math
+Generating code for 20NExpressionStatement
+Generating code for 11NMethodCall
+Creating integer: 10
+Creating method call: do_math
+Creating block
+Code is generated.
+; ModuleID = &#39;main&#39;
+
+define internal void @main() {
+entry:
+	%0 = call i64 @do_math(i64 10)		;  [#uses=0]
+	ret void
+}
+
+define internal i64 @do_math(i64) {
+entry:
+	%a = alloca i64		;  [#uses=1]
+	%x = alloca i64		;  [#uses=1]
+	%1 = add i64 5, 3	;  [#uses=1]
+	%2 = load i64* %a	;  [#uses=1]
+	%3 = mul i64 %2, %1	;  [#uses=1]
+	store i64 %3, i64* %x
+	ret void
+}
+Running code...
+Code was run.
+</pre>
+<p></p><h2>8、结论</h2>
+<p></p>
+<p>是不是非常的酷？我同意如果你只是从这篇文章中拷贝粘贴的话，你可能会对运行得到的结果感觉有点失望，但是这点结果可能也会激发你更大的兴趣。此外，这就是本文的意义，这不是本篇指导文章的结束，这只是一个开始。因为有了这篇文章的介绍，你可以在文法分析，语法分析和装配语言的时候附加上一些疯狂的特性，然后创造出一个你自己命名的语言。你现在已经可以编译语句块了，那么你现在应该已经有如何继续下去的基本想法。<br/>
+本文完整的代码在Github<a href="https://github.com/lsegal/my_toy_compiler">这里</a>。我一直都在避免提到这个代码，因为这个代码不是本文的重点，而仅仅是带过这部分代码。</p>
+<p>我意识到这是一篇非常长的文章，并且这篇文章中难免会有出错的地方，如果你找到了任何问题，在你觉得有空的时候，欢迎你给我发电子邮件，我将会调整我的文章。你如果向想我们共享一些信息，你也可以在你觉得有空的时候写信给我们。</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1547-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">编译原理</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>使用Flex Bison 和LLVM编写自己的编译器</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1373" class="comment even thread-even depth-1">
+<article id="div-comment-1373" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dutor.net" class="url" rel="ugc external nofollow">ivan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1373"><time datetime="2009-10-13T07:17:48+08:00">2009年10月13日 07:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>really crazy.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1426" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1426" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7af1d0794ce038542302d237166acfb0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7af1d0794ce038542302d237166acfb0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">huangbaihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1426"><time datetime="2009-10-16T09:19:35+08:00">2009年10月16日 09:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>so beautifull………</p>
+</div>
+ </article>
+</li>
+<li id="comment-1434" class="comment even thread-even depth-1">
+<article id="div-comment-1434" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/963fc7a6f634d5d6c092a6dd2d3fc053?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/963fc7a6f634d5d6c092a6dd2d3fc053?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">davelv</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1434"><time datetime="2009-10-16T22:06:57+08:00">2009年10月16日 22:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近要做一个C编译器。看来这些工具真的很不错啊~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1660" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1660" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/505193955e57b7c8d1db9791ff8586cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/505193955e57b7c8d1db9791ff8586cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">匿名人士65535</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1660"><time datetime="2009-10-27T13:22:49+08:00">2009年10月27日 13:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>bison没用代码格式，尖括号里面的东西都没了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1696" class="comment even thread-even depth-1">
+<article id="div-comment-1696" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c68c8c1268b149ac034d9ee8c5d5ab99?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c68c8c1268b149ac034d9ee8c5d5ab99?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">doubhua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1696"><time datetime="2009-10-30T17:55:02+08:00">2009年10月30日 17:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Good material。<br/>
+只是下面这句话翻译得有点绕：<br/>
+“(在语言在组装成而进程码之前)” 提供原文做为参考：(before it is assembled)</p>
+</div>
+ </article>
+</li>
+<li id="comment-2043" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://shaoyf.com/blog/?p=23" class="url" rel="ugc external nofollow">最要的网址 - 紫阳成功策划网</a> </div>
+</li>
+<li id="comment-2044" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://shaoyf.com/blog/?p=25" class="url" rel="ugc external nofollow">使用Flex Bison 和LLVM编写自己的编译器 - 紫阳成功策划网</a> </div>
+</li>
+<li id="comment-2059" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2059" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9fd01bec37a42a6f3cdb59388b0c9328?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9fd01bec37a42a6f3cdb59388b0c9328?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aMR</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-2059"><time datetime="2009-11-23T23:35:51+08:00">2009年11月23日 23:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个语法定义有问题，优先级明显不对~<br/>
+符号定义为comparison后会丢失优先级~~</p>
+<p>例子中那个程序先算了加法，后算了乘法，作者居然没发现……</p>
+</div>
+ </article>
+</li>
+<li id="comment-2786" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bobosky.name/?p=76" class="url" rel="ugc external nofollow">使用Flex、Bison和LLVM编写你自己的编译器（译），2 | BoboSky</a> </div>
+</li>
+<li id="comment-2787" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bobosky.name/?p=68" class="url" rel="ugc external nofollow">使用Flex、Bison和LLVM编写你自己的编译器（译），1 | BoboSky</a> </div>
+</li>
+<li id="comment-4914" class="comment even thread-even depth-1">
+<article id="div-comment-4914" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8acada2414c366a86bd9d2ebe4e5a232?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8acada2414c366a86bd9d2ebe4e5a232?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wind</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-4914"><time datetime="2010-02-05T13:11:25+08:00">2010年02月05日 13:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-2059" rel="nofollow">@aMR</a><br/>
+人家好心发教程，你墨迹个p…</p>
+</div>
+ </article>
+</li>
+<li id="comment-18960" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-18960" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b525434d3d96b9877241de5a569c50d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b525434d3d96b9877241de5a569c50d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hi.baidu.com/ghxandsky/" class="url" rel="ugc external nofollow">华星</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-18960"><time datetime="2010-12-16T23:32:53+08:00">2010年12月16日 23:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近在看单片机89c51的编译器as31，就是典型的汇编语义实现例子。谢谢你文章！</p>
+</div>
+ </article>
+</li>
+<li id="comment-21122" class="comment even thread-even depth-1">
+<article id="div-comment-21122" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a827cc65e9f087d4ae785dfd2ebe76b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a827cc65e9f087d4ae785dfd2ebe76b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">BrokenCoder</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-21122"><time datetime="2011-01-01T09:38:05+08:00">2011年01月01日 09:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢！正需要学这个呢。<br/>
+Bison部分的parser.y 有错，跟原作者的代码不太一样，原作者的代码没问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-53451" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-53451" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cbed79514bf01f71e44b57ee825f43a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cbed79514bf01f71e44b57ee825f43a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xefan.com" class="url" rel="ugc external nofollow">龙昌</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-53451"><time datetime="2011-05-19T22:50:43+08:00">2011年05月19日 22:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，必须得顶！</p>
+</div>
+ </article>
+</li>
+<li id="comment-110996" class="comment even thread-even depth-1">
+<article id="div-comment-110996" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9c7b34cc25962a2e4e5d60a32c35d54e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9c7b34cc25962a2e4e5d60a32c35d54e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小鬼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-110996"><time datetime="2011-12-15T23:12:57+08:00">2011年12月15日 23:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很好的文章，很难得看到这么好的内容</p>
+</div>
+ </article>
+</li>
+<li id="comment-195900" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195900" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85a015e4e325fad3f27497524fa49721?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85a015e4e325fad3f27497524fa49721?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imlg.tk" class="url" rel="ugc external nofollow">rexfield</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-195900"><time datetime="2012-06-03T10:12:10+08:00">2012年06月03日 10:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GJ！以前只是用Flex&amp;Bison写编译器，现在打算部署LLVM了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-195901" class="comment even thread-even depth-1">
+<article id="div-comment-195901" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85a015e4e325fad3f27497524fa49721?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85a015e4e325fad3f27497524fa49721?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imlg.tk" class="url" rel="ugc external nofollow">rexfield</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-195901"><time datetime="2012-06-03T10:20:29+08:00">2012年06月03日 10:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>语法文件的话网上有下，标准C的。现在一下子找不到了，名字叫c-parse.y</p>
+</div>
+ </article>
+</li>
+<li id="comment-196488" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-196488" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b38112dab64a08259aeafc79d2d157ff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b38112dab64a08259aeafc79d2d157ff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yangzhichina</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-196488"><time datetime="2012-06-13T16:01:49+08:00">2012年06月13日 16:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我在运行bison -d -o parser.cpp parser.y的时候，为什么会遇到parser.y: conflicts: 24 shift/reduce的提示。</p>
+</div>
+ </article>
+</li>
+<li id="comment-294813" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://wp-zxg.rhcloud.com/?p=512" class="url" rel="ugc external nofollow">[转]使用Flex Bison 和LLVM编写自己的编译器 | My Blog</a> </div>
+</li>
+<li id="comment-706926" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1757" class="url" rel="ugc external nofollow">Technology of Heartbeat #13 | Steve Guan</a> </div>
+</li>
+<li id="comment-762716" class="comment even thread-even depth-1">
+<article id="div-comment-762716" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/88ffe69be8bd2e228de0b4e65f77d760?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/88ffe69be8bd2e228de0b4e65f77d760?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NTj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-762716"><time datetime="2013-09-26T18:06:02+08:00">2013年09月26日 18:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太棒了<br/>
+學習中</p>
+</div>
+ </article>
+</li>
+<li id="comment-1241284" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hohosoft.com/?p=1084" class="url" rel="ugc external nofollow">C++ Object Persistence with ODB(转) | 吼吼 ~</a> </div>
+</li>
+<li id="comment-1281644" class="comment even thread-even depth-1">
+<article id="div-comment-1281644" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/101967363efcc7c04f2f855d8be02e07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/101967363efcc7c04f2f855d8be02e07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yunai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1281644"><time datetime="2014-02-16T14:54:50+08:00">2014年02月16日 14:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>编译bison文件的时候显示type不对</p>
+</div>
+ </article>
+</li>
+<li id="comment-1281648" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1281648" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/101967363efcc7c04f2f855d8be02e07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/101967363efcc7c04f2f855d8be02e07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yunai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1281648"><time datetime="2014-02-16T14:57:07+08:00">2014年02月16日 14:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>type需要确定类型。这里都没有确定类型。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1463454" class="comment even thread-even depth-1">
+<article id="div-comment-1463454" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/629d0757826755496d1ff0175301521a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/629d0757826755496d1ff0175301521a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">keroro520</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1463454"><time datetime="2014-05-17T22:33:30+08:00">2014年05月17日 22:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个教程是好多年了的, 现在llvm的版本都升级到3.4了, 编译不通过.</p>
+<p>就算是github上的代码也不能编译通过…默默地看代码就够了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638211" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1638211" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a781013cc043f14abbd174a9b9756aab?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a781013cc043f14abbd174a9b9756aab?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">afa</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1638211"><time datetime="2014-12-31T19:38:11+08:00">2014年12月31日 19:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-196488" rel="nofollow">@yangzhichina </a> </p>
+<blockquote cite="#commentbody-196488"><p>
+<strong><a href="#comment-196488" rel="nofollow">yangzhichina</a> :</strong><br/>
+我在运行bison -d -o parser.cpp parser.y的时候，为什么会遇到parser.y: conflicts: 24 shift/reduce的提示。
+</p></blockquote>
+<p>语言定义不严谨，有二义性</p>
+</div>
+ </article>
+</li>
+<li id="comment-1781844" class="comment even thread-even depth-1">
+<article id="div-comment-1781844" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54f78dacec77a935cfce39cfca00e3eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54f78dacec77a935cfce39cfca00e3eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wech</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1781844"><time datetime="2015-10-27T10:54:29+08:00">2015年10月27日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>parser.y: 警告: 48 shift/reduce conflicts [-Wconflicts-sr]</p>
+</div>
+ </article>
+</li>
+<li id="comment-1789567" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1789567" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85b9220c382d03858156e5fa050f0b14?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85b9220c382d03858156e5fa050f0b14?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://n2os.org" class="url" rel="ugc external nofollow">wms</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1789567"><time datetime="2015-11-14T14:53:35+08:00">2015年11月14日 14:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>里面的内容都被忽略了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1789568" class="comment even thread-even depth-1">
+<article id="div-comment-1789568" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85b9220c382d03858156e5fa050f0b14?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85b9220c382d03858156e5fa050f0b14?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://n2os.org" class="url" rel="ugc external nofollow">wms</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-1789568"><time datetime="2015-11-14T14:54:02+08:00">2015年11月14日 14:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>尖括号里面的内容都被当HTML解析了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1928660" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://com-it.tech/archives/40707" class="url" rel="ugc external nofollow">Lex和Yacc學習筆記 - 程序員的後花園</a> </div>
+</li>
+<li id="comment-2308025" class="comment even thread-even depth-1">
+<article id="div-comment-2308025" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4dfeb5acb21e4104109c115139e4521?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4dfeb5acb21e4104109c115139e4521?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小放牛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1547.html#comment-2308025"><time datetime="2021-09-25T06:46:48+08:00">2021年09月25日 06:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不可思议，这感觉像是通过网购组装出原子弹。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,788 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Linux PID 1 和 Systemd | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17998 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17998" class="post-content post-17998 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-progdesign tag-linux tag-systemd tag-unix tag-upstart">
+<header class="entry-header">
+<span class="screen-reader-text">Linux PID 1 和 Systemd</span>
+<h1 class="entry-title">Linux PID 1 和 Systemd</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17998.html" title="21:40" rel="bookmark"><time class="entry-date" datetime="2017-07-16T21:40:55+08:00" pubdate="">2017年07月16日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17998.html#comments" class="comments-link">49 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 88,875 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full" src="/uploads/2017/07/systemd.jpeg" alt="" width="275" height="183" srcset=""/>要说清 Systemd，得先从Linux操作系统的启动说起。Linux 操作系统的启动首先从 BIOS 开始，然后由 Boot Loader 载入内核，并初始化内核。内核初始化的最后一步就是启动 init 进程。这个进程是系统的第一个进程，PID 为 1，又叫超级进程，也叫根进程。它负责产生其他所有用户进程。所有的进程都会被挂在这个进程下，如果这个进程退出了，那么所有的进程都被 kill 。如果一个子进程的父进程退了，那么这个子进程会被挂到 PID 1 下面。（注：PID 0 是内核的一部分，主要用于内进换页，参看：<a href="https://en.wikipedia.org/wiki/Process_identifier" target="_blank" rel="noopener noreferrer">Process identifier</a>）</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#SysV_Init" title="SysV Init">SysV Init</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#UpStart" title="UpStart">UpStart</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Systemd" title="Systemd">Systemd</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Systemd_%E4%BA%89%E8%AE%BA%E5%92%8C%E5%85%AB%E5%8D%A6" title="Systemd 争论和八卦">Systemd 争论和八卦</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%85%B6%E5%AE%83" title="其它">其它</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB" title="延伸阅读">延伸阅读</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="SysV_Init"></span>SysV Init<span class="ez-toc-section-end"></span></h4>
+<p>PID 1 这个进程非常特殊，其主要就任务是把整个操作系统带入可操作的状态。比如：启动 UI – Shell 以便进行人机交互，或者进入 X 图形窗口。传统上，PID 1 和传统的 Unix System V 相兼容的，所以也叫 <code>sysvinit</code>，这是使用得最悠久的 init 实现。Unix System V 于1983年 release。</p>
+<p>在 <code>sysvint</code> 下，有好几个运行模式，又叫 <code>runlevel</code>。比如：常见的 3 级别指定启动到多用户的字符命令行界面，5 级别指定启起到图形界面，0 表示关机，6 表示重启。其配置在 <code>/etc/inittab</code> 文件中。</p>
+<p><span id="more-17998"></span></p>
+<p>与此配套的还有 <code>/etc/init.d/</code> 和 <code>/etc/rc[X].d</code>，前者存放各种进程的启停脚本（需要按照规范支持 <code>start</code>，<code>stop</code>子命令），后者的 X 表示不同的 runlevel 下相应的后台进程服务，如：<code>/etc/rc3.d</code> 是 runlevel=3 的。 里面的文件主要是 link 到  <code>/etc/init.d/</code> 里的启停脚本。其中也有一定的命名规范：S 或 K 打头的，后面跟一个数字，然后再跟一个自定义的名字，如：<code>S01rsyslog</code>，<code>S02ssh</code>。S 表示启动，K表示停止，数字表示执行的顺序。</p>
+<h4><span class="ez-toc-section" id="UpStart"></span>UpStart<span class="ez-toc-section-end"></span></h4>
+<p>Unix 和 Linux 在 <code>sysvint</code> 运作多年后，大约到了2006年的时候，Linux内核进入2.6时代，Linux有了很多更新。并且，Linux开始进入桌面系统，而桌面系统和服务器系统不一样的是，桌面系统面临频繁重启，而且，用户会非常频繁的使用硬件的热插拔技术。于是，这些新的场景，让 <code>sysvint</code> 受到了很多挑战。</p>
+<p>比如，打印机需要CUPS等服务进程，但是如果用户没有打机印，启动这个服务完全是一种浪费，而如果不启动，如果要用打印机了，就无法使用，因为<code>sysvint</code> 没有自动检测的机制，它只能一次性启动所有的服务。另外，还有网络盘挂载的问题。在 <code>/etc/fstab</code> 中，负责硬盘挂载，有时候还有网络硬盘（NFS 或 iSCSI）在其中，但是在桌面机上，有很可能开机的时候是没有网络的， 于是网络硬盘都不可以访问，也无法挂载，这会极大的影响启动速度。<code>sysvinit</code> 采用 <code>netdev</code> 的方式来解决这个问题，也就是说，需要用户自己在 <code>/etc/fstab</code> 中给相应的硬盘配置上 <code>netdev</code> 属性，于是 <code>sysvint</code> 启动时不会挂载它，只有在网络可用后，由专门的 <code>netfs</code> 服务进程来挂载。这种管理方式比较难以管理，也很容易让人掉坑。</p>
+<p>所以，Ubuntu 开发人员在评估了当时几个可选的 init 系统后，决定重新设计这个系统，于是，这就是我们后面看到的 <code>upstart</code> 。 <code>upstart</code> 基于事件驱动的机制，把之前的完全串行的同步启动服务的方式改成了由事件驱动的异步的方式。比如：如果有U盘插入，<code>udev</code> 得到通知，<code>upstart</code> 感知到这个事件后触发相应的服务程序，比如挂载文件系统等等。因为使用一个事件驱动的玩法，所以，启动操作系统时，很多不必要的服务可以不用启动，而是等待通知，lazy 启动。而且事件驱动的好处是，可以并行启动服务，他们之间的依赖关系，由相应的事件通知完成。</p>
+<p>upstart 有着很不错的设计，其中最重要的两个概念是 Job 和 Event。</p>
+<p><strong>Job</strong> 有一般的Job，也有service的Job，并且，<code>upstart</code> 管理了整个 Job 的生命周期，比如：Waiting, Starting, pre-Start, Spawned, post-Start, Running, pre-Stop, Stopping, Killed, post-Stop等等，并维护着这个生命周期的状态机。</p>
+<p><strong>Event</strong> 分成三类，<code>signal</code>, <code>method</code> 和 <code>hooks</code>。<code>signal</code> 就是异步消息，<code>method</code> 是同步阻塞的。<code>hooks</code> 也是同步的，但介于前面两者之间，发出hook事件的进程必须等到事件完成，但不检查是否成功。</p>
+<p>但是，<code>upstart</code> 的事件非常复杂，也非常纷乱，各种各样的事件（事件没有归好类）导致有点凌乱。不过因为整个事件驱动的设计比之前的 <code>sysvinit</code> 来说好太多，所以，也深得欢迎。</p>
+<h4><span class="ez-toc-section" id="Systemd"></span>Systemd<span class="ez-toc-section-end"></span></h4>
+<p>直到2010的有一天，一个在 RedHat工作的工程师 <a title="Lennart Poettering" href="https://en.wikipedia.org/wiki/Lennart_Poettering" target="_blank" rel="noopener noreferrer">Lennart Poettering</a> 和 <a title="Kay Sievers" href="https://en.wikipedia.org/wiki/Kay_Sievers">Kay Sievers</a> ，开始引入了一个新的 <code>init</code> 系统—— <code>systemd</code>。这是一个非常非常有野心的项目，这个项目几乎改变了所有的东西，<code>systemd</code> 不但想取代已有的 init 系统，而且还想干更多的东西。</p>
+<p>Lennart 同意 <code>upstart</code> 干的不错，代码质量很好，基于事件的设计也很好。但是他觉得 <code>upstart</code> 也有问题，其中最大的问题还是不够快，虽然 <code>upstart</code> 用事件可以达到一定的启动并行度，但是，本质上来说，这些事件还是会让启动过程串行在一起。  如：<code>NetworkManager</code> 在等 <code>D-Bus</code> 的启动事件，而 <code>D-Bus</code> 在等 <code>syslog</code> 的启动事件。</p>
+<p>Lennart 认为，实现上来说，<code>upstart</code> 其实是在管理一个逻辑上的服务依赖树，但是这个服务依赖树在表现形式上比较简单，你只需要配置——“启动 B好了就启动A”或是“停止了A后就停止B”这样的规则。但是，Lennart 说，这种简单其实是有害的（this simplification is actually detrimental）。他认为，</p>
+<ul>
+<li>从一个系统管理的角度出来，他一开始会设定好整个系统启动的服务依赖树，但是这个系统管理员要人肉的把这个本来就非常干净的服务依整树给翻译成计算机看的懂的 Event/Action 形式，而且 Event/Action 这种配置方式是运行时的，所以，你需要运行起来才知道是什么样的。</li>
+</ul>
+<ul>
+<li>Event逻辑从头到脚到处都是，这个事件扩大了运维的复杂度，还不如之前的 <code>sysvint</code>。 也就是说，当用户配置了 “启动 <code>D-Bus</code> 后请启动 <code>NetworkManager</code>”， 这个 <code>upstart</code> 可以干，但是反过来，如果，用户启动 <code>NetworkManager</code>，我们应该先去启动他的前置依赖 <code>D-Bus</code>，然而你还要配置相应的反向 Event。本来，我只需要配置一条依赖的，结果现在我要配置很多很多情况下的Event。</li>
+</ul>
+<ul>
+<li>最后，<code>upstart</code> 里的 Event 的并不标准，很混乱，没有良好的定义。比如：既有，进程启动，运行，停止的事件，也有USB设备插入、可用、拔出的事件，还有文件系统设备being mounted、 mounted 和 umounted 的事件，还有AC电源线连接和断开的事件。你会发现，这进程启停的、USB的、文件系统的、电源线的事件，看上去长得很像， 但是没有被标准化抽像出来掉，因为绝大多数的事件都是三元组：start, condition, stop 。这种概念设计模型并没有在 <code>upstart</code> 中出现。因为 <code>upstart</code> 被设计为单一的事件，而忽略了逻辑依赖。</li>
+</ul>
+<p>当然，如果 <code>systemd</code> 只是解决 <code>upstart</code> 的问题，他就改造 <code>upstart</code> 就好了，但是 Lennart 的野心不只是想干个这样的事，他想干的更多。</p>
+<p>首先，<code>systemd</code> 清醒的认识到了 init 进程的首要目标是要让用户快速的进入可以操作OS的环境，所以，这个速度一定要快，越快越好，所以，<code>systemd</code> 的设计理念就是两条：</p>
+<ul>
+<li>To start <b>less</b>.</li>
+<li>And to start <b>more</b> in <i>parallel</i>.</li>
+</ul>
+<p>也就是说，按需启动，能不启动就不启动，如果要启动，能并行启动就并行启动，包括你们之间有依赖，我也并行启动。按需启动还好理解，那么，有依赖关系的并行启动，它是怎么做到的？这里，<code>systemd</code> 借鉴了 MacOS 的 <code>Launchd</code> 的玩法（在Youtube上有一个分享——<a href="https://www.youtube.com/watch?v=SjrtySM9Dns" target="_blank" rel="noopener noreferrer">Launchd: One Program to Rule them All</a>，在苹果的开源网站上也有相关的设计文档——<a href="https://developer.apple.com/library/content/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/Introduction.html" target="_blank" rel="noopener noreferrer">About Daemons and Services</a>）</p>
+<p>要解决这些依赖性，systemd 需要解决好三种底层依赖—— Socket， D-Bus ，文件系统。</p>
+<ul>
+<li><strong>Socket依赖</strong>。如果服务C依赖于服务S的socket，那么就要先启动S，然后再启动C，因为如果C启动时找不到S的Socket，那么C就会失败。<code>systemd</code> 可以帮你在S还没有启动好的时候，建立一个socket，用来接收所有的C的请求和数据，并缓存之，一旦S全部启动完成，把systemd替换好的这个缓存的数据和Socket描述符替换过去。</li>
+</ul>
+<p> </p>
+<ul>
+<li><strong>D-Bus依赖</strong>。<code>D-Bus</code> 全称 Desktop Bus，是一个用来在进程间通信的服务。除了用于用户态进程和内核态进程通信，也用于用户态的进程之前。现在，很多的现在的服务进程都用 <code>D-Bus</code> 而不是Socket来通信。比如：<code>NetworkManager</code> 就是通过 <code>D-Bus</code> 和其它服务进程通讯的，也就是说，如果一个进程需要知道网络的状态，那么就必需要通过 <code>D-Bus</code> 通信。<code>D-Bus</code> 支持 “Bus Activation”的特性。也就是说，A要通过 <code>D-Bus</code> 服务和B通讯，但是B没有启动，那么 <code>D-Bus</code> 可以把B起来，在B启动的过程中，<code>D-Bus</code> 帮你缓存数据。<code>systemd</code> 可以帮你利用好这个特性来并行启动 A 和 B。</li>
+</ul>
+<p> </p>
+<ul>
+<li><strong>文件系统依赖</strong>。系统启动过程中，文件系统相关的活动是最耗时的，比如挂载文件系统，对文件系统进行磁盘检查（fsck），磁盘配额检查等都是非常耗时的操作。在等待这些工作完成的同时，系统处于空闲状态。那些想使用文件系统的服务似乎必须等待文件系统初始化完成才可以启动。<code>systemd</code> 参考了 <code>autofs</code> 的设计思路，使得依赖文件系统的服务和文件系统本身初始化两者可以并发工作。<code>autofs</code> 可以监测到某个文件系统挂载点真正被访问到的时候才触发挂载操作，这是通过内核 <code>automounter</code> 模块的支持而实现的。比如一个 <code>open()</code> 系统调用作用在某个文件系统上的时候，而这个文件系统尚未执行挂载，此时 <code>open()</code> 调用被内核挂起等待，等到挂载完成后，控制权返回给 <code>open()</code> 系统调用，并正常打开文件。这个过程和 <code>autofs</code> 是相似的。</li>
+</ul>
+<p> </p>
+<p>下图来自 Lennart 的演讲里的一页PPT，展示了不同 init 系统的启动。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2017/07/boot.png" alt="" width="467" height="308" srcset=""/></p>
+<p>除此之外，systemd 还在启动时管理好了一些下面的事。</p>
+<p>用C语言取代传统的脚本式的启动。前面说过，<code>sysvint</code> 用 <code>/etc/rcX.d</code> 下的各种脚本启动。然而这些脚本中需要使用 <code>awk</code>, <code>sed</code>, <code>grep</code>, <code>find</code>, <code>xargs</code> 等等这些操作系统的命令，这些命令需要生成进程，生成进程的开销很大，关键是生成完这些进程后，这个进程就干了点屁大的事就退了。换句话说就是，我操作系统干了那么多事为你拉个进程起来，结果你就把个字串转成小写就退了，把我操作系统当什么了？</p>
+<p>在正常的一个 <code>sysvinit</code> 的脚本里，可能会有成百上千个这样的命令。所以，慢死。因此，<code>systemd</code> 全面用 C 语言全部取代了。一般来说，<code>sysvinit</code> 下，操作系统启动完成后，用 <code>echo $$</code> 可以看到，pid 被分配到了上千的样子，而 <code>systemd</code> 的系统只是上百。</p>
+<p>另外，systemd 是真正一个可以管住服务进程的——可以跟踪上服务进程所fork/exec出来的所有进程。</p>
+<ul>
+<li>我们知道， 传统 Unix/Linux 的 Daemon 服务进程的最佳实践基本上是这个样子的 （具体过程可参看这篇文章“<a href="http://0pointer.de/public/systemd-man/daemon.html#SysV%20Daemons" target="_blank" rel="noopener noreferrer">SysV Daemon</a>”）——
+<ol>
+<li>进程启动时，关闭所有的打开的文件描述符（除了标准描述符0,1,2），然后重置所有的信号处理。</li>
+<li>调用 <code>fork()</code> 创建子进程，在子进程中 <code>setsid()</code>，然后父进程退出（为了后台执行）</li>
+<li>在子进程中，再调用一次 <code>fork()</code>，创建孙子进程，确定没有交互终端。然后子进程退出。</li>
+<li>在孙子进程中，把标准输入标准输出标准错误都连到 <code>/dev/null</code> 上，还要创建 pid 文件，日志文件，处理相关信号 ……</li>
+<li>最后才是真正开始提供服务。</li>
+</ol>
+</li>
+</ul>
+<p> </p>
+<ul>
+<li>在上面的这个过程中，服务进程除了两次 <code>fork</code> 外还会 <code>fork</code> 出很多很多的子进程（比如说一些Web服务进程，会根据用户的请求链接来 <code>fork</code> 子进程），这个进程树是相当难以管理的，因为，一旦父进程退出来了，子进程就会被挂到 PID 1下，所以，基本上来说，你无法通过服务进程自已给定的一个pid文件来找到所有的相关进程（这个对开发者的要求太高了），所以，在传统的方式下用脚本启停服务是相当相当的 Buggy 的，因为无法做对所有的服务生出来的子子孙孙做到监控。</li>
+</ul>
+<p> </p>
+<ul>
+<li>为了解决这个问题，<code>upstart</code> 通过变态的 <code>strace</code> 来跟踪进程中的 <code>fork()</code> 和 <code>exec()</code> 或 <code>exit()</code> 等相关的系统调用。这种方法相当笨拙。 <code>systemd</code> 使用了一个非常有意思的玩法来 tracking 服务进程生出来的所有进程，那就是用 <code>cgroup</code> （我在 <a href="/articles/17049.html" target="_blank" rel="noopener noreferrer">Docker 的基础技术“cgroup篇”</a>中讲过这个东西）。cgroup主要是用来管理进程组资源配额的事，所以，无论服务如何启动新的子进程，所有的这些相关进程都会同属于一个 <code>cgroup</code>，所以，<code>systemd</code> 只需要简单的去遍历一下相应的 <code>cgroup</code> 的那个虚文件系统目录下的文件，就可以正确的找到所有的相关进程，并将他们一一停止。</li>
+</ul>
+<p> </p>
+<p>另外，<code>systemd</code> 简化了整个 daemon 开发的过程：</p>
+<ul>
+<li>不需要两次 <code>fork()</code>，只需要实现服务本身的主逻辑就可以了。</li>
+<li>不需要 <code>setsid()</code>，<code>systemd</code> 会帮你干</li>
+<li>不需要维护 <code>pid文件</code>，<code>systemd</code> 会帮处理。</li>
+<li>不需要管理日志文件或是使用<code>syslog</code>，或是处理<code>HUP</code>的日志reload信号。把日志打到 <code>stderr</code> 上，<code>systemd</code> 帮你管理。</li>
+<li>处理 <code>SIGTERM</code> 信号，这个信号就是正确退出当前服务，不要做其他的事。</li>
+<li>……</li>
+</ul>
+<p>除此之外，<code>systemd</code> 还能——</p>
+<ul>
+<li>自动检测启动的服务间有没有环形依赖。</li>
+<li>内建 autofs 自动挂载管理功能。</li>
+<li>日志服务。<code>systemd</code> 改造了传统的 syslog 的问题，采用二进制格式保存日志，日志索引更快。</li>
+<li>快照和恢复。对当前的系统运行的服务集合做快照，并可以恢复。</li>
+<li>……</li>
+</ul>
+<p>还有好多好多，他接管很多很多东西，于是就让很多人不爽了，因为他在干了很多本不属于 PID 1 的事。</p>
+<h4><span class="ez-toc-section" id="Systemd_%E4%BA%89%E8%AE%BA%E5%92%8C%E5%85%AB%E5%8D%A6"></span>Systemd 争论和八卦<span class="ez-toc-section-end"></span></h4>
+<p>于是 <code>systemd</code> 这个东西成了可能是有史以来口水战最多的一个开源软件了。<code>systemd</code> 饱受各种争议，最大的争议就是他破坏了 Unix 的设计哲学（相关的哲学可以读一下《<a href="https://book.douban.com/subject/1467587/" target="_blank" rel="noopener noreferrer">Unix编程艺术</a>》），干了一个大而全而且相当复杂的东西。当然，Lennart 并不同意这样的说法，他后来又写一篇blog “<a href="http://0pointer.de/blog/projects/the-biggest-myths.html" target="_blank" rel="noopener noreferrer">The Biggest Myths</a>”来解释 <code>systemd</code> 并不是这样的，大家可以前往一读。</p>
+<p>这个争议大到什么样子呢？2014 年，Debian Linux 因为想准备使用 <code>systemd</code> 来作为标准的 init 守护进程来替换 <code>sysvinit</code> 。而围绕这个事的争论达到了空前的热度，争论中充满着仇恨，<code>systemd</code> 的支持者和反对者都在互相辱骂，导致当时 Debian 阵营开始分裂。还有人给 Lennart 发了死亡威胁的邮件，用比特币雇凶买杀手，扬言要取他的性命，在Youbute上传了侮辱他的歌曲，在IRC和各种社交渠道上给他发下流和侮辱性的消息。这已经不是争议了，而是一种不折不扣的仇恨！</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full" src="/uploads/2017/07/systemd_shewantsit.jpg" alt="" width="1000" height="421" srcset=""/></p>
+<p>于是，Lennart 在 <a href="https://plus.google.com/+LennartPoetteringTheOneAndOnly/posts/J2TZrTvu7vd" target="_blank" rel="noopener noreferrer">Google Plus 上发了贴子</a>，批评整个 Linux 开源社区和 Linus 本人。他大意说，</p>
+<blockquote><p>这个社区太病态了，全是 ass holes，你们不停用各种手段在各种地方用不同的语言和方式来侮辱和漫骂我。我还是一个年轻人，我从来没有经历过这样的场面，但是今天我已经对这种场面很熟悉了。我有时候说话可能不准确，但是我不会像他样那样说出那样的话，我也没有被这些事影响，因为我脸皮够厚，所以，为什么我可以在如何大的反对声面前让 <code>systemd</code> 成功，但是，你们 Linux 社区太可怕了。你们里面的有精神病的人太多了。另外，对于Linus Torvalds，你是这个社区的 Role Model，但可惜你是一个 Bad Role Model，你在社区里的刻薄和侮辱性的言行，基本从一定程度上鼓励了其它人跟你一样，当然，并不只是你一个人的问题，而是在你周围聚集了一群和你一样的这样干的人。送你一句话—— A fish rots from the head down ！一条鱼是从头往下腐烂的……</p></blockquote>
+<p>这篇契文很长，喜欢八卦的同学可以前往一读。感受一下 Lennart 当时的心态（我觉得能算上是非常平稳了）。</p>
+<p>Linus也在被一媒体问起 <code>systemd</code> 这个事来（参看“<a href="https://www.itwire.com/business-it-news/open-source/65402-torvalds-says-he-has-no-strong-opinions-on-systemd" target="_blank" rel="noopener noreferrer">Torvalds says he has no strong opinions on systemd</a>”），Linus在采访里说，</p>
+<blockquote><p>我对 <code>systemd</code> 和 Lennart 的贴子没有什么强烈的想法。虽然，传统的 Unix 设计哲学—— “Do one thing and Do it well”，很不错，而且我们大多数人也实践了这么多年，但是这并不代表所有的真实世界。在历史上，也不只有<code>systemd</code> 这么干过。但是，我个人还是 old-fashioned 的人，至少我喜欢文本式的日志，而不是二进制的日志。但是 <code>systemd</code> 没有必要一定要有这样的品味。哦，我说细节了……</p></blockquote>
+<p>今天，<code>systemd</code> 占据了几乎所有的主流的 Linux 发行版的默认配置，包括：Arch Linux、CentOS、CoreOS、Debian、Fedora、Megeia、OpenSUSE、RHEL、SUSE企业版和 Ubuntu。而且，对于 CentOS, CoreOS, Fedora, RHEL, SUSE这些发行版来说，不能没有 <code>systemd</code>。（Ubuntu 还有一个不错的wiki – <a href="https://wiki.ubuntu.com/SystemdForUpstartUsers" target="_blank" rel="noopener noreferrer">Systemd for Upstart Users</a> 阐述了如何在两者间切换）</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83"></span>其它<span class="ez-toc-section-end"></span></h4>
+<p>还记得在《<a href="/articles/17416.html" target="_blank" rel="noopener noreferrer">缓存更新的套路</a>》一文中，我说过，<strong>如果你要做好架构，首先你得把计算机体系结构以及很多老古董的基础技术吃透了</strong>。因为里面会有很多可以借鉴和相通的东西。那么，你是否从这篇文章里看到了一些有分布式架构相似的东西？</p>
+<p>比如：从 <code>sysvinit</code> 到 <code>upstart</code> 再到 <code>systemd</code>，像不像是服务治理？Linux系统下的这些服务进程，是不是很像分布式架构中的微服务？还有那个D-Bus，是不是很像SOA里的ESB？而 init 系统是不是很像一个控制系统？甚至像一个服务编排（Service Orchestration）系统？</p>
+<p>分布式系统中的服务之间也有很多依赖，所以，在启动一个架构的时候，如果我们可以做到像 systemd 那样并行启动的话，那么是不是就像是一个微服务的玩法了？</p>
+<p>嗯，你会发现，技术上的很多东西是相通的，也是互相有对方的影子，所以，其实技术并不多。关键是我们学在了表面还是看到了本质。</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"></span>延伸阅读<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li>Lennert 的博文：<a href="http://0pointer.de/blog/projects/systemd.html" target="_blank" rel="noopener noreferrer">Rethinking PID 1</a></li>
+<li>Lennert 的演讲：<a href="https://www.youtube.com/watch?v=TyMLi8QF6sw" target="_blank" rel="noopener noreferrer">systemd, beyond init</a> （ <a href="http://www.linux-kongress.org/2010/slides/systemd-poettering.pdf" target="_blank" rel="noopener noreferrer">PPT</a> ）</li>
+<li><a href="https://en.wikipedia.org/wiki/Systemd" target="_blank" rel="noopener noreferrer">Wikipedia：Systemd</a></li>
+<li>LinuxVoice：<a href="https://www.linuxvoice.com/interview-lennart-poettering/" target="_blank" rel="noopener noreferrer">Lennart Poettering 专访</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17998-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Systemd</a>, <a href="javascript:void(0)" rel="tag">Unix</a>, <a href="javascript:void(0)" rel="tag">Upstart</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Linux PID 1 和 Systemd</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1915342" class="comment even thread-even depth-1">
+<article id="div-comment-1915342" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9b4147494137cbefa8245a1eb96b0a75?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9b4147494137cbefa8245a1eb96b0a75?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nicky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915342"><time datetime="2017-07-16T22:34:23+08:00">2017年07月16日 22:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这还算好，这么多发行版都应用了。不好好讨论问题的喷子不理就是了，没啥太好的办法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915343" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915343" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b1a625dad9fba1002023d3407aaf00f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b1a625dad9fba1002023d3407aaf00f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Neveralso</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915343"><time datetime="2017-07-16T22:36:12+08:00">2017年07月16日 22:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915344" class="comment even thread-even depth-1">
+<article id="div-comment-1915344" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/632f3520a6ad5f8bb7276a421d21c00f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/632f3520a6ad5f8bb7276a421d21c00f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://upliu.net" class="url" rel="ugc external nofollow">开飞机的小蜗牛</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915344"><time datetime="2017-07-16T22:45:13+08:00">2017年07月16日 22:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢博主，写的很好。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915347" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915347" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/30a774f7e0667b83d067c064581a9daf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/30a774f7e0667b83d067c064581a9daf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">胡子拉碴的酸书生</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915347"><time datetime="2017-07-16T23:07:46+08:00">2017年07月16日 23:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>佩服，皓子叔常年关注 linux 社区啊，经常看你分享社区见闻</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915348" class="comment even thread-even depth-1">
+<article id="div-comment-1915348" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8107cfefeeb689b9039dc6658d7427f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8107cfefeeb689b9039dc6658d7427f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tryao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915348"><time datetime="2017-07-16T23:15:52+08:00">2017年07月16日 23:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个在 RedHat工作的工程师 Lennart Poettering 和 Kay Sievers =&gt; 改成“两个”比较好？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915349" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915349" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e80e81c3c702964af2babdfa9954617?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e80e81c3c702964af2babdfa9954617?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nonstatic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915349"><time datetime="2017-07-16T23:17:28+08:00">2017年07月16日 23:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我很喜欢最后那段类比！谢谢好文！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915351" class="comment even thread-even depth-1">
+<article id="div-comment-1915351" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85dc0967a33efc312544aeed902bf034?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85dc0967a33efc312544aeed902bf034?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hackdig.com" class="url" rel="ugc external nofollow">hackdig</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915351"><time datetime="2017-07-16T23:54:46+08:00">2017年07月16日 23:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以很难做到只针对事不针对人</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915352" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915352" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/456531a44aad75aa4e548ce2962ae24c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/456531a44aad75aa4e548ce2962ae24c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/kangear" class="url" rel="ugc external nofollow">Tony</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915352"><time datetime="2017-07-17T00:04:40+08:00">2017年07月17日 00:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Android就采用了类似的systemd。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915353" class="comment even thread-even depth-1">
+<article id="div-comment-1915353" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e88e5eb5f45864d88ddd17dd6922c66a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e88e5eb5f45864d88ddd17dd6922c66a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lujjjh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915353"><time datetime="2017-07-17T00:05:56+08:00">2017年07月17日 00:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有一处 typo，“但是如果用户没有打机印”</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915354" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915354" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf9237b4af3e76fc53e9c6d2341878dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf9237b4af3e76fc53e9c6d2341878dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fengqi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915354"><time datetime="2017-07-17T00:34:13+08:00">2017年07月17日 00:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>详细说说D-Bus?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915357" class="comment even thread-even depth-1">
+<article id="div-comment-1915357" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8516a464b88c35c188a560e86015943?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8516a464b88c35c188a560e86015943?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.fengyingsheng.com/" class="url" rel="ugc external nofollow">eason</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915357"><time datetime="2017-07-17T06:20:25+08:00">2017年07月17日 06:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很多都是相同的道理，还是要学习理论基础，这是这篇文章的重点想表达的，学习了！~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915358" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915358" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9bcc0ba7645d51d22f02e9c37a8e2f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9bcc0ba7645d51d22f02e9c37a8e2f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">走过路过</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915358"><time datetime="2017-07-17T08:10:17+08:00">2017年07月17日 08:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>点赞功能不好用，我想点个五星，结果点了一个四星</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915360" class="comment even thread-even depth-1">
+<article id="div-comment-1915360" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/21a1df6339ce83a9e6c7ce3203331f62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/21a1df6339ce83a9e6c7ce3203331f62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://fatgrammer.github.io" class="url" rel="ugc external nofollow">FatGrammer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915360"><time datetime="2017-07-17T08:44:08+08:00">2017年07月17日 08:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>微服务刚出来就感觉，这不是又回到n年前Linux巨内核与微内核的争论了么。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915362" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1915362" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e81ae8142b44ec2fd9373a96e871bce2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e81ae8142b44ec2fd9373a96e871bce2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://feichashao.com" class="url" rel="ugc external nofollow">肥叉烧</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915362"><time datetime="2017-07-17T09:51:09+08:00">2017年07月17日 09:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在桌面环境，systemd 秒开电脑，爽。<br/>
+不过在一年都不重启的服务器环境，用复杂换开机速度是否值得？（可能在云环境需要秒开instance）<br/>
+systemd 比起 initV, 个人最大的感受是出了问题很难排查。在 initV 时代，开不到机屏幕截个图就基本能定位出原因，而在 systemd 时代，妈呀哪出问题了？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1915378" class="comment even depth-2">
+<article id="div-comment-1915378" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c6377c2d4ecfadf24157caaf0daa7f8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c6377c2d4ecfadf24157caaf0daa7f8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.coolypf.com" class="url" rel="ugc external nofollow">coolypf</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915378"><time datetime="2017-07-17T12:21:46+08:00">2017年07月17日 12:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>systemd 出问题了 XD</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915431" class="comment odd alt depth-2">
+<article id="div-comment-1915431" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a2c69300d3e11f34b82436d1e558b10?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a2c69300d3e11f34b82436d1e558b10?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zwhfly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915431"><time datetime="2017-07-18T19:18:03+08:00">2017年07月18日 19:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“Debugging is twice as hard as writing the code in the first place. Therefore, if you write the code as cleverly as possible, you are, by definition, not smart enough to debug it.”</p>
+<p>– Brian Kernighan</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1915363" class="comment even thread-even depth-1">
+<article id="div-comment-1915363" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75531b79d88d2cff120dca066b23db82?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75531b79d88d2cff120dca066b23db82?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">aa</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915363"><time datetime="2017-07-17T10:11:05+08:00">2017年07月17日 10:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>羡慕他们</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915365" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915365" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a9180145eabcb381067976e66424f80?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a9180145eabcb381067976e66424f80?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhuyf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915365"><time datetime="2017-07-17T10:30:50+08:00">2017年07月17日 10:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实我觉得之所以会有相通的现象，是因为不同事物间的依赖协作、相互影响是一种普遍的关系，软件之间也必然离不开这样的逻辑，系统服务和分布式系统都只是特例吧，以后出现新的架构或模式也肯定会面对这样的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915367" class="comment even thread-even depth-1">
+<article id="div-comment-1915367" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b8c604d454b3ec2151b485599a065e4e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b8c604d454b3ec2151b485599a065e4e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://8TEN" class="url" rel="ugc external nofollow">WuJJ</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915367"><time datetime="2017-07-17T11:06:21+08:00">2017年07月17日 11:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>system-journald我现在碰到最大的问题是压缩。就是设置了压缩，看源码也就是每次append的时候压缩添加的内容而已。这就导致了压缩率很不理想，尤其是跨行日志内容相对重复的情况下。syslogd压缩过的日志动辄20:1，journal只能3:1，我直接抓一个nld文件gzip一下就是1/7的大小。如果分配限量的磁盘空间给日志，使用journald会损失很多，所以基本还是fork到syslogd去处理。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915370" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8d3109201b39591204992ef856f54403?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8d3109201b39591204992ef856f54403?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">deanzhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915370"><time datetime="2017-07-17T11:17:46+08:00">2017年07月17日 11:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后一段是重点。当时看安卓系统的bundle机制（虽然从来没开发过安卓的东西），和后来看微服务就有很多共通之处。服务架构很多工作就是把一台物理设备虚拟成逻辑上的多台，或者反过来。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915383" class="comment even thread-even depth-1">
+<article id="div-comment-1915383" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/46009e60c4cd41cdff30204c56da97ae?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/46009e60c4cd41cdff30204c56da97ae?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kenna zeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915383"><time datetime="2017-07-17T13:20:15+08:00">2017年07月17日 13:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Linux 的历史，就是一部仇恨史。个人总觉得开源社区就是一群智商过剩的神经病组成的。<br/>
+可能是我太low了吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915400" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1915400" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/101e382037ae9dd72e31795396e9afb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/101e382037ae9dd72e31795396e9afb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://haiyangjiajian.com" class="url" rel="ugc external nofollow">jiajian</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915400"><time datetime="2017-07-17T17:58:08+08:00">2017年07月17日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，“传统 Unix/Linux 的 Daemon 服务进程的最佳实践”中的第三条，“再子程中”，应该是，“在子进程中”是么？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1915405" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1915405" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915405"><time datetime="2017-07-17T20:59:17+08:00">2017年07月17日 20:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的，“在子进程中”，谢谢，已更正。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1915403" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1915403" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d50c2dbe9be37f4d47af08594b76ad5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d50c2dbe9be37f4d47af08594b76ad5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Daniate</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915403"><time datetime="2017-07-17T19:39:57+08:00">2017年07月17日 19:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://www.ibm.com/developerworks/cn/linux/1407_liuming_init1/index.html" rel="nofollow ugc">https://www.ibm.com/developerworks/cn/linux/1407_liuming_init1/index.html</a></p>
+<p><a href="https://www.ibm.com/developerworks/cn/linux/1407_liuming_init2/index.html" rel="nofollow ugc">https://www.ibm.com/developerworks/cn/linux/1407_liuming_init2/index.html</a></p>
+<p><a href="https://www.ibm.com/developerworks/cn/linux/1407_liuming_init3/index.html" rel="nofollow ugc">https://www.ibm.com/developerworks/cn/linux/1407_liuming_init3/index.html</a></p>
+<p>感觉这几篇也挺好的</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1915430" class="comment even depth-2">
+<article id="div-comment-1915430" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cc385c6b3f44c352afe377edafa678a2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cc385c6b3f44c352afe377edafa678a2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">low_man</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915430"><time datetime="2017-07-18T19:15:07+08:00">2017年07月18日 19:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，感觉这篇就是从这几篇换了种写法（或者是自己的读后感？）发出来一样啊。。。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1915418" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915418" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eaa7788105f80b1bf7ea1f8754cba581?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eaa7788105f80b1bf7ea1f8754cba581?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leisure</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915418"><time datetime="2017-07-18T13:08:39+08:00">2017年07月18日 13:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>条理清晰，详略得当，赞！另外“这篇契文很长”应为“这篇檄文”吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915444" class="comment even thread-even depth-1">
+<article id="div-comment-1915444" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/816e3ebbd8d78c2c737ba24c239d7741?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/816e3ebbd8d78c2c737ba24c239d7741?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915444"><time datetime="2017-07-19T10:36:24+08:00">2017年07月19日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>契文? 檄文?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915456" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915456" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54404b30bff76780f59fd8c9c887149e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54404b30bff76780f59fd8c9c887149e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xuesong.xs</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915456"><time datetime="2017-07-19T19:56:07+08:00">2017年07月19日 19:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;&gt;【阿里巴巴技术招聘】&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;<br/>
+招聘部门: 菜鸟网络集成中间件<br/>
+招聘岗位: 资深研发（P6），技术专家(P7)，高级专家（P8）<br/>
+岗位职位: 负责全球数据集成的解决方案<br/>
+薪资待遇: 工资+年终奖+期权<br/>
+工作地点: 杭州市<br/>
+岗位要求:<br/>
+1. 本科或以上学历，至少3年以上开发经验，有中间件和大型系统基础件开发经验者优先。<br/>
+2. 扎实的Java/JEE知识基础和功底(重点包括包括JVM、类装载机制、多线程并发、IO、网络等)，有比较优秀的动手能力，具有代码洁癖者优先。<br/>
+3. 良好的面向对象设计能力，对系统的高可用和高复用有一定的经验和理解。<br/>
+4. 有过SaaS/PaaS平台核心系统设计经验优先。<br/>
+5. 熟悉分布式技术（包括缓存、消息系统、热部署、JMX等）优先</p>
+<p>简历投递：<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6d1518081e02030a43151e2d0c01040f0c0f0c4004030e430e0200">[email protected]</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1915526" class="comment even thread-even depth-1">
+<article id="div-comment-1915526" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9617189944312b6808f6712403e8b37b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9617189944312b6808f6712403e8b37b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Nino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915526"><time datetime="2017-07-21T20:23:43+08:00">2017年07月21日 20:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔从 Systemd 联想到微服务，真是让我大受启发</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915655" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1915655" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cdd8e7fbdf5e2a124c706158b5d4437b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cdd8e7fbdf5e2a124c706158b5d4437b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘旭东</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1915655"><time datetime="2017-07-25T10:03:38+08:00">2017年07月25日 10:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>针针见血，深入透彻啊，佩服佩服</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915740" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ixyzero.com/blog/archives/3466.html" class="url" rel="ugc external nofollow">Linux启动过程的几个阶段 | ASPIRE</a> </div>
+</li>
+<li id="comment-1917723" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1917723" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/874e98e953ddae81a440216e9f00a2d0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/874e98e953ddae81a440216e9f00a2d0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eab</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1917723"><time datetime="2017-09-18T19:40:17+08:00">2017年09月18日 19:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如何确定当前使用的是哪个初始化系统呢？通过 man init?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917795" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://dev.zhalaotie.com/dev/2017/0920/53122-%e6%a1%86%e6%9e%b6%e5%90%af%e5%8a%a8%e9%80%9f%e5%ba%a6%e4%bc%98%e5%8c%96.html" class="url" rel="ugc external nofollow">框架启动速度优化 – 扎老铁</a> </div>
+</li>
+<li id="comment-1919003" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1919003" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/08a2d0bcca0b62047262390193863ee8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/08a2d0bcca0b62047262390193863ee8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">allen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1919003"><time datetime="2017-10-14T14:09:30+08:00">2017年10月14日 14:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么手机上显示的阅读人数和PC不一样？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1919004" class="comment even depth-2">
+<article id="div-comment-1919004" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8349c994399e68e534907682fb5b720f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8349c994399e68e534907682fb5b720f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuru</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1919004"><time datetime="2017-10-14T14:25:19+08:00">2017年10月14日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也想知道</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1919833" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1919833" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Coffee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1919833"><time datetime="2017-10-27T14:40:09+08:00">2017年10月27日 14:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当你试图解决一个问题时，那么新的问题就会诞生，这样简单的逻辑就慢慢变得复杂了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1921769" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1921769" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d219af79b45e5891507fda4c4c2139a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d219af79b45e5891507fda4c4c2139a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">是的</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1921769"><time datetime="2017-12-09T21:03:57+08:00">2017年12月09日 21:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923070" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1923070" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cc4c8757544d60eeb3faab0c1529e40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cc4c8757544d60eeb3faab0c1529e40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">David</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1923070"><time datetime="2018-01-15T17:25:01+08:00">2018年01月15日 17:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>人们害怕”无常”，变化才是永恒的！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923744" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1923744" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f0472ad910b9f4556073e5f45fbee117?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f0472ad910b9f4556073e5f45fbee117?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lFb</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1923744"><time datetime="2018-02-03T14:04:40+08:00">2018年02月03日 14:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1937391" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1937391" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/869f65015bc6a4a3bd565807d8199676?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/869f65015bc6a4a3bd565807d8199676?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cyberknight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1937391"><time datetime="2018-08-10T09:36:18+08:00">2018年08月10日 09:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受用</p>
+</div>
+ </article>
+</li>
+<li id="comment-1946984" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/18654.html" class="url" rel="ugc">记一次Kubernetes/Docker网络排障 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1946994" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2018/12/08/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e8%ae%b0%e4%b8%80%e6%ac%a1kubernetes-docker%e7%bd%91%e7%bb%9c%e6%8e%92%e9%9a%9c/" class="url" rel="ugc external nofollow">【酷壳】 记一次Kubernetes/Docker网络排障 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-1976328" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1976328" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de037dbb1ff987b4263656535acd6b00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de037dbb1ff987b4263656535acd6b00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.nndev.cn" class="url" rel="ugc external nofollow">技术人成长</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-1976328"><time datetime="2019-03-14T14:55:27+08:00">2019年03月14日 14:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里的文章好多我都读了不止一遍，今天又重读这篇，感谢耗子分享！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1987781" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bieryun.com/5560.html" class="url" rel="ugc external nofollow">linux进程管理总结_阿里云代理商</a> </div>
+</li>
+<li id="comment-1987820" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ctoclubs.com/2019/04/06/13/59/7801/linux%e8%bf%9b%e7%a8%8b%e7%ae%a1%e7%90%86%e6%80%bb%e7%bb%93.html" class="url" rel="ugc external nofollow">linux进程管理总结 - Ctoclubs - Ctoclubs</a> </div>
+</li>
+<li id="comment-2034612" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://vcfvct.wordpress.com/2016/12/30/upgrade-emr3-to-4-and-hive-from-0-13-to-1-0-0/" class="url" rel="ugc external nofollow">upgrade emr3 to 4 and hive from 0.13 to 1.0.0 – Life in USA</a> </div>
+</li>
+<li id="comment-2108361" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaozixun.com/46568.html" class="url" rel="ugc external nofollow">记一次Kubernetes/Docker网络排障 - 微信红包网</a> </div>
+</li>
+<li id="comment-2172863" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.zhulou.net/post/4296.html" class="url" rel="ugc external nofollow">linux进程管理总结 – 筑楼</a> </div>
+</li>
+<li id="comment-2332112" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2332112" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6adc1bb03ab69be65196c0f4a1c0eb64?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6adc1bb03ab69be65196c0f4a1c0eb64?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">王路飞</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17998.html#comment-2332112"><time datetime="2021-11-10T11:04:15+08:00">2021年11月10日 11:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是用容器部署项目，镜像是centos，启动容器，进到容器里面，使用ps之后发现我的程序pid为1，是否与这里讲的同理？</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,631 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如此理解面向对象编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8745 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8745" class="post-content post-8745 post type-post status-publish format-standard hentry category-javadev category-progdesign category-proglanguage category-story tag-coding tag-object-oriented tag-oop">
+<header class="entry-header">
+<span class="screen-reader-text">如此理解面向对象编程</span>
+<h1 class="entry-title">如此理解面向对象编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8745.html" title="08:19" rel="bookmark"><time class="entry-date" datetime="2012-12-13T08:19:28+08:00" pubdate="">2012年12月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8745.html#comments" class="comments-link">185 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 157,676 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>从Rob Pike 的 Google+上的一个推看到了一篇叫《<a href="http://www.csis.pace.edu/~bergin/patterns/ppoop.html" target="_blank">Understanding Object Oriented Programming</a>》的文章，我先把这篇文章简述一下，然后再说说老牌黑客Rob Pike的评论。</p>
+<p>先看这篇教程是怎么来讲述OOP的。它先给了下面这个问题，这个问题需要输出一段关于操作系统的文字：假设Unix很不错，Windows很差。</p>
+<p>这个把下面这段代码描述成是<strong>Hacker Solution</strong>。（这帮人觉得下面这叫黑客？我估计这帮人真是没看过C语言的代码）</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class PrintOS
+{
+	public static void main(final String[] args)
+	{
+		String osName = System.getProperty(&#34;os.name&#34;) ;
+		if (osName.equals(&#34;SunOS&#34;) || osName.equals(&#34;Linux&#34;))
+		{
+			System.out.println(&#34;This is a UNIX box and therefore good.&#34;) ;
+		}
+		else if (osName.equals(&#34;Windows NT&#34;) || osName.equals(&#34;Windows 95&#34;))
+		{
+			System.out.println(&#34;This is a Windows box and therefore bad.&#34;) ;
+		}
+		else
+		{
+			System.out.println(&#34;This is not a box.&#34;) ;
+		}
+	}
+}</pre>
+<p>然后开始用面向对象的编程方式一步一步地进化这个代码。</p>
+<p>先是以过程化的思路来重构之。</p>
+<p><span id="more-8745"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E8%BF%87%E7%A8%8B%E5%8C%96%E7%9A%84%E6%96%B9%E6%A1%88" title="过程化的方案">过程化的方案</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%B9%BC%E7%A8%9A%E7%9A%84%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%BC%96%E7%A8%8B" title="幼稚的面向对象编程">幼稚的面向对象编程</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#OO%E5%A4%A7%E5%B8%88%E7%9A%84%E6%96%B9%E6%A1%88" title="OO大师的方案">OO大师的方案</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Rob_Pike%E7%9A%84%E8%AF%84%E8%AE%BA" title="Rob Pike的评论">Rob Pike的评论</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%88%91%E7%9A%84%E7%90%86%E8%A7%A3" title="我的理解">我的理解</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E8%BF%87%E7%A8%8B%E5%8C%96%E7%9A%84%E6%96%B9%E6%A1%88"></span>过程化的方案<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class PrintOS
+{
+	private static String unixBox()
+	{
+		return &#34;This is a UNIX box and therefore good.&#34; ;
+	}
+	private static String windowsBox()
+  	{
+		return &#34;This is a Windows box and therefore bad.&#34; ;
+	}
+	private static String defaultBox()
+	{
+		return &#34;This is not a box.&#34; ;
+	}
+	private static String getTheString(final String osName)
+	{
+		if (osName.equals(&#34;SunOS&#34;) || osName.equals(&#34;Linux&#34;))
+		{
+			return unixBox() ;
+		}
+		else if (osName.equals(&#34;Windows NT&#34;) ||osName.equals(&#34;Windows 95&#34;))
+		{
+			return windowsBox() ;
+		}
+		else
+		{
+			return defaultBox() ;
+		}
+  	}
+	public static void main(final String[] args)
+	{
+		System.out.println(getTheString(System.getProperty(&#34;os.name&#34;))) ;
+	}
+}</pre>
+<p>然后是一个幼稚的面向对象的思路。</p>
+<h4><span class="ez-toc-section" id="%E5%B9%BC%E7%A8%9A%E7%9A%84%E9%9D%A2%E5%90%91%E5%AF%B9%E8%B1%A1%E7%BC%96%E7%A8%8B"></span>幼稚的面向对象编程<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class PrintOS
+{
+	public static void main(final String[] args)
+  	{
+		System.out.println(OSDiscriminator.getBoxSpecifier().getStatement()) ;
+ 	}
+}</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class OSDiscriminator // Factory Pattern
+{
+	private static BoxSpecifier theBoxSpecifier = null ;
+  	public static BoxSpecifier getBoxSpecifier()
+	{
+		if (theBoxSpecifier == null)
+		{
+			String osName = System.getProperty(&#34;os.name&#34;) ;
+ 			if (osName.equals(&#34;SunOS&#34;) || osName.equals(&#34;Linux&#34;))
+ 			{
+				theBoxSpecifier = new UNIXBox() ;
+			}
+			else if (osName.equals(&#34;Windows NT&#34;) || osName.equals(&#34;Windows 95&#34;))
+			{
+				theBoxSpecifier = new WindowsBox() ;
+			}
+			else
+			{
+				theBoxSpecifier = new DefaultBox () ;
+			}
+		}
+		return theBoxSpecifier ;
+	}
+}</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public interface BoxSpecifier
+{
+	String getStatement() ;
+}</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class DefaultBox implements BoxSpecifier
+{
+	public String getStatement()
+	{
+		return &#34;This is not a box.&#34; ;
+  	}
+}</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class UNIXBox implements BoxSpecifier
+{
+	public String getStatement()
+	{
+		return &#34;This is a UNIX box and therefore good.&#34; ;
+  	}
+}</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class WindowsBox implements BoxSpecifier
+{
+  	public String getStatement()
+	{
+		return &#34;This is a Windows box and therefore bad.&#34; ;
+	}
+}</pre>
+<p>他们觉得上面这段代码没有消除if语句，他们说这叫代码的“logic bottleneck”（逻辑瓶颈），因为如果你要增加一个操作系统的判断的话，你不但要加个类，还要改那段if-else的语句。</p>
+<p>所以，他们整出一个叫Sophisticated的面向对象的解决方案。</p>
+<h4><span class="ez-toc-section" id="OO%E5%A4%A7%E5%B8%88%E7%9A%84%E6%96%B9%E6%A1%88"></span>OO大师的方案<span class="ez-toc-section-end"></span></h4>
+<p>注意其中的Design Pattern</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class PrintOS
+{
+  	public static void main(final String[] args)
+  	{
+		System.out.println(OSDiscriminator.getBoxSpecifier().getStatement()) ;
+  	}
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class OSDiscriminator // Factory Pattern
+{
+  	private static java.util.HashMap storage = new java.util.HashMap() ;
+
+ 	public static BoxSpecifier getBoxSpecifier()
+	{
+		BoxSpecifier value = (BoxSpecifier)storage.get(System.getProperty(&#34;os.name&#34;)) ;
+		if (value == null)
+			return DefaultBox.value ;
+		return value ;
+ 	}
+  	public static void register(final String key, final BoxSpecifier value)
+  	{
+		storage.put(key, value) ; // Should guard against null keys, actually.
+  	}
+  	static
+  	{
+		WindowsBox.register() ;
+  		UNIXBox.register() ;
+  		MacBox.register() ;
+  	}
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public interface BoxSpecifier
+{
+  	String getStatement() ;
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class DefaultBox implements BoxSpecifier // Singleton Pattern
+{
+	public static final DefaultBox value = new DefaultBox () ;
+	private DefaultBox() { }
+	public String getStatement()
+	{
+		return &#34;This is not a box.&#34; ;
+	}
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class UNIXBox implements BoxSpecifier // Singleton Pattern
+{
+ 	public static final UNIXBox value = new UNIXBox() ;
+	private UNIXBox() { }
+	public  String getStatement()
+   	{
+		return &#34;This is a UNIX box and therefore good.&#34; ;
+ 	}
+  	public static final void register()
+  	{
+		OSDiscriminator.register(&#34;SunOS&#34;, value) ;
+  		OSDiscriminator.register(&#34;Linux&#34;, value) ;
+ 	}
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class WindowsBox implements BoxSpecifier  // Singleton Pattern
+{
+	public  static final WindowsBox value = new WindowsBox() ;
+	private WindowsBox() { }
+	public String getStatement()
+	{
+		return &#34;This is a Windows box and therefore bad.&#34; ;
+  	}
+  	public static final void register()
+  	{
+		OSDiscriminator.register(&#34;Windows NT&#34;, value) ;
+  		OSDiscriminator.register(&#34;Windows 95&#34;, value) ;
+	}
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class MacBox implements BoxSpecifier // Singleton Pattern
+{
+ 	public static final MacBox value = new MacBox() ;
+	private MacBox() { }
+	public  String getStatement()
+   	{
+		return &#34;This is a Macintosh box and therefore far superior.&#34; ;
+ 	}
+  	public static final void register()
+  	{
+		OSDiscriminator.register(&#34;Mac OS&#34;, value) ;
+ 	}
+}</pre>
+<p>作者还非常的意地说，他加了一个“Mac OS”的东西。<strong>老实说，当我看到最后这段OO大师搞出来的代码，我快要吐了</strong>。我瞬间想到了两件事：一个是以前酷壳上的《<a style="line-height: 13px;" title="面向对象是个骗局？！" href="/articles/3036.html" target="_blank">面向对象是个骗局</a>》和 《<a style="line-height: 13px;" title="各种流行的编程风格" href="/articles/2058.html" target="_blank">各种流行的编程方式</a>》中说的“设计模式驱动编程”，另一个我想到了那些被敏捷洗过脑的程序员和咨询师，也是这种德行。</p>
+<p>于是我去看了一下第一作者<a href="http://csis.pace.edu/~bergin/" target="_blank">Joseph Bergin的主页</a>，这个Ph.D是果然刚刚完成了一本关于敏捷和模式的书。</p>
+<h4><span class="ez-toc-section" id="Rob_Pike%E7%9A%84%E8%AF%84%E8%AE%BA"></span>Rob Pike的评论<span class="ez-toc-section-end"></span></h4>
+<p>（Rob Pike是当年在Bell lab里和Ken一起搞Unix的主儿，后来和Ken开发了UTF-8，现在还和Ken一起搞Go语言。注：不要以为Ken和Dennis是基友，其实他们才是真正的老基友！）</p>
+<p>Rob Pike在他的<a href="https://plus.google.com/101960720994009339267/posts/hoJdanihKwb" target="_blank">Google+的这贴</a>里评论到这篇文章——</p>
+<p>他并不确认这篇文章是不是搞笑？但是他觉得这些个写这篇文章是很认真的。他说他要评论这篇文章是因为他们是一名Hacker，至少这个词出现在这篇文章的术语中。</p>
+<p>他说，这个程序根本就不需要什么Object，只需要一张小小的配置表格，里面配置了对应的操作系统和你想输出的文本。这不就完了。这么简单的设计，非常容易地扩展，他们那个所谓的Hack Solution完全就是笨拙的代码。后面那些所谓的代码进化相当疯狂和愚蠢的，这个完全误导了对编程的认知。</p>
+<p>然后，他还说，<strong>他觉得这些OO的狂热份子非常害怕数据，他们喜欢用多层的类的关系来完成一个本来只需要检索三行数据表的工作</strong>。他说他曾经听说有人在他的工作种用各种OO的东西来替换While循环。（我听说中国Thoughtworks那帮搞敏捷的人的确喜欢用Object来替换所有的if-else语句，他们甚至还喜欢把函数的行数限制在10行以内）</p>
+<p>他还给了一个链接<a href="http://prog21.dadgum.com/156.html">http://prog21.dadgum.com/156.html</a>，你可以读一读。最后他说，<strong>OOP的本质就是——对数据和与之关联的行为进行编程</strong>。便就算是这样也不完全对，因为：</p>
+<p style="text-align: center;"><strong>Sometimes data is just data and functions are just functions.</strong></p>
+<h4><span class="ez-toc-section" id="%E6%88%91%E7%9A%84%E7%90%86%E8%A7%A3"></span>我的理解<span class="ez-toc-section-end"></span></h4>
+<p>我觉得，这篇文章的例子举得太差了，差得感觉就像是OO的高级黑。面向对象编程注重的是：<strong>1）数据和其行为的打包封装，2）程序的接口和实现的解耦</strong>。你那怕，举一个多个开关和多个电器的例子，不然就像STL中，一个排序算法对多个不同容器的例子，都比这个例子要好得多得多。老实说，Java SDK里太多这样的东西了。</p>
+<p>我以前给一些公司讲一些设计模式的培训课，我一再提到，<strong>那23个经典的设计模式和OO半毛钱关系没有</strong>，只不过人家用OO来实现罢了。<strong>设计模式就三个准则：1）中意于组合而不是继承，2）依赖于接口而不是实现，3）高内聚，低耦合。你看，这完全就是Unix的设计准则</strong>。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8745-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Object-Oriented</a>, <a href="javascript:void(0)" rel="tag">OOP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如此理解面向对象编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1398638" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=851" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 | zengine</a> </div>
+</li>
+<li id="comment-1403804" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1403804" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/584868b0059ed69f089a99c3a392e2ed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/584868b0059ed69f089a99c3a392e2ed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qixinkui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1403804"><time datetime="2014-03-25T19:45:31+08:00">2014年03月25日 19:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Pike的意思其实是数据驱动编程，在Art of Unix Programming 对于数据驱动编程 和 OO 有过比较</p>
+</div>
+ </article>
+</li>
+<li id="comment-1410444" class="comment even thread-even depth-1">
+<article id="div-comment-1410444" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f55cbaf5dec270d7a09600dd29ab90c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f55cbaf5dec270d7a09600dd29ab90c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">neo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1410444"><time datetime="2014-03-31T21:01:00+08:00">2014年03月31日 21:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人认为：第一 小型的编程（100行内），OO没有意思。而且那些包装来，包装去；反而让简单的事情变得复杂了；第二 常考虑到重构；第三 要考虑后人的感受（包括使用与维护）。所以，正如作者说是，举得例子太不恰当了！至于作者对于设计模式与面向对象（OO）没有任何关系，个人保持保留观点。个人认为说面向对象，就要说面向对象设计，如果单学面向对象语言，而不理解设计的方法和原则。那么学习面向对象语言是非常抵触的。（正如文章中举得例子，让人费解，不想学习）。OO设计的原则是：1）数据和其行为的打包封装，2）程序的接口和实现的解耦。（作者的原话）说出来容易，如果要有所理解，那么就得费很大的脑力来分析，思考；我还想补充一点：重用。这也正是设计模式与OO的共同点。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1421087" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1421087" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eabe4255e4a5d53c4b123d4bf1295f82?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eabe4255e4a5d53c4b123d4bf1295f82?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">very9527</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1421087"><time datetime="2014-04-12T12:13:33+08:00">2014年04月12日 12:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>把一个函数的代码行数限定在10行，20行以内是错误的吗？我的主管，曾经因为我一个函数的代码量太大，让我拆成几个函数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1478281" class="comment even thread-even depth-1">
+<article id="div-comment-1478281" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0163f18fd114a0393f7a30e4d3551bba?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0163f18fd114a0393f7a30e4d3551bba?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bolun</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1478281"><time datetime="2014-06-09T14:12:09+08:00">2014年06月09日 14:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>rob的评论就是code complete里讲的表驱动编程嘛。建两个数组完事儿了，或者建个结构体数组完事儿。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1478930" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fun4it.cn/?p=179" class="url" rel="ugc external nofollow">面向对象编程的弊端是什么？ | Fun4it</a> </div>
+</li>
+<li id="comment-1479175" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zingson.com/zing/290.html" class="url" rel="ugc external nofollow">面向对象编程的弊端是什么？ - ZINGSON-遇见未知的自己</a> </div>
+</li>
+<li id="comment-1479187" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://since1991.me/?p=6597" class="url" rel="ugc external nofollow">面向对象编程的弊端是什么？ | Since1991.me</a> </div>
+</li>
+<li id="comment-1482242" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10610.html" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1485681" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yangxiaofan.com/android%e5%ad%a6%e4%b9%a0%e7%af%87%e4%b9%8bjavaee%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e6%80%bb%e7%bb%93/" class="url" rel="ugc external nofollow">Android学习篇之JavaEE面向对象总结 | Vachel</a> </div>
+</li>
+<li id="comment-1537949" class="trackback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://24themoney.com/?p=36" class="url" rel="ugc external nofollow">cher</a> </div>
+</li>
+<li id="comment-1559105" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1559105" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a093e026145fd179958d869e91925b1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a093e026145fd179958d869e91925b1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wumu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1559105"><time datetime="2014-09-30T14:24:44+08:00">2014年09月30日 14:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作为一个工厂模式的例子，也没有什么不妥的。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1617557" class="comment even thread-even depth-1">
+<article id="div-comment-1617557" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c60a4f50a70ebc18028f4adf2b86c45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c60a4f50a70ebc18028f4adf2b86c45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Cory</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1617557"><time datetime="2014-11-30T11:53:45+08:00">2014年11月30日 11:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我经常看到网上或者个人在一致强调“组合优于继承”，这句话只能算是对了一半，组合很好，但是继承也没有错。“组合优于继承”这句话应该是有上下文的。当分析事物间关系的时候，关系是继承的，那就是继承的，关系是组合的那就是组合的，没有谁好谁坏之分。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1636833" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1636833" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc396ef8dcc54aa9e1fa0b6b3e684202?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc396ef8dcc54aa9e1fa0b6b3e684202?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">勇敢的springz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1636833"><time datetime="2014-12-29T13:09:41+08:00">2014年12月29日 13:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>的确是这个例子举得太差了，单就这个例子来说确实是一张配置表格的事儿。中国的教科书里就有很多类似的例子，为了说明一些问题举一些不切实际的例子。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1691046" class="trackback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://teachthetech.com/windows-8-1-activator-100-working/" class="url" rel="ugc external nofollow">tested windows activator</a> </div>
+</li>
+<li id="comment-1730976" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1730976" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f5ffa7f2a90fef5053743edd0079c26a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f5ffa7f2a90fef5053743edd0079c26a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">foo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1730976"><time datetime="2015-07-03T10:16:39+08:00">2015年07月03日 10:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一直以来都觉得国内乱吹OOP还是很明显的。刷LeetCode的都知道，对于这种单个的算法问题，C是最快的，java跑400ms的东西，拿一样的算法用C写一写，都不用优化，只要个位数ms。单效率来说，一般什么抽象语言都比不过C（C++个别情况下还是可以的，但是这个时候他的写法就接近C了）。。。 C还比不过汇编呢！汇编还比不过100010010001呢！但是我们依然义无反顾地抽象语言，降低效率，原因并不是因为这样能帮我们把程序写快，而是因为人脑不是电脑，把语言自然化，抽象化有助于我们更好地理解问题，少写错误。其中OOP尤其是为了Scalability而不是efficiency，各个接口都是为了大家互相利用现有code（当然一直有人说函数型比这个好。。。也不是不对），多人同时工作等等。 所以啊，什么事情用什么语言，要和一个大团队写万行，十万级的代码，java的优势是明显的，失掉的那点速度是可以接受的，你用x86去写，得到的那点runtime绝对不值得他带来的额外的设计，合作，调试上的难度。同理，写一段特别注重速度的底层优化码，java再易懂再好用他那点overhead就注定了你不该用他，汇编和C这个时候就该上场了。那些偏要再不同的语言分出个高下的程序员，只能说是学业不精。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1746206" class="comment even thread-even depth-1">
+<article id="div-comment-1746206" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7a4148d1374ecc0ecb52e3a3fb931d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7a4148d1374ecc0ecb52e3a3fb931d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">js</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1746206"><time datetime="2015-08-14T03:42:15+08:00">2015年08月14日 03:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1730976" rel="nofollow">@foo </a><br/>
+不错..没有无脑黑语言的还是比较难得浮出来一个, 说实话现在很多产品还没做到需要靠算法来解决瓶颈的时候. Java本身被开发出来也不是因为运行效率如何, 而是为了提高开发效率, 而且人才流动这么快的现在, 如果有个大神用c写一套…找人来维护得多耗时啊…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1802054" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1802054" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/39c9599189bb7df3c82023b7b456a7ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/39c9599189bb7df3c82023b7b456a7ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">匿名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1802054"><time datetime="2015-12-25T12:15:04+08:00">2015年12月25日 12:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>OO大师的方案其实是想讲工厂模式，其目的是可以动态添加一个含有一组具有不同行为实现的对象。只是他举得例子不是很好而已。如果这个os的行为不只是输出一句，而是还有运行软件、关闭软件、优化软件等行为，并且不同的os会有不<br/>
+同的运行软件、关闭软件、优化软件的算法实现、运行和关闭软件的策略、优化软件的策略。Rob Pike所说的使用的表格方式可以实现吗？表格可以动态添加软件的行为吗？而工厂模式就是为了解决这个问题的</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2049028" class="comment even depth-2">
+<article id="div-comment-2049028" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d5c03653a1ebed7f6a6ad6da234d0dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d5c03653a1ebed7f6a6ad6da234d0dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NoDocCat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-2049028"><time datetime="2019-12-21T23:25:10+08:00">2019年12月21日 23:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么不可以? 你连最基本的冯诺依曼架构都忘了吗? 程序也是数据.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2049031" class="comment odd alt depth-2">
+<article id="div-comment-2049031" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d5c03653a1ebed7f6a6ad6da234d0dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d5c03653a1ebed7f6a6ad6da234d0dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NoDocCat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-2049031"><time datetime="2019-12-21T23:33:40+08:00">2019年12月21日 23:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看看游戏技能都是怎么做的吧, 技能有唯一ID, 对应一些基本属性和一段Lua脚本. 当释放技能时, 将基本属性带入伤害计算公式, 并执行Lua脚本来做到一些特殊需求(比如特殊伤害, 释放限制, 附加Buff, DeBuff等).<br/>
+这不就是Rob Pike说的查表吗?</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1831392" class="comment even thread-even depth-1">
+<article id="div-comment-1831392" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4a9ad9ec00987230fccbfa6a05a8513?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4a9ad9ec00987230fccbfa6a05a8513?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">doufutang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1831392"><time datetime="2016-05-13T15:00:53+08:00">2016年05月13日 15:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1636833" rel="nofollow">@勇敢的springz </a> 你说的太对了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1837257" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1837257" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7cc90a960c7133daa48001cc16ef84f6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7cc90a960c7133daa48001cc16ef84f6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jc213</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1837257"><time datetime="2016-05-25T18:57:39+08:00">2016年05月25日 18:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得例子和java spi 的实现理念相似。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1859928" class="comment even thread-even depth-1">
+<article id="div-comment-1859928" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8fdfa6c388a5ca8d9f8feac75b2b8369?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8fdfa6c388a5ca8d9f8feac75b2b8369?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Aaron</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1859928"><time datetime="2016-07-20T09:21:40+08:00">2016年07月20日 09:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不同情况不同讨论。我觉得Rob Pike作为一名黑客，更多的是关注一个人怎样去高效快速地实现，而设计模式更多的关注于代码的工程化，好比是一种既定的规则，使一个团队容易协作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1878366" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.wawowo.cn/index.php/2016/09/06/web%e6%9e%b6%e6%9e%84%e6%80%bb%e7%bb%93/" class="url" rel="ugc external nofollow">web架构总结 | 银角大王</a> </div>
+</li>
+<li id="comment-1906141" class="comment even thread-even depth-1">
+<article id="div-comment-1906141" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b96e748f34dd10acbd13e5abab2feee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b96e748f34dd10acbd13e5abab2feee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">srdrm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-1906141"><time datetime="2016-12-10T07:55:43+08:00">2016年12月10日 07:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的原则是，怎么简单怎么来，如果你是写library，你需要的是让使用者如何易于理解，使用简单，容易扩展。如果你写的是程序，你如何写才简单易于扩展就如何写。23个设计模式不如一句话，简单而可复用。简单总是没错的，为了一点的扩展性，少写一点的代码，而引入一堆的OO构建，就是奢侈，程序拒绝奢侈浪费。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913228" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://andyliu.name/2017/02/22/python%e4%bf%ae%e9%a5%b0%e5%99%a8%e7%9a%84%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">PYTHON修饰器的函数式编程 - Andy &amp; Niki</a> </div>
+</li>
+<li id="comment-1921447" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1259" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 – 趣学</a> </div>
+</li>
+<li id="comment-1927200" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.yhviews.cn/?p=243" class="url" rel="ugc external nofollow">Java基础-面向对象四大特征 – yhviews&#39;s blog</a> </div>
+</li>
+<li id="comment-1990903" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ddcode.net/2019/04/14/object-oriented-thinking-method/" class="url" rel="ugc external nofollow">Object-Oriented Thinking Method – DDCODE</a> </div>
+</li>
+<li id="comment-2004174" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/cpp/cpp_61148.html" class="url" rel="ugc external nofollow">库设计随笔 _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2045596" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://fanhub.cn/2019/02/22/mian-xiang-dui-xiang-de-zhe-xue/" class="url" rel="ugc external nofollow">面向对象的哲学 – Sharember</a> </div>
+</li>
+<li id="comment-2049030" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2049030" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2d5c03653a1ebed7f6a6ad6da234d0dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2d5c03653a1ebed7f6a6ad6da234d0dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NoDocCat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-2049030"><time datetime="2019-12-21T23:29:52+08:00">2019年12月21日 23:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>面向对象不过是一种归一化和封装的实现方式, 总有人把这玩意当作银弹.<br/>
+而且程序中的类(class), 和生活中的类根本不是一个玩意, 但是几乎所有的教面向对象的都让学生看作是同一个. 按照某些人眼中的面向对象编程, 一个游戏的技能树怕不是要搞出几万个类几十层继承来.</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2232757" class="comment even depth-2">
+<article id="div-comment-2232757" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98e67868518e1d3ced3323a92bbe9a93?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98e67868518e1d3ced3323a92bbe9a93?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rufengshaonian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8745.html/comment-page-4#comment-2232757"><time datetime="2021-04-15T09:33:35+08:00">2021年04月15日 09:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>把刚看来的观点原封不动的拿来输出，看起来是真尴尬。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8745.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8745.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/8745.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/8745.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">8745</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

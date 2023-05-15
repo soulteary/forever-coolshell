@@ -1,0 +1,796 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go编程模式：Map-Reduce | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21164 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21164" class="post-content post-21164 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-functional tag-functional-programming tag-go tag-golang tag-mapreduce tag-697 tag-839 series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go编程模式：Map-Reduce</span>
+<h1 class="entry-title">Go编程模式：Map-Reduce</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21164.html" title="15:13" rel="bookmark"><time class="entry-date" datetime="2020-12-24T15:13:52+08:00" pubdate="">2020年12月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21164.html#comments" class="comments-link">19 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 44,563 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-21251" src="/uploads/2020/12/go.map_.reduce-300x192.png" alt="" width="300" height="192" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>在本篇文章中，我们学习一下函数式编程的中非常重要的Map、Reduce、Filter的三种操作，这三种操作可以让我们非常方便灵活地进行一些数据处理——我们的程序中大多数情况下都是在到倒腾数据，尤其对于一些需要统计的业务场景，Map/Reduce/Filter是非常通用的玩法。下面先来看几个例子：</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第5 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go编程模式：Map-Reduce</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21214.html" rel="prev" title="Go编程模式：委托和反转控制">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21179.html" rel="next" title="Go 编程模式：Go Generation">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%9F%BA%E6%9C%AC%E7%A4%BA%E4%BE%8B" title="基本示例">基本示例</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-2" href="#Map%E7%A4%BA%E4%BE%8B" title="Map示例">Map示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#Reduce_%E7%A4%BA%E4%BE%8B" title="Reduce 示例">Reduce 示例</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#Filter%E7%A4%BA%E4%BE%8B" title="Filter示例">Filter示例</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E4%B8%9A%E5%8A%A1%E7%A4%BA%E4%BE%8B" title="业务示例">业务示例</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%91%98%E5%B7%A5%E4%BF%A1%E6%81%AF" title="员工信息">员工信息</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%9B%B8%E5%85%B3%E7%9A%84ReduceFitler%E5%87%BD%E6%95%B0" title="相关的Reduce/Fitler函数">相关的Reduce/Fitler函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%90%84%E7%A7%8D%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E7%BB%9F%E8%AE%A1%E7%A4%BA%E4%BE%8B" title="各种自定义的统计示例">各种自定义的统计示例</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E6%B3%9B%E5%9E%8BMap-Reduce" title="泛型Map-Reduce">泛型Map-Reduce</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#%E7%AE%80%E5%8D%95%E7%89%88_Generic_Map" title="简单版 Generic Map">简单版 Generic Map</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#%E5%81%A5%E5%A3%AE%E7%89%88%E7%9A%84Generic_Map" title="健壮版的Generic Map">健壮版的Generic Map</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-12" href="#%E5%81%A5%E5%A3%AE%E7%89%88%E7%9A%84_Generic_Reduce" title="健壮版的 Generic Reduce">健壮版的 Generic Reduce</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-13" href="#%E5%81%A5%E5%A3%AE%E7%89%88%E7%9A%84_Generic_Filter" title="健壮版的 Generic Filter">健壮版的 Generic Filter</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-14" href="#%E5%90%8E%E8%AE%B0" title="后记">后记</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%9F%BA%E6%9C%AC%E7%A4%BA%E4%BE%8B"></span>基本示例<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="Map%E7%A4%BA%E4%BE%8B"></span>Map示例<span class="ez-toc-section-end"></span></h5>
+<p>下面的程序代码中，我们写了两个Map函数，这两个函数需要两个参数，</p>
+<ul>
+<li>一个是字符串数组 <code>[]string</code>，说明需要处理的数据一个字符串</li>
+<li>另一个是一个函数<code>func(s string) string</code> 或 <code>func(s string) int</code></li>
+</ul>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func MapStrToStr(arr []string, fn func(s string) string) []string {
+    var newArray = []string{}
+    for _, it := range arr {
+        newArray = append(newArray, fn(it))
+    }
+    return newArray
+}
+
+func MapStrToInt(arr []string, fn func(s string) int) []int {
+    var newArray = []int{}
+    for _, it := range arr {
+        newArray = append(newArray, fn(it))
+    }
+    return newArray
+}</pre>
+<p>整个Map函数运行逻辑都很相似，函数体都是在遍历第一个参数的数组，然后，调用第二个参数的函数，然后把其值组合成另一个数组返回。</p>
+<p><span id="more-21164"></span></p>
+<p>于是我们就可以这样使用这两个函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var list = []string{&#34;Hao&#34;, &#34;Chen&#34;, &#34;MegaEase&#34;}
+
+x := MapStrToStr(list, func(s string) string {
+    return strings.ToUpper(s)
+})
+fmt.Printf(&#34;%v\n&#34;, x)
+//[&#34;HAO&#34;, &#34;CHEN&#34;, &#34;MEGAEASE&#34;]
+
+y := MapStrToInt(list, func(s string) int {
+    return len(s)
+})
+fmt.Printf(&#34;%v\n&#34;, y)
+//[3, 4, 8]</pre>
+<p>我们可以看到，我们给第一个 <code>MapStrToStr()</code> 传了函数做的是 转大写，于是出来的数组就成了全大写的，给<code>MapStrToInt()</code> 传的是算其长度，所以出来的数组是每个字符串的长度。</p>
+<p>我们再来看一下Reduce和Filter的函数是什么样的。</p>
+<h5><span class="ez-toc-section" id="Reduce_%E7%A4%BA%E4%BE%8B"></span><strong>Reduce 示例</strong><span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func Reduce(arr []string, fn func(s string) int) int {
+    sum := 0
+    for _, it := range arr {
+        sum += fn(it)
+    }
+    return sum
+}
+
+var list = []string{&#34;Hao&#34;, &#34;Chen&#34;, &#34;MegaEase&#34;}
+
+x := Reduce(list, func(s string) int {
+    return len(s)
+})
+fmt.Printf(&#34;%v\n&#34;, x)
+// 15
+</pre>
+<h5><span class="ez-toc-section" id="Filter%E7%A4%BA%E4%BE%8B"></span><strong>Filter示例</strong><span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func Filter(arr []int, fn func(n int) bool) []int {
+    var newArray = []int{}
+    for _, it := range arr {
+        if fn(it) {
+            newArray = append(newArray, it)
+        }
+    }
+    return newArray
+}
+
+var intset = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+out := Filter(intset, func(n int) bool {
+   return n%2 == 1
+})
+fmt.Printf(&#34;%v\n&#34;, out)
+
+out = Filter(intset, func(n int) bool {
+    return n &gt; 5
+})
+fmt.Printf(&#34;%v\n&#34;, out)
+</pre>
+<p>下图是一个比喻，其非常形象地说明了Map-Reduce是的业务语义，其在数据处理中非常有用。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-21169" src="/uploads/2020/12/map-reduce.png" alt="" width="794" height="442" srcset="" sizes="(max-width: 794px) 100vw, 794px"/></p>
+<h4><span class="ez-toc-section" id="%E4%B8%9A%E5%8A%A1%E7%A4%BA%E4%BE%8B"></span>业务示例<span class="ez-toc-section-end"></span></h4>
+<p>通过上面的一些示例，你可能有一些明白，Map/Reduce/Filter只是一种控制逻辑，真正的业务逻辑是在传给他们的数据和那个函数来定义的。是的，这是一个很经典的“业务逻辑”和“控制逻辑”分离解耦的编程模式。下面我们来看一个有业务意义的代码，来让大家强化理解一下什么叫“控制逻辑”与业务逻辑分离。</p>
+<h5><span class="ez-toc-section" id="%E5%91%98%E5%B7%A5%E4%BF%A1%E6%81%AF"></span>员工信息<span class="ez-toc-section-end"></span></h5>
+<p>首先，我们一个员工对象，以及一些数据</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type Employee struct {
+    Name     string
+    Age      int
+    Vacation int
+    Salary   int
+}
+
+var list = []Employee{
+    {&#34;Hao&#34;, 44, 0, 8000},
+    {&#34;Bob&#34;, 34, 10, 5000},
+    {&#34;Alice&#34;, 23, 5, 9000},
+    {&#34;Jack&#34;, 26, 0, 4000},
+    {&#34;Tom&#34;, 48, 9, 7500},
+    {&#34;Marry&#34;, 29, 0, 6000},
+    {&#34;Mike&#34;, 32, 8, 4000},
+}</pre>
+<h5><span class="ez-toc-section" id="%E7%9B%B8%E5%85%B3%E7%9A%84ReduceFitler%E5%87%BD%E6%95%B0"></span>相关的Reduce/Fitler函数<span class="ez-toc-section-end"></span></h5>
+<p>然后，我们有如下的几个函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">func EmployeeCountIf(list []Employee, fn func(e *Employee) bool) int {
+    count := 0
+    for i, _ := range list {
+        if fn(&amp;list[i]) {
+            count += 1
+        }
+    }
+    return count
+}
+
+func EmployeeFilterIn(list []Employee, fn func(e *Employee) bool) []Employee {
+    var newList []Employee
+    for i, _ := range list {
+        if fn(&amp;list[i]) {
+            newList = append(newList, list[i])
+        }
+    }
+    return newList
+}
+
+func EmployeeSumIf(list []Employee, fn func(e *Employee) int) int {
+    var sum = 0
+    for i, _ := range list {
+        sum += fn(&amp;list[i])
+    }
+    return sum
+}</pre>
+<p>简单说明一下：</p>
+<ul>
+<li><code>EmployeeConutIf</code> 和 <code>EmployeeSumIf</code> 分别用于统满足某个条件的个数或总数。它们都是Filter + Reduce的语义。</li>
+<li><code>EmployeeFilterIn</code> 就是按某种条件过虑。就是Fitler的语义。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E5%90%84%E7%A7%8D%E8%87%AA%E5%AE%9A%E4%B9%89%E7%9A%84%E7%BB%9F%E8%AE%A1%E7%A4%BA%E4%BE%8B"></span>各种自定义的统计示例<span class="ez-toc-section-end"></span></h5>
+<p>于是我们就可以有如下的代码。</p>
+<p><strong>1）统计有多少员工大于40岁</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">old := EmployeeCountIf(list, func(e *Employee) bool {
+    return e.Age &gt; 40
+})
+fmt.Printf(&#34;old people: %d\n&#34;, old)
+//old people: 2
+</pre>
+<p><strong>2）统计有多少员工薪水大于6000</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">high_pay := EmployeeCountIf(list, func(e *Employee) bool {
+    return e.Salary &gt;= 6000
+})
+fmt.Printf(&#34;High Salary people: %d\n&#34;, high_pay)
+//High Salary people: 4
+</pre>
+<p><strong>3）列出有没有休假的员工</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">no_vacation := EmployeeFilterIn(list, func(e *Employee) bool {
+    return e.Vacation == 0
+})
+fmt.Printf(&#34;People no vacation: %v\n&#34;, no_vacation)
+//People no vacation: [{Hao 44 0 8000} {Jack 26 0 4000} {Marry 29 0 6000}]
+</pre>
+<p><strong>4）统计所有员工的薪资总和</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">total_pay := EmployeeSumIf(list, func(e *Employee) int {
+    return e.Salary
+})
+
+fmt.Printf(&#34;Total Salary: %d\n&#34;, total_pay)
+//Total Salary: 43500
+</pre>
+<p><strong>5）统计30岁以下员工的薪资总和</strong></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">younger_pay := EmployeeSumIf(list, func(e *Employee) int {
+    if e.Age &lt; 30 {
+        return e.Salary
+    } 
+    return 0
+})</pre>
+<h4><span class="ez-toc-section" id="%E6%B3%9B%E5%9E%8BMap-Reduce"></span>泛型Map-Reduce<span class="ez-toc-section-end"></span></h4>
+<p>我们可以看到，上面的Map-Reduce都因为要处理数据的类型不同而需要写出不同版本的Map-Reduce，虽然他们的代码看上去是很类似的。所以，这里就要带出来泛型编程了，Go语言在本文写作的时候还不支持泛型（注：Go开发团队技术负责人Russ Cox在2012年11月21golang-dev上的mail确认了Go泛型(type parameter)将在Go 1.18版本落地，即2022.2月份）。</p>
+<h5><span class="ez-toc-section" id="%E7%AE%80%E5%8D%95%E7%89%88_Generic_Map"></span>简单版 Generic Map<span class="ez-toc-section-end"></span></h5>
+<p>所以，目前的Go语言的泛型只能用 <code>interface{}</code> + <code>reflect</code>来完成，<code>interface{}</code> 可以理解为C中的 <code>void*</code>，Java中的 <code>Object</code> ，<code>reflect</code>是Go的反射机制包，用于在运行时检查类型。</p>
+<p>下面我们来看一下一个非常简单不作任何类型检查的泛型的Map函数怎么写。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">func Map(data interface{}, fn interface{}) []interface{} {
+    vfn := reflect.ValueOf(fn)
+    vdata := reflect.ValueOf(data)
+    result := make([]interface{}, vdata.Len())
+
+    for i := 0; i &lt; vdata.Len(); i++ {
+        result[i] = vfn.Call([]reflect.Value{vdata.Index(i)})[0].Interface()
+    }
+    return result
+}</pre>
+<p>上面的代码中，</p>
+<ul>
+<li>通过 <code>reflect.ValueOf()</code> 来获得 <code>interface{}</code> 的值，其中一个是数据 <code>vdata</code>，另一个是函数 <code>vfn</code>，</li>
+<li>然后通过 <code>vfn.Call()</code> 方法来调用函数，通过 <code>[]refelct.Value{vdata.Index(i)}</code>来获得数据。</li>
+</ul>
+<p>Go语言中的反射的语法还是有点令人费解的，但是简单看一下手册还是能够读懂的。我这篇文章不讲反射，所以相关的基础知识还请大家自行Google相关的教程。</p>
+<p>于是，我们就可以有下面的代码——不同类型的数据可以使用相同逻辑的<code>Map()</code>代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">square := func(x int) int {
+  return x * x
+}
+nums := []int{1, 2, 3, 4}
+
+squared_arr := Map(nums,square)
+fmt.Println(squared_arr)
+//[1 4 9 16]
+
+
+
+upcase := func(s string) string {
+  return strings.ToUpper(s)
+}
+strs := []string{&#34;Hao&#34;, &#34;Chen&#34;, &#34;MegaEase&#34;}
+upstrs := Map(strs, upcase);
+fmt.Println(upstrs)
+//[HAO CHEN MEGAEASE]</pre>
+<p>但是因为反射是运行时的事，所以，如果类型什么出问题的话，就会有运行时的错误。比如：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">x := Map(5, 5)
+fmt.Println(x)</pre>
+<p>上面的代码可以很轻松的编译通过，但是在运行时就出问题了，还是panic错误……</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">panic: reflect: call of reflect.Value.Len on int Value
+
+goroutine 1 [running]:
+reflect.Value.Len(0x10b5240, 0x10eeb58, 0x82, 0x10716bc)
+        /usr/local/Cellar/go/1.15.3/libexec/src/reflect/value.go:1162 +0x185
+main.Map(0x10b5240, 0x10eeb58, 0x10b5240, 0x10eeb60, 0x1, 0x14, 0x0)
+        /Users/chenhao/.../map.go:12 +0x16b
+main.main()
+        /Users/chenhao/.../map.go:42 +0x465
+exit status 2</pre>
+<h5><span class="ez-toc-section" id="%E5%81%A5%E5%A3%AE%E7%89%88%E7%9A%84Generic_Map"></span>健壮版的Generic Map<span class="ez-toc-section-end"></span></h5>
+<p>所以，如果要写一个健壮的程序，对于这种用<code>interface{}</code> 的“过度泛型”，就需要我们自己来做类型检查。下面是一个有类型检查的Map代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func Transform(slice, function interface{}) interface{} {
+  return transform(slice, function, false)
+}
+
+func TransformInPlace(slice, function interface{}) interface{} {
+  return transform(slice, function, true)
+}
+
+func transform(slice, function interface{}, inPlace bool) interface{} {
+ 
+  //check the <code data-enlighter-language="raw" class="EnlighterJSRAW">slice</code> type is Slice
+  sliceInType := reflect.ValueOf(slice)
+  if sliceInType.Kind() != reflect.Slice {
+    panic(&#34;transform: not slice&#34;)
+  }
+
+  //check the function signature
+  fn := reflect.ValueOf(function)
+  elemType := sliceInType.Type().Elem()
+  if !verifyFuncSignature(fn, elemType, nil) {
+    panic(&#34;trasform: function must be of type func(&#34; + sliceInType.Type().Elem().String() + &#34;) outputElemType&#34;)
+  }
+
+  sliceOutType := sliceInType
+  if !inPlace {
+    sliceOutType = reflect.MakeSlice(reflect.SliceOf(fn.Type().Out(0)), sliceInType.Len(), sliceInType.Len())
+  }
+  for i := 0; i &lt; sliceInType.Len(); i++ {
+    sliceOutType.Index(i).Set(fn.Call([]reflect.Value{sliceInType.Index(i)})[0])
+  }
+  return sliceOutType.Interface()
+
+}
+
+func verifyFuncSignature(fn reflect.Value, types ...reflect.Type) bool {
+
+  //Check it is a funciton
+  if fn.Kind() != reflect.Func {
+    return false
+  }
+  // NumIn() - returns a function type&#39;s input parameter count.
+  // NumOut() - returns a function type&#39;s output parameter count.
+  if (fn.Type().NumIn() != len(types)-1) || (fn.Type().NumOut() != 1) {
+    return false
+  }
+  // In() - returns the type of a function type&#39;s i&#39;th input parameter.
+  for i := 0; i &lt; len(types)-1; i++ {
+    if fn.Type().In(i) != types[i] {
+      return false
+    }
+  }
+  // Out() - returns the type of a function type&#39;s i&#39;th output parameter.
+  outType := types[len(types)-1]
+  if outType != nil &amp;&amp; fn.Type().Out(0) != outType {
+    return false
+  }
+  return true
+}
+</pre>
+<p>上面的代码一下子就复杂起来了，可见，复杂的代码都是在处理异常的地方。我不打算Walk through 所有的代码，别看代码多，但是还是可以读懂的，下面列几个代码中的要点：</p>
+<ul>
+<li>代码中没有使用Map函数，因为和数据结构和关键有含义冲突的问题，所以使用<code>Transform</code>，这个来源于 C++ STL库中的命名。</li>
+<li>有两个版本的函数，一个是返回一个全新的数组 – <code>Transform()</code>，一个是“就地完成” – <code>TransformInPlace()</code></li>
+<li>在主函数中，用 <code>Kind()</code> 方法检查了数据类型是不是 Slice，函数类型是不是Func</li>
+<li>检查函数的参数和返回类型是通过 <code>verifyFuncSignature()</code> 来完成的，其中：
+<ul>
+<li><code>NumIn()</code> – 用来检查函数的“入参”</li>
+<li> <code>NumOut()</code> 用来检查函数的“返回值”</li>
+</ul>
+</li>
+<li>如果需要新生成一个Slice，会使用 <code>reflect.MakeSlice()</code> 来完成。</li>
+</ul>
+<p>好了，有了上面的这段代码，我们的代码就很可以很开心的使用了：</p>
+<p>可以用于字符串数组</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">list := []string{&#34;1&#34;, &#34;2&#34;, &#34;3&#34;, &#34;4&#34;, &#34;5&#34;, &#34;6&#34;}
+result := Transform(list, func(a string) string{
+    return a +a +a
+})
+//{&#34;111&#34;,&#34;222&#34;,&#34;333&#34;,&#34;444&#34;,&#34;555&#34;,&#34;666&#34;}
+</pre>
+<p>可以用于整形数组</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">list := []int{1, 2, 3, 4, 5, 6, 7, 8, 9}
+TransformInPlace(list, func (a int) int {
+  return a*3
+})
+//{3, 6, 9, 12, 15, 18, 21, 24, 27}
+</pre>
+<p>可以用于结构体</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var list = []Employee{
+    {&#34;Hao&#34;, 44, 0, 8000},
+    {&#34;Bob&#34;, 34, 10, 5000},
+    {&#34;Alice&#34;, 23, 5, 9000},
+    {&#34;Jack&#34;, 26, 0, 4000},
+    {&#34;Tom&#34;, 48, 9, 7500},
+}
+
+result := TransformInPlace(list, func(e Employee) Employee {
+    e.Salary += 1000
+    e.Age += 1
+    return e
+})</pre>
+<h5><span class="ez-toc-section" id="%E5%81%A5%E5%A3%AE%E7%89%88%E7%9A%84_Generic_Reduce"></span>健壮版的 Generic Reduce<span class="ez-toc-section-end"></span></h5>
+<p>同样，泛型版的 Reduce 代码如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func Reduce(slice, pairFunc, zero interface{}) interface{} {
+  sliceInType := reflect.ValueOf(slice)
+  if sliceInType.Kind() != reflect.Slice {
+    panic(&#34;reduce: wrong type, not slice&#34;)
+  }
+
+  len := sliceInType.Len()
+  if len == 0 {
+    return zero
+  } else if len == 1 {
+    return sliceInType.Index(0)
+  }
+
+  elemType := sliceInType.Type().Elem()
+  fn := reflect.ValueOf(pairFunc)
+  if !verifyFuncSignature(fn, elemType, elemType, elemType) {
+    t := elemType.String()
+    panic(&#34;reduce: function must be of type func(&#34; + t + &#34;, &#34; + t + &#34;) &#34; + t)
+  }
+
+  var ins [2]reflect.Value
+  ins[0] = sliceInType.Index(0)
+  ins[1] = sliceInType.Index(1)
+  out := fn.Call(ins[:])[0]
+
+  for i := 2; i &lt; len; i++ {
+    ins[0] = out
+    ins[1] = sliceInType.Index(i)
+    out = fn.Call(ins[:])[0]
+  }
+  return out.Interface()
+}</pre>
+<h5><span class="ez-toc-section" id="%E5%81%A5%E5%A3%AE%E7%89%88%E7%9A%84_Generic_Filter"></span>健壮版的 Generic Filter<span class="ez-toc-section-end"></span></h5>
+<p>同样，泛型版的 Filter 代码如下（同样分是否“就地计算”的两个版本）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">func Filter(slice, function interface{}) interface{} {
+  result, _ := filter(slice, function, false)
+  return result
+}
+
+func FilterInPlace(slicePtr, function interface{}) {
+  in := reflect.ValueOf(slicePtr)
+  if in.Kind() != reflect.Ptr {
+    panic(&#34;FilterInPlace: wrong type, &#34; +
+      &#34;not a pointer to slice&#34;)
+  }
+  _, n := filter(in.Elem().Interface(), function, true)
+  in.Elem().SetLen(n)
+}
+
+var boolType = reflect.ValueOf(true).Type()
+
+func filter(slice, function interface{}, inPlace bool) (interface{}, int) {
+
+  sliceInType := reflect.ValueOf(slice)
+  if sliceInType.Kind() != reflect.Slice {
+    panic(&#34;filter: wrong type, not a slice&#34;)
+  }
+
+  fn := reflect.ValueOf(function)
+  elemType := sliceInType.Type().Elem()
+  if !verifyFuncSignature(fn, elemType, boolType) {
+    panic(&#34;filter: function must be of type func(&#34; + elemType.String() + &#34;) bool&#34;)
+  }
+
+  var which []int
+  for i := 0; i &lt; sliceInType.Len(); i++ {
+    if fn.Call([]reflect.Value{sliceInType.Index(i)})[0].Bool() {
+      which = append(which, i)
+    }
+  }
+
+  out := sliceInType
+
+  if !inPlace {
+    out = reflect.MakeSlice(sliceInType.Type(), len(which), len(which))
+  }
+  for i := range which {
+    out.Index(i).Set(sliceInType.Index(which[i]))
+  }
+
+  return out.Interface(), len(which)
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%90%8E%E8%AE%B0"></span>后记<span class="ez-toc-section-end"></span></h4>
+<p>还有几个未尽事宜：</p>
+<p>1）使用反射来做这些东西，会有一个问题，<strong>那就是代码的性能会很差。所以，上面的代码不能用于你需要高性能的地方</strong>。怎么解决这个问题，我们会在本系列文章的下一篇文章中讨论。</p>
+<p>2）上面的代码大量的参考了 Rob Pike的版本，他的代码在 <a href="https://github.com/robpike/filter" target="_blank" rel="noopener">https://github.com/robpike/filter</a></p>
+<p>3）其实，在全世界范围内，有大量的程序员都在问Go语言官方什么时候在标准库中支持 Map/Reduce，Rob Pike说，这种东西难写吗？还要我们官方来帮你们写么？这种代码我多少年前就写过了，但是，我从来一次都没有用过，我还是喜欢用“For循环”，我觉得你最好也跟我一起用 “For循环”。</p>
+<p>我个人觉得，Map/Reduce在数据处理的时候还是很有用的，Rob Pike可能平时也不怎么写“业务逻辑”的代码，所以，对他来说可能也不太了解业务的变化有多么的频繁……</p>
+<p>当然，好还是不好，由你来判断，但多学一些编程模式是对自己的帮助也是很有帮助的。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21164-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">functional</a>, <a href="javascript:void(0)" rel="tag">functional-programming</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">MapReduce</a>, <a href="javascript:void(0)" rel="tag">函数式</a>, <a href="javascript:void(0)" rel="tag">函数式编程</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go编程模式：Map-Reduce</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187570" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2187570" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db9e52e180051ab91fd1cc82720e99a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db9e52e180051ab91fd1cc82720e99a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">喵小爱</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2187570"><time datetime="2020-12-26T20:21:05+08:00">2020年12月26日 20:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Map/Reduce/Filter是非有通用的玩法<br/>
+非有–&gt;非常</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2187785" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2187785" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2187785"><time datetime="2020-12-27T10:38:01+08:00">2020年12月27日 10:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，已更正</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187788" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21179.html" class="url" rel="ugc">Go 编程模式：Go Generation | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2187855" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2187855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.lilydjwg.me/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2187855"><time datetime="2020-12-27T15:49:46+08:00">2020年12月27日 15:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种东西难写吗？不难写的哦，除非是在不支持泛型的 Go 语言中 🤣</p>
+<p>for 循环相比之下，一个问题是，思考的方式低了一个层级。另一方面，for 循环能做更多奇奇怪怪的事情，所以语义可以很复杂。</p>
+<p>而 map / filter / reduce 是相当好理解的：先变换，再过滤，最后总结。不管你每一步的操作多么复杂，其复杂性都被分离开了，而不会纠缠在一起，让人迷失方向。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2192566" class="comment even depth-2">
+<article id="div-comment-2192566" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wardenlym</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2192566"><time datetime="2021-01-08T17:27:48+08:00">2021年01月08日 17:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>codes in golang:<br/>
+bra bra bra(1000 lines)</p>
+<p>same logic writtern in Elixir:<br/>
+input<br/>
+|&gt; map<br/>
+|&gt; filter<br/>
+|&gt; reduce</p>
+<p>Emmmmmmmmmmmmmm</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187999" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2187999" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">🍑</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2187999"><time datetime="2020-12-27T23:47:51+08:00">2020年12月27日 23:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好多 slices 没有 preallocate，参考：<a href="/articles/21128.html#%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA">https://coolshell.cn/articles/21128.html#%E6%80%A7%E8%83%BD%E6%8F%90%E7%A4%BA</a> 第 3 点。</p>
+<blockquote><p>
+Go开发团队技术负责人Russ Cox在2012年11月21golang-dev上的mail确认了Go泛型(type parameter)将在Go 1.18版本落地，即2022.2月份。
+</p></blockquote>
+<p>大佬是如何预测 10 年后的事情的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2188003" class="comment even thread-even depth-1">
+<article id="div-comment-2188003" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/078fede1841dde1a7b44fbd6ccd3f460?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/078fede1841dde1a7b44fbd6ccd3f460?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">clay</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2188003"><time datetime="2020-12-27T23:54:27+08:00">2020年12月27日 23:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对他来说可能也不太了解业务的变伦有多么的频繁……<br/>
+变伦=&gt;变换？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2188223" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2188223" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c97d7bf6230e9b69680eeed46e6e467?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c97d7bf6230e9b69680eeed46e6e467?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://zhanxw.com" class="url" rel="ugc external nofollow">zhanxw</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2188223"><time datetime="2020-12-28T13:45:01+08:00">2020年12月28日 13:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>了解业务的变伦有多么的频繁</p>
+<p>=&gt;</p>
+<p>了解业务的变<em>化</em>有多么的频繁</p>
+</div>
+ </article>
+</li>
+<li id="comment-2188858" class="comment even thread-even depth-1">
+<article id="div-comment-2188858" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/562d419f0b311b4ce95830f7aa3429a9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/562d419f0b311b4ce95830f7aa3429a9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tim</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2188858"><time datetime="2020-12-30T00:03:44+08:00">2020年12月30日 00:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么叫 map filter reduce ?</p>
+</div>
+ </article>
+</li>
+<li id="comment-2195203" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2195203" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0ad86d3fed1ca9080aa4f8e9b4a5f789?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0ad86d3fed1ca9080aa4f8e9b4a5f789?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yu Hao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2195203"><time datetime="2021-01-15T18:47:07+08:00">2021年01月15日 18:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>健壮版的 Generic Reduce，传进去的pairFunc函数签名只能是这样的吧：<br/>
+func(e1 Employee, e2 Employee) Employee {<br/>
+…<br/>
+}</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2218333" class="comment even depth-2">
+<article id="div-comment-2218333" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2218333"><time datetime="2021-03-15T22:15:57+08:00">2021年03月15日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Reduce的话，是不是调整一下，第一个参数是统计结果Out，第二个是Employee，返回统计结果Out，比较好。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2195492" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2195492" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e08a2018001e98b9d7991df011616742?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e08a2018001e98b9d7991df011616742?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">co</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2195492"><time datetime="2021-01-16T17:52:44+08:00">2021年01月16日 17:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一次听说</p>
+</div>
+ </article>
+</li>
+<li id="comment-2218330" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2218330" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2218330"><time datetime="2021-03-15T22:08:17+08:00">2021年03月15日 22:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>额，谁能帮忙解释一下，为何FilterInPlace一定要传入slicePtr呢？我试了一下直接传入slice然后再取ptr就是报错了。。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2218675" class="comment odd alt depth-2">
+<article id="div-comment-2218675" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2218675"><time datetime="2021-03-16T16:41:04+08:00">2021年03月16日 16:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">//由于go只作传值处理
+// 由于slice是传值，所以无法直接修改slice
+func SFilterInPlace1(slice, function interface{}) {
+    op := make([]int, 0)
+    op = slice.([]int)
+    _, n := filter(op, function, true)
+    in2:=reflect.ValueOf(&amp;op)
+    in2.Elem().SetLen(n)
+    fmt.Println(in2)
+}</pre>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2301852" class="comment even thread-even depth-1">
+<article id="div-comment-2301852" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b686b7613f880570fa9288ac173255fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b686b7613f880570fa9288ac173255fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://adoncn.com/" class="url" rel="ugc external nofollow">Adoncn</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2301852"><time datetime="2021-09-12T14:11:05+08:00">2021年09月12日 14:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>顶起，支持支撑</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356915" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2356915" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b25f1bc87d3e1dfb44156693b9b25a56?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b25f1bc87d3e1dfb44156693b9b25a56?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lzc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2356915"><time datetime="2022-01-04T16:00:58+08:00">2022年01月04日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一次上这个博客看。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2356919" class="comment even depth-2">
+<article id="div-comment-2356919" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/354ba1fd544d1b7c2d4396b8fec8416b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/354ba1fd544d1b7c2d4396b8fec8416b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haha</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2356919"><time datetime="2022-01-04T16:13:42+08:00">2022年01月04日 16:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>1</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2357822" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2357822" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eca7dbd1cebefc7b5a1b1f5bf44d3a14?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eca7dbd1cebefc7b5a1b1f5bf44d3a14?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">iceking</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2357822"><time datetime="2022-01-08T04:34:54+08:00">2022年01月08日 04:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+Go开发团队技术负责人Russ Cox在2012年11月21golang-dev上的mail确认了Go泛型(type parameter)将在Go 1.18版本落地，即2022.2月份
+</p></blockquote>
+<p>的出处有吗，找了半天没找到</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370772" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2370772" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3337ac040f56b539a19ea5d93d4dcc68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3337ac040f56b539a19ea5d93d4dcc68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">双鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21164.html#comment-2370772"><time datetime="2022-10-10T17:12:25+08:00">2022年10月10日 17:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>else if len == 1 {<br/>
+return sliceInType.Index(0)<br/>
+}<br/>
+reduce 中的这个判断是为什么呢</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

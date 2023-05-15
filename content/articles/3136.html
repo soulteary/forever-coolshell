@@ -1,0 +1,419 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>chmod -x chmod的N种解法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3136 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3136" class="post-content post-3136 post type-post status-publish format-standard hentry category-unixlinux category-misc category-funny category-story tag-chomd tag-cpio tag-emacs tag-tar">
+<header class="entry-header">
+<span class="screen-reader-text">chmod -x chmod的N种解法</span>
+<h1 class="entry-title">chmod -x chmod的N种解法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3136.html" title="08:42" rel="bookmark"><time class="entry-date" datetime="2010-10-13T08:42:37+08:00" pubdate="">2010年10月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3136.html#comments" class="comments-link">22 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 15,929 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>在SlidesShare.net上有这么<a href="http://www.slideshare.net/cog/chmod-x-chmod" target="_blank">一个幻灯片</a>，其说了如下的一个面试题：</p>
+<blockquote><p>如果某天你的Unix/Linux系统上的chomd命令被某人去掉了x属性（执行属性），<br/>
+那么，你如何恢复呢？</p></blockquote>
+<p>下面是一些答案：</p>
+<p><strong>1）重新安装</strong>。对于Debian的系统：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">sudo apt-get install --reinstall coreutils</code></p>
+<p><strong>2）使用语言级的chmod</strong>。</p>
+<ul>
+<li>Perl：perl-e ‘chmod 0755, “/bin/chmod”‘</li>
+<li>Python：python -c “import os;os.chmod(‘/bin/chmod’, 0755)”</li>
+<li>Node.js：require(“fs”).chmodSync(“/bin/chmod”, 0755);</li>
+<li>C程序：</li>
+</ul>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;sys/types.h&gt;
+#include&lt;sys/stat.h&gt;
+void main()
+{
+chmod(&#34;/bin/chmod&#34;, 0000755);
+}</pre>
+<p><span id="more-3136"></span></p>
+<p><strong>3）使用已有的可执行文件。</strong></p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$cat - &gt; chmod.c
+void main(){}
+^D
+
+$cc chmod.c
+$cat /bin/chmod &gt; a.out
+$./a.out 0755 /bin/chmod
+</pre>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$cp true &gt; new_chmod
+$cat /bin/chmod &gt; new_chmod
+$./new_chmod 0755 /bin/chmod
+</pre>
+<p><strong>4）使用GNU tar命令</strong></p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$tar --mode 0755 -cf chmod.tar /bin/chmod
+$tar xvf chmod.tar</pre>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">tar --mode 755 -cvf - chmod | tar -xvf -</code></p>
+<p><strong>5）使用cpio</strong> （第19到24字节为file mode – <a href="http://4bxf.sl.pt" target="_blank">http://4bxf.sl.pt</a>）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">echo chmod |
+cpio -o |
+perl -pe &#39;s/^(.{21}).../${1}755/&#39; |
+cpio -i -u</pre>
+<p><strong>6）使用hardcore</strong></p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">alias chmod=&#39;/lib/ld-2.11.1.so ./chmod&#39;</code></p>
+<p><strong>7）使用Emacs</strong></p>
+<blockquote><p>Ctrl+x b &gt; * scratch*<br/>
+(set-file-modes “/bin/chmod” (string-to-number “0755” 8))<br/>
+Ctrl+j</p></blockquote>
+<p>嗯，挺强大的，不过为什么不用install命令呢？</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">install -m 755 /bin/chmod /tmp/chmod
+mv /tmp/chmod /bin/chmod</pre>
+<p>各位，你的方法呢？</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3136-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">趣味问题</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">chomd</a>, <a href="javascript:void(0)" rel="tag">cpio</a>, <a href="javascript:void(0)" rel="tag">Emacs</a>, <a href="javascript:void(0)" rel="tag">tar</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>chmod -x chmod的N种解法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-11541" class="comment even thread-even depth-1">
+<article id="div-comment-11541" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2849dcf6e3ed455c4c7d782ec657a5e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2849dcf6e3ed455c4c7d782ec657a5e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuyang027</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11541"><time datetime="2010-10-13T09:25:30+08:00">2010年10月13日 09:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>强大！</p>
+</div>
+ </article>
+</li>
+<li id="comment-11542" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11542" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/81c2122ab3bb2822cfc9169866881fe1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/81c2122ab3bb2822cfc9169866881fe1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.gracecode.com/" class="url" rel="ugc external nofollow">明城</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11542"><time datetime="2010-10-13T09:50:11+08:00">2010年10月13日 09:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>PHP 版本</p>
+<p><code><br/>
+&lt;?php<br/>
+chmod(&#34;/bin/chmod&#34;, 0755);<br/>
+</code></p>
+</div>
+ </article>
+</li>
+<li id="comment-11543" class="comment even thread-even depth-1">
+<article id="div-comment-11543" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0478b87ec69ce7ce034d370f326c50aa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0478b87ec69ce7ce034d370f326c50aa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andelf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11543"><time datetime="2010-10-13T10:11:49+08:00">2010年10月13日 10:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>怎么可以少了 python</p>
+<p>$ python -c “__import__(‘os’).chmod(‘/path/to/file’, 0777)”</p>
+</div>
+ </article>
+</li>
+<li id="comment-11544" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11544" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0478b87ec69ce7ce034d370f326c50aa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0478b87ec69ce7ce034d370f326c50aa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andelf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11544"><time datetime="2010-10-13T10:19:34+08:00">2010年10月13日 10:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看错,原来里面有 python, 那提供个ruby 的</p>
+<p> ruby -rfileutils -e ‘FileUtils::chmod(0755, “/bin/chmod”)’</p>
+</div>
+ </article>
+</li>
+<li id="comment-11545" class="comment even thread-even depth-1">
+<article id="div-comment-11545" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2619d947861d1002c2f2f3d95fc1b29?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2619d947861d1002c2f2f3d95fc1b29?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Beisi Xu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11545"><time datetime="2010-10-13T10:37:06+08:00">2010年10月13日 10:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>俺们redhat直接可以用 exec /bin/chmod +x /bin/chmod</p>
+</div>
+ </article>
+</li>
+<li id="comment-11561" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11561" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0106202326cc03b3dca02510bda68742?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0106202326cc03b3dca02510bda68742?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.makemusic-asia.com/" class="url" rel="ugc external nofollow">walkerxk</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11561"><time datetime="2010-10-13T12:56:45+08:00">2010年10月13日 12:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>exec不行的吧，还是会提示权限不够的，而且exec会替换当前shell，最好先bash一下，再exec，或者运行其他shell也可以。</p>
+</div>
+ </article>
+</li>
+<li id="comment-11568" class="comment even thread-even depth-1">
+<article id="div-comment-11568" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dutor.net/" class="url" rel="ugc external nofollow">dutor</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11568"><time datetime="2010-10-13T15:45:42+08:00">2010年10月13日 15:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那么各位大侠，如果我执行了<br/>
+$ mv /etc/passwd{,bak}<br/>
+呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-11573" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11573" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/be24b063ea4f5106839b08a30780923b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/be24b063ea4f5106839b08a30780923b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://upsuper.org/" class="url" rel="ugc external nofollow">upsuper</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11573"><time datetime="2010-10-13T16:40:52+08:00">2010年10月13日 16:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>直接弄一张linux的liveusb改回来就行了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-11576" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.netoearth.com/html/201010/chmod-x-chmod%e7%9a%84n%e7%a7%8d%e8%a7%a3%e6%b3%95.htm" class="url" rel="ugc external nofollow">chmod -x chmod的N种解法</a> </div>
+</li>
+<li id="comment-11583" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11583" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dutor.net/" class="url" rel="ugc external nofollow">dutor</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11583"><time datetime="2010-10-13T21:16:56+08:00">2010年10月13日 21:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-11573" rel="nofollow">@upsuper </a><br/>
+那岂不是很没劲？还有其它法子吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-11588" class="comment even thread-even depth-1">
+<article id="div-comment-11588" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65079f6f3166c7d27bab9276695f1811?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65079f6f3166c7d27bab9276695f1811?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">GaRY</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11588"><time datetime="2010-10-13T23:45:27+08:00">2010年10月13日 23:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ld直接加载调用，省的bash判断执行属性</p>
+</div>
+ </article>
+</li>
+<li id="comment-11589" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11589" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/602625f97b6aa0ad6ef304de90a238e5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/602625f97b6aa0ad6ef304de90a238e5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">阿呆</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11589"><time datetime="2010-10-13T23:49:36+08:00">2010年10月13日 23:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很不错，有几个做法很巧妙，cp和hardcode的回头试试。</p>
+<p>要是我说还可以在X下改property，我会挨多少白眼呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-11607" class="comment even thread-even depth-1">
+<article id="div-comment-11607" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6da7c59d687b74fb5c85d9e28304a521?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6da7c59d687b74fb5c85d9e28304a521?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11607"><time datetime="2010-10-14T10:36:58+08:00">2010年10月14日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ruby的:<br/>
+ruby -e ‘File.chmod 0755, “/bin/chmod” ‘<br/>
+呵呵,跟perl 一样.</p>
+</div>
+ </article>
+</li>
+<li id="comment-11608" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11608" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1972c32ff090011515be91b1ed7dab2a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1972c32ff090011515be91b1ed7dab2a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">依云</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11608"><time datetime="2010-10-14T10:39:39+08:00">2010年10月14日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想了半天，没想到新办法，只想到一个问题：</p>
+<p>如果我把 chmod(2) 这个系统调用从 1. libc 2. 内核 中删去了还有什么办法给文件添加执行权限呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-11616" class="comment even thread-even depth-1">
+<article id="div-comment-11616" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d059af18f3a8207f7d1f6f0d62b12496?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d059af18f3a8207f7d1f6f0d62b12496?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.leyond.info" class="url" rel="ugc external nofollow">Code之行人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11616"><time datetime="2010-10-14T13:01:21+08:00">2010年10月14日 13:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没想过这个问题，看来只有前面两种比较简单了</p>
+</div>
+ </article>
+</li>
+<li id="comment-11637" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11637" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/97856de99194812ce377b50f47097288?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/97856de99194812ce377b50f47097288?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://helloyuhao.jimdo.com" class="url" rel="ugc external nofollow">雨碎江南</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-11637"><time datetime="2010-10-14T21:22:53+08:00">2010年10月14日 21:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>重装呗~</p>
+</div>
+ </article>
+</li>
+<li id="comment-12205" class="comment even thread-even depth-1">
+<article id="div-comment-12205" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cbdd11bdac1044b0c4723c4e755afb2e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cbdd11bdac1044b0c4723c4e755afb2e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wnd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-12205"><time datetime="2010-10-26T15:52:23+08:00">2010年10月26日 15:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cp 到一个ntfs或者fat分区, 然后去运行 ./chmod /bin/chmod</p>
+</div>
+ </article>
+</li>
+<li id="comment-12730" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-12730" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7d5e34fff914cd9720a15d06a48fa371?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7d5e34fff914cd9720a15d06a48fa371?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.jiechic.com" class="url" rel="ugc external nofollow">jiechic</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-12730"><time datetime="2010-11-06T20:43:48+08:00">2010年11月06日 20:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>嗯，要记下，不错，学习一下。呵呵。</p>
+</div>
+ </article>
+</li>
+<li id="comment-14008" class="comment even thread-even depth-1">
+<article id="div-comment-14008" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2619d947861d1002c2f2f3d95fc1b29?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2619d947861d1002c2f2f3d95fc1b29?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Beisi Xu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-14008"><time datetime="2010-11-17T11:24:48+08:00">2010年11月17日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-11561" rel="nofollow">@walkerxk </a><br/>
+我的可以啊…</p>
+</div>
+ </article>
+</li>
+<li id="comment-300373" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.liwill.net/archives/10" class="url" rel="ugc external nofollow">Linux面试20题(翻译) » 常立伟的博客</a> </div>
+</li>
+<li id="comment-307947" class="comment even thread-even depth-1">
+<article id="div-comment-307947" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/169eb4f76617b516d8d4ac28caf8d256?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/169eb4f76617b516d8d4ac28caf8d256?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">潇湘竹溪</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-307947"><time datetime="2013-03-10T19:02:46+08:00">2013年03月10日 19:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这么多方法啊？<br/>
+我也提供一个：<br/>
+随便复制一个有执行权限的文件为chmod ，然后dd if=原来的少了x权限的chmod of=新复制的chmod</p>
+</div>
+ </article>
+</li>
+<li id="comment-345420" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-345420" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de64794a0d4476d6ccb05ef5a0aa568d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de64794a0d4476d6ccb05ef5a0aa568d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鲸鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3136.html#comment-345420"><time datetime="2013-04-25T19:16:59+08:00">2013年04月25日 19:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果某天你的Windows系统上的exe, com, bat, cmd, …扩展名被某人关联到了记事本，<br/>
+那么，你如何恢复呢？</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,854 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>类型的本质和函数式实现 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10169 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10169" class="post-content post-10169 post type-post status-publish format-standard hentry category-proglanguage tag-c tag-design tag-javascript tag-pythondev">
+<header class="entry-header">
+<span class="screen-reader-text">类型的本质和函数式实现</span>
+<h1 class="entry-title">类型的本质和函数式实现</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10169.html" title="19:46" rel="bookmark"><time class="entry-date" datetime="2013-07-22T19:46:00+08:00" pubdate="">2013年07月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10169.html#comments" class="comments-link">32 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 29,266 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 </strong><a href="http://weibo.com/weidagang" target="_blank">@文艺复兴记</a><strong>（todd） 投递此文）</strong></p>
+<p>在上一篇文章<a href="/articles/9886.html">《二叉树迭代器算法》</a>中，我介绍了一种基于栈的二叉树迭代器实现。程序设计语言和Haskell大牛<a href="http://weibo.com/u/1684815495">@九瓜</a> 在看过之后评论到：</p>
+<blockquote><p>这里用了 stack 来做，有点偷懒，所以错失了一个抽象思考机会。如果我们能够理解二叉树到线性表的转换过程，完全可以把 Iterator 当作抽象的线性表来看，只要定义了关于 Iterator 的 empty, singleton, 还有 append 操作，实现二叉树的 Iterator 就变得非常直观。</p></blockquote>
+<p>“错失了一个抽象思考机会”是什么意思呢？我理解九瓜的意思是基于栈的实现虽然是正确的，但它缺乏对于迭代器类型本质的理解，不具有通用性。如果能对迭代器进行合适地抽象就可以像二叉树递归遍历一样自然地得出二叉树迭代器，甚至其他更复杂的数据结构，只要我们能写出它的遍历算法，迭代器算法都可以自然推出。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%9C%AC%E8%B4%A8" title="类型的本质">类型的本质</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%87%BD%E6%95%B0%E5%BC%8F%E5%AE%9E%E7%8E%B0" title="类型的函数式实现">类型的函数式实现</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%87%BD%E6%95%B0%E5%BC%8F%E4%BA%8C%E5%8F%89%E6%A0%91%E8%BF%AD%E4%BB%A3%E5%99%A8" title="函数式二叉树迭代器">函数式二叉树迭代器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%B1%BB%E5%9E%8B%E7%9A%84%E6%9C%AC%E8%B4%A8"></span>类型的本质<span class="ez-toc-section-end"></span></h4>
+<p>九瓜提到了通过empty, singleton和append操作对Iterator进行抽象，我本来打算直接根据这个思路介绍函数式的二叉树迭代器实现，但是考虑到其实首要的问题在于理解类型的本质，而并不是所有人都具备这个基础，不如先普及一下类型基础再进入具体实现。那么下面我们就先来认识一下类型到底是什么？我们先以来看看表示元素对的Pair类型，可能有人一提到Pair类型马上就会在脑海中浮现出下面的结构：</p>
+<p><span id="more-10169"></span></p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">struct Pair {
+    int left;
+    int right;
+}
+</pre>
+<p>其实，这种理解是非本质的，Pair完全可以用2个元素的数组来表示，第一个元素表示left，第二个元素表示right：</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">struct Pair {
+    int elements[2];
+}
+</pre>
+<p>上面的两种不同表示是类型的不同实现，而<strong>类型的本质是由操作(Operation)和操作间的关系或不变式(Invariant)所定义的</strong>，我们称之为类型规范(Type Specification)。比如，Pair类型是这样定义的：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">Type Pair:
+    Operations:
+        Pair make_pair(int x, int y)
+        int get_left(Pair pair)
+        int get_right(Pair pair)
+    Invariants:
+        get_left(make_pair(x, y)) == x  //对x, y构造的Pair取左元素等于x
+        get_right(make_pair(x, y)) == y  //对x, y构造的Pair取右元素等于y
+</pre>
+<p>也就是说只要是满足Pair类型规范，即定义了make_pair，get_left, get_right这3种操作，并且这些操作满足上面两个不变式，那么它这就是Pair类型。我们再来看看稍微复杂一点的Stack类型：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">Type Stack:
+    Operations:
+        Stack make_stack()  //构造空栈
+        Stack push(Stack stack, int x)  //将元素x压栈，返回新栈
+        int top(stack)  //获取栈顶元素
+        Stack pop(Stack stack)  //将栈顶元素弹栈，返回新栈
+    Invariants:
+        top(push(stack, x)) == x  //栈顶元素为最后一次压栈值
+        pop(push(stack, x)) == stack  //对stack压栈后再弹栈等于原来的stack
+</pre>
+<p>Stack类型规范简言之就是FILO（先入后出），如果要形式化就是上面的不变式。为了加深理解，我们现在切换到测试视角来看一看，如果请你来编写一个Stack类的单元测试用例，你应该怎么写呢？许多朋友都不清楚单元测试到底测什么？怎么测？我见过不少人用一个测试用例单独对push做测试，用另一个测试用例对pop单独做测试，其主要原因就在于缺乏对类型本质的理解。其实，只要理解了类型的本质我们就知道孤立地看push或pop是没有任何意义的，它们的意义是在FILO关系下相互解释的，所以测试当然是基于类型规范来测试FILO不变式！这种基于类型规范的测试是一种黑盒测试，与类型的内部实现细节无关，只要单元测试覆盖了类型所定义的所有操作和不变式，那么不管内部怎么实现或优化，测试用例都不需要调整。反之，如果深入到了类型的内部实现做白盒测试，那这样的测试用例实际上就不再是反映其类型规范了，它会随着实现细节的调整而失效。</p>
+<p>更深一层来看，不仅是在Pair，Stack这样的微观层面，在一个系统的宏观层面同样可以采用类型视角，即考察系统定义了哪些操作？这些操作之间有什么样的关系或不变式？比如，你如何从类型的角度来看待MySQL这样一套数据库系统？MySQL系统定义了哪些操作？这些操作之间必须满足怎样的关系和不变式？不仅如此，类型视角除了可以应用于计算机系统，甚至还可以应用于生活中的事物，比如，你到超市购物可以寄存自己的包，在寄包的时候会获得一张密码条，取包时可以通过密码条打开箱子。你能从超市寄包这个例子中看出类型来吗？如果你看出来了，说明你对类型的理解真正融会贯通了！</p>
+<h4><span class="ez-toc-section" id="%E7%B1%BB%E5%9E%8B%E7%9A%84%E5%87%BD%E6%95%B0%E5%BC%8F%E5%AE%9E%E7%8E%B0"></span>类型的函数式实现<span class="ez-toc-section-end"></span></h4>
+<p>上面我们介绍了类型的本质在于操作和操作间的关系，下面我们要关注的是类型的实现。在上面的例子中，Pair的内部结构到底是什么，是一个left和一个right成员？还是一个两元素的数组？没有讲，也没关系，就好像Windows的Handle和Linux的FileDescriptor一样，它们都是一个标识，你并不需要关心它的值本身，你只需要用几个相关的函数创建和操作它就行了（上面超市寄包例子中的密码条和Windows中的Handle是什么关系，你看出来了吗？你需要理解密码条的内容吗？）。换句话说，只要满足类型规范，具体实现是可变的，使用者<strong>只依赖于类型规范而不依赖于其具体实现</strong>。这在面向对象语言中意味着接口保持不变而具体实现可以变化（这里把public方法视为一种广义的接口）。</p>
+<p>下面，我们还会看到的是不仅类型的内部实现可以变化，而且可以根本没有什么所谓的内部实现。这是什么意思呢？让我们来思考一下，是不是Pair内部一定要有什么东西来保存构造函数传入的left和right？我们能跳出这个定势吗？在函数式编程中，我们能做到：</p>
+<p>[javascript]<br/>
+//Javascript<br/>
+function make_pair(x, y) {<br/>
+// 返回一个支持get_left和get_right操作的闭包(Closure)<br/>
+return {<br/>
+get_left : function() { return x },<br/>
+get_right : function() { return y }<br/>
+}<br/>
+}<br/>
+function get_left(pair) {<br/>
+return pair.get_left();<br/>
+}<br/>
+function get_right(pair) {<br/>
+return pair.get_right();<br/>
+}<br/>
+// Test case<br/>
+console.log(get_left(make_pair(1, 2))) //1<br/>
+console.log(get_right(make_pair(1, 2))) //2<br/>
+[/javascript]</p>
+<p>上面的关键代码在于make_pair的内部返回的不是一种具体的数据结构，而是一个支持get_left和get_right操作的闭包(Closure)，将来可以通过get_left和get_right来提取x, y。这种基于闭包的实现和我们通常采用的基于数据结构的实现的本质区别在哪里呢？不难发现，<strong>基于闭包的实现和类型规范是直接对应的</strong>，它并没有引入类型规范之外的东西，而基于数据结构的实现则隐藏了实现的细节。换句话说，如果要验证实现代码的正确性，对于前者只需要比对着类型规范，对于后者我们可能需要去仔细理解推敲其所采用的数据结构。对于Pair这样简单的结构二者差别不大，甚至基于数据结构的实现更简单，但是对于复杂的类型就容易体现出闭包实现的优势了。为了加深理解，我们再来看一个Stack的函数式实现：</p>
+<p>[javascript]<br/>
+//Javascript<br/>
+function make_stack() {<br/>
+return null<br/>
+}<br/>
+function push(stack, x) {<br/>
+return {<br/>
+top : function() { return x },<br/>
+pop : function() { return stack }<br/>
+}<br/>
+}<br/>
+function top(stack) {<br/>
+return stack.top()<br/>
+}<br/>
+function pop(stack) {<br/>
+return stack.pop()<br/>
+}<br/>
+// Test case<br/>
+var stack = make_stack()<br/>
+stack = push(stack, 1)<br/>
+stack = push(stack, 2)<br/>
+stack = push(stack, 3)<br/>
+console.log(top(stack)) //3<br/>
+stack = pop(stack)<br/>
+console.log(top(stack)) //2<br/>
+stack = push(stack, 4)<br/>
+console.log(top(stack)) //4<br/>
+[/javascript]</p>
+<p>上面的所有函数都是采用了无副作用的纯函数式设计，可能习惯面向对象编程的朋友不是很习惯，不过这不影响我们对类型的讨论，而且它也很容易改造成面向对象的风格，感兴趣的朋友可以自己尝试对上面的代码进行简单的包装让它看起来像面向对象的样子。</p>
+<h4><span class="ez-toc-section" id="%E5%87%BD%E6%95%B0%E5%BC%8F%E4%BA%8C%E5%8F%89%E6%A0%91%E8%BF%AD%E4%BB%A3%E5%99%A8"></span>函数式二叉树迭代器<span class="ez-toc-section-end"></span></h4>
+<p>上面我们介绍了类型的本质和函数式实现，下面我们再来看看Iterator类型又该如何定义和实现呢？ 思路当然还是从操作入手，考虑Iterator类型对应了哪些操作，它们的关系是什么？上面九瓜提示了Iterator类型可以抽象为线性表List类型，或者说Iterator本质上是一个List。为什么呢？其实，只要跳出“如何表示数据结构”的思维，从类型角度思考就很容易理解，因为Iterator和List都定义了相同的操作，Iterator的使用者完全不关心也不知道它背后到底是链表还是二叉树，你对Iterator的操作和一个List的操作完全一样。正是这个原因，STL等范型库才能通过Iterator将算法和数据结构解耦。</p>
+<p>怎么定义一个List类型呢？九瓜提到的empty(), singleton()和append()实际上就是和List打交道最多的Lisp语言的经典定义方式。Lisp是基于s-expression的，s-expression既可以视为线性表又可以视为树，本质上Lisp为List类型了构造、取首元素和取剩余元素等几种操作：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">Type List:
+    Operations:
+        List empty()  //构造空表，通常由()这个文字量表示
+        List singleton(Element e)  //构造包含一个元素的表，通常由(e)这个文字量表示
+        Element first(List list)   //取list的第一个元素，通常又叫car操作
+        List rest(List list)  //取list除第一个元素外的剩余部分，通常又叫cdr操作
+        List append(List list1, List list2) //连接两个表
+    Invariants:
+        append(empty(), list) == list  //空表和表list连接后等于表list
+        append(list, empty()) == list  //空表和表list连接后等于表list
+        first(singleton(e)) == e  //对singleton(e)取首元素等于e
+        rest(singleton(e)) == empty()  //对singleton(e)取首元素外的剩余部分的结果为空表
+        append(first(list), rest(list)) == list  //对list的首尾两部分进行连接等于list本身
+        if list1 is not empty then
+            first(append(list1, list2)) == first(list1)  //对非空表list1于表list2的连接取首元素等于对非空表list1取首元素
+        if list1 is not empty then
+            rest(append(list1, list2)) == append(rest(list1), list2)  //对非空表list1于表list2的连接取首元素等于对非空表list1取首元素
+</pre>
+<p>有了上面的分析，我们相应地写出下面的List实现：</p>
+<p>[javascript]<br/>
+//Javascript<br/>
+function empty() {<br/>
+return null<br/>
+}<br/>
+function singleton(e) {<br/>
+return {<br/>
+first: function() { return e },<br/>
+rest: function() { return null }<br/>
+}<br/>
+}<br/>
+function first(list) {<br/>
+return list.first()<br/>
+}<br/>
+function rest(list) {<br/>
+return list.rest()<br/>
+}<br/>
+function append(list1, list2) {<br/>
+if (null == list1) return list2<br/>
+if (null == list2) return list1</p>
+<p> return {<br/>
+first : function() { return first(list1) },<br/>
+rest : function() { return append(rest(list1), list2) }<br/>
+}<br/>
+}<br/>
+[/javascript]</p>
+<p>在此基础上可以进一步实现二叉树迭代器：</p>
+<p>[javascript]<br/>
+function make_binary_tree_iterator(node) {<br/>
+return {<br/>
+first : function() {<br/>
+return null != node.left ? first(make_binary_tree_iterator(node.left)) : node<br/>
+},<br/>
+rest : function() {<br/>
+var left_it = (null == node.left ? null : make_binary_tree_iterator(node.left))<br/>
+var root_it = singleton(node)<br/>
+var right_it = (null == node.right ? null : make_binary_tree_iterator(node.right))<br/>
+var it = append(append(left_it, root_it), right_it)<br/>
+return rest(it)<br/>
+}<br/>
+}<br/>
+}<br/>
+//======== Test case ========<br/>
+var tree = {<br/>
+value : 1,<br/>
+left : {<br/>
+value : 2,<br/>
+left : { value : 4, left : null, right : null },<br/>
+right : null<br/>
+},<br/>
+right : {<br/>
+value : 3,<br/>
+left : null,<br/>
+right : { value : 7, left : null, right : null }<br/>
+}<br/>
+}<br/>
+for (var it = make_binary_tree_iterator(tree); null != it; it = rest(it)) {<br/>
+console.log(first(it).value)<br/>
+}<br/>
+[/javascript]</p>
+<p>上面的make_binary_tree_iterator在List类型的基础上按照二叉树遍历过程构造了一个List。不知道你是否注意到了，为什么它不像下面这个例子一样直接返回一个List，而要构造一个闭包呢？</p>
+<p>[javascript]<br/>
+function make_binary_tree_iterator(node) {<br/>
+var left_it = (null == node.left ? null : make_binary_tree_iterator(node.left))<br/>
+var root_it = singleton(node)<br/>
+var right_it = (null == node.right ? null : make_binary_tree_iterator(node.right))<br/>
+return append(append(left_it, root_it), right_it)<br/>
+}<br/>
+[/javascript]</p>
+<p>这里关键的区别在于闭包是惰性求值的，也就是说只有当真正开始迭代遍历的时候才会逐渐对各个函数进行求值，而上面的函数递归调用是非惰性的，会从一开始就把所有结点展开成线性表。如果你对这一点还不能很好地理解，可以尝试在各个函数中加log跟踪函数的调用过程。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>本文介绍了类型的本质在于它所定义的操作以及操作之间的关系和不变式。类型的实现关键在于满足类型规范的要求，而具体实现是可以变化的，使用者和测试用例都应该只依赖于类型规范而不依赖于具体实现。函数式的类型实现往往和类型规范是直接对应的，简单通用，但可能有性能问题，而命令式的类型实现往往会引入复杂的内部数据结构，但是其优点是高效。这两种实现并不是完全互斥的，有时候可以将二者相结合达到简单与高效的结合。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10169-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">Python</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>类型的本质和函数式实现</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-603680" class="comment even thread-even depth-1">
+<article id="div-comment-603680" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b9c06e2cb3abc944f34987c1b763818?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b9c06e2cb3abc944f34987c1b763818?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://shuo.li" class="url" rel="ugc external nofollow">Zeicold</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-603680"><time datetime="2013-07-22T20:12:06+08:00">2013年07月22日 20:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前没有想过类型的本质 看来要仔细打实一下基础了</p>
+</div>
+ </article>
+</li>
+<li id="comment-603693" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-603693" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/630b63757f1b25823447b911fe18ab36?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/630b63757f1b25823447b911fe18ab36?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">castiello</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-603693"><time datetime="2013-07-22T20:21:42+08:00">2013年07月22日 20:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原来函数式是可以这么用的，太犀利了</p>
+</div>
+ </article>
+</li>
+<li id="comment-603754" class="comment even thread-even depth-1">
+<article id="div-comment-603754" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f7d0950e0979a7b813242b5190c8cc0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f7d0950e0979a7b813242b5190c8cc0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">l0phT_BC</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-603754"><time datetime="2013-07-22T21:08:47+08:00">2013年07月22日 21:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实作者所说的函数式的实现在SICP中都有讲到。</p>
+</div>
+ </article>
+</li>
+<li id="comment-604796" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-604796" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8747871ef462c3e1e86ca7cbfe0266d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8747871ef462c3e1e86ca7cbfe0266d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/chrome" class="url" rel="ugc external nofollow">Marvin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-604796"><time datetime="2013-07-23T10:34:31+08:00">2013年07月23日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>函数式是符号运算，本质来讲是无类型。类型是编译型语言，或是建立在命令式基础上的语言，让编译器，解释器如何去理解符号所做的内存操作。而函数式语言是不关心内存的那些事的。只不过，现阶段的语言建立在命令式基础上，尤其是模仿函数式的语法。记住了，那只是模仿，并不是函数式那回事。</p>
+</div>
+ </article>
+</li>
+<li id="comment-604891" class="comment even thread-even depth-1">
+<article id="div-comment-604891" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e909ba08f974bcc4c7a1e1b25bb267fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e909ba08f974bcc4c7a1e1b25bb267fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://null~" class="url" rel="ugc external nofollow">awen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-604891"><time datetime="2013-07-23T12:06:14+08:00">2013年07月23日 12:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主您好，看完很有感触，于是想实现“超市密码条”的例子，如下<br/>
+Type Storage:<br/>
+operation:<br/>
+Storage empty( ) //构造空的储物柜<br/>
+int store( Storage S, int obj ) //存储物品至储物柜，返回密码<br/>
+int get( Storage S, int key ) //使用密码取出物品<br/>
+invariations:<br/>
+get( S, store( S, obj ) ) == obj</p>
+<p>实现：<br/>
+fuction empty( ){<br/>
+return {<br/>
+get: function() { return null; }<br/>
+}<br/>
+}</p>
+<p> function store( Storage s, int obj ) {<br/>
+return s.store( obj );<br/>
+}</p>
+<p> fuction get( Storeage s, int key ){<br/>
+return s.get( key ); //恕我愚钝，这里我只能找到这种实现～<br/>
+}</p>
+<p> 然后我回头看，问题来了：<br/>
+1. 在实现 store( Storage s, int obj ) 时， 里面凭空冒出了个 s.store(), 这个是 Type Storage声明之外的东西 ，同样在 get( Storage s, int key ) 也是冒出了 s.get() ;<br/>
+可不可以认为这样 Type Storage 的类型定义已经被 “撑破”了呢？<br/>
+2. 原先在 Type Storage 里定义的关系： get( S, store( S, obj ) ) == obj, 在实现里并没有体现出来，我知道自己陷入以前的思维里去了——“方法封装起来粘贴到对象上”，但现在真想不透，这个应该如何处理呢？<br/>
+3. 留意到文中的List, append() 是基于 first(), rest()； singleton() 是基于 emppty() 和 first() 的，这是不是说我定义的 store() 粒度还是太大了? 是不是里面还隐含了哪些基本的Operations我没挖掘出来呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-605151" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-605151" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc097ea93d8fe5377f8e738c847334cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc097ea93d8fe5377f8e738c847334cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-605151"><time datetime="2013-07-23T14:45:12+08:00">2013年07月23日 14:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>up主用cpp实现一遍吧<br/>
+没必要用js</p>
+</div>
+ </article>
+</li>
+<li id="comment-605161" class="comment even thread-even depth-1">
+<article id="div-comment-605161" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc097ea93d8fe5377f8e738c847334cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc097ea93d8fe5377f8e738c847334cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-605161"><time datetime="2013-07-23T14:51:14+08:00">2013年07月23日 14:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说句题外话, 如果node包涵prev指针. 那就不必须用栈了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-606603" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-606603" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ForgetFul</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-606603"><time datetime="2013-07-24T08:46:29+08:00">2013年07月24日 08:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>问个问题：<br/>
+js实现list的时候<br/>
+为什么这条Invariant不用添加 :<br/>
+append(first(list), rest(list)) == list //对list的首尾两部分进行连接等于list本身<br/>
+是因为可以从<br/>
+first(append(list1, list2)) == first(list1) //对非空表list1于表list2的连接取首元素等于对非空表list1取首元素<br/>
+rest(append(list1, list2)) == append(rest(list1), list2) //对非空表list1于表list2的连接取首元素等于对非空<br/>
+推倒出来吗？如何推？ 谢谢～</p>
+</div>
+ </article>
+</li>
+<li id="comment-606702" class="comment even thread-even depth-1">
+<article id="div-comment-606702" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fbfc0d35a3e1a04dc2a35886765bc30f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fbfc0d35a3e1a04dc2a35886765bc30f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">onixie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-606702"><time datetime="2013-07-24T09:47:27+08:00">2013年07月24日 09:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-604796" rel="nofollow">@Marvin </a> </p>
+<p>不要误导人啊。<br/>
+函数式、符号运算、类型系统、解释执行还是编译这些完全是独立的概念。<br/>
+你把他们都混淆在一起。举个例子，</p>
+<p>Lisp 多范式的语言<br/>
+支持函数式编程，但它其实并不是函数式语言(不论Common Lisp还是Scheme都有副作用操作)，<br/>
+该语言的特点是符号运算，类型系统有些方言强，但大多都是弱的，大多支持编译和解释执行。</p>
+<p>Javascript 面向对象的语言<br/>
+好吧，有人说它就是伪装成C风格的Lisp。它是弱类型，支持函数式编程的多范式，支持编译但多半都是解释。<br/>
+符号运算能力不亚于Lisp，当然不够优雅。</p>
+<p>Haskell 纯函数式的语言<br/>
+和Lisp相比符号运算简直是弱爆了，但强类型、支持编译也支持解释执行。</p>
+<p>还有其他宣称的函数式语言Ocaml，Erlang, Scala， F#这些多半是强类型的支持编译也支持解释的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-606721" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-606721" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d7b3f89716a395d44721d8d49729a27?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d7b3f89716a395d44721d8d49729a27?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fanhe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-606721"><time datetime="2013-07-24T10:04:25+08:00">2013年07月24日 10:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中关于类型本质那部分，那不就是《数据结构》里面一开始就提到过的ADT（抽象数据类型）嘛，并且书上的定义更加数学化。</p>
+</div>
+ </article>
+</li>
+<li id="comment-606954" class="comment even thread-even depth-1">
+<article id="div-comment-606954" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/614728e048a1a1d6cb563e2f263e6723?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/614728e048a1a1d6cb563e2f263e6723?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cjxgm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-606954"><time datetime="2013-07-24T12:57:54+08:00">2013年07月24日 12:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>终于有文章能说服我学习函数式编程了</p>
+</div>
+ </article>
+</li>
+<li id="comment-607823" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-607823" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ForgetFul</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-607823"><time datetime="2013-07-24T21:57:11+08:00">2013年07月24日 21:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-606721" rel="nofollow">@fanhe </a><br/>
+是哪本《数据结构》？，我翻了下《数据结构与算法分析——C语言描述》(原书第二版)中对于List, Stack就只是定义了一些函数(接口)，然而函数(接口)之间的关系却没有定义，显然LZ的Type Specification更抽象普遍(不关心内部实现)，更具体(接口关系)</p>
+</div>
+ </article>
+</li>
+<li id="comment-608216" class="comment even thread-even depth-1">
+<article id="div-comment-608216" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d7b3f89716a395d44721d8d49729a27?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d7b3f89716a395d44721d8d49729a27?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fanhe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-608216"><time datetime="2013-07-25T01:11:16+08:00">2013年07月25日 01:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-607823"><p>
+<strong><a href="#comment-607823" rel="nofollow">ForgetFul</a> :</strong><br/>
+<a href="#comment-606721" rel="nofollow">@fanhe </a><br/>
+是哪本《数据结构》？，我翻了下《数据结构与算法分析——C语言描述》(原书第二版)中对于List, Stack就只是定义了一些函数(接口)，然而函数(接口)之间的关系却没有定义，显然LZ的Type Specification更抽象普遍(不关心内部实现)，更具体(接口关系)
+</p></blockquote>
+<p>就是这本，里面说所谓抽象数据类型，主要是指对象和对象关系，只是里面对于对象关系的描述基本等于没说。<br/>
+抽象数据类型本意就是描述数据类型的。<br/>
+其实所谓的抽象也只是一种和其他对象交互的标准/协议而已。<br/>
+文中所指的类型的本质就是一种抽象，也就是一种协议而已。<br/>
+显然，很多时候，只要遵守这个协议，内部是如何根本不用关心。</p>
+</div>
+ </article>
+</li>
+<li id="comment-609626" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-609626" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/03e946f71c8ea6b99819bd3f5bc68883?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/03e946f71c8ea6b99819bd3f5bc68883?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">吃面</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-609626"><time datetime="2013-07-25T16:27:02+08:00">2013年07月25日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好吧，看错了题目，以为是“用函数的方式实现类型系统”……</p>
+</div>
+ </article>
+</li>
+<li id="comment-612398" class="comment even thread-even depth-1">
+<article id="div-comment-612398" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8747871ef462c3e1e86ca7cbfe0266d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8747871ef462c3e1e86ca7cbfe0266d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/chrome" class="url" rel="ugc external nofollow">Marvin</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-612398"><time datetime="2013-07-26T14:34:29+08:00">2013年07月26日 14:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-606702" rel="nofollow">@onixie </a><br/>
+你说我误导，今天有空，就来谈有误导的事吧。</p>
+<p>你举了很多语言的例子，但请注意区分，一门语言和一门语言的实现。<br/>
+不要让一个实现来代替了它背后的东西。</p>
+<p>一个Lisp语言的实现，支持了编译和解释，它就代表了Lisp想要的表达了吗？<br/>
+请注意，我原文中说，“现阶段的语言建立在命令式基础上”，<br/>
+本质是来讲，当今的其于指令机器并不能实现函数式理想的，<br/>
+当年也有人研究lisp机，见http://baike.baidu.com/view/3732013.htm</p>
+<p>你理解的误导是说我讲的和大多数人说的现实不一样。而我告诉你的是，现实存在<br/>
+的东西并不是原有东西的本质，即现实就在误导你。比如，我说的历史和历史课本<br/>
+不一样，你说我在误导你，而我会说历史课本在误导你。</p>
+<p>当然我们讨论的东西没有历史课本那样严重，歪曲事实。</p>
+</div>
+ </article>
+</li>
+<li id="comment-612880" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-612880" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4c55f9b06d815b5539331780908c7faf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4c55f9b06d815b5539331780908c7faf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nyer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-612880"><time datetime="2013-07-26T19:01:02+08:00">2013年07月26日 19:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>涉及到的东西很多，感觉有些乱。</p>
+</div>
+ </article>
+</li>
+<li id="comment-613320" class="comment even thread-even depth-1">
+<article id="div-comment-613320" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ForgetFul</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-613320"><time datetime="2013-07-26T22:47:41+08:00">2013年07月26日 22:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-612398" rel="nofollow">@Marvin </a><br/>
+一个是硬件实现，一个是软件实现，语言还是一样的</p>
+</div>
+ </article>
+</li>
+<li id="comment-613472" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-613472" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9dc1931720e9f2e08916e82c7161e865?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ForgetFul</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-613472"><time datetime="2013-07-27T00:07:12+08:00">2013年07月27日 00:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-612398" rel="nofollow">@Marvin </a><br/>
+目前自然中还没有找到函数式的东西，Lisp机也只是硬件模拟，按照你的想法，Lisp机也没有做到函数式理想<br/>
+其实即使在人类大脑中，计算如：<br/>
+f(x) = x + 2,<br/>
+f(f(f(f(f(f(3)))))) = ？<br/>
+的时候，也需要缓存，不会一下次得出结果</p>
+<p>如果用硬件实现IL指令集，JVM指令集，我们也可以做出.Net机，Java机</p>
+<p>还有，无关主题，我们要支持皓哥抵制baidu ;)</p>
+</div>
+ </article>
+</li>
+<li id="comment-614636" class="comment even thread-even depth-1">
+<article id="div-comment-614636" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f689ee78db45b422db61b6ad95543576?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f689ee78db45b422db61b6ad95543576?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://t.sina.com.cn/1659819894" class="url" rel="ugc external nofollow">booirror</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-614636"><time datetime="2013-07-27T13:18:44+08:00">2013年07月27日 13:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写得很不错，让我对类型有了新的认识</p>
+</div>
+ </article>
+</li>
+<li id="comment-617145" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-617145" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/702b267bc16e6ee1dab896e4c139bf24?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/702b267bc16e6ee1dab896e4c139bf24?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="???" class="url" rel="ugc external nofollow">mingming</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-617145"><time datetime="2013-07-28T22:53:14+08:00">2013年07月28日 22:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有几个每调一次就构造一个新对象，只是利用js的闭包特性自动记录了传入的参数，随便一个函数的调用都涉及到大量的递归和新对象的构造，好像构造对象完全免费无开销的一样，这种感觉不太好。</p>
+</div>
+ </article>
+</li>
+<li id="comment-660238" class="comment even thread-even depth-1">
+<article id="div-comment-660238" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5ac477f9c5df673161ad1192e77ffac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">幻の上帝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-660238"><time datetime="2013-08-14T22:00:53+08:00">2013年08月14日 22:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-604796" rel="nofollow">@Marvin </a><br/>
+函数式=“无类型”？<br/>
+Ocaml、ML和Haskell的存在感233。。。<br/>
+……你认为“原有”的东西是什么？如果我说类型理论独立于函数式语言之外历史不短了，你有什么见解么。<br/>
+你说的无类型指的是啥？<br/>
+如果你要说真正意义上的“无”类型，那么请先搞清楚untyped lambda calculus的局限性再说。<br/>
+如果你要说的是Lisp传统的manifest type，请不要用误导性的说法。<br/>
+如果你要说的是你的原创研究，那么请拿出内容。<br/>
+至于lisp machine嘛，别指望会有纯血统的比较好……举个实际的例子，通用图灵机很容易在O(1)时间实时计算一个程序的memory footprint，用物理上纯粹的lisp machine怎么做？而在这个层次之上的lisp machine和实现REPL从语言设计和使用的角度来看本质上难度都没太大的差别。</p>
+</div>
+ </article>
+</li>
+<li id="comment-796588" class="comment byuser comment-author-reetsee odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-796588" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c023f823d2116300a0e3b5ca3bcf5c40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c023f823d2116300a0e3b5ca3bcf5c40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/csdbreadstealer" class="url" rel="ugc external nofollow">reetsee</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-796588"><time datetime="2013-10-09T19:57:16+08:00">2013年10月09日 19:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>简直有种大开眼界的感觉</p>
+</div>
+ </article>
+</li>
+<li id="comment-909528" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=134" class="url" rel="ugc external nofollow">面试题：火车运煤问题 | multiprocess</a> </div>
+</li>
+<li id="comment-999671" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dannybaobei.com/?p=95" class="url" rel="ugc external nofollow">用goto实现带parent二叉树的中序遍历 | 丹尼宝贝</a> </div>
+</li>
+<li id="comment-1058688" class="comment even thread-even depth-1">
+<article id="div-comment-1058688" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bed231c61c81e4e46b1fd2e2036de69c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bed231c61c81e4e46b1fd2e2036de69c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">池中物</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-1058688"><time datetime="2013-12-12T13:59:19+08:00">2013年12月12日 13:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>觉得博主过分追求”无副作用”</p>
+</div>
+ </article>
+</li>
+<li id="comment-1072100" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1072100" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/394d9842ac8c117346cb61e073104ac8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/394d9842ac8c117346cb61e073104ac8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Liang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-1072100"><time datetime="2013-12-16T22:05:02+08:00">2013年12月16日 22:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然个人觉得博主把类型本质 和函数式语言的例子放在一篇文章中讲有点唐突。<br/>
+不过对于类型的理解和这个函数式迭代器的例子真心太有启发了！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1175168" class="comment even thread-even depth-1">
+<article id="div-comment-1175168" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dannybaobei.com" class="url" rel="ugc external nofollow">Dannybaobei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-1175168"><time datetime="2014-01-13T21:50:53+08:00">2014年01月13日 21:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢博主， 终于看懂了， 不废话， 上c++版：<br/>
+#include “tree_definition.h”<br/>
+#include<br/>
+#include<br/>
+using namespace std;</p>
+<p>struct List{<br/>
+function first;<br/>
+function rest;<br/>
+};</p>
+<p>TreeNode_p_t first(List_p_t list1)<br/>
+{<br/>
+return list1 == NULL? NULL : list1-&gt;first();<br/>
+}</p>
+<p>List_p_t rest(List_p_t list1)<br/>
+{<br/>
+return list1 == NULL? NULL:list1-&gt;rest();<br/>
+}</p>
+<p>List_p_t Empty() {<br/>
+return NULL;<br/>
+};</p>
+<p>List_p_t Singleton(TreeNode_p_t e) {<br/>
+List *node = new List();<br/>
+node-&gt;first = [=]()mutable{<br/>
+return e;<br/>
+};</p>
+<p> node-&gt;rest = [=]()mutable{<br/>
+return (List_p_t)NULL;<br/>
+};<br/>
+return node;<br/>
+}</p>
+<p>List_p_t Append(List_p_t list1, List_p_t list2)<br/>
+{<br/>
+if(NULL == list1) return list2;<br/>
+if(NULL == list2) return list1;</p>
+<p> List *node = new List();<br/>
+node-&gt;first = [=]()mutable{<br/>
+return first(list1);<br/>
+};</p>
+<p> node-&gt;rest = [=]()mutable{<br/>
+return Append(rest(list1), list2);<br/>
+};<br/>
+return node;<br/>
+}</p>
+<p>List_p_t make_inorder_tree_iterator(TreeNode_p_t node)<br/>
+{<br/>
+if(!node)<br/>
+return NULL;<br/>
+List_p_t listNode = new List();<br/>
+listNode-&gt;first = [=]()mutable {<br/>
+return NULL != node-&gt;lchild ? first(make_inorder_tree_iterator(node-&gt;lchild)) : node;<br/>
+};<br/>
+listNode-&gt;rest = [=]()mutable {<br/>
+List_p_t left_it = (NULL == node-&gt;lchild ? NULL : make_inorder_tree_iterator(node-&gt;lchild));<br/>
+List_p_t root_it = Singleton(node);<br/>
+List_p_t right_it = (NULL == node-&gt;rchild ? NULL : make_inorder_tree_iterator(node-&gt;rchild));<br/>
+List_p_t it = Append(Append(left_it, root_it), right_it);<br/>
+return rest(it);<br/>
+};<br/>
+return listNode;<br/>
+}</p>
+<p>List_p_t make_preorder_tree_iterator(TreeNode_p_t node)<br/>
+{<br/>
+if(!node)<br/>
+return NULL;<br/>
+List_p_t listNode = new List();<br/>
+listNode-&gt;first = [=]()mutable {<br/>
+return node;<br/>
+};<br/>
+listNode-&gt;rest = [=]()mutable {<br/>
+List_p_t left_it = (NULL == node-&gt;lchild ? NULL : make_preorder_tree_iterator(node-&gt;lchild));<br/>
+List_p_t root_it = Singleton(node);<br/>
+List_p_t right_it = (NULL == node-&gt;rchild ? NULL : make_preorder_tree_iterator(node-&gt;rchild));<br/>
+List_p_t it = Append(Append(root_it,left_it), right_it);<br/>
+return rest(it);<br/>
+};<br/>
+return listNode;<br/>
+}</p>
+<p>List_p_t make_postorder_tree_iterator(TreeNode_p_t node)<br/>
+{<br/>
+if(!node)<br/>
+return NULL;<br/>
+List_p_t listNode = new List();<br/>
+listNode-&gt;first = [=]()mutable {<br/>
+if(NULL == node-&gt;lchild &amp;&amp; NULL == node-&gt;rchild)<br/>
+return node;<br/>
+return NULL != node-&gt;lchild ? first(make_postorder_tree_iterator(node-&gt;lchild)) : first(make_postorder_tree_iterator(node-&gt;rchild)) ;<br/>
+};<br/>
+listNode-&gt;rest = [=]()mutable {<br/>
+List_p_t left_it = (NULL == node-&gt;lchild ? NULL : make_postorder_tree_iterator(node-&gt;lchild));<br/>
+List_p_t root_it = Singleton(node);<br/>
+List_p_t right_it = (NULL == node-&gt;rchild ? NULL : make_postorder_tree_iterator(node-&gt;rchild));<br/>
+List_p_t it = Append(Append(left_it, right_it), root_it);<br/>
+return rest(it);<br/>
+};<br/>
+return listNode;<br/>
+}</p>
+<p>当然， 也可以衍生自己的iterator：<br/>
+class InorderLazyIterator : public Iterator {<br/>
+public:<br/>
+InorderLazyIterator(TreeNode_p_t node):m_list(NULL) {<br/>
+m_list = make_inorder_tree_iterator(node);<br/>
+}<br/>
+virtual TreeNode_p_t next() {<br/>
+TreeNode_p_t node = first(m_list);<br/>
+m_list = rest(m_list);<br/>
+return node;<br/>
+}<br/>
+private:<br/>
+List_p_t m_list;<br/>
+};</p>
+</div>
+ </article>
+</li>
+<li id="comment-1175172" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1175172" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dannybaobei.com" class="url" rel="ugc external nofollow">Dannybaobei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-1175172"><time datetime="2014-01-13T21:53:10+08:00">2014年01月13日 21:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>尖括号不能正常现实， 无语</p>
+</div>
+ </article>
+</li>
+<li id="comment-1175197" class="comment even thread-even depth-1">
+<article id="div-comment-1175197" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dannybaobei.com" class="url" rel="ugc external nofollow">Dannybaobei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-1175197"><time datetime="2014-01-13T22:02:24+08:00">2014年01月13日 22:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>忘了说了， 这个版本是会memory leak的， 高手们请自行解决。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1271826" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1271826" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d981692c4b4ff969ba90709345bc4d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d981692c4b4ff969ba90709345bc4d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">TBY</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10169.html#comment-1271826"><time datetime="2014-02-13T15:58:04+08:00">2014年02月13日 15:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-606702"><p>
+<strong><a href="#comment-606702" rel="nofollow">onixie</a> :</strong><br/>
+<a href="#comment-604796" rel="nofollow">@Marvin </a><br/>
+Haskell 纯函数式的语言<br/>
+和Lisp相比符号运算简直是弱爆了，但强类型、支持编译也支持解释执行。
+</p></blockquote>
+<p>不能简单评价Haskell的符号计算能力为“弱爆”，至少在符号运算一个较常应用的领域符号求导(Symbolic Differentiation)上，Haskell可以将更先进的自动求导(Automatic Differentiation)完全的融入它的类型系统中。<br/>
+<a href="http://hackage.haskell.org/package/ad" rel="nofollow ugc">http://hackage.haskell.org/package/ad</a><br/>
+至少目前是我见过的最优雅的自动求导工具。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1568501" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dannybaobei.com/2014/10/%e7%94%a8goto%e5%ae%9e%e7%8e%b0%e5%b8%a6parent%e4%ba%8c%e5%8f%89%e6%a0%91%e7%9a%84%e4%b8%ad%e5%ba%8f%e9%81%8d%e5%8e%86/" class="url" rel="ugc external nofollow">用goto实现带parent二叉树的中序遍历 | 悦忘小筑</a> </div>
+</li>
+<li id="comment-1568694" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dannybaobei.com/?p=19" class="url" rel="ugc external nofollow">用goto实现带parent二叉树的中序遍历 | 丹尼的博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

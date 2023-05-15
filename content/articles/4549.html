@@ -1,0 +1,537 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Facebook 的系统架构 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4549 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4549" class="post-content post-4549 post type-post status-publish format-standard hentry category-technews category-misc tag-facebook tag-stackexchange">
+<header class="entry-header">
+<span class="screen-reader-text">Facebook 的系统架构</span>
+<h1 class="entry-title">Facebook 的系统架构</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4549.html" title="13:39" rel="bookmark"><time class="entry-date" datetime="2011-04-25T13:39:26+08:00" pubdate="">2011年04月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4549.html#comments" class="comments-link">49 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 42,849 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>来源</strong>：<a title="What is Facebook&#39;s Architecture?" href="https://www.quora.com/What-is-Facebooks-architecture" target="_blank">http://www.quora.com/What-is-Facebooks-architecture</a> （由<a href="https://www.quora.com/Micha%C3%ABl-Figui%C3%A8re">Micha?l Figuière</a>回答）</p>
+<p>根据我现有的阅读和谈话，我所理解的今天Facebook的架构如下：</p>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>Web 前端是由 PHP 写的。Facebook 的 <a href=" http://developers.facebook.com/blog/post/358" target="_blank">HipHop </a>[1] 会把PHP转成 C++ 并用 g++编译，这样就可以为模板和Web逻贺业务层提供高的性能。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>业务逻辑以Service的形式存在，其使用<a href="http://thrift.apache.org/" target="_blank">Thrift </a>[2]。这些Service根据需求的不同由PHP，C++或Java实现（也可以用到了其它的一些语言……）</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>用Java写的Services没有用到任何一个企业级的应用服务器，但用到了Facebook自己的定制的应用服务器。看上去好像是重新发明轮子，但是这些Services只被暴露给Thrift使用（绝大所数是这样），Tomcat太重量级了，即使是Jetty也可能太过了点，其附加值对Facebook所需要的没有意义。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>持久化由MySQL, <a href="http://memcached.org/" target="_blank">Memcached </a>[3], Facebook 的 <a href="http://cassandra.apache.org/" target="_blank">Cassandra </a>[4], Hadoop 的 <a href="http://hbase.apache.org/" target="_blank">HBase </a>[5] 完成。Memcached 使用了MySQL的内存Cache。Facebook 工程师承认他们的Cassandra 使用正在减少，因为他们更喜欢HBase，因为它的更简单的一致性模型，以到其MapReduce能力。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>离线处理使用Hadoop 和 Hive。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>日志，点击，feeds数据使用<a href="https://github.com/facebook/scribe" target="_blank">Scribe </a>[6]，把其聚合并存在 HDFS，其使用<a href="https://hadoopblog.blogspot.com/2009/06/hdfs-scribe-integration.html" target="_blank">Scribe-HDFS </a>[7]，因而允许使用MapReduce进行扩展分析。</li>
+</ul>
+<p><span id="more-4549"></span></p>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li><a href="https://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919" target="_blank">BigPipe </a>[8] 是他们的定制技术，用来加速页面显示。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li><a href="http://www.varnish-cache.org/" target="_blank">Varnish Cache</a> [9]用作HTTP代理。他们用这个的原因是<a href="http://www.varnish-software.com/customers/facebook" target="_blank">高速和有效率</a>。 [10].</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>用来搞定用户<a href="https://www.facebook.com/note.php?note_id=76191543919" target="_blank">上传的十亿张照片的存储</a>，其由Haystack处理，Facebook自己开发了一个Ad-Hoc存储方案，其主要做了一些低层优化和“仅追加”写技术 [11].</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>Facebook Messages 使用了自己的架构，其明显地构建在了一个动态集群的基础架构上。业务逻辑和持久化被封装在一个所谓的’Cell’。每个‘Cell’都处理一部分用户，新的‘Cell’可以因为访问热度被添加[12]。 持久化归档使用HBase [13]。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>Facebook Messages 的搜索引擎由存储在HBase中的一个倒置索引的构建。 [14]</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>Facebook 搜索引擎实现细节据我所知目前是未知状态。</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>Typeahead 搜索使用了一个定制的存储和检索逻辑。 [15]</li>
+</ul>
+<ul style="margin: 5px 0px 0px 1.6em; padding: 0px; list-style-type: disc;">
+<li>Chat 基于一个Epoll 服务器，这个服务器由Erlang 开发，由Thrift存取 [16]</li>
+</ul>
+<p>关于那些供给给上述组件的资源，下面是一些信息和数量，但是有一些是未知的：</p>
+<ul>
+<li>Facebook估计有超过60,000 台服务器[16]。他们最新的数据中心在俄勒冈州的Prineville，其基于完全自定设计的硬件[17] 那是最近才公开的 <a href="http://opencompute.org" target="_blank">Open Compute 项目</a>[18]。</li>
+</ul>
+<ul>
+<li>300 TB 的数据存在 Memcached 中处理 [19]</li>
+</ul>
+<ul>
+<li>他们的Hadoop 和 Hive 集群由3000 服务器组成，每台服务器有8个核，32GB的内存，12TB的硬盘，全部有2万4千个CPU的核，96TB内存和36PB的硬盘。 [20]</li>
+</ul>
+<ul>
+<li>每天有1000亿的点击量，500亿张照片， 3 万亿个对象被 Cache，每天130TB的日志（<a href="https://www.facebook.com/note.php?note_id=409881258919" target="_blank">2010年7月的数据</a>） [21]</li>
+</ul>
+<p><strong>参考引用</strong></p>
+<p>[1] <em style="margin: 0px; padding: 0px;">HipHop for PHP</em>: <a href="https://developers.facebook.com/blog/post/358">http://developers.facebook.com/blog/post/358</a><br style="margin: 0px; padding: 0px;"/>[2] <em style="margin: 0px; padding: 0px;">Thrift</em>: <a href="http://thrift.apache.org/">http://thrift.apache.org/</a><br style="margin: 0px; padding: 0px;"/>[3] <em style="margin: 0px; padding: 0px;">Memcached</em>: <a href="http://memcached.org/">http://memcached.org/</a><br style="margin: 0px; padding: 0px;"/>[4] <em style="margin: 0px; padding: 0px;">Cassandra</em>: <a href="http://cassandra.apache.org/">http://cassandra.apache.org/</a><br style="margin: 0px; padding: 0px;"/>[5] <em style="margin: 0px; padding: 0px;">HBase</em>: <a href="http://hbase.apache.org/">http://hbase.apache.org/</a><br style="margin: 0px; padding: 0px;"/>[6] <em style="margin: 0px; padding: 0px;">Scribe</em>: <a href="https://github.com/facebook/scribe">https://github.com/facebook/scribe</a><br style="margin: 0px; padding: 0px;"/>[7] <em style="margin: 0px; padding: 0px;">Scribe-HDFS</em>: <a href="https://hadoopblog.blogspot.com/2009/06/hdfs-scribe-integration.html">http://hadoopblog.blogspot.com/2009/06/hdfs-scribe-integration.html</a><br style="margin: 0px; padding: 0px;"/>[8] <em style="margin: 0px; padding: 0px;">BigPipe</em>: <a href="https://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919">http://www.facebook.com/notes/facebook-engineering/bigpipe-pipelining-web-pages-for-high-performance/389414033919</a><br style="margin: 0px; padding: 0px;"/>[9] <em style="margin: 0px; padding: 0px;">Varnish Cache</em>: <a href="http://www.varnish-cache.org/">http://www.varnish-cache.org/</a><br style="margin: 0px; padding: 0px;"/>[10] <em style="margin: 0px; padding: 0px;">Facebook goes for Varnish</em>: <a href="http://www.varnish-software.com/customers/facebook">http://www.varnish-software.com/customers/facebook</a><br style="margin: 0px; padding: 0px;"/>[11] <em style="margin: 0px; padding: 0px;">Needle in a haystack</em>: efficient storage of billions of photos: <a href="https://www.facebook.com/note.php?note_id=76191543919">http://www.facebook.com/note.php?note_id=76191543919</a><br style="margin: 0px; padding: 0px;"/>[12] <em style="margin: 0px; padding: 0px;">Scaling the Messages Application Back End</em>: <a href="https://www.facebook.com/note.php?note_id=10150148835363920">http://www.facebook.com/note.php?note_id=10150148835363920</a><br style="margin: 0px; padding: 0px;"/>[13] <em style="margin: 0px; padding: 0px;">The Underlying Technology of Messages</em>: <a href="https://www.facebook.com/note.php?note_id=454991608919">https://www.facebook.com/note.php?note_id=454991608919</a><br style="margin: 0px; padding: 0px;"/>[14] <em style="margin: 0px; padding: 0px;">The Underlying Technology of Messages Tech Talk</em>: <a href="https://www.facebook.com/video/video.php?v=690851516105">http://www.facebook.com/video/video.php?v=690851516105</a><br style="margin: 0px; padding: 0px;"/>[15] <em style="margin: 0px; padding: 0px;">Facebook’s typeahead search architecture</em>: <a href="https://www.facebook.com/video/video.php?v=432864835468">http://www.facebook.com/video/video.php?v=432864835468</a><br style="margin: 0px; padding: 0px;"/>[16] <em style="margin: 0px; padding: 0px;">Facebook Chat</em>: <a href="https://www.facebook.com/note.php?note_id=14218138919">http://www.facebook.com/note.php?note_id=14218138919</a><br style="margin: 0px; padding: 0px;"/>[17] <em style="margin: 0px; padding: 0px;">Who has the most Web Servers?</em>: <a href="http://www.datacenterknowledge.com/archives/2009/05/14/whos-got-the-most-web-servers/">http://www.datacenterknowledge.com/archives/2009/05/14/whos-got-the-most-web-servers/</a><br style="margin: 0px; padding: 0px;"/>[18] B<em style="margin: 0px; padding: 0px;">uilding Efficient Data Centers with the Open Compute Project</em>: <a href="https://www.facebook.com/note.php?note_id=10150144039563920">http://www.facebook.com/note.php?note_id=10150144039563920</a><br style="margin: 0px; padding: 0px;"/>[19] <em style="margin: 0px; padding: 0px;">Open Compute Project</em>: <a href="http://opencompute.org/">http://opencompute.org/</a><br style="margin: 0px; padding: 0px;"/>[20] <em style="margin: 0px; padding: 0px;">Facebook’s architecture presentation at Devoxx 2010</em>: <a href="http://www.devoxx.com">http://www.devoxx.com</a><br style="margin: 0px; padding: 0px;"/>[21] <em style="margin: 0px; padding: 0px;">Scaling Facebook to 500 millions users and beyond</em>: <a href="https://www.facebook.com/note.php?note_id=409881258919">http://www.facebook.com/note.php?note_id=409881258919</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4549-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术新闻</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Facebook</a>, <a href="javascript:void(0)" rel="tag">StackExchange</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Facebook 的系统架构</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-47668" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://smilingfarstar.wordpress.com/2011/04/25/facebook-%e7%9a%84%e7%b3%bb%e7%bb%9f%e6%9e%b6%e6%9e%84-%e9%85%b7%e5%a3%b3-coolshell-cn-2/" class="url" rel="ugc external nofollow">Facebook 的系统架构 | 酷壳 – CoolShell.cn | 徐建</a> </div>
+</li>
+<li id="comment-47669" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-47669" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7002455006f9c651274714a05526e67?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7002455006f9c651274714a05526e67?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cogipard.info" class="url" rel="ugc external nofollow">dotswing</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47669"><time datetime="2011-04-25T14:38:41+08:00">2011年04月25日 14:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>”Tomcat太重量级了，即使是Jetty也可能太过了点“</p>
+<p>想找个servlet容器，应用只用到servlet，连jsp都可以不要，更加无需其他的j2ee技术<br/>
+力求响应迅速和占用更少的资源，<br/>
+稳定性只要不太离谱就好，天天重启都没问题<br/>
+有什么推荐么？<br/>
+初步考虑还是用tomcat…</p>
+</div>
+ </article>
+</li>
+<li id="comment-47679" class="comment even thread-even depth-1">
+<article id="div-comment-47679" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2ff966b4a3f20ff0bd473bb35327dcca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2ff966b4a3f20ff0bd473bb35327dcca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mjo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47679"><time datetime="2011-04-25T15:15:41+08:00">2011年04月25日 15:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>连Tomcat都太重量级了，WebSphere泪流满面</p>
+</div>
+ </article>
+</li>
+<li id="comment-47703" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-47703" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6f1e1bb11116dfc00e194bb24b809edc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6f1e1bb11116dfc00e194bb24b809edc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Boundary</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47703"><time datetime="2011-04-25T16:20:44+08:00">2011年04月25日 16:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看来Face的设计称得上是极度简约又极度务实啊<br/>
+一切都是瞄准性能和服务设计的</p>
+</div>
+ </article>
+</li>
+<li id="comment-47736" class="comment even thread-even depth-1">
+<article id="div-comment-47736" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大家帮助大家</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47736"><time datetime="2011-04-25T17:41:29+08:00">2011年04月25日 17:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错。这么多新名词。好多新玩意啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-47742" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-47742" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bef4b005c286bde33a34043ce9218595?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bef4b005c286bde33a34043ce9218595?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Feng2084</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47742"><time datetime="2011-04-25T17:59:18+08:00">2011年04月25日 17:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-47669" rel="nofollow">@dotswing </a><br/>
+要求那么低, 那还是Tomcat吧.</p>
+</div>
+ </article>
+</li>
+<li id="comment-47803" class="comment even thread-even depth-1">
+<article id="div-comment-47803" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0994ce6688643699f4599e9d121fc649?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0994ce6688643699f4599e9d121fc649?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小生</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47803"><time datetime="2011-04-25T21:08:38+08:00">2011年04月25日 21:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不知道啥时候也能接触到这种超大规模的架构</p>
+</div>
+ </article>
+</li>
+<li id="comment-47822" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-47822" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f68fe7cd2d188596f93cee2067aa0c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f68fe7cd2d188596f93cee2067aa0c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">的份额</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47822"><time datetime="2011-04-25T22:25:13+08:00">2011年04月25日 22:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好恐怖啊…太复杂了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-47856" class="comment even thread-even depth-1">
+<article id="div-comment-47856" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6cfd2daebe6d0543923368acdf4029bd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6cfd2daebe6d0543923368acdf4029bd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cmonkey</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47856"><time datetime="2011-04-26T00:44:03+08:00">2011年04月26日 00:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>memcached,redis 都有雪崩问题，如何架构很重要。</p>
+</div>
+ </article>
+</li>
+<li id="comment-47969" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-47969" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d3f42d4b28cfd7ca68ca9437cb15d22b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d3f42d4b28cfd7ca68ca9437cb15d22b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Felix</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-47969"><time datetime="2011-04-26T07:59:31+08:00">2011年04月26日 07:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写作已经符合Academic Writing的Oxford Reference 标准了。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-47977" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wuxianwang.com/?p=161" class="url" rel="ugc external nofollow">Facebook 的系统架构 http://coolshell.cn/articles/4549.html | 出家如初,成佛有余</a> </div>
+</li>
+<li id="comment-48037" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-48037" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大家帮助大家</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-48037"><time datetime="2011-04-26T12:09:14+08:00">2011年04月26日 12:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看了这些，我想谁都不会否认：张朝阳所说的了。<br/>
+张朝阳抛出泡沫论：人人网仅概念像Facebook_互联网_科技时代_新浪网 <a href="http://t.cn/hd8OSE" rel="nofollow ugc">http://t.cn/hd8OSE</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-48042" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.am82.com/houzan/archives/5610/" class="url" rel="ugc external nofollow">Facebook 的系统架构 « 葡萄树 On The Road</a> </div>
+</li>
+<li id="comment-48043" class="comment byuser comment-author-liuxd odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-48043" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/05cdbb54576585408d487d5e8aca534d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/05cdbb54576585408d487d5e8aca534d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">喜东</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-48043"><time datetime="2011-04-26T12:54:13+08:00">2011年04月26日 12:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同样是网站…</p>
+</div>
+ </article>
+</li>
+<li id="comment-48202" class="comment even thread-even depth-1">
+<article id="div-comment-48202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d6197771e36d7a21d611651609f023a8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d6197771e36d7a21d611651609f023a8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Eric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-48202"><time datetime="2011-04-26T20:49:14+08:00">2011年04月26日 20:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>懂的好多啊，我马上毕业的人，还是所谓的master，我发自内心的惭愧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-48794" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-48794" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/767e0f40660e57c2b22e12e995e1e77a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/767e0f40660e57c2b22e12e995e1e77a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dizzydancer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-48794"><time datetime="2011-04-28T11:30:52+08:00">2011年04月28日 11:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>just read the mapreduce paper recently..</p>
+</div>
+ </article>
+</li>
+<li id="comment-48912" class="comment even thread-even depth-1">
+<article id="div-comment-48912" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0936a2df6e437e2ed19e74c67a655186?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0936a2df6e437e2ed19e74c67a655186?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.towerinwhite.com" class="url" rel="ugc external nofollow">zephyro</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-48912"><time datetime="2011-04-28T21:17:59+08:00">2011年04月28日 21:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“Memcached 使用了MySQL的内存Cache”<br/>
+这句话没理解啊，Memcached不是一个工具吗，什么叫使用了MySQL的内存Cache？<br/>
+意思是除了Memcached这个工具之外，MySQL还保留了缓存机制？</p>
+</div>
+ </article>
+</li>
+<li id="comment-50363" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-50363" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d09f73411cd8bdde6064f107c4ed46cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d09f73411cd8bdde6064f107c4ed46cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">michaelliu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-50363"><time datetime="2011-05-05T17:01:37+08:00">2011年05月05日 17:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-48912" rel="nofollow">@zephyro </a> Memcached is used as a cache for MySQL as well as a general purpose cache.</p>
+</div>
+ </article>
+</li>
+<li id="comment-51371" class="comment even thread-even depth-1">
+<article id="div-comment-51371" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/927b89e47391408499cfb6812eafae95?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/927b89e47391408499cfb6812eafae95?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.leyond.info" class="url" rel="ugc external nofollow">Leyond</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-51371"><time datetime="2011-05-11T19:01:45+08:00">2011年05月11日 19:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看来我很多都不懂，惭愧啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-52500" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-52500" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ada462d4afa1d8c587d363dcfbb80d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ada462d4afa1d8c587d363dcfbb80d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://phprimer.com" class="url" rel="ugc external nofollow">Neaton</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-52500"><time datetime="2011-05-16T14:16:49+08:00">2011年05月16日 14:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Facebook Messages’ search engine is built with an inverted index stored in HBase</p>
+</div>
+ </article>
+</li>
+<li id="comment-54724" class="comment even thread-even depth-1">
+<article id="div-comment-54724" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/544d17ff870b1157bd2a157a82091b1d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/544d17ff870b1157bd2a157a82091b1d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">deycool1</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-54724"><time datetime="2011-05-25T16:36:16+08:00">2011年05月25日 16:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>e</p>
+</div>
+ </article>
+</li>
+<li id="comment-56332" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.biaodianfu.com/facebooks-architecture.html" class="url" rel="ugc external nofollow">Facebook的系统架构 | 标点符</a> </div>
+</li>
+<li id="comment-56416" class="comment even thread-even depth-1">
+<article id="div-comment-56416" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8022275391bfae405a68e7b0b1718b9e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8022275391bfae405a68e7b0b1718b9e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">snailwong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-56416"><time datetime="2011-06-03T12:25:02+08:00">2011年06月03日 12:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我不晓得你们在讲啥子。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62872" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/4939.html" class="url" rel="ugc">Quora使用到的技术 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-62967" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://flychen.com/2011/07/quora-technology-used/" class="url" rel="ugc external nofollow">Quora使用到的技术 | 听雨轩</a> </div>
+</li>
+<li id="comment-62969" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://flychen.com/2011/07/facebooks-system-architecture/" class="url" rel="ugc external nofollow">Facebook 的系统架构 | 听雨轩</a> </div>
+</li>
+<li id="comment-63003" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://news.howtoadmin.com/archives/10968" class="url" rel="ugc external nofollow">Quora使用到的技术 | IT News</a> </div>
+</li>
+<li id="comment-63024" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.umtry.com/201107/quora%e4%bd%bf%e7%94%a8%e5%88%b0%e7%9a%84%e6%8a%80%e6%9c%af.html5" class="url" rel="ugc external nofollow">Quora使用到的技术 - 玉米串|无限尝试，无限可能!</a> </div>
+</li>
+<li id="comment-63051" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.alibuybuy.com/posts/61766.html" class="url" rel="ugc external nofollow">Quora使用到的技术 | 互联网的那点事</a> </div>
+</li>
+<li id="comment-63189" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.boj6.com/it/760.html" class="url" rel="ugc external nofollow">Quora使用到的技术 - 网旮旯里 | 把握最新动态，关注IT前沿</a> </div>
+</li>
+<li id="comment-63463" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.myhomespace.net/p/2011/07/647" class="url" rel="ugc external nofollow">Quora使用到的技术 - 我家空间</a> </div>
+</li>
+<li id="comment-64456" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liange.sinaapp.com/?p=24" class="url" rel="ugc external nofollow">Quora使用到的技术(转载) | liange</a> </div>
+</li>
+<li id="comment-64458" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liange.sinaapp.com/?p=28" class="url" rel="ugc external nofollow">Facebook 的系统架构 | liange</a> </div>
+</li>
+<li id="comment-64509" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://99dzh.com/index.php/2011/07/11/6/" class="url" rel="ugc external nofollow">Quora使用到的技术 » 99大杂烩</a> </div>
+</li>
+<li id="comment-65362" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liuxuan.info/2011/07/quoras-technology-examined/" class="url" rel="ugc external nofollow">Quora使用的技术</a> </div>
+</li>
+<li id="comment-66839" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://benjamin9.net9.org/2011/07/reserved-quora-technology-used/" class="url" rel="ugc external nofollow">feenn的博客 » [转载]: Quora使用到的技术</a> </div>
+</li>
+<li id="comment-68016" class="comment even thread-even depth-1">
+<article id="div-comment-68016" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a3b613036c8522903c146f2e468f6c4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a3b613036c8522903c146f2e468f6c4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">RQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-68016"><time datetime="2011-07-25T13:11:01+08:00">2011年07月25日 13:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞！ 条理， 让人扩展视野。</p>
+</div>
+ </article>
+</li>
+<li id="comment-160820" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-160820" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/18d17e63ae26b66e18a9e8ac53d87343?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/18d17e63ae26b66e18a9e8ac53d87343?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tengfei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4549.html#comment-160820"><time datetime="2012-04-19T13:09:19+08:00">2012年04月19日 13:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>300 TB 的数据存在 Memcached 中处理 [19]<br/>
+[20]说总共 才 96TB内存啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-169982" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://x.zzmss.com/program/articles/1048.html" class="url" rel="ugc external nofollow">Quora的技术探索 | 编程X资讯</a> </div>
+</li>
+<li id="comment-195113" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://falcon.sinaapp.com/post-29942.html" class="url" rel="ugc external nofollow">Quora 使用到的技术 | 雕刻时光-海量热帖</a> </div>
+</li>
+<li id="comment-195746" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.81n.org/303.htm" class="url" rel="ugc external nofollow">Quora使用到的技术 | 81难</a> </div>
+</li>
+<li id="comment-203090" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://106.186.17.27/wordpress/?p=4" class="url" rel="ugc external nofollow">WP Pocket link collection: September with 23 links | 选择恐惧症</a> </div>
+</li>
+<li id="comment-203277" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.nengzuo.com/?p=1077" class="url" rel="ugc external nofollow">Quora使用到的技术[转] | 能做网团队笔记</a> </div>
+</li>
+<li id="comment-213546" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://fastfood.sinaapp.com/?p=878" class="url" rel="ugc external nofollow">xsank的快餐 » Quora 使用到的技术</a> </div>
+</li>
+<li id="comment-238540" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.sodapanda.info/?p=22" class="url" rel="ugc external nofollow">没有严格的界限 | sodapanda</a> </div>
+</li>
+<li id="comment-310628" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.sodapanda.info/archives/23" class="url" rel="ugc external nofollow">系统程序员和应用程序员本没有严格的界限 | sodapanda</a> </div>
+</li>
+<li id="comment-948912" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://shumabeta.com/archives/1490" class="url" rel="ugc external nofollow">Facebook、Twitter、包括国内的新浪微博、豆瓣、知乎等网站，都是用什么技术做的？ | 数码beta</a> </div>
+</li>
+<li id="comment-1830181" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/quora%e4%bd%bf%e7%94%a8%e5%88%b0%e7%9a%84%e6%8a%80%e6%9c%af.html" class="url" rel="ugc external nofollow">Quora使用到的技术 | | Codeba</a> </div>
+</li>
+<li id="comment-1917815" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1243" class="url" rel="ugc external nofollow">关于Facebook 的 React 专利许可证 | 星达红</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

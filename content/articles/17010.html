@@ -1,0 +1,559 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Docker基础技术：Linux Namespace（上） | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17010 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17010" class="post-content post-17010 post type-post status-publish format-standard hentry category-unixlinux tag-docker tag-linux tag-mount tag-namespace">
+<header class="entry-header">
+<span class="screen-reader-text">Docker基础技术：Linux Namespace（上）</span>
+<h1 class="entry-title">Docker基础技术：Linux Namespace（上）</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17010.html" title="10:20" rel="bookmark"><time class="entry-date" datetime="2015-04-16T10:20:08+08:00" pubdate="">2015年04月16日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17010.html#comments" class="comments-link">113 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 241,622 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-17085" src="/uploads/2015/04/isolation.jpg" alt="isolation" width="359" height="237" srcset="" sizes="(max-width: 359px) 100vw, 359px"/>时下最热的技术莫过于Docker了，很多人都觉得Docker是个新技术，其实不然，Docker除了其编程语言用go比较新外，其实它还真不是个新东西，也就是个新瓶装旧酒的东西，所谓的The New “Old Stuff”。Docker和Docker衍生的东西用到了很多很酷的技术，我会用几篇 文章来把这些技术给大家做个介绍，希望通过这些文章大家可以自己打造一个山寨版的docker。</p>
+<p>当然，文章的风格一定会尊重时下的“流行”——<strong>我们再也没有整块整块的时间去看书去专研，而我们只有看微博微信那样的碎片时间</strong>（那怕我们有整块的时间，也被那些在手机上的APP碎片化了）。所以，这些文章的风格必然坚持“马桶风格”（希望简单到占用你拉一泡屎就时间，而且你还不用动脑子，并能学到些东西）</p>
+<p>废话少说，我们开始。先从Linux Namespace开始。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#_%E7%AE%80%E4%BB%8B" title=" 简介"> 简介</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#clone%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8" title="clone()系统调用">clone()系统调用</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#UTS_Namespace" title="UTS Namespace">UTS Namespace</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#IPC_Namespace" title="IPC Namespace">IPC Namespace</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#PID_Namespace" title="PID Namespace">PID Namespace</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Mount_Namespace" title="Mount Namespace">Mount Namespace</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#Docker%E7%9A%84_Mount_Namespace" title="Docker的 Mount Namespace">Docker的 Mount Namespace</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="_%E7%AE%80%E4%BB%8B"></span> 简介<span class="ez-toc-section-end"></span></h4>
+<p>Linux Namespace是Linux提供的一种内核级别环境隔离的方法。不知道你是否还记得很早以前的Unix有一个叫chroot的系统调用（通过修改根目录把用户jail到一个特定目录下），chroot提供了一种简单的隔离模式：chroot内部的文件系统无法访问外部的内容。Linux Namespace在此基础上，提供了对UTS、IPC、mount、PID、network、User等的隔离机制。</p>
+<p><span id="more-17010"></span></p>
+<p>举个例子，我们都知道，Linux下的超级父亲进程的PID是1，所以，同chroot一样，如果我们可以把用户的进程空间jail到某个进程分支下，并像chroot那样让其下面的进程 看到的那个超级父进程的PID为1，于是就可以达到资源隔离的效果了（不同的PID namespace中的进程无法看到彼此）</p>
+<p><b>Linux Namespace 有如下种类</b>，官方文档在这里《<a href="http://lwn.net/Articles/531114/" target="_blank" rel="noopener noreferrer">Namespace in Operation</a>》</p>
+<table width="100%">
+<thead>
+<tr>
+<th>分类</th>
+<th>系统调用参数</th>
+<th>相关内核版本</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><b>Mount namespaces</b></td>
+<td>CLONE_NEWNS</td>
+<td><a href="http://lwn.net/2001/0301/a/namespaces.php3" target="_blank" rel="noopener noreferrer">Linux 2.4.19</a></td>
+</tr>
+<tr>
+<td><b>UTS namespaces</b></td>
+<td>CLONE_NEWUTS</td>
+<td><a href="http://lwn.net/Articles/179345/" target="_blank" rel="noopener noreferrer">Linux 2.6.19</a></td>
+</tr>
+<tr>
+<td><b>IPC namespaces</b></td>
+<td>CLONE_NEWIPC</td>
+<td><a href="http://lwn.net/Articles/187274/" target="_blank" rel="noopener noreferrer">Linux 2.6.19</a></td>
+</tr>
+<tr>
+<td><b>PID namespaces</b></td>
+<td>CLONE_NEWPID</td>
+<td><a href="http://lwn.net/Articles/259217/" target="_blank" rel="noopener noreferrer">Linux 2.6.24</a></td>
+</tr>
+<tr>
+<td><b>Network namespaces</b></td>
+<td>CLONE_NEWNET</td>
+<td><a href="http://lwn.net/Articles/219794/" target="_blank" rel="noopener noreferrer">始于Linux 2.6.24 完成于 Linux 2.6.29</a></td>
+</tr>
+<tr>
+<td><b>User namespaces</b></td>
+<td>CLONE_NEWUSER</td>
+<td><a href="http://lwn.net/Articles/528078/" target="_blank" rel="noopener noreferrer">始于 Linux 2.6.23 完成于 Linux 3.8)</a></td>
+</tr>
+</tbody>
+</table>
+<p>主要是三个系统调用</p>
+<ul>
+<li><b><code>clone</code></b><b>() </b>– 实现线程的系统调用，用来创建一个新的进程，并可以通过设计上述参数达到隔离。</li>
+<li><b><code>unshare</code></b><b>() </b>– 使某进程脱离某个namespace</li>
+<li><b><code>setns</code></b><b>() </b>– 把某进程加入到某个namespace</li>
+</ul>
+<p>unshare() 和 setns() 都比较简单，大家可以自己man，我这里不说了。</p>
+<p>下面还是让我们来看一些示例（以下的测试程序最好在Linux 内核为3.8以上的版本中运行，我用的是ubuntu 14.04）。</p>
+<h4><span class="ez-toc-section" id="clone%E7%B3%BB%E7%BB%9F%E8%B0%83%E7%94%A8"></span>clone()系统调用<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们来看一下一个最简单的clone()系统调用的示例，（后面，我们的程序都会基于这个程序做修改）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">#define _GNU_SOURCE
+#include &lt;sys/types.h&gt;
+#include &lt;sys/wait.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;sched.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;unistd.h&gt;
+
+/* 定义一个给 clone 用的栈，栈大小1M */
+#define STACK_SIZE (1024 * 1024)
+static char container_stack[STACK_SIZE];
+
+char* const container_args[] = {
+    &#34;/bin/bash&#34;,
+    NULL
+};
+
+int container_main(void* arg)
+{
+    printf(&#34;Container - inside the container!\n&#34;);
+    /* 直接执行一个shell，以便我们观察这个进程空间里的资源是否被隔离了 */
+    execv(container_args[0], container_args); 
+    printf(&#34;Something&#39;s wrong!\n&#34;);
+    return 1;
+}
+
+int main()
+{
+    printf(&#34;Parent - start a container!\n&#34;);
+    /* 调用clone函数，其中传出一个函数，还有一个栈空间的（为什么传尾指针，因为栈是反着的） */
+    int container_pid = clone(container_main, container_stack+STACK_SIZE, SIGCHLD, NULL);
+    /* 等待子进程结束 */
+    waitpid(container_pid, NULL, 0);
+    printf(&#34;Parent - container stopped!\n&#34;);
+    return 0;
+}</pre>
+<p>从上面的程序，我们可以看到，这和pthread基本上是一样的玩法。但是，对于上面的程序，父子进程的进程空间是没有什么差别的，父进程能访问到的子进程也能。</p>
+<p>下面， 让我们来看几个例子看看，Linux的Namespace是什么样的。</p>
+<h4><span class="ez-toc-section" id="UTS_Namespace"></span>UTS Namespace<span class="ez-toc-section-end"></span></h4>
+<p>下面的代码，我略去了上面那些头文件和数据结构的定义，只有最重要的部分。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c" data-enlighter-highlight="4,14">int container_main(void* arg)
+{
+    printf(&#34;Container - inside the container!\n&#34;);
+    sethostname(&#34;container&#34;,10); /* 设置hostname */
+    execv(container_args[0], container_args);
+    printf(&#34;Something&#39;s wrong!\n&#34;);
+    return 1;
+}
+
+int main()
+{
+    printf(&#34;Parent - start a container!\n&#34;);
+    int container_pid = clone(container_main, container_stack+STACK_SIZE, 
+            CLONE_NEWUTS | SIGCHLD, NULL); /*启用CLONE_NEWUTS Namespace隔离 */
+    waitpid(container_pid, NULL, 0);
+    printf(&#34;Parent - container stopped!\n&#34;);
+    return 0;
+}</pre>
+<pre>运行上面的程序你会发现（需要root权限），子进程的hostname变成了 container。</pre>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="b9d1dad1dcd7f9ccdbccd7cdcc">[email protected]</a>:~$ sudo ./uts
+Parent - start a container!
+Container - inside the container!
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0c7e6363784c6f6362786d6562697e">[email protected]</a>:~# hostname
+container
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e5978a8a91a5868a8b91848c8b8097">[email protected]</a>:~# uname -n
+container</pre>
+<h4><span class="ez-toc-section" id="IPC_Namespace"></span>IPC Namespace<span class="ez-toc-section-end"></span></h4>
+<p>IPC全称 Inter-Process Communication，是Unix/Linux下进程间通信的一种方式，IPC有共享内存、信号量、消息队列等方法。所以，为了隔离，我们也需要把IPC给隔离开来，这样，只有在同一个Namespace下的进程才能相互通信。如果你熟悉IPC的原理的话，你会知道，IPC需要有一个全局的ID，即然是全局的，那么就意味着我们的Namespace需要对这个ID隔离，不能让别的Namespace的进程看到。</p>
+<p>要启动IPC隔离，我们只需要在调用clone时加上CLONE_NEWIPC参数就可以了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int container_pid = clone(container_main, container_stack+STACK_SIZE, 
+            CLONE_NEWUTS | CLONE_NEWIPC | SIGCHLD, NULL);</pre>
+<p>首先，我们先创建一个IPC的Queue（如下所示，全局的Queue ID是0）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="553d363d303b152037203b2120">[email protected]</a>:~$ ipcmk -Q 
+Message queue id: 0
+
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="30585358555e704552455e4445">[email protected]</a>:~$ ipcs -q
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages    
+0xd0d56eb2 0          hchen      644        0            0</pre>
+<p>如果我们运行没有CLONE_NEWIPC的程序，我们会看到，在子进程中还是能看到这个全启的IPC Queue。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="08606b606d66487d6a7d667c7d">[email protected]</a>:~$ sudo ./uts 
+Parent - start a container!
+Container - inside the container!
+
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="62100d0d1622010d0c16030b0c0710">[email protected]</a>:~# ipcs -q
+
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages    
+0xd0d56eb2 0          hchen      644        0            0</pre>
+<p>但是，如果我们运行加上了CLONE_NEWIPC的程序，我们就会下面的结果：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c2b0adadb682b7a0b7acb6b7">[email protected]</a>:~$ sudo./ipc
+Parent - start a container!
+Container - inside the container!
+
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="dba9b4b4af9bb8b4b5afbab2b5bea9">[email protected]</a>:~/linux_namespace# ipcs -q
+
+------ Message Queues --------
+key        msqid      owner      perms      used-bytes   messages</pre>
+<p>我们可以看到IPC已经被隔离了。</p>
+<h4><span class="ez-toc-section" id="PID_Namespace"></span>PID Namespace<span class="ez-toc-section-end"></span></h4>
+<p>我们继续修改上面的程序：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c" data-enlighter-highlight="4,16">int container_main(void* arg)
+{
+    /* 查看子进程的PID，我们可以看到其输出子进程的 pid 为 1 */
+    printf(&#34;Container [%5d] - inside the container!\n&#34;, getpid());
+    sethostname(&#34;container&#34;,10);
+    execv(container_args[0], container_args);
+    printf(&#34;Something&#39;s wrong!\n&#34;);
+    return 1;
+}
+
+int main()
+{
+    printf(&#34;Parent [%5d] - start a container!\n&#34;, getpid());
+    /*启用PID namespace - CLONE_NEWPID*/
+    int container_pid = clone(container_main, container_stack+STACK_SIZE, 
+            CLONE_NEWUTS | CLONE_NEWPID | SIGCHLD, NULL); 
+    waitpid(container_pid, NULL, 0);
+    printf(&#34;Parent - container stopped!\n&#34;);
+    return 0;
+}</pre>
+<p>运行结果如下（我们可以看到，子进程的pid是1了）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e48c878c818aa49186918a9091">[email protected]</a>:~$ sudo ./pid
+Parent [ 3474] - start a container!
+Container [ 1] - inside the container!
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6d1f0202192d0e0203190c0403081f">[email protected]</a>:~# echo $$
+1</pre>
+<p>你可能会问，PID为1有个毛用啊？我们知道，在传统的UNIX系统中，PID为1的进程是init，地位非常特殊。他作为所有进程的父进程，有很多特权（比如：屏蔽信号等），另外，其还会为检查所有进程的状态，我们知道，如果某个子进程脱离了父进程（父进程没有wait它），那么init就会负责回收资源并结束这个子进程。所以，要做到进程空间的隔离，首先要创建出PID为1的进程，最好就像chroot那样，把子进程的PID在容器内变成1。</p>
+<p><strong>但是，我们会发现，在子进程的shell里输入ps,top等命令，我们还是可以看得到所有进程</strong>。说明并没有完全隔离。这是因为，像ps, top这些命令会去读/proc文件系统，所以，因为/proc文件系统在父进程和子进程都是一样的，所以这些命令显示的东西都是一样的。</p>
+<p>所以，我们还需要对文件系统进行隔离。</p>
+<h4><span class="ez-toc-section" id="Mount_Namespace"></span>Mount Namespace<span class="ez-toc-section-end"></span></h4>
+<p>下面的例程中，我们在启用了mount namespace并在子进程中重新mount了/proc文件系统。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c" data-enlighter-highlight="6,17">int container_main(void* arg)
+{
+    printf(&#34;Container [%5d] - inside the container!\n&#34;, getpid());
+    sethostname(&#34;container&#34;,10);
+    /* 重新mount proc文件系统到 /proc下 */
+    system(&#34;mount -t proc proc /proc&#34;);
+    execv(container_args[0], container_args);
+    printf(&#34;Something&#39;s wrong!\n&#34;);
+    return 1;
+}
+
+int main()
+{
+    printf(&#34;Parent [%5d] - start a container!\n&#34;, getpid());
+    /* 启用Mount Namespace - 增加CLONE_NEWNS参数 */
+    int container_pid = clone(container_main, container_stack+STACK_SIZE, 
+            CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD, NULL);
+    waitpid(container_pid, NULL, 0);
+    printf(&#34;Parent - container stopped!\n&#34;);
+    return 0;
+}</pre>
+<p>运行结果如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7d151e1518133d081f08130908">[email protected]</a>:~$ sudo ./pid.mnt
+Parent [ 3502] - start a container!
+Container [    1] - inside the container!
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8cfee3e3f8ccefe3e2f8ede5e2e9fe">[email protected]</a>:~# ps -elf 
+F S UID        PID  PPID  C PRI  NI ADDR SZ WCHAN  STIME TTY          TIME CMD
+4 S root         1     0  0  80   0 -  6917 wait   19:55 pts/2    00:00:00 /bin/bash
+0 R root        14     1  0  80   0 -  5671 -      19:56 pts/2    00:00:00 ps -elf
+</pre>
+<p>上面，我们可以看到只有两个进程 ，而且pid=1的进程是我们的/bin/bash。我们还可以看到/proc目录下也干净了很多：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fb8994948fbb9894958f9a92959e89">[email protected]</a>:~# ls /proc
+1          dma          key-users   net            sysvipc
+16         driver       kmsg        pagetypeinfo   timer_list
+acpi       execdomains  kpagecount  partitions     timer_stats
+asound     fb           kpageflags  sched_debug    tty
+buddyinfo  filesystems  loadavg     schedstat      uptime
+bus        fs           locks       scsi           version
+cgroups    interrupts   mdstat      self           version_signature
+cmdline    iomem        meminfo     slabinfo       vmallocinfo
+consoles   ioports      misc        softirqs       vmstat
+cpuinfo    irq          modules     stat           zoneinfo
+crypto     kallsyms     mounts      swaps
+devices    kcore        mpt         sys
+diskstats  keys         mtrr        sysrq-trigger
+</pre>
+<p>下图，我们也可以看到在子进程中的top命令只看得到两个进程了。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17020" src="/uploads/2015/04/mount.namespace.jpg" alt="" width="570" height="300" srcset="" sizes="(max-width: 570px) 100vw, 570px"/></p>
+<p>这里，多说一下。在通过CLONE_NEWNS创建mount namespace后，父进程会把自己的文件结构复制给子进程中。而子进程中新的namespace中的所有mount操作都只影响自身的文件系统，而不对外界产生任何影响。这样可以做到比较严格地隔离。</p>
+<p></p>
+<p>你可能会问，我们是不是还有别的一些文件系统也需要这样mount? 是的。</p>
+<h4><span class="ez-toc-section" id="Docker%E7%9A%84_Mount_Namespace"></span>Docker的 Mount Namespace<span class="ez-toc-section-end"></span></h4>
+<p>下面我将向演示一个“山寨镜像”，其模仿了Docker的Mount Namespace。</p>
+<p>首先，我们需要一个rootfs，也就是我们需要把我们要做的镜像中的那些命令什么的copy到一个rootfs的目录下，我们模仿Linux构建如下的目录：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="157d767d707b556077607b6160">[email protected]</a>:~/rootfs$ ls
+bin  dev  etc  home  lib  lib64  mnt  opt  proc  root  run  sbin  sys  tmp  usr  var</pre>
+<p>然后，我们把一些我们需要的命令copy到 rootfs/bin目录中（sh命令必需要copy进去，不然我们无法 chroot ）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="91f9f2f9f4ffd1e4f3e4ffe5e4">[email protected]</a>:~/rootfs$ ls ./bin ./usr/bin
+ 
+./bin:
+bash   chown  gzip      less  mount       netstat  rm     tabs  tee      top       tty
+cat    cp     hostname  ln    mountpoint  ping     sed    tac   test     touch     umount
+chgrp  echo   ip        ls    mv          ps       sh     tail  timeout  tr        uname
+chmod  grep   kill      more  nc          pwd      sleep  tar   toe      truncate  which
+
+./usr/bin:
+awk  env  groups  head  id  mesg  sort  strace  tail  top  uniq  vi  wc  xargs
+</pre>
+<p>注：你可以使用ldd命令把这些命令相关的那些so文件copy到对应的目录：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5a3239323f341a2f382f342e2f">[email protected]</a>:~/rootfs/bin$ ldd bash
+  linux-vdso.so.1 =&gt;  (0x00007fffd33fc000)
+  libtinfo.so.5 =&gt; /lib/x86_64-linux-gnu/libtinfo.so.5 (0x00007f4bd42c2000)
+  libdl.so.2 =&gt; /lib/x86_64-linux-gnu/libdl.so.2 (0x00007f4bd40be000)
+  libc.so.6 =&gt; /lib/x86_64-linux-gnu/libc.so.6 (0x00007f4bd3cf8000)
+  /lib64/ld-linux-x86-64.so.2 (0x00007f4bd4504000)
+</pre>
+<p>下面是我的rootfs中的一些so文件：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a0c8c3c8c5cee0d5c2d5ced4d5">[email protected]</a>:~/rootfs$ ls ./lib64 ./lib/x86_64-linux-gnu/
+
+./lib64:
+ld-linux-x86-64.so.2
+
+./lib/x86_64-linux-gnu/:
+libacl.so.1      libmemusage.so         libnss_files-2.19.so    libpython3.4m.so.1
+libacl.so.1.1.0  libmount.so.1          libnss_files.so.2       libpython3.4m.so.1.0
+libattr.so.1     libmount.so.1.1.0      libnss_hesiod-2.19.so   libresolv-2.19.so
+libblkid.so.1    libm.so.6              libnss_hesiod.so.2      libresolv.so.2
+libc-2.19.so     libncurses.so.5        libnss_nis-2.19.so      libselinux.so.1
+libcap.a         libncurses.so.5.9      libnss_nisplus-2.19.so  libtinfo.so.5
+libcap.so        libncursesw.so.5       libnss_nisplus.so.2     libtinfo.so.5.9
+libcap.so.2      libncursesw.so.5.9     libnss_nis.so.2         libutil-2.19.so
+libcap.so.2.24   libnsl-2.19.so         libpcre.so.3            libutil.so.1
+libc.so.6        libnsl.so.1            libprocps.so.3          libuuid.so.1
+libdl-2.19.so    libnss_compat-2.19.so  libpthread-2.19.so      libz.so.1
+libdl.so.2       libnss_compat.so.2     libpthread.so.0
+libgpm.so.2      libnss_dns-2.19.so     libpython2.7.so.1
+libm-2.19.so     libnss_dns.so.2        libpython2.7.so.1.0
+</pre>
+<p>包括这些命令依赖的一些配置文件：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="573f343f323917223522392322">[email protected]</a>:~/rootfs$ ls ./etc
+bash.bashrc  group  hostname  hosts  ld.so.cache  nsswitch.conf  passwd  profile  
+resolv.conf  shadow
+</pre>
+<p>你现在会说，我靠，有些配置我希望是在容器起动时给他设置的，而不是hard code在镜像中的。比如：/etc/hosts，/etc/hostname，还有DNS的/etc/resolv.conf文件。好的。那我们在rootfs外面，我们再创建一个conf目录，把这些文件放到这个目录中。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5a3239323f341a2f382f342e2f">[email protected]</a>:~$ ls ./conf
+hostname     hosts     resolv.conf</pre>
+<p>这样，我们的父进程就可以动态地设置容器需要的这些文件的配置， 然后再把他们mount进容器，这样，容器的镜像中的配置就比较灵活了。</p>
+<p>好了，终于到了我们的程序。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">#define _GNU_SOURCE
+#include <sys types.h="">
+#include <sys wait.h="">
+#include <sys mount.h="">
+#include <stdio.h>
+#include <sched.h>
+#include <signal.h>
+#include <unistd.h>
+
+#define STACK_SIZE (1024 * 1024)
+
+static char container_stack[STACK_SIZE];
+char* const container_args[] = {
+    &#34;/bin/bash&#34;,
+    &#34;-l&#34;,
+    NULL
+};
+
+int container_main(void* arg)
+{
+    printf(&#34;Container [%5d] - inside the container!\n&#34;, getpid());
+
+    //set hostname
+    sethostname(&#34;container&#34;,10);
+
+    //remount &#34;/proc&#34; to make sure the &#34;top&#34; and &#34;ps&#34; show container&#39;s information
+    if (mount(&#34;proc&#34;, &#34;rootfs/proc&#34;, &#34;proc&#34;, 0, NULL) !=0 ) {
+        perror(&#34;proc&#34;);
+    }
+    if (mount(&#34;sysfs&#34;, &#34;rootfs/sys&#34;, &#34;sysfs&#34;, 0, NULL)!=0) {
+        perror(&#34;sys&#34;);
+    }
+    if (mount(&#34;none&#34;, &#34;rootfs/tmp&#34;, &#34;tmpfs&#34;, 0, NULL)!=0) {
+        perror(&#34;tmp&#34;);
+    }
+    if (mount(&#34;udev&#34;, &#34;rootfs/dev&#34;, &#34;devtmpfs&#34;, 0, NULL)!=0) {
+        perror(&#34;dev&#34;);
+    }
+    if (mount(&#34;devpts&#34;, &#34;rootfs/dev/pts&#34;, &#34;devpts&#34;, 0, NULL)!=0) {
+        perror(&#34;dev/pts&#34;);
+    }
+    if (mount(&#34;shm&#34;, &#34;rootfs/dev/shm&#34;, &#34;tmpfs&#34;, 0, NULL)!=0) {
+        perror(&#34;dev/shm&#34;);
+    }
+    if (mount(&#34;tmpfs&#34;, &#34;rootfs/run&#34;, &#34;tmpfs&#34;, 0, NULL)!=0) {
+        perror(&#34;run&#34;);
+    }
+    /* 
+     * 模仿Docker的从外向容器里mount相关的配置文件 
+     * 你可以查看：/var/lib/docker/containers/<container_id>/目录，
+     * 你会看到docker的这些文件的。
+     */
+    if (mount(&#34;conf/hosts&#34;, &#34;rootfs/etc/hosts&#34;, &#34;none&#34;, MS_BIND, NULL)!=0 ||
+          mount(&#34;conf/hostname&#34;, &#34;rootfs/etc/hostname&#34;, &#34;none&#34;, MS_BIND, NULL)!=0 ||
+          mount(&#34;conf/resolv.conf&#34;, &#34;rootfs/etc/resolv.conf&#34;, &#34;none&#34;, MS_BIND, NULL)!=0 ) {
+        perror(&#34;conf&#34;);
+    }
+    /* 模仿docker run命令中的 -v, --volume=[] 参数干的事 */
+    if (mount(&#34;/tmp/t1&#34;, &#34;rootfs/mnt&#34;, &#34;none&#34;, MS_BIND, NULL)!=0) {
+        perror(&#34;mnt&#34;);
+    }
+
+    /* chroot 隔离目录 */
+    if ( chdir(&#34;./rootfs&#34;) != 0 || chroot(&#34;./&#34;) != 0 ){
+        perror(&#34;chdir/chroot&#34;);
+    }
+
+    execv(container_args[0], container_args);
+    perror(&#34;exec&#34;);
+    printf(&#34;Something&#39;s wrong!\n&#34;);
+    return 1;
+}
+
+int main()
+{
+    printf(&#34;Parent [%5d] - start a container!\n&#34;, getpid());
+    int container_pid = clone(container_main, container_stack+STACK_SIZE, 
+            CLONE_NEWUTS | CLONE_NEWIPC | CLONE_NEWPID | CLONE_NEWNS | SIGCHLD, NULL);
+    waitpid(container_pid, NULL, 0);
+    printf(&#34;Parent - container stopped!\n&#34;);
+    return 0;
+}
+</container_id></unistd.h></signal.h></sched.h></stdio.h></sys></sys></sys></pre>
+<p>sudo运行上面的程序，你会看到下面的挂载信息以及一个所谓的“镜像”：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2a4249424f446a5f485f445e5f">[email protected]</a>:~$ sudo ./mount 
+Parent [ 4517] - start a container!
+Container [    1] - inside the container!
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="30425f5f4470535f5e4451595e5542">[email protected]</a>:/# mount
+proc on /proc type proc (rw,relatime)
+sysfs on /sys type sysfs (rw,relatime)
+none on /tmp type tmpfs (rw,relatime)
+udev on /dev type devtmpfs (rw,relatime,size=493976k,nr_inodes=123494,mode=755)
+devpts on /dev/pts type devpts (rw,relatime,mode=600,ptmxmode=000)
+tmpfs on /run type tmpfs (rw,relatime)
+/dev/disk/by-uuid/18086e3b-d805-4515-9e91-7efb2fe5c0e2 on /etc/hosts type ext4 (rw,relatime,errors=remount-ro,data=ordered)
+/dev/disk/by-uuid/18086e3b-d805-4515-9e91-7efb2fe5c0e2 on /etc/hostname type ext4 (rw,relatime,errors=remount-ro,data=ordered)
+/dev/disk/by-uuid/18086e3b-d805-4515-9e91-7efb2fe5c0e2 on /etc/resolv.conf type ext4 (rw,relatime,errors=remount-ro,data=ordered)
+
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="46342929320625292832272f282334">[email protected]</a>:/# ls /bin /usr/bin
+/bin:
+bash   chmod  echo  hostname  less  more  mv   ping  rm   sleep  tail  test    top   truncate  uname
+cat    chown  grep  ip        ln    mount  nc   ps    sed  tabs   tar   timeout  touch  tty     which
+chgrp  cp     gzip  kill      ls    mountpoint  netstat  pwd   sh   tac    tee   toe    tr   umount
+
+/usr/bin:
+awk  env  groups  head  id  mesg  sort  strace  tail  top  uniq  vi  wc  xargs
+</pre>
+<p>关于如何做一个chroot的目录，这里有个工具叫<a href="https://wiki.ubuntu.com/DebootstrapChroot" target="_blank" rel="noopener noreferrer">DebootstrapChroot</a>，你可以顺着链接去看看（英文的哦）</p>
+<p>接下来的事情，你可以自己玩了，我相信你的想像力 。：）</p>
+<p>在下一篇，我将向你介绍User Namespace、Network Namespace以及Namespace的其它东西。</p>
+<p align="center"><strong> <a title="Docker基础技术：Linux Namespace（下）" href="/articles/17029.html" target="_blank" rel="noopener noreferrer"> &lt;&lt;&lt;&lt; Docker基础技术：Linux Namespace（下）&gt;&gt;&gt;&gt; </a></strong></p>
+<p>（上篇完，<a title="Docker基础技术：Linux Namespace（下）" href="/articles/17029.html" target="_blank" rel="noopener noreferrer">请参看下篇</a>）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17010-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Docker</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Mount</a>, <a href="javascript:void(0)" rel="tag">Namespace</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Docker基础技术：Linux Namespace（上）</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2157613" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/a/25130331.html" class="url" rel="ugc external nofollow">当Node.js遇见Docker – FIXBBS</a> </div>
+</li>
+<li id="comment-2161293" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://gitimg.tk/?p=44" class="url" rel="ugc external nofollow">Docker 逃逸小结第一版-GITIMG</a> </div>
+</li>
+<li id="comment-2240216" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.hellozhu.cn/archives/53.html" class="url" rel="ugc external nofollow">docker学习 – HelloZhu</a> </div>
+</li>
+<li id="comment-2339562" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1860638" class="url" rel="ugc external nofollow">Docker技术原理之Linux Namespace（容器隔离） - 算法网</a> </div>
+</li>
+<li id="comment-2349850" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zxjm.pub/2021/12/15/%e4%b8%ba%e4%bb%80%e4%b9%88%e9%9c%80%e8%a6%81docker%e5%ae%b9%e5%99%a8/" class="url" rel="ugc external nofollow">Docker容器的本质 – 小新编程</a> </div>
+</li>
+<li id="comment-2357816" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zxjm.pub/2022/01/07/docker%e5%ae%b9%e5%99%a8%e7%9a%84%e6%9c%ac%e8%b4%a8/" class="url" rel="ugc external nofollow">Docker容器的本质 – 小新编程</a> </div>
+</li>
+<li id="comment-2370606" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2540185" class="url" rel="ugc external nofollow">《深入剖析Kubernetes》-张磊——白话容器基础（三）：深入理解容器镜像 - 算法网</a> </div>
+</li>
+<li id="comment-2370709" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/40954.html" class="url" rel="ugc external nofollow">理解Docker（3）：Docker 使用 Linux namespace 隔离容器的运行环境 – 源码巴士</a> </div>
+</li>
+<li id="comment-2370819" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.yuanxiangzhixin.com/?p=26217" class="url" rel="ugc external nofollow">《深入剖析Kubernetes》-张磊——白话容器基础（三）：深入理解容器镜像 - 元享技术</a> </div>
+</li>
+<li id="comment-2370942" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://leonli.ltd/2021/06/24/%e6%b7%b1%e5%85%a5%e7%90%86%e8%a7%a3%e5%ae%b9%e5%99%a8%e9%95%9c%e5%83%8f/" class="url" rel="ugc external nofollow">7. 容器基础(三)、深入理解容器镜像 – Leonli&#39;s blog</a> </div>
+</li>
+<li id="comment-2370943" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/772069.html" class="url" rel="ugc external nofollow">docker 容器基本原理——Namespace – 源码巴士</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/17010.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/17010.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/17010.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">17010</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

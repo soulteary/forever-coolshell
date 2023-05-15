@@ -1,0 +1,598 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Java构造时成员初始化的陷阱 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1106 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1106" class="post-content post-1106 post type-post status-publish format-standard hentry category-javadev category-proglanguage tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">Java构造时成员初始化的陷阱</span>
+<h1 class="entry-title">Java构造时成员初始化的陷阱</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1106.html" title="14:31" rel="bookmark"><time class="entry-date" datetime="2009-07-03T14:31:49+08:00" pubdate="">2009年07月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1106.html#comments" class="comments-link">36 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 25,446 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>让我们先来看两个类：Base和Derived类。注意其中的whenAmISet成员变量，和方法preProcess()</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Base
+{
+    Base() {
+        preProcess();
+    }
+
+    void preProcess() {}
+}</pre>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Derived extends Base
+{
+    public String whenAmISet = &#34;set when declared&#34;;
+
+    @Override void preProcess()
+    {
+        whenAmISet = &#34;set in preProcess()&#34;;
+    }
+}
+</pre>
+<p>如果我们构造一个子类实例，那么，whenAmISet 的值会是什么呢？</p>
+<p><span id="more-1106"></span></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Main
+{
+    public static void main(String[] args)
+    {
+        Derived d = new Derived();
+        System.out.println( d.whenAmISet );
+    }
+}
+</pre>
+<p>再续继往下阅读之前，请先给自己一些时间想一下上面的这段程序的输出是什么？是的，这看起来的确相当简单，甚至不需要编译和运行上面的代码，我们也应该知道其答案，那么，你觉得你知道答案吗？你确定你的答案正确吗？</p>
+<p>很多人都会觉得那段程序的输出应该是“set in preProcess()”，这是因为当子类Derived 的构造函数被调用时，其会隐晦地调用其基类Base的构造函数（通过super()函数），于是基类Base的构造函数会调用preProcess() 函数，因为这个类的实例是Derived的，而且在子类Derived中对这个函数使用了override关键字，所以，实际上调用到的是：Derived.preProcess()，而这个方法设置了whenAmISet 成员变量的值为：“set in preProcess()”。</p>
+<p>当然，上面的结论是错误的。如果你编译并运行这个程序，你会发现，程序实际输出的是“set when declared ”。怎么为这样呢？难道是基类Base 的preProcess() 方法被调用啦？也不是！你可以在基类的preProcess中输出点什么看看，你会发现程序运行时，Base.preProcess()并没有被调用到（不然这对于Java所有的应用程序将会是一个极具灾难性的Bug）。</p>
+<p>虽然上面的结论是错误的，但推导过程是合理的，只是不完整，下面是整个运行的流程：</p>
+<ol>
+<li>进入Derived 构造函数。</li>
+<li>Derived 成员变量的内存被分配。</li>
+<li>Base 构造函数被隐含调用。</li>
+<li>Base 构造函数调用preProcess()。</li>
+<li>Derived 的preProcess 设置whenAmISet 值为 “set in preProcess()”。</li>
+<li>Derived 的成员变量初始化被调用。</li>
+<li>执行Derived 构造函数体。</li>
+</ol>
+<p>等一等，这怎么可能？在第6步，Derived 成员的初始化居然在 preProcess() 调用之后？是的，正是这样，我们不能让成员变量的声明和初始化变成一个原子操作，虽然在Java中我们可以把其写在一起，让其看上去像是声明和初始化一体。但这只是假象，<strong><span style="color: #800000;">我们的错误就在于我们把Java中的声明和初始化看成了一体</span></strong>。<strong>在C++的世界中，C++并不支持成员变量在声明的时候进行初始化，其需要你在构造函数中显式的初始化其成员变量的值，看起来很土，但其实C++用心良苦。</strong></p>
+<p>在面向对象的世界中，因为程序以对象的形式出现，导致了我们对程序执行的顺序雾里看花。所以，<strong>在面向对象的世界中，程序执行的顺序相当的重要</strong>。</p>
+<p>下面是对上面各个步骤的逐条解释。</p>
+<ol>
+<li>进入构造函数。</li>
+<li>为成员变量分配内存。</li>
+<li>除非你显式地调用super()，否则Java 会在子类的构造函数最前面偷偷地插入super() 。</li>
+<li>调用父类构造函数。</li>
+<li>调用preProcess，因为被子类override，所以调用的是子类的。</li>
+<li>于是，初始化发生在了preProcess()之后。这是因为，Java需要保证父类的初始化早于子类的成员初始化，否则，在子类中使用父类的成员变量就会出现问题。</li>
+<li>正式执行子类的构造函数（当然这是一个空函数，虽然我们没有声明）。</li>
+</ol>
+<p>你可以查看《Java语言的规格说明书》中的 <a href="http://java.sun.com/docs/books/jls/third_edition/html/execution.html#12.5">相关章节</a> 来了解更多的Java创建对象时的细节。</p>
+<p>C++的程序员应该都知道，在C++的世界中在“构造函数中调用虚函数”是不行的，Effective C++ 条款9：Never call virtual functions during construction or destruction，Scott Meyers已经解释得很详细了。</p>
+<p>在语言设计的时候，“<strong>在构造函数中调用虚函数</strong>”是个两难的问题。</p>
+<ol>
+<li>如果调用的是父类的函数的话，这个有点违反虚函数的定义。</li>
+<li>如果调用的是子类的函数的话，这可能产生问题的：因为在构造子类对象的时候，首先调用父类的构造函数，而这时候如果去调用子类的函数，由于子类还没有构造完成，子类的成员尚未初始化，这么做显然是不安全的。</li>
+</ol>
+<p>C++选择了第一种，而Java选择了第二种。</p>
+<ul>
+<li>C++类的设计相对比较简陋，通过虚函数表来实现，缺少类的元信息。</li>
+<li>而Java类的则显得比较完整，有super指针来导航到父类。</li>
+</ul>
+<p>最后，需要向大家推荐一本书，Joshua Bloch 和 Neal Gafter 写的 <a href="https://www.amazon.com/gp/product/032133678X?ie=UTF8&amp;tag=billthelizard-20&amp;linkCode=as2&amp;camp=1789&amp;creative=9325&amp;creativeASIN=032133678X">Java Puzzlers: Traps, Pitfalls, and Corner Cases</a>，中文版《<a href="http://www.china-pub.com/28310&amp;ref=ps" target="_blank"><span>JAVA</span>解惑</a>》。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1106-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Java构造时成员初始化的陷阱</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-314" class="comment even thread-even depth-1">
+<article id="div-comment-314" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/649ddcebc333492576fb109e79a6800b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/649ddcebc333492576fb109e79a6800b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chris</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-314"><time datetime="2009-07-03T16:30:12+08:00">2009年07月03日 16:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，以前还真没注意到</p>
+</div>
+ </article>
+</li>
+<li id="comment-315" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-315" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b79d1b7239277b9a71c88faf2e73d31?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b79d1b7239277b9a71c88faf2e73d31?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">charlie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-315"><time datetime="2009-07-03T16:39:05+08:00">2009年07月03日 16:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>怎么说呢。。。。看过head first java的人，应该很容易理解楼主的讲解。</p>
+<p>成员变量初始化被调用在构造函数之后</p>
+</div>
+ </article>
+</li>
+<li id="comment-317" class="comment even thread-even depth-1">
+<article id="div-comment-317" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dutor.net" class="url" rel="ugc external nofollow">ivan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-317"><time datetime="2009-07-05T20:59:50+08:00">2009年07月05日 20:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C++中，情况就大不一样了。基类的构造函数调用的preProcess()是基类的，而不是被重写过的preProcess(),构造基类时，vtable还没有被正确的书写。</p>
+</div>
+ </article>
+</li>
+<li id="comment-318" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dutor.net/index.php/2009/07/cpp-class-construction-issue/" class="url" rel="ugc external nofollow">一个C++类构造的问题 - Dutor</a> </div>
+</li>
+<li id="comment-323" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-323"><time datetime="2009-07-05T22:22:24+08:00">2009年07月05日 22:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-317"><p>
+<strong><a href="#comment-317" rel="nofollow">ivan </a> :</strong></p>
+<p>C++中，情况就大不一样了。基类的构造函数调用的preProcess()是基类的，而不是被重写过的preProcess(),构造基类时，vtable还没有被正确的书写。</p>
+</blockquote>
+<p>Effective C++ 条款9：Never call virtual functions during construction or destruction，Scott Meyers已经解释得很详细了! </p>
+<p>在语言设计的时候，“<strong>在构造函数中调用虚函数</strong>”是个两难的问题。<br/>
+一、如果调用的是父类的函数的话，这个有点违反虚函数的定义。<br/>
+二、如果调用的是子类的函数的话，这可能产生问题的：因为在构造子类对象的时候，首先调用父类的构造函数，而这时候如果去调用子类的函数，由于子类还没有构造完成，子类的成员尚未初始化，这么做显然是不安全的。<br/>
+c++选择了第一种，而Java选择了第二种。<br/>
+c++类的设计相对比较简陋，通过虚函数表来实现，缺少类的元信息。<br/>
+而Java类的则显得比较完整，有super指针来导航到父类 </p>
+</div>
+ </article>
+</li>
+<li id="comment-334" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-334" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/97ec6c7a7a28e61b9ad9429ed293d53b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/97ec6c7a7a28e61b9ad9429ed293d53b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaots</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-334"><time datetime="2009-07-09T23:49:44+08:00">2009年07月09日 23:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>扯淡…需要考虑的那么复杂吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-345" class="comment even thread-even depth-1">
+<article id="div-comment-345" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b74992b435f2aadc02407eebcc5d7fe2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b74992b435f2aadc02407eebcc5d7fe2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shmilyhe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-345"><time datetime="2009-07-13T00:24:21+08:00">2009年07月13日 00:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，刚学JAVA的时候，老师说构造函数不会被继承，当时没有想太多当定率记下来了，一直没有深究。直到学多了几门语言之后才慢慢的去想这些。<br/>
+网站刚建不久吧，等静下来我自己也弄一个。想用DJANGO 可惜很多空间提供商都不支持。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2535" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2535" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa6ab9f3b51ce2cc2aed6b4709fecea3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa6ab9f3b51ce2cc2aed6b4709fecea3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rch</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-2535"><time datetime="2009-12-18T15:30:51+08:00">2009年12月18日 15:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>初学java，膜拜……</p>
+</div>
+ </article>
+</li>
+<li id="comment-60838" class="comment even thread-even depth-1">
+<article id="div-comment-60838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a22fc48c373b5bdf8f6b55ed57233feb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a22fc48c373b5bdf8f6b55ed57233feb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大灰兔</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-60838"><time datetime="2011-06-23T16:36:59+08:00">2011年06月23日 16:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-334" rel="nofollow">@xiaots </a><br/>
+也许这会成为你下个项目中的最隐藏的大bug！</p>
+</div>
+ </article>
+</li>
+<li id="comment-66663" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-66663" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e992fd2725badfd25b1dc897e68d427?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e992fd2725badfd25b1dc897e68d427?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">n5u99</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-66663"><time datetime="2011-07-21T10:17:37+08:00">2011年07月21日 10:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前闲暇的时候翻了翻《JAVA解惑》，觉得挺有意思。当时还一度选了几个做笔试新人用，现在回想起来觉得这事儿办的有点邪恶了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-124943" class="comment even thread-even depth-1">
+<article id="div-comment-124943" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96d01fd36e04bf79bc595bc06b71f24b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96d01fd36e04bf79bc595bc06b71f24b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">name</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-124943"><time datetime="2012-01-12T15:49:58+08:00">2012年01月12日 15:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-334"><p>
+<strong><a href="#comment-334" rel="nofollow">xiaots</a> :</strong><br/>
+扯淡…需要考虑的那么复杂吗？
+</p></blockquote>
+<p>首先我要说的是结果输出的的确是set when declared<br/>
+但是原因楼主说的不对。java的初始化顺序是这样的：<br/>
+1、不通过new的，顺序是静态变量，静态块，静态方法。<br/>
+2、通过new的，顺序是成员变量，构造函数。<br/>
+下面是示例代码的过程：<br/>
+1、new Derived （）时，首先是初始化成员变量 whenAmISet = “set when declared”<br/>
+2、执行Derived构造函数，没有显示构造函数执行默认的无参构造函数，（孩子不能比父亲早出生，java的规定）递归调用父类构造函数Base()，执行完父类构造函数里preProcess()后退出构造，整个new过程结束<br/>
+3、d.whenAmISet显示whenAmISet 的内存值：set when declared<br/>
+本人的观点来源于think in java 第三版。</p>
+<p>关注coolshell时间不长，本人道行尚浅，有不足处望指正。</p>
+</div>
+ </article>
+</li>
+<li id="comment-125375" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-125375" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96d01fd36e04bf79bc595bc06b71f24b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96d01fd36e04bf79bc595bc06b71f24b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">name</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-125375"><time datetime="2012-01-13T11:27:48+08:00">2012年01月13日 11:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-124943" rel="nofollow">@name </a><br/>
+我错了，楼主是对的。<br/>
+我们的错误就在于我们把Java中的声明和初始化看成了一体。</p>
+<p>源地址的例子比较好<br/>
+class Super {<br/>
+Super() { printThree(); }<br/>
+void printThree() { System.out.println(“three”); }<br/>
+}<br/>
+class Test extends Super {<br/>
+int three = (int)Math.PI; // That is, 3<br/>
+public static void main(String[] args) {<br/>
+Test t = new Test();<br/>
+t.printThree();<br/>
+}<br/>
+void printThree() { System.out.println(three); }<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-225743" class="comment even thread-even depth-1">
+<article id="div-comment-225743" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7dfb3c6fe5d0c1f5121d7d6d311fa8ff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7dfb3c6fe5d0c1f5121d7d6d311fa8ff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">znlyj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-225743"><time datetime="2012-12-02T13:03:33+08:00">2012年12月02日 13:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>怎么说呢。。。看过thinking in java的人，应该不会这么说， 你可以debug一下<a href="#comment-315" rel="nofollow">@charlie </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-304984" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2013/03/%e5%ae%9e%e4%be%8b%e5%88%86%e6%9e%90java-class%e7%9a%84%e6%96%87%e4%bb%b6%e7%bb%93%e6%9e%84/" class="url" rel="ugc external nofollow">实例分析Java Class的文件结构 | Google Reader分享</a> </div>
+</li>
+<li id="comment-306218" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/shi-li-fen-xi-java-class-di-wen-jian-jie-gou.html" class="url" rel="ugc external nofollow">Definite Digest » 实例分析Java Class的文件结构</a> </div>
+</li>
+<li id="comment-314124" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=5334" class="url" rel="ugc external nofollow">实例分析Java Class的文件结构 | 奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com</a> </div>
+</li>
+<li id="comment-316532" class="comment even thread-even depth-1">
+<article id="div-comment-316532" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0086ac6201d00b883fe0d16f841ba5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0086ac6201d00b883fe0d16f841ba5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cjn123</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-316532"><time datetime="2013-03-25T11:41:03+08:00">2013年03月25日 11:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>成员变量在构造函数中进行赋值，为啥要那么复杂？子类的成员变量在子类的构造函数中完成不就行了</p>
+</div>
+ </article>
+</li>
+<li id="comment-344577" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=460" class="url" rel="ugc external nofollow">Java构造时成员初始化的陷阱 | Steve Guan</a> </div>
+</li>
+<li id="comment-370265" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/837.html" class="url" rel="ugc external nofollow">实例分析Java Class的文件结构 | 午后小憩</a> </div>
+</li>
+<li id="comment-1245635" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1245635" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6be16075c7d964c4a68001e811d0c07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6be16075c7d964c4a68001e811d0c07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Guns N&#39; Roses</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1245635"><time datetime="2014-02-03T16:31:56+08:00">2014年02月03日 16:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>LOL, 先执行定义初始化，再是构造函数好吧！<a href="#comment-225743" rel="nofollow">@znlyj </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1317952" class="comment even thread-even depth-1">
+<article id="div-comment-1317952" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/752a0777fa814dc405f5605287a2108e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/752a0777fa814dc405f5605287a2108e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">573742376</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1317952"><time datetime="2014-02-28T15:59:45+08:00">2014年02月28日 15:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错 以前都没有注意</p>
+</div>
+ </article>
+</li>
+<li id="comment-1415023" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1415023" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fcc245b63f3c7752132e4bb13696625b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fcc245b63f3c7752132e4bb13696625b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eleyzhu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1415023"><time datetime="2014-04-05T06:22:48+08:00">2014年04月05日 06:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Should the below explaination is better than this blog?<br/>
+===================================================================</p>
+<p>a local variable declaration is a statement that appears within a Java method; the variable initialization is performed when the statement is executed. Field declarations, however, are not part of any method, so they cannot be executed as statements are.<br/>
+Instead, the Java compiler generates instance-field initialization code automatically and puts it in the constructor or constructors for the class. The initialization code is inserted into a constructor in the order in which it appears in the source code, which means that a field initializer can use the initial values of any fields declared before it. Consider the following code excerpt, which shows a constructor and two instance fields of a hypothetical class:</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class TestClass {
+  public int len = 10;
+  public int[] table = new int[len];
+
+  public TestClass() { 
+    for(int i = 0; i &amp;lt; len; i++) table[i] = i;
+  }
+
+  // The rest of the class is omitted... 
+}</pre>
+<p>In this case, the code generated for the constructor is actually equivalent to the following:</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public TestClass() { 
+  len = 10;
+  table = new int[len];
+  for(int i = 0; i &amp;lt; len; i++) table[i] = i;
+}</pre>
+</div>
+ </article>
+</li>
+<li id="comment-1685348" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/archives/2402" class="url" rel="ugc external nofollow">Java构造时成员初始化的陷阱 – 运维部落</a> </div>
+</li>
+<li id="comment-1726284" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1726284" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b30ad7d8cc6d45923e47168a695deca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b30ad7d8cc6d45923e47168a695deca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Nuisance</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1726284"><time datetime="2015-06-24T13:52:00+08:00">2015年06月24日 13:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-124943" rel="nofollow">@name </a><br/>
+我认为你的说法是正确的，的确是先初始化变量，再执行构造器。<br/>
+针对LZ的代码，因为不存在static变量，所以比较容易说清。<br/>
+1、执行Derived的构造器<br/>
+2、但此时需要先执行Base的构造器，而在理论上需要初始化Base内的成员变量，但Base不包含则不需讨论。<br/>
+3、之后需要在执行Derived的构造器之前初始化Derived的成员变量<br/>
+这么解释我觉得是正确。同样来自Think in Java 中文版P145 7.9</p>
+</div>
+ </article>
+</li>
+<li id="comment-1728892" class="comment even thread-even depth-1">
+<article id="div-comment-1728892" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4ca689c36abfdeab84ee14b2ddabbea6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4ca689c36abfdeab84ee14b2ddabbea6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">_hir</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1728892"><time datetime="2015-06-29T17:58:34+08:00">2015年06月29日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢， 我有点迷惑的是 调用子类prexxx方法是因为子类构造中调用父类构造的super方法有隐藏this的原因吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1810811" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yigeek.com/wordpress/archives/135" class="url" rel="ugc external nofollow">Java 成员变量实例化的顺序 – 孙凯的博客</a> </div>
+</li>
+<li id="comment-1856728" class="comment even thread-even depth-1">
+<article id="div-comment-1856728" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d8176ad70a1c34495df9deff24faa864?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d8176ad70a1c34495df9deff24faa864?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wings1234</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1856728"><time datetime="2016-07-09T00:57:08+08:00">2016年07月09日 00:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好， Java构造时成员初始化的陷阱这篇文章中有个地方不理解，请百忙之中帮忙解答一下，谢谢。<br/>
+5.调用preProcess，因为被子类override，所以调用的是子类的。<br/>
+这块没有理解，为什么是调用子类的，这时子类实例还没有创建，子类的实例方法不是要等子类实例创建后才能调用访问吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1921369" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1921369" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fef252f81539eef4235e30437fb16d5d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fef252f81539eef4235e30437fb16d5d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Amos</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1921369"><time datetime="2017-11-30T17:26:00+08:00">2017年11月30日 17:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果给whenAmISet加上一个static声明，结果就大不一样了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1922279" class="comment even thread-even depth-1">
+<article id="div-comment-1922279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c07bafb1f84701933cb5d533cefaf84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c07bafb1f84701933cb5d533cefaf84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.stylizone.com" class="url" rel="ugc external nofollow">Designer Saree</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1922279"><time datetime="2017-12-18T17:46:52+08:00">2017年12月18日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你可以从我们的大型多样的收集salwar kameez，派对穿西装，宝莱坞收集，棉kurtis，Anarkali西装，宝莱坞纱丽和许多其他产品…..<br/>
+我们有一些为你在你的预算….<br/>
+更多…<br/>
+Plz访问：<a href="http://stylizone.com/latest-silk-sarees-collection-2379/" rel="nofollow">设计师Saree </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1945078" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://photo.itmeseji.com/2018/11/25/java%e7%9a%84%e5%88%9d%e5%a7%8b%e5%8c%96%e9%a1%ba%e5%ba%8f/" class="url" rel="ugc external nofollow">Java的初始化顺序 – 1</a> </div>
+</li>
+<li id="comment-1994475" class="comment even thread-even depth-1">
+<article id="div-comment-1994475" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2db6b18f1a9cb70485f48030b2697f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2db6b18f1a9cb70485f48030b2697f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.f4fashion.in/" class="url" rel="ugc external nofollow">f4fashion</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-1994475"><time datetime="2019-04-27T19:10:50+08:00">2019年04月27日 19:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="https://www.f4fashion.in/" rel="nofollow ugc">https://www.f4fashion.in/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2054213" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2054213" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8e1a14298c6a1e63e3c60dcf7935f7df?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8e1a14298c6a1e63e3c60dcf7935f7df?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lsunwing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-2054213"><time datetime="2020-01-07T23:07:37+08:00">2020年01月07日 23:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看子类的指令，给实例属性赋值是在super之后，而子类常量池中的字符串的值就是声明的值：set when declared</p>
+<p>public com.wc.common.contruct.test1.SubClass();<br/>
+descriptor: ()V<br/>
+flags: ACC_PUBLIC<br/>
+Code:<br/>
+stack=2, locals=1, args_size=1<br/>
+0: aload_0<br/>
+1: invokespecial #10 // Method com/wc/common/contruct/test1/BaseClass.””:()V<br/>
+4: aload_0<br/>
+5: ldc #12 // String set when declared<br/>
+7: putfield #14 // Field whenAmISet:Ljava/lang/String;<br/>
+10: return<br/>
+LineNumberTable:<br/>
+line 3: 0<br/>
+line 4: 4<br/>
+line 3: 10<br/>
+LocalVariableTable:<br/>
+Start Length Slot Name Signature<br/>
+0 11 0 this Lcom/wc/common/contruct/test1/SubClass;</p>
+</div>
+ </article>
+</li>
+<li id="comment-2081337" class="comment even thread-even depth-1">
+<article id="div-comment-2081337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db97241dd2e23f501088a2ae53e9ae23?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db97241dd2e23f501088a2ae53e9ae23?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zjz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1106.html#comment-2081337"><time datetime="2020-03-24T16:28:44+08:00">2020年03月24日 16:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>打了断点看了看,首先执行base中process,然后base中process调的是子类的process,这个时候属性初始值为null,然后设置为了”in process”,父类构造函数调用完成,子类构造函数调super()执行完接下来初始化全局属性whenAmISet = “set when declared”;接下来再执行子类构造函数super()以外的,可以解释这个现象</p>
+</div>
+ </article>
+</li>
+<li id="comment-2155920" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/a/24100626.html" class="url" rel="ugc external nofollow">Java类和对象初始化 – FIXBBS</a> </div>
+</li>
+<li id="comment-2266414" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/688943" class="url" rel="ugc external nofollow">java到底怎样加载类初始化并创建对象的？ - 算法网</a> </div>
+</li>
+<li id="comment-2370921" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/277465" class="url" rel="ugc external nofollow">Java类加载及变量初始化过程 - Java天堂</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

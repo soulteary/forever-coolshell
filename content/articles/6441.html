@@ -1,0 +1,596 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Javascript 面向对象编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6441 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6441" class="post-content post-6441 post type-post status-publish format-standard hentry category-webdev category-proglanguage tag-ecmascript tag-javascript tag-oop">
+<header class="entry-header">
+<span class="screen-reader-text">Javascript 面向对象编程</span>
+<h1 class="entry-title">Javascript 面向对象编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6441.html" title="08:16" rel="bookmark"><time class="entry-date" datetime="2012-01-09T08:16:27+08:00" pubdate="">2012年01月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6441.html#comments" class="comments-link">108 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 94,684 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>Javascript是一个类C的语言，他的面向对象的东西相对于C++/Java比较奇怪，但是其的确相当的强大，在 <a href="http://www.cnblogs.com/weidagang2046/" target="_blank">Todd 同学</a>的“<a title="对象的消息模型" href="/articles/5202.html" rel="bookmark" target="_blank">对象的消息模型</a>”一文中我们已经可以看到一些端倪了。这两天有个前同事总在问我Javascript面向对象的东西，所以，索性写篇文章让他看去吧，这里这篇文章主要想从一个整体的角度来说明一下Javascript的面向对象的编程。（<strong>成文比较仓促，应该有不准确或是有误的地方，请大家批评指正</strong>）</p>
+<p>另，这篇文章主要基于 <a href="http://www.ecma-international.org/publications/standards/Ecma-262.htm" target="_blank">ECMAScript 5</a>， 旨在介绍新技术。关于兼容性的东西，请看最后一节。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%88%9D%E6%8E%A2" title="初探">初探</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE_%E2%80%93_ObjectdefineProperty" title="属性配置 – Object.defineProperty">属性配置 – Object.defineProperty</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#GetSet_%E8%AE%BF%E9%97%AE%E5%99%A8" title="Get/Set 访问器">Get/Set 访问器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%9F%A5%E7%9C%8B%E5%AF%B9%E8%B1%A1%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE" title="查看对象属性配置">查看对象属性配置</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#call%EF%BC%8Capply%EF%BC%8C_bind_%E5%92%8C_this" title="call，apply， bind 和 this">call，apply， bind 和 this</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%BB%A7%E6%89%BF_%E5%92%8C_%E9%87%8D%E8%BD%BD" title="继承 和 重载">继承 和 重载</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%BB%84%E5%90%88" title="组合">组合</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#Prototype_%E5%92%8C_%E7%BB%A7%E6%89%BF" title="Prototype 和 继承">Prototype 和 继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%85%BC%E5%AE%B9%E6%80%A7" title="兼容性">兼容性</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#Objectcreate%E5%87%BD%E6%95%B0" title="Object.create()函数">Object.create()函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#defineProperty%E5%87%BD%E6%95%B0" title="defineProperty()函数">defineProperty()函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-12" href="#keys%E5%87%BD%E6%95%B0" title="keys()函数">keys()函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-13" href="#ObjectgetPrototypeOf_%E5%87%BD%E6%95%B0" title="Object.getPrototypeOf() 函数">Object.getPrototypeOf() 函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-14" href="#bind_%E5%87%BD%E6%95%B0" title="bind 函数">bind 函数</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-15" href="#%E5%8F%82%E8%80%83" title="参考">参考</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%88%9D%E6%8E%A2"></span>初探<span class="ez-toc-section-end"></span></h4>
+<p>我们知道Javascript中的变量定义基本如下：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var name = &#39;Chen Hao&#39;;;
+var email = &#39;haoel(@)hotmail.com&#39;;
+var website = &#39;https://coolshell.cn&#39;;</pre>
+<p>如果要用对象来写的话，就是下面这个样子：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var chenhao = {
+    name :&#39;Chen Hao&#39;,
+    email : &#39;haoel(@)hotmail.com&#39;,
+    website : &#39;https://coolshell.cn&#39;
+};</pre>
+<p>于是，我就可以这样访问：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//以成员的方式
+chenhao.name;
+chenhao.email;
+chenhao.website;
+
+//以hash map的方式
+chenhao[&#34;name&#34;];
+chenhao[&#34;email&#34;];
+chenhao[&#34;website&#34;];
+</pre>
+<p>关于函数，我们知道Javascript的函数是这样的：</p>
+<p><span id="more-6441"></span></p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var doSomething = function(){
+   alert(&#39;Hello World.&#39;);
+};</pre>
+<p>于是，我们可以这么干：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var sayHello = function(){
+   var hello = &#34;Hello, I&#39;m &#34;+ this.name
+                + &#34;, my email is: &#34; + this.email
+                + &#34;, my website is: &#34; + this.website;
+   alert(hello);
+};
+
+//直接赋值，这里很像C/C++的函数指针
+chenhao.Hello = sayHello;
+
+chenhao.Hello();
+</pre>
+<p>相信这些东西都比较简单，大家都明白了。 可以看到javascript对象函数是直接声明，直接赋值，直接就用了。runtime的动态语言。</p>
+<p>还有一种比较规范的写法是：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//我们可以看到， 其用function来做class。
+var Person = function(name, email, website){
+    this.name = name;
+    this.email = email;
+    this.website = website;
+
+    this.sayHello = function(){
+        var hello = &#34;Hello, I&#39;m &#34;+ this.name  + &#34;, \n&#34; +
+                    &#34;my email is: &#34; + this.email + &#34;, \n&#34; +
+                    &#34;my website is: &#34; + this.website;
+        alert(hello);
+    };
+};
+
+var chenhao = new Person(&#34;Chen Hao&#34;, &#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="0a626b656f664a62657e676b636624696567">[email protected]</a>&#34;,
+                                     &#34;https://coolshell.cn&#34;);
+chenhao.sayHello(); </pre>
+<p>顺便说一下，要删除对象的属性，很简单：</p>
+<p><code data-enlighter-language="js" class="EnlighterJSRAW">delete chenhao[&#39;email&#39;]</code></p>
+<p>上面的这些例子，我们可以看到这样几点：</p>
+<ol>
+<li>Javascript的数据和成员封装很简单。没有类完全是对象操作。纯动态！</li>
+<li>Javascript function中的this指针很关键，如果没有的话，那就是局部变量或局部函数。</li>
+<li>Javascript对象成员函数可以在使用时临时声明，并把一个全局函数直接赋过去就好了。</li>
+<li>Javascript的成员函数可以在实例上进行修改，也就是说不同实例相同函数名的行为不一定一样。</li>
+</ol>
+<h4><span class="ez-toc-section" id="%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE_%E2%80%93_ObjectdefineProperty"></span>属性配置 – Object.defineProperty<span class="ez-toc-section-end"></span></h4>
+<p>先看下面的代码：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//创建对象
+var chenhao = Object.create(null);
+
+//设置一个属性
+ Object.defineProperty( chenhao,
+                &#39;name&#39;, { value:  &#39;Chen Hao&#39;,
+                          writable:     true,
+                          configurable: true,
+                          enumerable:   true });
+
+//设置多个属性
+Object.defineProperties( chenhao,
+    {
+        &#39;email&#39;  : { value:  &#39;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1a727b757f765a72756e777b737634797577">[email protected]</a>&#39;,
+                     writable:     true,
+                     configurable: true,
+                     enumerable:   true },
+        &#39;website&#39;: { value: &#39;https://coolshell.cn&#39;,
+                     writable:     true,
+                     configurable: true,
+                     enumerable:   true }
+    }
+);
+</pre>
+<p>下面就说说这些属性配置是什么意思。</p>
+<ul>
+<li>writable：这个属性的值是否可以改。</li>
+<li>configurable：这个属性的配置是否可以改。</li>
+<li>enumerable：这个属性是否能在for…in循环中遍历出来或在Object.keys中列举出来。</li>
+<li>value：属性值。</li>
+<li>get()/set(_value)：get和set访问器。</li>
+</ul>
+<h4><span class="ez-toc-section" id="GetSet_%E8%AE%BF%E9%97%AE%E5%99%A8"></span>Get/Set 访问器<span class="ez-toc-section-end"></span></h4>
+<p>关于get/set访问器，它的意思就是用get/set来取代value（其不能和value一起使用），示例如下：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var  age = 0;
+Object.defineProperty( chenhao,
+            &#39;age&#39;, {
+                      get: function() {return age+1;},
+                      set: function(value) {age = value;}
+                      enumerable : true,
+                      configurable : true
+                    }
+);
+chenhao.age = 100; //调用set
+alert(chenhao.age); //调用get 输出101（get中+1了）;
+</pre>
+<p>我们再看一个更为实用的例子——利用已有的属性(age)通过get和set构造新的属性(birth_year)：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">Object.defineProperty( chenhao,
+            &#39;birth_year&#39;,
+            {
+                get: function() {
+                    var d = new Date();
+                    var y = d.getFullYear();
+                    return ( y - this.age );
+                },
+                set: function(year) {
+                    var d = new Date();
+                    var y = d.getFullYear();
+                    this.age = y - year;
+                }
+            }
+);
+
+alert(chenhao.birth_year);
+chenhao.birth_year = 2000;
+alert(chenhao.age);
+</pre>
+<p>这样做好像有点麻烦，你说，我为什么不写成下面这个样子：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var chenhao = {
+    name: &#34;Chen Hao&#34;,
+    email: &#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5d353c3238311d353229303c3431733e3230">[email protected]</a>&#34;,
+    website: &#34;https://coolshell.cn&#34;,
+    age: 100,
+    get birth_year() {
+        var d = new Date();
+        var y = d.getFullYear();
+        return ( y - this.age );
+    },
+    set birth_year(year) {
+        var d = new Date();
+        var y = d.getFullYear();
+        this.age = y - year;
+    }
+
+};
+alert(chenhao.birth_year);
+chenhao.birth_year = 2000;
+alert(chenhao.age);
+</pre>
+<p>是的，你的确可以这样的，不过通过defineProperty()你可以干这些事：<br/>
+1）设置如 writable，configurable，enumerable 等这类的属性配置。<br/>
+2）动态地为一个对象加属性。比如：一些HTML的DOM对像。</p>
+<h4><span class="ez-toc-section" id="%E6%9F%A5%E7%9C%8B%E5%AF%B9%E8%B1%A1%E5%B1%9E%E6%80%A7%E9%85%8D%E7%BD%AE"></span>查看对象属性配置<span class="ez-toc-section-end"></span></h4>
+<p>如果查看并管理对象的这些配置，下面有个程序可以输出对象的属性和配置等东西：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//列出对象的属性.
+function listProperties(obj)
+{
+    var newLine = &#34;&lt;br /&gt;&#34;;
+    var names = Object.getOwnPropertyNames(obj);
+    for (var i = 0; i &lt; names.length; i++) {
+        var prop = names[i];
+        document.write(prop + newLine);
+
+        // 列出对象的属性配置（descriptor）动用getOwnPropertyDescriptor函数。
+        var descriptor = Object.getOwnPropertyDescriptor(obj, prop);
+        for (var attr in descriptor) {
+            document.write(&#34;...&#34; + attr + &#39;: &#39; + descriptor[attr]);
+            document.write(newLine);
+        }
+        document.write(newLine);
+    }
+}
+
+listProperties(chenhao);</pre>
+<h4><span class="ez-toc-section" id="call%EF%BC%8Capply%EF%BC%8C_bind_%E5%92%8C_this"></span>call，apply， bind 和 this<span class="ez-toc-section-end"></span></h4>
+<p>关于Javascript的this指针，和C++/Java很类似。 我们来看个示例：（这个示例很简单了，我就不多说了）</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function print(text){
+    document.write(this.value + &#39; - &#39; + text+ &#39;&lt;br&gt;&#39;);
+}
+
+var a = {value: 10, print : print};
+var b = {value: 20, print : print};
+
+print(&#39;hello&#39;);// this =&gt; global, output &#34;undefined - hello&#34;
+
+a.print(&#39;a&#39;);// this =&gt; a, output &#34;10 - a&#34;
+b.print(&#39;b&#39;); // this =&gt; b, output &#34;20 - b&#34;
+
+a[&#39;print&#39;](&#39;a&#39;); // this =&gt; a, output &#34;10 - a&#34;
+</pre>
+<p>我们再来看看call 和 apply，这两个函数的差别就是参数的样子不一样，另一个就是性能不一样，apply的性能要差很多。（关于性能，可到 <a href="http://jsperf.com/" target="_blank">JSPerf</a> 上去跑跑看看）</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">print.call(a, &#39;a&#39;); // this =&gt; a, output &#34;10 - a&#34;
+print.call(b, &#39;b&#39;); // this =&gt; b, output &#34;20 - b&#34;
+
+print.apply(a, [&#39;a&#39;]); // this =&gt; a, output &#34;10 - a&#34;
+print.apply(b, [&#39;b&#39;]); // this =&gt; b, output &#34;20 - b&#34;</pre>
+<p>但是在bind后，this指针，可能会有不一样，但是因为Javascript是动态的。如下面的示例</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var p = print.bind(a);
+p(&#39;a&#39;);             // this =&gt; a, output &#34;10 - a&#34;
+p.call(b, &#39;b&#39;);     // this =&gt; a, output &#34;10 - b&#34;
+p.apply(b, [&#39;b&#39;]);  // this =&gt; a, output &#34;10 - b&#34;</pre>
+<h4><span class="ez-toc-section" id="%E7%BB%A7%E6%89%BF_%E5%92%8C_%E9%87%8D%E8%BD%BD"></span>继承 和 重载<span class="ez-toc-section-end"></span></h4>
+<p>通过上面的那些示例，我们可以通过Object.create()来实际继承，请看下面的代码，Student继承于Object。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW" data-enlighter-highlight="20">var Person = Object.create(null);
+
+Object.defineProperties
+(
+    Person,
+    {
+        &#39;name&#39;  : {  value: &#39;Chen Hao&#39;},
+        &#39;email&#39;  : { value : &#39;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2e464f414b426e46415a434f4742004d4143">[email protected]</a>&#39;},
+        &#39;website&#39;: { value: &#39;https://coolshell.cn&#39;}
+    }
+);
+
+Person.sayHello = function () {
+    var hello = &#34;&lt;p&gt;Hello, I am &#34;+ this.name  + &#34;, &lt;br&gt;&#34; +
+                &#34;my email is: &#34; + this.email + &#34;, &lt;br&gt;&#34; +
+                &#34;my website is: &#34; + this.website;
+    document.write(hello + &#34;&lt;br&gt;&#34;);
+}
+
+var Student = Object.create(Person);
+Student.no = &#34;1234567&#34;; //学号
+Student.dept = &#34;Computer Science&#34;; //系
+
+//使用Person的属性
+document.write(Student.name + &#39; &#39; + Student.email + &#39; &#39; + Student.website +&#39;&lt;br&gt;&#39;);
+
+//使用Person的方法
+Student.sayHello();
+
+//重载SayHello方法
+Student.sayHello = function (person) {
+    var hello = &#34;&lt;p&gt;Hello, I am &#34;+ this.name  + &#34;, &lt;br&gt;&#34; +
+                &#34;my email is: &#34; + this.email + &#34;, &lt;br&gt;&#34; +
+                &#34;my website is: &#34; + this.website + &#34;, &lt;br&gt;&#34; +
+                &#34;my student no is: &#34; + this. no + &#34;, &lt;br&gt;&#34; +
+                &#34;my departent is: &#34; + this. dept;
+    document.write(hello + &#39;&lt;br&gt;&#39;);
+}
+//再次调用
+Student.sayHello();
+
+//查看Student的属性（只有 no 、 dept 和 重载了的sayHello）
+document.write(&#39;&lt;p&gt;&#39; + Object.keys(Student) + &#39;&lt;br&gt;&#39;);
+</pre>
+<p>通用上面这个示例，我们可以看到，Person里的属性并没有被真正复制到了Student中来，但是我们可以去存取。这是因为Javascript用委托实现了这一机制。其实，这就是Prototype，Person是Student的Prototype。</p>
+<p>当我们的代码需要一个属性的时候，Javascript的引擎会先看当前的这个对象中是否有这个属性，如果没有的话，就会查找他的Prototype对象是否有这个属性，一直继续下去，直到找到或是直到没有Prototype对象。</p>
+<p>为了证明这个事，我们可以使用Object.getPrototypeOf()来检验一下：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">Student.name = &#39;aaa&#39;;
+
+//输出 aaa
+document.write(&#39;&lt;p&gt;&#39; + Student.name + &#39;&lt;/p&gt;&#39;);
+
+//输出 Chen Hao
+document.write(&#39;&lt;p&gt;&#39; +Object.getPrototypeOf(Student).name + &#39;&lt;/p&gt;&#39;);</pre>
+<p>于是，你还可以在子对象的函数里调用父对象的函数，就好像C++里的 Base::func() 一样。于是，我们重载hello的方法就可以使用父类的代码了，如下所示：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW" data-enlighter-highlight="3">//新版的重载SayHello方法
+Student.sayHello = function (person) {
+    Object.getPrototypeOf(this).sayHello.call(this);
+    var hello = &#34;my student no is: &#34; + this. no + &#34;, &lt;br&gt;&#34; +
+                &#34;my departent is: &#34; + this. dept;
+    document.write(hello + &#39;&lt;br&gt;&#39;);
+}</pre>
+<p>这个很强大吧。</p>
+<h4><span class="ez-toc-section" id="%E7%BB%84%E5%90%88"></span>组合<span class="ez-toc-section-end"></span></h4>
+<p>上面的那个东西还不能满足我们的要求，我们可能希望这些对象能真正的组合起来。为什么要组合？因为我们都知道是这是OO设计的最重要的东西。不过，这对于Javascript来并没有支持得特别好，不好我们依然可以搞定个事。</p>
+<p>首先，我们需要定义一个Composition的函数：（target是作用于是对象，source是源对象），下面这个代码还是很简单的，就是把source里的属性一个一个拿出来然后定义到target中。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function Composition(target, source)
+{
+    var desc  = Object.getOwnPropertyDescriptor;
+    var prop  = Object.getOwnPropertyNames;
+    var def_prop = Object.defineProperty;
+
+    prop(source).forEach(
+        function(key) {
+            def_prop(target, key, desc(source, key))
+        }
+    )
+    return target;
+}
+</pre>
+<p>有了这个函数以后，我们就可以这来玩了：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW" data-enlighter-highlight="19,23">//艺术家
+var Artist = Object.create(null);
+Artist.sing = function() {
+    return this.name + &#39; starts singing...&#39;;
+}
+Artist.paint = function() {
+    return this.name + &#39; starts painting...&#39;;
+}
+
+//运动员
+var Sporter = Object.create(null);
+Sporter.run = function() {
+    return this.name + &#39; starts running...&#39;;
+}
+Sporter.swim = function() {
+    return this.name + &#39; starts swimming...&#39;;
+}
+
+Composition(Person, Artist);
+document.write(Person.sing() + &#39;&lt;br&gt;&#39;);
+document.write(Person.paint() + &#39;&lt;br&gt;&#39;);
+
+Composition(Person, Sporter);
+document.write(Person.run() + &#39;&lt;br&gt;&#39;);
+document.write(Person.swim() + &#39;&lt;br&gt;&#39;);
+
+//看看 Person中有什么？（输出：sayHello,sing,paint,swim,run）
+document.write(&#39;&lt;p&gt;&#39; + Object.keys(Person) + &#39;&lt;br&gt;&#39;);
+</pre>
+<h4><span class="ez-toc-section" id="Prototype_%E5%92%8C_%E7%BB%A7%E6%89%BF"></span>Prototype 和 继承<span class="ez-toc-section-end"></span></h4>
+<p>我们先来说说Prototype。我们先看下面的例程，这个例程不需要解释吧，很像C语言里的函数指针，在C语言里这样的东西见得多了。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var plus = function(x,y){
+    document.write( x + &#39; + &#39; + y + &#39; = &#39; + (x+y) + &#39;&lt;br&gt;&#39;);
+    return x + y;
+};
+
+var minus = function(x,y){
+    document.write(x + &#39; - &#39; + y + &#39; = &#39; + (x-y) + &#39;&lt;br&gt;&#39;);
+    return x - y;
+};
+
+var operations = {
+    &#39;+&#39;: plus,
+    &#39;-&#39;: minus
+};
+
+var calculate = function(x, y, operation){
+    return operations[operation](x, y);
+};
+
+calculate(12, 4, &#39;+&#39;);
+calculate(24, 3, &#39;-&#39;);
+</pre>
+<p>那么，我们能不能把这些东西封装起来呢，我们需要使用prototype。看下面的示例：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW" data-enlighter-highlight="6,11">var Cal = function(x, y){
+    this.x = x;
+    this.y = y;
+}
+
+Cal.prototype.operations = {
+    &#39;+&#39;: function(x, y) { return x+y;},
+    &#39;-&#39;: function(x, y) { return x-y;}
+};
+
+Cal.prototype.calculate = function(operation){
+    return this.operations[operation](this.x, this.y);
+};
+
+var c = new Cal(4, 5);
+
+c.calculate(&#39;+&#39;);
+c.calculate(&#39;-&#39;);</pre>
+<p>这就是prototype的用法，prototype 是javascript这个语言中最重要的内容。网上有太多的文章介始这个东西了。说白了，prototype就是对一对象进行扩展，其特点在于通过“复制”一个已经存在的实例来返回新的实例,而不是新建实例。被复制的实例就是我们所称的“原型”，这个原型是可定制的（当然，这里没有真正的复制，实际只是委托）。上面的这个例子中，我们扩展了实例Cal，让其有了一个operations的属性和一个calculate的方法。</p>
+<p>这样，我们可以通过这一特性来实现继承。还记得我们最最前面的那个Person吧， 下面的示例是创建一个Student来继承Person。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function Person(name, email, website){
+    this.name = name;
+    this.email = email;
+    this.website = website;
+};
+
+Person.prototype.sayHello = function(){
+    var hello = &#34;Hello, I am &#34;+ this.name  + &#34;, &lt;br&gt;&#34; +
+                &#34;my email is: &#34; + this.email + &#34;, &lt;br&gt;&#34; +
+                &#34;my website is: &#34; + this.website;
+    return hello;
+};
+
+function Student(name, email, website, no, dept){
+    var proto = Object.getPrototypeOf;
+    proto(Student.prototype).constructor.call(this, name, email, website);
+    this.no = no;
+    this.dept = dept;
+}
+
+// 继承prototype
+Student.prototype = Object.create(Person.prototype);
+
+//重置构造函数
+Student.prototype.constructor = Student;
+
+//重载sayHello()
+Student.prototype.sayHello = function(){
+    var proto = Object.getPrototypeOf;
+    var hello = proto(Student.prototype).sayHello.call(this) + &#39;&lt;br&gt;&#39;;
+    hello += &#34;my student no is: &#34; + this. no + &#34;, &lt;br&gt;&#34; +
+             &#34;my departent is: &#34; + this. dept;
+    return hello;
+};
+
+var me = new Student(
+    &#34;Chen Hao&#34;,
+    &#34;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ed858c828881ad858299808c8481c38e8280">[email protected]</a>&#34;,
+    &#34;https://coolshell.cn&#34;,
+    &#34;12345678&#34;,
+    &#34;Computer Science&#34;
+);
+document.write(me.sayHello());</pre>
+<h4><span class="ez-toc-section" id="%E5%85%BC%E5%AE%B9%E6%80%A7"></span>兼容性<span class="ez-toc-section-end"></span></h4>
+<p>上面的这些代码并不一定能在所有的浏览器下都能运行，因为上面这些代码遵循 ECMAScript 5 的规范，关于ECMAScript 5 的浏览器兼容列表，你可以看这里“<a href="https://kangax.github.com/es5-compat-table/" target="_blank">ES5浏览器兼容表</a>”。</p>
+<p>本文中的所有代码都在Chrome最新版中测试过了。</p>
+<p>下面是一些函数，可以用在不兼容ES5的浏览器中：</p>
+<h5><span class="ez-toc-section" id="Objectcreate%E5%87%BD%E6%95%B0"></span>Object.create()函数<span class="ez-toc-section-end"></span></h5>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function clone(proto) {
+    function Dummy() { }
+
+    Dummy.prototype             = proto;
+    Dummy.prototype.constructor = Dummy;
+
+    return new Dummy(); //等价于Object.create(Person);
+}
+
+var me = clone(Person);
+</pre>
+<h5><span class="ez-toc-section" id="defineProperty%E5%87%BD%E6%95%B0"></span>defineProperty()函数<span class="ez-toc-section-end"></span></h5>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function defineProperty(target, key, descriptor) {
+    if (descriptor.value){
+        target[key] = descriptor.value;
+    }else {
+        descriptor.get &amp;&amp; target.__defineGetter__(key, descriptor.get);
+        descriptor.set &amp;&amp; target.__defineSetter__(key, descriptor.set);
+    }
+
+    return target
+}</pre>
+<h5><span class="ez-toc-section" id="keys%E5%87%BD%E6%95%B0"></span>keys()函数<span class="ez-toc-section-end"></span></h5>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function keys(object) { var result, key
+    result = [];
+    for (key in object){
+        if (object.hasOwnProperty(key))  result.push(key)
+    }
+
+    return result;
+}</pre>
+<h5><span class="ez-toc-section" id="ObjectgetPrototypeOf_%E5%87%BD%E6%95%B0"></span>Object.getPrototypeOf() 函数<span class="ez-toc-section-end"></span></h5>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function proto(object) {
+    return !object?                null
+         : &#39;__proto__&#39; in object?  object.__proto__
+         : /* not exposed? */      object.constructor.prototype
+}</pre>
+<h5><span class="ez-toc-section" id="bind_%E5%87%BD%E6%95%B0"></span>bind 函数<span class="ez-toc-section-end"></span></h5>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var slice = [].slice
+
+function bind(fn, bound_this) { var bound_args
+    bound_args = slice.call(arguments, 2)
+    return function() { var args
+        args = bound_args.concat(slice.call(arguments))
+        return fn.apply(bound_this, args) }
+}
+</pre>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83"></span>参考<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li>W3CSchool</li>
+<li>MDN (Mozilla Developer Network)</li>
+<li>MSDN (Microsoft Software Development Network)</li>
+<li><a href="https://killdream.github.com/blog/2011/10/understanding-javascript-oop/" target="_blank">Understanding Javascript OOP</a>.</li>
+</ul>
+<p><span style="color: #cc0000;"><strong>（转载时请注明作者和出处，请勿用于任何商业用途）</strong></span></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6441-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ECMAScript</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">OOP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Javascript 面向对象编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1909009" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.moomstudio.cn/w/101.html" class="url" rel="ugc external nofollow">LUA简明教程-MoomStudio</a> </div>
+</li>
+<li id="comment-2370841" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370841" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/19145e2af2365856194cf2d652637ff8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/19145e2af2365856194cf2d652637ff8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">喵</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6441.html/comment-page-3#comment-2370841"><time datetime="2022-10-22T08:32:19+08:00">2022年10月22日 08:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>兼容性中， Object.create()函数中：<br/>
+Dummy.prototype.constructor = Dummy; 这部分应该删掉。<br/>
+例如，如果传入的是 Person.prototype，则将 Person.prototype.constructor 从 Person() 改成了 Dummy() 了，这就不对了。</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6441.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6441.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/6441.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">6441</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

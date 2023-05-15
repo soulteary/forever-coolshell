@@ -1,0 +1,708 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>vfork 挂掉的一个问题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-12103 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-12103" class="post-content post-12103 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-operatingsystem tag-fork tag-linux tag-unix tag-vfork">
+<header class="entry-header">
+<span class="screen-reader-text">vfork 挂掉的一个问题</span>
+<h1 class="entry-title">vfork 挂掉的一个问题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12103.html" title="00:48" rel="bookmark"><time class="entry-date" datetime="2014-11-21T00:48:27+08:00" pubdate="">2014年11月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12103.html#comments" class="comments-link">46 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 48,152 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-12105" src="/uploads/2014/11/tux-fork-298x300.gif" alt="tux-fork" width="199" height="200" srcset="" sizes="(max-width: 199px) 100vw, 199px"/>在知乎上，有个人问了这样的<a href="http://www.zhihu.com/question/26591968" target="_blank">一个问题</a>——为什么vfork的子进程里用return，整个程序会挂掉，而且exit()不会？并给出了如下的代码，下面的代码一运行就挂掉了，但如果把子进程的return改成exit(0)就没事。</p>
+<p>我受邀后本来不想回答这个问题的，因为这个问题明显就是RTFM的事，后来，发现这个问题放在那里好长时间，而挂在下面的几个答案又跑偏得比较严重，我觉得可能有些朋友看到那样的答案会被误导，所以就上去回答了一下这个问题。</p>
+<p>下面我把问题和我的回答发布在这里，也供更多的人查看。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+int main(void) {
+    int var;
+    var = 88;
+    if ((pid = vfork()) &lt; 0) {
+        printf(&#34;vfork error&#34;);
+        exit(-1);
+    } else if (pid == 0) { /* 子进程 */
+        var++;
+        return 0;
+    }
+    printf(&#34;pid=%d, glob=%d, var=%d\n&#34;, getpid(), glob, var);
+    return 0;
+}
+</pre>
+<p><span id="more-12103"></span></p>
+<h4><b>基础知识</b></h4>
+<p>首先说一下fork和vfork的差别：</p>
+<ul>
+<li>fork 是 创建一个子进程，并把父进程的内存数据copy到子进程中。</li>
+<li>vfork是 创建一个子进程，并和父进程的内存数据share一起用。</li>
+</ul>
+<p>这两个的差别是，一个是copy，一个是share。（关于fork，可以参看酷壳之前的《<a title="一个fork的面试题" href="/articles/7965.html" target="_blank">一道fork的面试题</a>》）</p>
+<p>你 man vfork 一下，你可以看到，vfork是这样的工作的，</p>
+<p style="padding-left: 30px;">1）保证子进程先执行。<br/>
+2）当子进程调用exit()或exec()后，父进程往下执行。</p>
+<p>那么，为什么要干出一个vfork这个玩意？ 原因在man page也讲得很清楚了：</p>
+<blockquote><p><strong>Historic Description</strong></p>
+<p>Under Linux, fork(2) is implemented using copy-on-write pages, so the only penalty incurred by fork(2) is the time and memory required to duplicate the parent’s page tables, and to create a unique task structure for the child. <b>However, in the bad old days a fork(2) would require making </b><b>a complete copy of the caller’s data space, often needlessly, since usually immediately afterwards an exec(3) is done. Thus, for greater efficiency, BSD introduced the vfork() system call, which did not fully copy the address space of the parent process, but borrowed the parent’s mem</b><b>ory and thread of control until a call to execve(2) or an exit occurred.</b> The parent process was suspended while the child was using its resources. The use of vfork() was tricky: for example, not modifying data in the parent process depended on knowing which variables are held in a register.</p></blockquote>
+<p>意思是这样的—— <b>起初只有fork，但是很多程序在fork一个子进程后就exec一个外部程序，于是fork需要copy父进程的数据这个动作就变得毫无意了，而且这样干还很重</b>（注：后来，fork做了优化，详见本文后面）<b>，所以，BSD搞出了个父子进程共享的 vfork，这样成本比较低。因此，vfork本就是为了exec而生。</b></p>
+<h4><b>为什么return会挂掉，exit()不会？</b></h4>
+<p>从上面我们知道，<b>结束子进程的调用是exit()而不是return，如果你在vfork中return了，那么，这就意味main()函数return了，注意因为函数栈父子进程共享，所以整个程序的栈就跪了。</b></p>
+<p>如果你在子进程中return，那么基本是下面的过程：</p>
+<p style="padding-left: 30px;"><b>1）子进程的main() 函数 return了，于是程序的函数栈发生了变化。</b></p>
+<p style="padding-left: 30px;"><b>2）而main()函数return后，通常会调用 exit()或相似的函数</b>（如：_exit()，exitgroup()）</p>
+<p style="padding-left: 30px;"><b>3）这时，父进程收到子进程exit()，开始从vfork返回，但是尼玛，老子的栈都被你子进程给return干废掉了，你让我怎么执行？</b>（注：栈会返回一个诡异一个栈地址，对于某些内核版本的实现，直接报“栈错误”就给跪了，然而，对于某些内核版本的实现，于是有可能会再次调用main()，于是进入了一个无限循环的结果，直到vfork 调用返回 error）</p>
+<p>好了，现在再回到 return 和 exit，return会释放局部变量，并弹栈，回到上级函数执行。exit直接退掉。如果你用c++ 你就知道，return会调用局部对象的析构函数，exit不会。（注：exit不是系统调用，是glibc对系统调用 _exit()或_exitgroup()的封装）</p>
+<p>可见，<b>子进程调用exit() 没有修改函数栈，所以，父进程得以顺利执行</b>。</p>
+<p><strong>但是！注意！如果你调用 exit() 函数，还是会有问题的，正确的方法应该是调用 _exit() 函数，因为 exit() 函数 会 flush 并 close 所有的 标准 I/O ，这样会导致父进程受到影响。（这个情况在fork下也会受到影响，会导致一些被buffer的数据被flush两次，这里可以参看《<a href="/articles/7965.html" target="_blank">一个fork的面试题</a>》）</strong></p>
+<h4>关于fork的优化</h4>
+<p>很明显，fork太重，而vfork又太危险，所以，就有人开始优化fork这个系统调用。优化的技术用到了著名的<b>写时拷贝（COW）</b>。</p>
+<p>也就是说，<strong>对于fork后并不是马上拷贝内存，而是只有你在需要改变的时候，才会从父进程中拷贝到子进程中，这样fork后立马执行exec的成本就非常小了</strong>。所以，Linux的Man Page中并不鼓励使用vfork() ——</p>
+<blockquote><p>“ It is rather unfortunate that Linux revived this specter from the past. The BSD man page states: “This system call will be eliminated when proper system sharing mechanisms are implemented. Users should not depend on the memory sharing semantics of vfork() as it will, in that case, be made synonymous to fork(2).””</p></blockquote>
+<p>于是，从BSD4.4开始，他们让vfork和fork变成一样的了</p>
+<p>但在后来，NetBSD 1.3 又把传统的vfork给捡了回来，说是vfork的性能在 Pentium Pro 200MHz 的机器（这机器好古董啊）上有可以提高几秒钟的性能。详情见——“<a class=" wrap external" href="http://www.netbsd.org/docs/kernel/vfork.html" target="_blank" rel="nofollow noreferrer">NetBSD Documentation: Why implement traditional vfork()<i class="icon-external"></i></a>”</p>
+<p>今天的Linux下，fork和vfork还是各是各的，不过，还是建议你不要用vfork，除非你非常关注性能。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-12103-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">fork</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Unix</a>, <a href="javascript:void(0)" rel="tag">vfork</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>vfork 挂掉的一个问题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1609805" class="comment even thread-even depth-1">
+<article id="div-comment-1609805" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9046943d03a5d41827ff251bfbff1d6c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9046943d03a5d41827ff251bfbff1d6c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">int64ago</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1609805"><time datetime="2014-11-21T09:17:26+08:00">2014年11月21日 09:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原来exit不清理资源啊……<br/>
+那就是等着系统清理咯？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1609809" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1609809" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/407805eeb85660fb231d8d4a2aaf514b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/407805eeb85660fb231d8d4a2aaf514b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">feenn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1609809"><time datetime="2014-11-21T09:24:20+08:00">2014年11月21日 09:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>再次说明不看手册就直接用api的都是危险的行为。<br/>
+btw：我确实关注性能，所以我大量用vfork。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1609820" class="comment even thread-even depth-1">
+<article id="div-comment-1609820" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdf23c63251cdd962b0c527a5d7b9217?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdf23c63251cdd962b0c527a5d7b9217?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">linpeng1577</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1609820"><time datetime="2014-11-21T09:44:18+08:00">2014年11月21日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1609805" rel="nofollow">@int64ago </a><br/>
+释放很多资源，比如cs,ds,文件引用–，会话等等，只是用户栈是和父进程共享的，不会释放，系统清理，_exit()没有说自己是系统清理</p>
+</div>
+ </article>
+</li>
+<li id="comment-1609884" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1609884" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.catscarlet.com" class="url" rel="ugc external nofollow">独行猫儿</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1609884"><time datetime="2014-11-21T11:15:19+08:00">2014年11月21日 11:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你这配图好基♂</p>
+</div>
+ </article>
+</li>
+<li id="comment-1609886" class="comment even thread-even depth-1">
+<article id="div-comment-1609886" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9064b7bc9f7073393225b411501980ce?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9064b7bc9f7073393225b411501980ce?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1609886"><time datetime="2014-11-21T11:16:26+08:00">2014年11月21日 11:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>又会一招~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1610014" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1610014" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3609a386bac95ccd229ae1a5e486064c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3609a386bac95ccd229ae1a5e486064c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ngcc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1610014"><time datetime="2014-11-21T14:12:34+08:00">2014年11月21日 14:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>APUE中描述：Historically, the exit function has always performed a clean shutdown of the standard I/O library: the fclose function is called for all open streams。其实exit 和 return 作用一样 ，但是_exit() 和_Exit() does not perform any flushing of standard I/O buffers</p>
+</div>
+ </article>
+</li>
+<li id="comment-1610015" class="comment even thread-even depth-1">
+<article id="div-comment-1610015" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/17e6b73e5ce1b47dc7dbeee9bbb9284c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/17e6b73e5ce1b47dc7dbeee9bbb9284c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jsxgblcxp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1610015"><time datetime="2014-11-21T14:12:43+08:00">2014年11月21日 14:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是来膜拜配图的 哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1610019" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1610019" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3609a386bac95ccd229ae1a5e486064c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3609a386bac95ccd229ae1a5e486064c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ngcc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1610019"><time datetime="2014-11-21T14:18:28+08:00">2014年11月21日 14:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &#34;apue.h&#34;
+
+int     glob = 6;       /* external variable in initialized data */
+
+int
+main(void)
+{
+    int     var;        /* automatic variable on the stack */
+    pid_t   pid;
+
+    var = 88;
+    printf(&#34;before vfork\n&#34;);   /* we don&#39;t flush stdio */
+    if ((pid = vfork()) &amp;lt; 0) {
+        err_sys(&#34;vfork error&#34;);
+    } else if (pid == 0) {      /* child */
+        glob++; /* modify parent&#39;s variables */
+        var++;
+        _exit(0); /* child terminates */  
+                 //此处一般不会调用 exit的，否则影响父进程
+                 //如果return 就如大Boss说的破坏函数返回地址栈
+    }
+    /*
+     * Parent continues here.
+     */
+    printf(&#34;pid = %d, glob = %d, var = %d\n&#34;, getpid(), glob, var);
+    exit(0);
+}</pre>
+</div>
+ </article>
+</li>
+<li id="comment-1610077" class="comment even thread-even depth-1">
+<article id="div-comment-1610077" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f15f63ff90d93a55809e054afbdea645?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f15f63ff90d93a55809e054afbdea645?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Williams-Lu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1610077"><time datetime="2014-11-21T15:47:42+08:00">2014年11月21日 15:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Mark</p>
+</div>
+ </article>
+</li>
+<li id="comment-1610766" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1610766" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/632b57f3d86e576de9b90dda45e26789?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/632b57f3d86e576de9b90dda45e26789?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mr.Mushroom</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1610766"><time datetime="2014-11-22T09:15:59+08:00">2014年11月22日 09:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子老师什么都教啊, RTFM = Read the Fucking Manuel.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1611334" class="comment even thread-even depth-1">
+<article id="div-comment-1611334" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ee59cc6f674d495e835d48437aee8152?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ee59cc6f674d495e835d48437aee8152?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/wks" class="url" rel="ugc external nofollow">wks</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1611334"><time datetime="2014-11-22T22:32:15+08:00">2014年11月22日 22:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我看的man page是这个版本：http://man7.org/linux/man-pages/man2/vfork.2.html</p>
+<p>man page里的这句话让我很不安：“… except that the behavior is undefined if the process created by vfork() either modifies any data other than a variable of type pid_t used to store the return value from vfork() …”这里，“any data”以及“variable”这些词定义得很含糊。variable是C这样的高级语言才有的概念，汇编看到的就只有寄存器和内存。即使用C语言，优化器也可以很自由地决定变量究竟是存放在寄存器里还是内存里。如果C语言调用exec这样的函数，而参数是表达式，那么编译器还是会生成对参数求值的代码，这其中难免会修改栈上的数据。同时，由于calling convention，编译器会将某些寄存器的值腾出来供传入变量用，同时也会把相应的寄存器的旧值spill到栈上。这其中，“modify any data”几乎任何地方都可能发生。</p>
+<p>更令人不安的就是另外一句话：“The use of vfork() was tricky: for example, not modifying data in the parent process depended on knowing which variables were held in a register.”这对编译器的要求太高了。看样子编译器不把vfork变成“内置函数”都没办法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1612436" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1612436" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14dbdd0cd39bdcb1cb94700bfdc69b51?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14dbdd0cd39bdcb1cb94700bfdc69b51?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cy198706.com" class="url" rel="ugc external nofollow">死神的微笑</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1612436"><time datetime="2014-11-24T10:24:34+08:00">2014年11月24日 10:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实想到fork和vfork的区别就应该明白了。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1612758" class="comment even thread-even depth-1">
+<article id="div-comment-1612758" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f3c835ee12dda8bd5f5a86ff293bb5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f3c835ee12dda8bd5f5a86ff293bb5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cpplog.com" class="url" rel="ugc external nofollow">cpplog</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1612758"><time datetime="2014-11-24T18:01:22+08:00">2014年11月24日 18:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，耗子老师的每篇文章都让人读后，有所收获。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1612894" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1612894" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a754df62bcca482e53736b7f53673cc5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a754df62bcca482e53736b7f53673cc5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://pvq.me" class="url" rel="ugc external nofollow">ChanneW</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1612894"><time datetime="2014-11-24T23:34:51+08:00">2014年11月24日 23:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这配图好有 feel</p>
+</div>
+ </article>
+</li>
+<li id="comment-1613444" class="comment even thread-even depth-1">
+<article id="div-comment-1613444" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bea534291e039984e1177764cfee5901?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bea534291e039984e1177764cfee5901?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">TinyHui.Wang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1613444"><time datetime="2014-11-25T11:39:40+08:00">2014年11月25日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你看，英语多重要。man已经写的很详细了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1613620" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1613620" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba1fa4b45f5a12831241ca8613278b0b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba1fa4b45f5a12831241ca8613278b0b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.gbtags.com" class="url" rel="ugc external nofollow">terry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1613620"><time datetime="2014-11-25T17:51:14+08:00">2014年11月25日 17:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>楼主讲述的很详细，赞</p>
+</div>
+ </article>
+</li>
+<li id="comment-1616104" class="comment even thread-even depth-1">
+<article id="div-comment-1616104" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/15df6c4f6afc7e82191fe41cad65b599?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/15df6c4f6afc7e82191fe41cad65b599?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Zenga</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1616104"><time datetime="2014-11-28T16:40:36+08:00">2014年11月28日 16:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在fork（）应该已经使用了copy-on-wright了吧？所以绝大部分情况下都不需要使用Vfork了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1616174" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1616174" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65086a1c6937a501163956fcc16800b7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65086a1c6937a501163956fcc16800b7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lxyscls</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1616174"><time datetime="2014-11-28T17:52:15+08:00">2014年11月28日 17:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>1024个赞</p>
+</div>
+ </article>
+</li>
+<li id="comment-1616650" class="comment even thread-even depth-1">
+<article id="div-comment-1616650" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/678236d1e4d897ba54280376438179f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/678236d1e4d897ba54280376438179f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vulcan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1616650"><time datetime="2014-11-29T09:44:00+08:00">2014年11月29日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于”child-runs-first”,可参考http://yarchive.net/comp/linux/child-runs-first.html</p>
+</div>
+ </article>
+</li>
+<li id="comment-1621228" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1621228" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b04b7f28cad0058609b58af122a2a0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b04b7f28cad0058609b58af122a2a0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jxncjl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1621228"><time datetime="2014-12-04T21:49:49+08:00">2014年12月04日 21:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#include<br/>
+#include<br/>
+#include<br/>
+int glob = 6;</p>
+<p>int main()<br/>
+{<br/>
+int var, v;<br/>
+var = 5;<br/>
+v = 88;<br/>
+pid_t pid;<br/>
+if((pid = vfork())&lt;0)<br/>
+{<br/>
+printf(&#34;fork error…&#34;);<br/>
+exit(-1);<br/>
+}<br/>
+else if(pid == 0)<br/>
+{<br/>
+v++;<br/>
+var++;<br/>
+glob++;<br/>
+printf(&#34;Child procss = %d; v=%d; var=%d; glob=%d\n&#34;, getpid(),v,var,glob);<br/>
+return 0;<br/>
+}<br/>
+printf(&#34;Parent process = %d;v=%d; pid = %d; var=%d; glob=%d\n&#34;, getpid(), v, pid,var,glob);</p>
+<p> return 0;<br/>
+}<br/>
+按照LZ的解释，vfork出的子进程和父进程是共享同一片物理内存区域的，当子进程return后，原来main内存栈就会被摧毁了，之前在该栈中存放的局部变量，如var,v,pid的值都不能保证是原来的值，那为何我每次运行该程序，发现父进行打印出v，pid的值都还是原来的，而v的值却是每次都变动，不科学啊。<br/>
+运行结果如下所示：<br/>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="790a1c1c1d390a1c1c1d541d1c0a120d1609">[email protected]</a>:/tmp$ ./a.out<br/>
+Child procss = 8088; v=89; var=6; glob=7<br/>
+Parent process = 8087;v=1; pid = 8088; var=-1208462364; glob=7<br/>
+段错误<br/>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="bac9dfdfdefac9dfdfde97dedfc9d1ced5ca">[email protected]</a>:/tmp$ ./a.out<br/>
+Child procss = 8090; v=89; var=6; glob=7<br/>
+Parent process = 8089;v=1; pid = 8090; var=-1209146396; glob=7<br/>
+段错误</p>
+<p>突然还有一个问题挺困惑的：对于fork，vfork的赋值给pid。对于pid=fork()我是这么理解了：因为fork是子进程拷贝了父进程的一个备份，所以虽然pid在栈中存放的虚拟地址是一样的，但地址映射到不同的物理页，所以在子进程中读取pid的值就是0，而在父进程读取pid的值就为一个常数（即子进程的进程号）。<br/>
+而pid=vfork()就不好理解了，因为父子进程是共享同一片内存区域的，所以映射到同一个物理页，然而子进程读取pid的值依然为0，这怎么解释呢？然道专门为pid的内存虚拟地址专门开辟了一个物理页给子进程吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1623597" class="comment even thread-even depth-1">
+<article id="div-comment-1623597" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b1c31f6ba284dd03310cb041878cf15?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b1c31f6ba284dd03310cb041878cf15?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://swpustc.wicp.net" class="url" rel="ugc external nofollow">swpustc</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1623597"><time datetime="2014-12-07T17:45:49+08:00">2014年12月07日 17:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1621228" rel="nofollow">@jxncjl </a><br/>
+函数的返回值在EAX(RAX)寄存器中，优化过的程序应该直接读的寄存器，除非pid声明为volatile</p>
+</div>
+ </article>
+</li>
+<li id="comment-1630186" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1630186" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12e93fa54f5801e2c4d404826724bf22?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12e93fa54f5801e2c4d404826724bf22?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">everett</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1630186"><time datetime="2014-12-15T19:57:03+08:00">2014年12月15日 19:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一年多以前遇到这个问题了，一直没有解决，后来慢慢就淡忘了，今天看到您的博文，让我眼前一亮，立刻翻出一年多前留下的测试代码，终于可以给代码打上“已解决”了。</p>
+<p>谢谢您</p>
+</div>
+ </article>
+</li>
+<li id="comment-1631463" class="comment even thread-even depth-1">
+<article id="div-comment-1631463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49644c9b6bd49842beb405ff505946de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49644c9b6bd49842beb405ff505946de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">轩脉刃</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1631463"><time datetime="2014-12-18T09:21:15+08:00">2014年12月18日 09:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-1642368" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1642368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/376545e0c69356a6f540b887933cbf5d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/376545e0c69356a6f540b887933cbf5d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">周帅印</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1642368"><time datetime="2015-01-09T00:01:20+08:00">2015年01月09日 00:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受教了。。。不过对return和exit的区别没有说太清楚，貌似系统在main()函数return后（弹栈）后会再调用exit().</p>
+</div>
+ </article>
+</li>
+<li id="comment-1650232" class="comment even thread-even depth-1">
+<article id="div-comment-1650232" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f1a6c3fad1f4ae839cefcfd1316f7551?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f1a6c3fad1f4ae839cefcfd1316f7551?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wanwiy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1650232"><time datetime="2015-01-26T11:59:48+08:00">2015年01月26日 11:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受教了，程序员应该有的态度。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1659410" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1659410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/168cf50fd97a76715e254848fea65f38?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/168cf50fd97a76715e254848fea65f38?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">codefucker</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1659410"><time datetime="2015-02-11T12:26:40+08:00">2015年02月11日 12:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实，这本质上就是一个return , exit() , _exit()的特性问题跟权利大小的问题，建议多看看那本《Unix环境高级编程》，着重看《Unix编程：进程间通信》 fork（）部分。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1673411" class="comment even thread-even depth-1">
+<article id="div-comment-1673411" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cd277f89818cb0a3c35e35212c574d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cd277f89818cb0a3c35e35212c574d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">netsniffer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1673411"><time datetime="2015-03-11T17:59:01+08:00">2015年03月11日 17:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Android4.4之前bionic C库及NDK C库的 vfork实现都有类似的问题，导致一用就挂<br/>
+原理也曾分析了一下：<br/>
+<a href="http://blog.csdn.net/netsniffer/article/details/27834627" rel="nofollow ugc">http://blog.csdn.net/netsniffer/article/details/27834627</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1689475" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1689475" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d60c92436608063dc4956a2d4612757?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d60c92436608063dc4956a2d4612757?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://itbokeyun.com/" class="url" rel="ugc external nofollow">itbokeyun</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1689475"><time datetime="2015-04-13T14:33:03+08:00">2015年04月13日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RTFM</p>
+<p> 请阅读该死的使用手册</p>
+</div>
+ </article>
+</li>
+<li id="comment-1692235" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1058" class="url" rel="ugc external nofollow">Docker基础技术：Linux CGroup | 星达红</a> </div>
+</li>
+<li id="comment-1696633" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://beready.me/%e7%94%b1vfork%e7%bb%93%e5%90%88exit%e6%83%b3%e5%88%b0%e7%9a%84%e8%8b%a5%e5%b9%b2%e9%97%ae%e9%a2%98-3/" class="url" rel="ugc external nofollow">由vfork()结合exit()想到的若干问题 | 罗宇平的个人博客</a> </div>
+</li>
+<li id="comment-1700892" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1700892" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1700892"><time datetime="2015-05-04T14:22:52+08:00">2015年05月04日 14:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>讲解得很清晰，又学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1706635" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1706635" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cd8deae60e85b062395b9ac1484a16d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cd8deae60e85b062395b9ac1484a16d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Dexuan Cui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1706635"><time datetime="2015-05-13T15:37:27+08:00">2015年05月13日 15:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我看的是Ubuntu 14.04里面的man vfork。</p>
+<p>里面说的很清楚，子进程禁止调用 exit():<br/>
+The child must not return from the current function or call exit(3), but may call _exit(2).</p>
+<p>另：exit()会调用atexit()注册的函数，而 _exit()不会。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1710191" class="comment even thread-even depth-1">
+<article id="div-comment-1710191" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fb74f2fb89d774ce49b95dc256a230be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fb74f2fb89d774ce49b95dc256a230be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://quant67.com/" class="url" rel="ugc external nofollow">liaotonglang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1710191"><time datetime="2015-05-20T13:25:58+08:00">2015年05月20日 13:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>果然很多问题看看文档就解决了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1735960" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17049.html" class="url" rel="ugc">Docker基础技术：Linux CGroup | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1754094" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hunshijidu.sq227.zuji-258.com/?p=324" class="url" rel="ugc external nofollow">vfork 挂掉的一个问题 | 待定</a> </div>
+</li>
+<li id="comment-1789281" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1789281" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9d521f4dfa71334595f6d9080a80a7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9d521f4dfa71334595f6d9080a80a7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">WONDERFUL</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1789281"><time datetime="2015-11-13T14:37:19+08:00">2015年11月13日 14:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为啥会修改父进程的栈空间，return只会把栈中保存的函数返回地址，EBP，ESP，EIP等寄存器值修改，但是栈中被回收的资源（函数返回地址，EBP，局部变量等）所占用内存空间的值并不被擦除，而EBP，ESP，EIP这些寄存器是每个进程独享的（进程切换时会恢复为对应的进程的值），怎么会导致栈空间中保存的返回地址等信息被破坏呢？求解！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1793874" class="comment even thread-even depth-1">
+<article id="div-comment-1793874" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e05dedbf441d902b1c9c24ecfe93d7c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e05dedbf441d902b1c9c24ecfe93d7c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Bill Lee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1793874"><time datetime="2015-11-24T09:11:34+08:00">2015年11月24日 09:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1789281" rel="nofollow">@WONDERFUL </a><br/>
+从 main() 返回后，libc 会做最后的 termination, 进行一些像调用 atexit(3) 注册的函数之类的操作</p>
+</div>
+ </article>
+</li>
+<li id="comment-1805001" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/08/26/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper/" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 大耳门</a> </div>
+</li>
+<li id="comment-1805005" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/08/24/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9aaufs/" class="url" rel="ugc external nofollow">Docker基础技术：AUFS – 大耳门</a> </div>
+</li>
+<li id="comment-1895765" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1895765" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cbcfe35d106067db950b386f9432aec2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cbcfe35d106067db950b386f9432aec2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://nil" class="url" rel="ugc external nofollow">fromdtor</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1895765"><time datetime="2016-11-03T00:37:52+08:00">2016年11月03日 00:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常清楚</p>
+</div>
+ </article>
+</li>
+<li id="comment-1912970" class="comment even thread-even depth-1">
+<article id="div-comment-1912970" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/436f240b2b3477927cd255c806654f41?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/436f240b2b3477927cd255c806654f41?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘伟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12103.html#comment-1912970"><time datetime="2017-02-10T15:19:08+08:00">2017年02月10日 15:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于使用vfork有一个疑问，使用vfork之后，父进程的状态会变成 ‘d’， 也就是不可打断的睡眠，但是这个只是针对内核态么？用户态还是可以正常打断？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917000" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=54" class="url" rel="ugc external nofollow">Linux PID 1 和 Systemd – IT青年文摘</a> </div>
+</li>
+<li id="comment-1946996" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2018/12/08/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e8%ae%b0%e4%b8%80%e6%ac%a1kubernetes-docker%e7%bd%91%e7%bb%9c%e6%8e%92%e9%9a%9c/" class="url" rel="ugc external nofollow">【酷壳】 记一次Kubernetes/Docker网络排障 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-1995987" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ddcode.net/2019/05/07/process-problems-caused-by-vfork/" class="url" rel="ugc external nofollow">Process Problems Caused by vfork – DDCODE</a> </div>
+</li>
+<li id="comment-2034164" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://sunflower.keda.io/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 可達書院</a> </div>
+</li>
+<li id="comment-2371095" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/155700" class="url" rel="ugc external nofollow">fork与vfork | 高性能架构探索</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

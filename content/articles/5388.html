@@ -1,0 +1,463 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C语言中史上最愚蠢的Bug | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5388 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5388" class="post-content post-5388 post type-post status-publish format-standard hentry category-cplusplus category-misc category-proglanguage category-story tag-c tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">C语言中史上最愚蠢的Bug</span>
+<h1 class="entry-title">C语言中史上最愚蠢的Bug</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5388.html" title="10:17" rel="bookmark"><time class="entry-date" datetime="2011-08-26T10:17:48+08:00" pubdate="">2011年08月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5388.html#comments" class="comments-link">126 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 71,844 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文来自“<a href="http://www.elpauer.org/?p=971" target="_blank">The most stupid C bug ever</a>”，很有意思，分享给大家。我相信这样的bug，就算你是高手你也会犯的。你来看看作者犯的这个Bug吧。。</p>
+<p>首先，作者想用一段程序来创建一个文件，如果有文件名的话，就创建真正的文件，如果没有的话，就调用?<a href="http://linux.die.net/man/3/tmpfile">tmpfile()</a>?创建临时文件。他这段程序就是HTTP下载的C程序。code==200就是HTTP的返回码。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">else if (code == 200) {     // Downloading whole file
+    /* Write new file (plus allow reading once we finish) */
+    g = fname ? fopen(fname, &#34;w+&#34;) : tmpfile();
+}</pre>
+<p>但是这个程序，只能在Unix/Linux下工作，因为 Microsoft 的?<a href="http://msdn.microsoft.com/en-us/library/x8x7sakw.aspx">tmpfile()的实现</a>?居然选择了 C:\ 作为临时文件的存放目录，这对于那些没有管理员权限的人来说就出大问题了，在Windows 7下，就算你有管理员权限也会有问题。所以，上面的程序在Windows平台下需要用不同的方式来处理，不能直接使用Windows的tmpfile()函数。</p>
+<p>于是作者就先把这个问题记下来，在注释中写下了FIXME：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">else if (code == 200) {     // Downloading whole file
+    /* Write new file (plus allow reading once we finish) */
+
+    // FIXME Win32 native version fails here because
+    //   Microsoft&#39;s version of tmpfile() creates the file in C:\
+    g = fname ? fopen(fname, &#34;w+&#34;) : tmpfile();
+}</pre>
+<p>然后，作者觉得需要写一个跨平台的编译：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">FILE * tmpfile ( void ) {
+#ifndef _WIN32
+    return tmpfile();
+#else
+    //code for Windows;
+#endif
+}</pre>
+<p>然后，作者觉得这样实现很不好，会发现名字冲突，因为这样一来这个函数太难看了。于是他重构了一下他的代码——写一个自己实现的tmpfile() – w32_tmpfile，然后，在Windows 下用宏定义来重命名这个函数为tmpfile()。（陈皓注：这种用法是比较标准的跨平台代码的写法）</p>
+<p><span id="more-5388"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#ifdef _WIN32
+  #define tmpfile w32_tmpfile
+#endif
+
+FILE * w32_tmpfile ( void ) {
+    //code for Windows;
+}</pre>
+<p>搞定！编译程序，运行。靠！居然没有调用到我的w32_tmpfile()，什么问题？调试，单步跟踪，果然没有调用到！难道是问号表达式有问题？改成if – else 语句，好了！</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if(NULL != fname) {
+    g = fopen(fname, &#34;w+&#34;);
+} else {
+    g = tmpfile();
+}</pre>
+<p>问号表达式不应该有问题吧，难道我们的宏对问号表达式不起作用，这难道是编译器的预编译的一个bug？作者怀疑到。</p>
+<p>现在我们把所有的代码连在一起看，并比较一下：</p>
+<p><strong>能正常工作的代码</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#ifdef _WIN32
+#  define tmpfile w32_tmpfile
+#endif
+
+FILE * w32_tmpfile ( void ) {
+    code for Windows;
+}
+
+else if (code == 200) {     // Downloading whole file
+    /* Write new file (plus allow reading once we finish) */
+    // FIXME Win32 native version fails here because
+    //     Microsoft&#39;s version of tmpfile() creates the file in C:\
+    //g = fname ? fopen(fname, &#34;w+&#34;) : tmpfile();
+    if(NULL != fname) {
+        g = fopen(fname, &#34;w+&#34;);
+    } else {
+        g = tmpfile();
+    }
+}</pre>
+<p><strong>不能正常工作的代码</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#ifdef _WIN32
+#  define tmpfile w32_tmpfile
+#endif
+
+FILE * w32_tmpfile ( void ) {
+    code for Windows;
+}
+
+else if (code == 200) {     // Downloading whole file
+    /* Write new file (plus allow reading once we finish) */
+    // FIXME Win32 native version fails here because
+    //    Microsoft&#39;s version of tmpfile() creates the file in C:\
+    g = fname ? fopen(fname, &#34;w+&#34;) : tmpfile();
+}</pre>
+<p>也许你在一开始就看到了这个bug，但是作者没有。所有的问题都出在注释上：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">/* Write new file (plus allow reading once we finish) */
+// FIXME Win32 native version fails here because
+//     Microsoft&#39;s version of tmpfile() creates the file in C:\
+</pre>
+<p><strong>你看到了最后那个C:\吗？在C中，“\” 代表此行没有结束，于是，后面的代码也成了注释。这就是这个bug的真正原因</strong>！</p>
+<p>而之所以改成if-else能工作的原因是因为作者注释了老的问号表达式的代码，所以，那段能工作的代码成了：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">/* Write new file (plus allow reading once we finish) */
+// FIXME Win32 native version fails here because Microsoft&#39;s version of tmpfile() creates the file in C:    //g = fname ? fopen(fname, &#34;w+&#34;) : tmpfile();
+if(NULL != fname) {
+    g = fopen(fname, &#34;w+&#34;);
+} else {
+    g = tmpfile();
+}</pre>
+<p>我相信，当作者找到这个问题的原因后，一定会骂一句“妈的”！我也相信，这个bug花费了作者很多时间！</p>
+<p>最后，我也share一个我以前犯的一个错。</p>
+<p>我有一个小函数，需要传入一个int* pInt的类型，然后我需要在我的代码里 把这个int* pInt作除数。于是我的代码成了下面的这个样子：</p>
+<blockquote><p>float result = num/*pInt;<br/>
+….</p>
+<p>/*  some comments */</p>
+<p>-x&lt;10 ? f(result):f(-result);</p></blockquote>
+<p>因为我在我当时用vi编写代码，所以没有语法高亮，而我的程序都编译通过了，但是却出现了很奇怪的事。我也不知道，用gdb调式的时候，发现有些语句直接就过了。这个问题让我花了很多时间，最后发现问题原来是没有空格导致的，TNND，下面我用代码高亮的插件来显示上面的代码，</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">float result = num/*pInt;
+....
+
+/*  some comments */
+
+-x&lt;10 ? f(result):f(-result); </pre>
+<p>Holly Shit!  我的代码成了：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">float result = num-x&lt;10 ? f(result):f(-result);</code></p>
+<p>妈的！我的这个错误在愚蠢程度上和上面那个作者出的错误有一拼。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5388-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C语言中史上最愚蠢的Bug</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-130220" class="comment even thread-even depth-1">
+<article id="div-comment-130220" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c2ac0cacbdf0647bcbf1fb99cb28aa6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c2ac0cacbdf0647bcbf1fb99cb28aa6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">月箫人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-130220"><time datetime="2012-01-25T13:25:55+08:00">2012年01月25日 13:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-111780"><p>
+<strong><a href="#comment-111780" rel="nofollow">iTeachMyself</a> :</strong><br/>
+C语言存在很多缺陷，这也是没办法的事。最可恨的是，这些缺陷却没有在C++中得到更正
+</p></blockquote>
+<p>c++其实就是完全沿用了c的构架，只是在c上有所发展而已、、、<br/>
+个人是这么理解的、、</p>
+</div>
+ </article>
+</li>
+<li id="comment-138171" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-138171" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/01e3643f00c4cde00d7d941d9923a564?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/01e3643f00c4cde00d7d941d9923a564?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.chaochaoblog.com" class="url" rel="ugc external nofollow">吵吵</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-138171"><time datetime="2012-02-16T20:26:48+08:00">2012年02月16日 20:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这样傻逼的问题我也会遇到。</p>
+</div>
+ </article>
+</li>
+<li id="comment-143645" class="trackback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nap.edu/openbook.php?record_id=12861&amp;page=71" class="url" rel="ugc external nofollow">united cash loans</a> </div>
+</li>
+<li id="comment-196238" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-196238" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/67f5c397855c65eb61d72d2fa09d65c7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/67f5c397855c65eb61d72d2fa09d65c7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">o70078</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-196238"><time datetime="2012-06-09T11:23:28+08:00">2012年06月09日 11:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是汇编学习者,表示汇编也有这问题.</p>
+</div>
+ </article>
+</li>
+<li id="comment-198492" class="comment even thread-even depth-1">
+<article id="div-comment-198492" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f517155b13ee375a2bbe9da12a16f1d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f517155b13ee375a2bbe9da12a16f1d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chisj.com" class="url" rel="ugc external nofollow">chisj</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-198492"><time datetime="2012-07-08T13:44:06+08:00">2012年07月08日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-77783" rel="nofollow">@bob </a><br/>
+我用windows下的gvim有非常明显的高亮！！！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-199123" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-199123" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7fa7f3ae71aeaaf14824a3712bb1e899?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7fa7f3ae71aeaaf14824a3712bb1e899?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">AavrilL</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-199123"><time datetime="2012-07-16T18:35:27+08:00">2012年07月16日 18:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有一次我也出现过这种情况，但是当时VAssistX显示下一行也变成绿色，也就是注释的颜色了，我就纳闷了一下，结果才发现上面那一行最后居然是个\符号。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201755" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xn--vcsz15do0j8lv.net/?p=1683" class="url" rel="ugc external nofollow">对技术的态度 | 物联9点</a> </div>
+</li>
+<li id="comment-223582" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-223582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54c135c9072545a9565df47459ed086a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54c135c9072545a9565df47459ed086a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net" class="url" rel="ugc external nofollow">Shane Loo LI</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-223582"><time datetime="2012-11-30T02:22:49+08:00">2012年11月30日 02:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这就是编程的乐趣所在啊。互相交流这样的经验，大家都少走弯路。<br/>
+不过用 Eclipse 编写 Java 的话，我好像除了运算优先级弄错了之外，好像还没有总结过类似的问题。</p>
+<p>总结果然是很有意义的事情啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-252870" class="comment even thread-even depth-1">
+<article id="div-comment-252870" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2c2eae5b65819285a9e405f41f05519?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2c2eae5b65819285a9e405f41f05519?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">薛非</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-252870"><time datetime="2012-12-31T23:01:59+08:00">2012年12月31日 23:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-77652"><p>
+<strong><a href="#comment-77652" rel="nofollow">Mic </a> :</strong>这种bug一点也不愚蠢啊</p></blockquote>
+<p>是的<br/>
+BUG不可能最蠢<br/>
+最蠢的应该是<br/>
+scanf(“I love %s”, name);<br/>
+这样的语句</p>
+</div>
+ </article>
+</li>
+<li id="comment-262950" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-262950" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8f64d60de6c81c9b05e929bb6199319?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8f64d60de6c81c9b05e929bb6199319?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://celwk.com" class="url" rel="ugc external nofollow">心灵诊室</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-262950"><time datetime="2013-01-11T00:37:21+08:00">2013年01月11日 00:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在有几个人不用语法高亮的呢？<br/>
+Notepad++都有不错的高亮啊~~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-543368" class="comment even thread-even depth-1">
+<article id="div-comment-543368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/849025cc95c630627b5f394a7923f506?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/849025cc95c630627b5f394a7923f506?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Keekun</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-543368"><time datetime="2013-06-12T16:26:42+08:00">2013年06月12日 16:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近给朋友调试程序时遇到同样问题，<br/>
+不过那个更恶心：注释最后一个字是汉字，这个汉字的unicode下最后一个byte是ascii的反斜杠。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-593242" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://scpedoc.sinaapp.com/?p=71" class="url" rel="ugc external nofollow">[c] 严肃却忍俊不禁的bug | pedoc private region</a> </div>
+</li>
+<li id="comment-1491719" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cricode.com/2874.html" class="url" rel="ugc external nofollow">数数程序员们爱犯的愚蠢错误 | 快课网</a> </div>
+</li>
+<li id="comment-1499401" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1499401" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64b1244dc1744ac80acd477ea77c6f16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64b1244dc1744ac80acd477ea77c6f16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Sugar13</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1499401"><time datetime="2014-07-23T11:19:54+08:00">2014年07月23日 11:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>曾经改代码的时候把<br/>
+if (a == 0 &amp;&amp; b == 0)<br/>
+改成<br/>
+if (a == 0 || b == 0)<br/>
+结果手滑改成了<br/>
+if (a == 0 ||&amp; b == 0)<br/>
+后来发现的时候,竟然认为自己发现了一个新的运算符 ||&amp; 这个运算符是什么意思呢…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1508408" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeceo.com/article/c-most-bad-bug.html" class="url" rel="ugc external nofollow">C语言中史上最愚蠢的Bug – 码农网</a> </div>
+</li>
+<li id="comment-1671429" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1671429" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/51cc689bd3ec3a9def6a1d613ec38110?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/51cc689bd3ec3a9def6a1d613ec38110?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wangsitan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1671429"><time datetime="2015-03-06T16:48:15+08:00">2015年03月06日 16:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-543368" rel="nofollow">@Keekun </a><br/>
+我觉得，unicode一般应当出现在程序内存，存入文件或网络传输或者别的什么的时候应该先进行编码，能避免出现这种情况吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1705894" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1705894" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1705894"><time datetime="2015-05-12T15:54:13+08:00">2015年05月12日 15:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这真是防不胜防呀。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1810482" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://younggift.net/2011/08/27/cbugzz/" class="url" rel="ugc external nofollow">标 题: C语言中史上最愚蠢的Bug(zz) 转载 – 杨贵福</a> </div>
+</li>
+<li id="comment-1891199" class="comment even thread-even depth-1">
+<article id="div-comment-1891199" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/750406986d34a3a6ac1b7496238c1002?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/750406986d34a3a6ac1b7496238c1002?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://edgeofmap.com/blog" class="url" rel="ugc external nofollow">quadpixels</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1891199"><time datetime="2016-10-09T23:07:48+08:00">2016年10月09日 23:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哇哦！这个是 lexer 的问题。在编写词法分析器的时候也会遇到的！很坑爹但是也蛮有意思的。<br/>
+我猜如果还支持 Unicode 常量什么的话，可能还会有更多问题吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1891490" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1891490" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e39e635335efa9f4a0a84e7c95748b18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e39e635335efa9f4a0a84e7c95748b18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">zjh</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1891490"><time datetime="2016-10-11T16:12:29+08:00">2016年10月11日 16:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是最新评论</p>
+</div>
+ </article>
+</li>
+<li id="comment-1891491" class="comment even thread-even depth-1">
+<article id="div-comment-1891491" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e39e635335efa9f4a0a84e7c95748b18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e39e635335efa9f4a0a84e7c95748b18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">zjh</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1891491"><time datetime="2016-10-11T16:13:26+08:00">2016年10月11日 16:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大家快点页面的头右侧有一个high一下！！！！！！！！！~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！！~~~~~~~~~~~~~~~~~~~~~~~~~~~~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1891492" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1891492" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e39e635335efa9f4a0a84e7c95748b18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e39e635335efa9f4a0a84e7c95748b18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">zjh</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5388.html/comment-page-3#comment-1891492"><time datetime="2016-10-11T16:21:48+08:00">2016年10月11日 16:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-252870" rel="nofollow">@薛非 </a><br/>
+是的 你很聪明</p>
+</div>
+ </article>
+</li>
+<li id="comment-1910402" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.addsd.com/58368/" class="url" rel="ugc external nofollow">C语言中史上最愚蠢的Bug – 阿斯达</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/5388.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/5388.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/5388.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">5388</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

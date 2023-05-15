@@ -1,0 +1,514 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>HTTP幂等性概念和应用 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4787 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4787" class="post-content post-4787 post type-post status-publish format-standard hentry category-webdev category-mswindows category-progdesign tag-http">
+<header class="entry-header">
+<span class="screen-reader-text">HTTP幂等性概念和应用</span>
+<h1 class="entry-title">HTTP幂等性概念和应用</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4787.html" title="08:49" rel="bookmark"><time class="entry-date" datetime="2011-06-07T08:49:01+08:00" pubdate="">2011年06月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4787.html#comments" class="comments-link">37 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 40,529 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>[ 感谢 <a href="http://www.cnblogs.com/weidagang2046/" target="_blank">Todd 同学</a>投递本文 ]</strong></p>
+<p>基于HTTP协议的Web API是时下最为流行的一种分布式服务提供方式。无论是在大型互联网应用还是企业级架构中，我们都见到了越来越多的SOA或RESTful的Web API。为什么Web API如此流行呢？我认为很大程度上应归功于简单有效的HTTP协议。HTTP协议是一种分布式的面向资源的网络应用层协议，无论是服务器端提供Web服务，还是客户端消费Web服务都非常简单。再加上浏览器、Javascript、AJAX、JSON以及HTML5等技术和工具的发展，互联网应用架构设计表现出了从传统的PHP、JSP、ASP.NET等服务器端动态网页向Web API + RIA（富互联网应用）过渡的趋势。Web API专注于提供业务服务，RIA专注于用户界面和交互设计，从此两个领域的分工更加明晰。在这种趋势下，Web API设计将成为服务器端程序员的必修课。然而，正如简单的Java语言并不意味着高质量的Java程序，简单的HTTP协议也不意味着高质量的Web API。要想设计出高质量的Web API，还需要深入理解分布式系统及HTTP协议的特性。</p>
+<p><strong> </strong></p>
+<p><strong> </strong></p>
+<p><strong>幂等性定义</strong></p>
+<p>本文所要探讨的正是HTTP协议涉及到的一种重要性质：幂等性(Idempotence)。在HTTP/1.1规范中幂等性的定义是：</p>
+<blockquote><p><em><span style="color: #800040;">Methods can also have the property of “idempotence” in that (aside from error or expiration issues) the side-effects of N &gt; 0 identical requests is the same as for a single request.</span></em></p></blockquote>
+<p>从定义上看，HTTP方法的幂等性是指一次和多次请求某一个资源应该具有同样的副作用。幂等性属于语义范畴，正如编译器只能帮助检查语法错误一样，HTTP规范也没有办法通过消息格式等语法手段来定义它，这可能是它不太受到重视的原因之一。但实际上，幂等性是分布式系统设计中十分重要的概念，而HTTP的分布式本质也决定了它在HTTP中具有重要地位。</p>
+<p><span id="more-4787"></span></p>
+<p><strong> </strong></p>
+<p><strong>分布式事务 vs 幂等设计</strong></p>
+<p>为什么需要幂等性呢？我们先从一个例子说起，假设有一个从账户取钱的远程API（可以是HTTP的，也可以不是），我们暂时用类函数的方式记为</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">bool withdraw(account_id, amount); </code></p>
+<p>withdraw的语义是从account_id对应的账户中扣除amount数额的钱；如果扣除成功则返回true，账户余额减少amount；如果扣除失败则返回false，账户余额不变。值得注意的是：和本地环境相比，我们不能轻易假设分布式环境的可靠性。一种典型的情况是withdraw请求已经被服务器端正确处理，但服务器端的返回结果由于网络等原因被掉丢了，导致客户端无法得知处理结果。如果是在网页上，一些不恰当的设计可能会使用户认为上一次操作失败了，然后刷新页面，这就导致了withdraw被调用两次，账户也被多扣了一次钱。如图1所示：</p>
+<p style="text-align: center;"><a href="http://images.cnblogs.com/cnblogs_com/weidagang2046/201106/201106042051027575.png"><img decoding="async" src="http://images.cnblogs.com/cnblogs_com/weidagang2046/201106/201106042051039636.png" border="0" alt="image" width="458" height="394"/></a></p>
+<p style="text-align: center;"><a href="http://images.cnblogs.com/cnblogs_com/weidagang2046/201106/201106042051027575.png"></a>图1</p>
+<p>这个问题的解决方案一是采用分布式事务，通过引入支持分布式事务的中间件来保证withdraw功能的事务性。分布式事务的优点是对于调用者很简单，复杂性都交给了中间件来管理。缺点则是一方面架构太重量级，容易被绑在特定的中间件上，不利于异构系统的集成；另一方面分布式事务虽然能保证事务的ACID性质，而但却无法提供性能和可用性的保证。</p>
+<p>另一种更轻量级的解决方案是幂等设计。上面的withdraw显然不满足幂等性，但我们可以一些技巧将它变成幂等的，比如：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int create_ticket();
+
+bool idempotent_withdraw(ticket_id, account_id, amount);</pre>
+<p>create_ticket的语义是获取一个服务器端生成的唯一的处理号ticket_id，它将用于标识后续的操作。idempotent_withdraw和withdraw的区别在于关联了一个ticket_id，一个ticket_id表示的操作至多只会被处理一次，每次调用都将返回第一次调用时的处理结果。这样，idempotent_withdraw就符合幂等性了，客户端就可以放心地多次调用。</p>
+<p>基于幂等性的解决方案中一个完整的取钱流程被分解成了两个步骤：1.调用create_ticket()获取ticket_id；2.调用idempotent_withdraw(ticket_id, account_id, amount)。虽然create_ticket不是幂等的，但在这种设计下，它对系统状态的影响可以忽略，加上idempotent_withdraw是幂等的，所以任何一步由于网络等原因失败或超时，客户端都可以重试，直到获得结果。如图2所示：</p>
+<p><a href="http://images.cnblogs.com/cnblogs_com/weidagang2046/201106/201106042051059820.png"><img decoding="async" loading="lazy" class="aligncenter" src="http://images.cnblogs.com/cnblogs_com/weidagang2046/201106/201106042051069339.png" border="0" alt="image" width="610" height="578"/></a></p>
+<p style="text-align: center;">图2</p>
+<p><strong> </strong></p>
+<p>和分布式事务相比，幂等设计的优势在于它的轻量级，容易适应异构环境，以及性能和可用性方面。在某些性能要求比较高的应用，幂等设计往往是唯一的选择。</p>
+<p><strong> </strong></p>
+<p><strong>HTTP的幂等性</strong></p>
+<p>HTTP协议本身是一种面向资源的应用层协议，但对HTTP协议的使用实际上存在着两种不同的方式：一种是RESTful的，它把HTTP当成应用层协议，比较忠实地遵守了HTTP协议的各种规定；另一种是SOA的，它并没有完全把HTTP当成应用层协议，而是把HTTP协议作为了传输层协议，然后在HTTP之上建立了自己的应用层协议。本文所讨论的HTTP幂等性主要针对RESTful风格的，不过正如上一节所看到的那样，幂等性并不属于特点的协议，它是分布式系统的一种特性；所以，不论是SOA还是RESTful的Web API设计都应该考虑幂等性。下面将介绍HTTP GET、DELETE、PUT、POST四种主要方法的语义和幂等性。</p>
+<p>HTTP GET方法用于获取资源，不应有副作用，所以是幂等的。比如：GET http://www.bank.com/account/123456，不会改变资源的状态，不论调用一次还是N次都没有副作用。请注意，这里强调的是一次和N次具有相同的副作用，而不是每次GET的结果相同。GET http://www.news.com/latest-news这个HTTP请求可能会每次得到不同的结果，但它本身并没有产生任何副作用，因而是满足幂等性的。</p>
+<p>HTTP DELETE方法用于删除资源，有副作用，但它应该满足幂等性。比如：DELETE http://www.forum.com/article/4231，调用一次和N次对系统产生的副作用是相同的，即删掉id为4231的帖子；因此，调用者可以多次调用或刷新页面而不必担心引入错误。</p>
+<p>比较容易混淆的是HTTP POST和PUT。POST和PUT的区别容易被简单地误认为“POST表示创建资源，PUT表示更新资源”；而实际上，二者均可用于创建资源，更为本质的差别是在幂等性方面。在HTTP规范中对POST和PUT是这样定义的：</p>
+<blockquote><p><span style="color: #800040;"><em>The POST method is used to request that the origin server accept the entity enclosed in the request as a new subordinate of the resource identified by the Request-URI in the Request-Line. …… </em><em>If a resource has been created on the origin server, the response SHOULD be 201 (Created) and contain an entity which describes the status of the request and refers to the new resource, and a Location header.</em></span></p>
+<p><em><span style="color: #800040;">The PUT method requests that the enclosed entity be stored under the supplied Request-URI. If the Request-URI refers to an already existing resource, the enclosed entity SHOULD be considered as a modified version of the one residing on the origin server. If the Request-URI does not point to an existing resource, and that URI is capable of being defined as a new resource by the requesting user agent, the origin server can create the resource with that URI.</span></em></p></blockquote>
+<p>POST所对应的URI并非创建的资源本身，而是资源的接收者。比如：POST http://www.forum.com/articles的语义是在http://www.forum.com/articles下创建一篇帖子，HTTP响应中应包含帖子的创建状态以及帖子的URI。两次相同的POST请求会在服务器端创建两份资源，它们具有不同的URI；所以，POST方法不具备幂等性。</p>
+<p>而PUT所对应的URI是要创建或更新的资源本身。比如：PUT http://www.forum/articles/4231的语义是创建或更新ID为4231的帖子。对同一URI进行多次PUT的副作用和一次PUT是相同的；因此，PUT方法具有幂等性。</p>
+<p>在介绍了几种操作的语义和幂等性之后，我们来看看如何通过Web API的形式实现前面所提到的取款功能。很简单，用POST /tickets来实现create_ticket；用PUT /accounts/account_id/ticket_id&amp;amount=xxx来实现idempotent_withdraw。值得注意的是严格来讲amount参数不应该作为URI的一部分，真正的URI应该是/accounts/account_id/ticket_id，而amount应该放在请求的body中。这种模式可以应用于很多场合，比如：论坛网站中防止意外的重复发帖。</p>
+<p><strong> </strong></p>
+<p><strong>总结</strong></p>
+<p>上面简单介绍了幂等性的概念，用幂等设计取代分布式事务的方法，以及HTTP主要方法的语义和幂等性特征。其实，如果要追根溯源，幂等性是数学中的一个概念，表达的是N次变换与1次变换的结果相同，有兴趣的读者可以从<a href="https://en.wikipedia.org/wiki/Idempotence">Wikipedia</a>上进一步了解。</p>
+<p><strong> </strong></p>
+<p><strong>参考</strong></p>
+<p><a href="http://www.w3.org/Protocols/rfc2616/rfc2616-sec9.html">RFC 2616, Hypertext Transfer Protocol — HTTP/1.1, Method Definitions</a></p>
+<p><a href="http://devhawk.net/2007/11/09/the-importance-of-idempotence/">The Importance of Idempotence</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4787-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">Windows</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">HTTP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>HTTP幂等性概念和应用</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-57195" class="comment even thread-even depth-1">
+<article id="div-comment-57195" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb47186dd2736e99bec17d608de99e6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb47186dd2736e99bec17d608de99e6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gqjjqg</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57195"><time datetime="2011-06-07T09:10:11+08:00">2011年06月07日 09:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>CSDN 还没来转载，我来坐个前排~</p>
+</div>
+ </article>
+</li>
+<li id="comment-57200" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-57200" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ad304ea756a388df2837210827f3dbc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ad304ea756a388df2837210827f3dbc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Super Cuke</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57200"><time datetime="2011-06-07T09:42:03+08:00">2011年06月07日 09:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，板凳……</p>
+</div>
+ </article>
+</li>
+<li id="comment-57208" class="comment even thread-even depth-1">
+<article id="div-comment-57208" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/effbf7270724b971ee864015b1b9244e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/effbf7270724b971ee864015b1b9244e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">PlayerZ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57208"><time datetime="2011-06-07T10:23:46+08:00">2011年06月07日 10:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文！</p>
+</div>
+ </article>
+</li>
+<li id="comment-57216" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-57216" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa6ab9f3b51ce2cc2aed6b4709fecea3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa6ab9f3b51ce2cc2aed6b4709fecea3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pecker321</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57216"><time datetime="2011-06-07T12:11:45+08:00">2011年06月07日 12:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以前一直没看懂，现在…还是不懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-57246" class="comment even thread-even depth-1">
+<article id="div-comment-57246" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7eb3deb119e2984f436573b87dbb885b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7eb3deb119e2984f436573b87dbb885b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaozei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57246"><time datetime="2011-06-07T14:10:07+08:00">2011年06月07日 14:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有点不懂：后台如何判定 no change to account<br/>
+如果依据是每一笔业务一个ticket_id 的话，那么 ticket_id 什么时候创建？点击 按钮时？这样的话 刷新同样还会创建一个 ticket_id ，这样不就创建了一个不存在的取钱操作了么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-57265" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-57265" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/864eaff251427ff19791105794ba59cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/864eaff251427ff19791105794ba59cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dulao5</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57265"><time datetime="2011-06-07T15:26:28+08:00">2011年06月07日 15:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错, RESTful是简单而优美的</p>
+</div>
+ </article>
+</li>
+<li id="comment-57302" class="comment even thread-even depth-1">
+<article id="div-comment-57302" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64c0ecd205d00cd44717590f1d7822e9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64c0ecd205d00cd44717590f1d7822e9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.smartwei.com" class="url" rel="ugc external nofollow">10V</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57302"><time datetime="2011-06-07T17:58:31+08:00">2011年06月07日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章很不错，多谢分享。<br/>
+我看了一下相关的文章，他们说ticket_id的生成可以是在服务器端，也可以是在客户端根据某种协议生成。这里我也想请教一下博主，你平时在使用的时候通常采用的是那种方法，在什么时候创建ticket_id呢？我也存在和xiaozei 一样的困惑</p>
+</div>
+ </article>
+</li>
+<li id="comment-57305" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-57305" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d555e5bd43a440661d03c413a55ae5fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d555e5bd43a440661d03c413a55ae5fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">teou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57305"><time datetime="2011-06-07T18:23:32+08:00">2011年06月07日 18:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-57246" rel="nofollow">@xiaozei 我觉得这是凭证的思想，客户端生成ticket，服务器端只需要验证ticket的唯一性并把它和所处理的事务绑定。并不是一个凭证就一定要做一笔业务。双方都对同一个凭证处理完毕以后，这笔业务才算完成</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-57463" class="comment even thread-even depth-1">
+<article id="div-comment-57463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7eb3deb119e2984f436573b87dbb885b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7eb3deb119e2984f436573b87dbb885b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaozei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57463"><time datetime="2011-06-08T13:07:32+08:00">2011年06月08日 13:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-57305" rel="nofollow">@teou </a> 那么这个凭证什么时候创建呢？如：单击“取钱”时的话，那么页面刷新时也会再次创建一次凭证把。</p>
+</div>
+ </article>
+</li>
+<li id="comment-57626" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-57626" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11480af02a564d79eee1318216adb246?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11480af02a564d79eee1318216adb246?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zymnanako</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57626"><time datetime="2011-06-09T07:12:39+08:00">2011年06月09日 07:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“HTTP方法的幂等性是指一次和多次请求某一个资源应该具有同样的副作用”，这个副作用应该怎么理解</p>
+</div>
+ </article>
+</li>
+<li id="comment-57830" class="comment even thread-even depth-1">
+<article id="div-comment-57830" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/94153f31f1476ba7f256ea8c0fa62690?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/94153f31f1476ba7f256ea8c0fa62690?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">forest_wind</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-57830"><time datetime="2011-06-09T23:51:18+08:00">2011年06月09日 23:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从数学角度谈性质，这个我喜欢，很清晰的思路，相同副作用即指相同的作用效果或者对事物产生相同的影响</p>
+</div>
+ </article>
+</li>
+<li id="comment-58603" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-58603" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4669ae218f1eac2647c230c28044114c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4669ae218f1eac2647c230c28044114c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ivbear</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-58603"><time datetime="2011-06-13T11:15:20+08:00">2011年06月13日 11:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ticket其实就是tracking guid, 能够唯一标识一个请求，可以client生成也可以server生成</p>
+</div>
+ </article>
+</li>
+<li id="comment-58897" class="comment even thread-even depth-1">
+<article id="div-comment-58897" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75bdc1a95320bcac316084805c33e2a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75bdc1a95320bcac316084805c33e2a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">parsifal</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-58897"><time datetime="2011-06-14T15:05:37+08:00">2011年06月14日 15:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>幂等性概念不怎么熟悉，谢谢博主提供宝贵信息！</p>
+</div>
+ </article>
+</li>
+<li id="comment-59088" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-59088" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29d26a954327c6dba0f6bff6c92d5226?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29d26a954327c6dba0f6bff6c92d5226?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">慢步者</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-59088"><time datetime="2011-06-15T08:40:44+08:00">2011年06月15日 08:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-60852" class="comment even thread-even depth-1">
+<article id="div-comment-60852" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60fd25deabdd16edd0509698672c267f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60fd25deabdd16edd0509698672c267f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cxu2003</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-60852"><time datetime="2011-06-23T17:56:07+08:00">2011年06月23日 17:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>楼主写的很好，一直没搞明白post 和put 的区别，这下是明白了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-60853" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-60853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60fd25deabdd16edd0509698672c267f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60fd25deabdd16edd0509698672c267f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cxu2003</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-60853"><time datetime="2011-06-23T17:56:36+08:00">2011年06月23日 17:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sorry, 不是楼主，是博主，呵呵。</p>
+</div>
+ </article>
+</li>
+<li id="comment-68013" class="comment even thread-even depth-1">
+<article id="div-comment-68013" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a3b613036c8522903c146f2e468f6c4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a3b613036c8522903c146f2e468f6c4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">RQ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-68013"><time datetime="2011-07-25T13:02:35+08:00">2011年07月25日 13:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很好。第一次是知道 Idempotence 是在使用Unit testing时候，当时还不知这个词怎么翻译； 无论如何 单元测试最好也遵循Idempotence。</p>
+<p>HTTP规范中也有Idempotence这个玩意， 文章讲的很清楚，尤其是跟分布式事务的比较，深入浅出，受益了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-97680" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-97680" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cdd797fe2a011551098752b49c6664e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cdd797fe2a011551098752b49c6664e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leehark</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-97680"><time datetime="2011-11-16T11:27:08+08:00">2011年11月16日 11:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>en..学到了什么事幂等性 。。。。。文章深入浅出 ，，赞。</p>
+</div>
+ </article>
+</li>
+<li id="comment-201649" class="comment even thread-even depth-1">
+<article id="div-comment-201649" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e3a61911da10e3cab3f69faa487afd78?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e3a61911da10e3cab3f69faa487afd78?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/jjhe369" class="url" rel="ugc external nofollow">阿桥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-201649"><time datetime="2012-08-16T14:16:38+08:00">2012年08月16日 14:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>终于搞懂幂等性的概念了</p>
+</div>
+ </article>
+</li>
+<li id="comment-201651" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201651" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e3a61911da10e3cab3f69faa487afd78?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e3a61911da10e3cab3f69faa487afd78?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/jjhe369" class="url" rel="ugc external nofollow">阿桥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-201651"><time datetime="2012-08-16T14:42:31+08:00">2012年08月16日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-57626" rel="nofollow">@zymnanako </a><br/>
+put，get等都是对服务器资源的一种请求方式，get方式不会对资源造成影响，而put，delete等会对资源造成影响，可以把这种影响理解为“副作用”</p>
+</div>
+ </article>
+</li>
+<li id="comment-202486" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://flykobe.com/index.php/2012/09/08/sina_counter_learn_3/" class="url" rel="ugc external nofollow">flykobe的技术与生活杂谈 » Blog Archive » 学习《sina微博计数器的设计》三</a> </div>
+</li>
+<li id="comment-203139" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203139" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe591d8c082292a1f67fc8c8c118eba9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe591d8c082292a1f67fc8c8c118eba9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sss</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-203139"><time datetime="2012-09-27T13:42:00+08:00">2012年09月27日 13:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>窃以为举例的解释有些问题:<br/>
+取钱的那个例子,有些让人费解，应该不属于分布式处理，而更像是【防重复刷新的问题】。</p>
+</div>
+ </article>
+</li>
+<li id="comment-265257" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/209" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » Web工程师的工具箱</a> </div>
+</li>
+<li id="comment-286034" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-286034" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf8db68036365adcda260ee15467cef8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf8db68036365adcda260ee15467cef8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jamee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-286034"><time datetime="2013-02-04T14:26:01+08:00">2013年02月04日 14:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了。<br/>
+不过实际应用中貌似HTTP的POST比PUT应用的多，很多Web服务器不接受PUT请求，幂等性是服务提供者保证的</p>
+</div>
+ </article>
+</li>
+<li id="comment-689171" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1757" class="url" rel="ugc external nofollow">Technical Heartbeat #13 | Steve Guan</a> </div>
+</li>
+<li id="comment-994069" class="comment byuser comment-author-yuanye24 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-994069" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/90880a695b46ab2491dafb33ad088452?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/90880a695b46ab2491dafb33ad088452?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">YuanYe24</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-994069"><time datetime="2013-11-28T16:28:03+08:00">2013年11月28日 16:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>通俗而清晰的解释了幂等，赞一个。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1142674" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.calmyoudown.com/?p=1136" class="url" rel="ugc external nofollow">Web工程师的工具箱 | Deep Ocean, Wide Sky</a> </div>
+</li>
+<li id="comment-1193726" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1193726" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/446dec8771f80c1d54b7efc2b19e8858?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/446dec8771f80c1d54b7efc2b19e8858?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-1193726"><time datetime="2014-01-17T16:39:32+08:00">2014年01月17日 16:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之前一直模模糊糊的，现在懂了。谢谢分享。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1747871" class="comment even thread-even depth-1">
+<article id="div-comment-1747871" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0e748fd1ede29e3620676813da2f62ce?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0e748fd1ede29e3620676813da2f62ce?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">snaildove</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-1747871"><time datetime="2015-08-18T16:50:11+08:00">2015年08月18日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中图不见了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749641" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1749641" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f5d304bbcf909dbf781b468b692a0db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f5d304bbcf909dbf781b468b692a0db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">GGYaX</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4787.html#comment-1749641"><time datetime="2015-08-24T02:54:30+08:00">2015年08月24日 02:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1747871" rel="nofollow">@snaildove </a><br/>
+同问图没有了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1772088" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.javappt.com/web/6703.html" class="url" rel="ugc external nofollow">MEAN Stack:创办RESTful web service – Web前端-java知识分享</a> </div>
+</li>
+<li id="comment-1874015" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://go2live.cn/archives/5802" class="url" rel="ugc external nofollow">分布式系统接口幂等性-演道</a> </div>
+</li>
+<li id="comment-1916523" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.aixingren.cn/701.html" class="url" rel="ugc external nofollow">dubbo | 陈南荘(aixingren.cn)【青涩】 – 天马行空的梦境</a> </div>
+</li>
+<li id="comment-1921916" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1430" class="url" rel="ugc external nofollow">HTTP幂等性概念和应用 – 趣学</a> </div>
+</li>
+<li id="comment-1940142" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.go2live.cn/dev/linux/%e5%88%86%e5%b8%83%e5%bc%8f%e7%b3%bb%e7%bb%9f%e6%8e%a5%e5%8f%a3%e5%b9%82%e7%ad%89%e6%80%a7.html" class="url" rel="ugc external nofollow">分布式系统接口幂等性 | 演道网</a> </div>
+</li>
+<li id="comment-1968228" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/32822.html" class="url" rel="ugc external nofollow">分布式系统接口幂等性 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-2370906" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/84092.html" class="url" rel="ugc external nofollow">基于Dubbo框架构建分布式服务 - SEOOS技术门户</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

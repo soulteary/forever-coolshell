@@ -1,0 +1,468 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Huffman 编码压缩算法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7459 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7459" class="post-content post-7459 post type-post status-publish format-standard hentry category-misc category-progdesign tag-algorithm tag-compress tag-huffman-code">
+<header class="entry-header">
+<span class="screen-reader-text">Huffman 编码压缩算法</span>
+<h1 class="entry-title">Huffman 编码压缩算法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7459.html" title="13:32" rel="bookmark"><time class="entry-date" datetime="2012-05-22T13:32:05+08:00" pubdate="">2012年05月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7459.html#comments" class="comments-link">138 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 93,774 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>前两天发布那个<a title="rsync 的核心算法" href="/articles/7425.html" target="_blank">rsync算法</a>后，想看看数据压缩的算法，知道一个经典的压缩算法Huffman算法。相信大家应该听说过 <a title="David Huffman" href="https://en.wikipedia.org/wiki/David_A._Huffman" target="_blank">David Huffman</a> 和他的压缩算法—— <a href="https://en.wikipedia.org/wiki/Huffman_coding" target="_blank">Huffman Code</a>，一种通过字符出现频率，<a href="https://en.wikipedia.org/wiki/Priority_queue" target="_blank">Priority Queue</a>，和二叉树来进行的一种压缩算法，这种二叉树又叫Huffman二叉树 —— 一种带权重的树。从学校毕业很长时间的我忘了这个算法，但是网上查了一下，中文社区内好像没有把这个算法说得很清楚的文章，尤其是树的构造，而正好看到一篇国外的文章《<a href="http://en.nerdaholyc.com/huffman-coding-on-a-string/" target="_blank">A Simple Example of Huffman Code on a String</a>》，其中的例子浅显易懂，相当不错，我就转了过来。注意，我没有对此文完全翻译。</p>
+<p>我们直接来看示例，如果我们需要来压缩下面的字符串：</p>
+<p style="text-align: center;"><strong> “beep boop beer!” </strong></p>
+<p>首先，我们先计算出每个字符出现的次数，我们得到下面这样一张表 :</p>
+<p></p><center><p></p>
+<table style="width: 250px; height: 200px;">
+<tbody>
+<tr>
+<td><span style="font-size: 12px;">字符</span></td>
+<td>次数</td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘b’</span></td>
+<td><span style="font-size: 12px;">3</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘e’</span></td>
+<td><span style="font-size: 12px;">4</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘p’</span></td>
+<td><span style="font-size: 12px;">2</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘ ‘</span></td>
+<td><span style="font-size: 12px;">2</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘o’</span></td>
+<td><span style="font-size: 12px;">2</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘r’</span></td>
+<td><span style="font-size: 12px;">1</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘!’</span></td>
+<td><span style="font-size: 12px;">1</span></td>
+</tr>
+</tbody>
+</table>
+<p></p></center><br/>
+然后，我把把这些东西放到Priority Queue中（用出现的次数据当 priority），我们可以看到，Priority Queue 是以Prioirry排序一个数组，如果Priority一样，会使用出现的次序排序：下面是我们得到的Priority Queue：<p></p>
+<p><span id="more-7459"></span></p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/coada1.png"><img decoding="async" class="alignnone size-full wp-image-234 aligncenter" title="coada1" src="/uploads/2012/05/coada1.png" alt="" width="440" height="61" srcset=""/></a></p>
+<p>接下来就是我们的算法——把这个Priority Queue 转成二叉树。我们始终从queue的头取两个元素来构造一个二叉树（第一个元素是左结点，第二个是右结点），并把这两个元素的priority相加，并放回Priority中（再次注意，这里的Priority就是字符出现的次数），然后，我们得到下面的数据图表：</p>
+<p style="text-align: center;"><a href="https://coolshell.cn/wp-content/uploads/2012/05/coada2.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-239" title="coada2" src="/uploads/2012/05/coada2.png" alt="" width="411" height="151" srcset=""/></a></p>
+<p>同样，我们再把前两个取出来，形成一个Priority为2+2=4的结点，然后再放回Priority Queue中 :</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/coada31.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-242 aligncenter" title="coada3" src="/uploads/2012/05/coada31.png" alt="" width="325" height="201" srcset=""/></a></p>
+<p>继续我们的算法（我们可以看到，这是一种自底向上的建树的过程）：</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/coada4.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-244 aligncenter" title="coada4" src="/uploads/2012/05/coada4.png" alt="" width="326" height="221" srcset=""/></a></p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/coada5.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-288 aligncenter" title="coada5" src="/uploads/2012/05/coada5.png" alt="" width="347" height="207" srcset=""/></a></p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/coada61.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-290 aligncenter" title="coada6" src="/uploads/2012/05/coada61.png" alt="" width="344" height="273" srcset=""/></a></p>
+<p>最终我们会得到下面这样一棵二叉树：</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/arbore_final.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-291 aligncenter" title="arbore_final" src="/uploads/2012/05/arbore_final.png" alt="" width="452" height="304" srcset=""/></a></p>
+<p>此时，我们把这个树的左支编码为0，右支编码为1，这样我们就可以遍历这棵树得到字符的编码，比如：‘b’的编码是 00，’p’的编码是101， ‘r’的编码是1000。<strong>我们可以看到出现频率越多的会越在上层，编码也越短，出现频率越少的就越在下层，编码也越长</strong>。</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2012/05/arbore_final_numerotat.png"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-292 aligncenter" title="arbore_final_numerotat" src="/uploads/2012/05/arbore_final_numerotat.png" alt="" width="452" height="304" srcset=""/></a></p>
+<p>最终我们可以得到下面这张编码表：</p>
+<p></p><center><p></p>
+<table style="width: 250px; height: 200px;">
+<tbody>
+<tr>
+<td>字符</td>
+<td>编码</td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘b’</span></td>
+<td><span style="font-size: 12px;">00</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘e’</span></td>
+<td><span style="font-size: 12px;">11</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘p’</span></td>
+<td><span style="font-size: 12px;">101</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘ ‘</span></td>
+<td><span style="font-size: 12px;">011</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘o’</span></td>
+<td><span style="font-size: 12px;">010</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘r’</span></td>
+<td><span style="font-size: 12px;">1000</span></td>
+</tr>
+<tr>
+<td><span style="font-size: 12px;">‘!’</span></td>
+<td><span style="font-size: 12px;">1001</span></td>
+</tr>
+</tbody>
+</table>
+<p></p></center><br/>
+这里需要注意一点，当我们encode的时候，我们是按“bit”来encode，decode也是通过bit来完成，比如，如果我们有这样的bitset “1011110111″ 那么其解码后就是 “pepe”。所以，我们需要通过这个二叉树建立我们Huffman编码和解码的字典表。<p></p>
+<p>这里需要注意的一点是，我们的Huffman对各个字符的编码是不会冲突的，也就是说，<strong>不会存在某一个编码是另一个编码的前缀</strong>，不然的话就会大问题了。因为encode后的编码是没有分隔符的。</p>
+<p style="text-align: left; padding-left: 30px;">于是，对于我们的原始字符串  beep boop beer!</p>
+<p style="text-align: left; padding-left: 30px;">其对就能的二进制为 : 0110 0010 0110 0101 0110 0101 0111 0000 0010 0000 0110 0010 0110 1111 0110 1111 0111 0000 0010 0000 0110 0010 0110 0101 0110 0101 0111 0010 0010 0001</p>
+<p style="text-align: left; padding-left: 30px;">我们的Huffman的编码为： 0011 1110 1011 0001 0010 1010 1100 1111 1000 1001</p>
+<p>从上面的例子中，我们可以看到被压缩的比例还是很可观的。</p>
+<p>作者给出了源码你可以看看（ C99标准） <a href="http://en.nerdaholyc.com/wp-content/uploads/2012/05/huffman_string.zip">Download the source files</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7459-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">Compress</a>, <a href="javascript:void(0)" rel="tag">Huffman Code</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Huffman 编码压缩算法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-214609" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://seo.xxjoke.com/index.php/archives/125" class="url" rel="ugc external nofollow">寒江的博客 » 网站系统性能调优攻略</a> </div>
+</li>
+<li id="comment-224559" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-224559" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/52380992e449e628a7f87162c56bf73b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/52380992e449e628a7f87162c56bf73b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jxqc.org/" class="url" rel="ugc external nofollow">Jincheng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-224559"><time datetime="2012-12-01T12:38:49+08:00">2012年12月01日 12:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一就是priority queue不对，’ ‘在o前面。<br/>
+第二就是缺少必要的证明。<br/>
+第三就是源码链接失效。</p>
+</div>
+ </article>
+</li>
+<li id="comment-237712" class="comment even thread-even depth-1">
+<article id="div-comment-237712" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b58f97156251c54126ee609bd00ecb05?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b58f97156251c54126ee609bd00ecb05?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/cando" class="url" rel="ugc external nofollow">康杜</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-237712"><time datetime="2012-12-14T15:53:09+08:00">2012年12月14日 15:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-224559" rel="nofollow">@Jincheng </a> 我用Java实现了一下，你可以看看。<br/>
+<a href="http://www.cnblogs.com/cando/archive/2012/12/14/Huffman_encoding.html" rel="nofollow ugc">http://www.cnblogs.com/cando/archive/2012/12/14/Huffman_encoding.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-249346" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/8790.html" class="url" rel="ugc">程序算法与人生选择 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-249674" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.isopho.com/174.html" class="url" rel="ugc external nofollow">程序算法与人生选择</a> </div>
+</li>
+<li id="comment-249771" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-249771" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2f31793a6fa2940a0424bbb6e12d663?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2f31793a6fa2940a0424bbb6e12d663?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">luffyke</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-249771"><time datetime="2012-12-28T19:10:42+08:00">2012年12月28日 19:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥, 里面的源码链接已经page not found了..</p>
+</div>
+ </article>
+</li>
+<li id="comment-249838" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.showyounger.com/show/100399.html" class="url" rel="ugc external nofollow">程序算法与人生选择 | 小样儿(ShowYounger)</a> </div>
+</li>
+<li id="comment-251705" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://binary.duapp.com/2012/12/972.html" class="url" rel="ugc external nofollow">程序算法与人生选择 | 蜗牛都知道</a> </div>
+</li>
+<li id="comment-257126" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://g00.asia/2013/01/94.html" class="url" rel="ugc external nofollow">程序算法与人生选择 | grace自留地</a> </div>
+</li>
+<li id="comment-261326" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-261326" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/52380992e449e628a7f87162c56bf73b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/52380992e449e628a7f87162c56bf73b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.jxqc.org/" class="url" rel="ugc external nofollow">Jincheng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-261326"><time datetime="2013-01-09T16:11:39+08:00">2013年01月09日 16:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-237712" rel="nofollow">@康杜 </a><br/>
+赞。</p>
+</div>
+ </article>
+</li>
+<li id="comment-267125" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/800" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » 程序算法与人生选择</a> </div>
+</li>
+<li id="comment-271907" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.allurelove.net/?p=150" class="url" rel="ugc external nofollow">程序算法与人生选择 | Allurelove | My Lover Blog | 凯&amp;楠的双人wordpress情侣博客.</a> </div>
+</li>
+<li id="comment-279844" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.rainhome.org/%e7%a8%8b%e5%ba%8f%e7%ae%97%e6%b3%95%e4%b8%8e%e4%ba%ba%e7%94%9f%e9%80%89%e6%8b%a9%e8%bd%ac/" class="url" rel="ugc external nofollow">程序算法与人生选择(转) - 下雨天</a> </div>
+</li>
+<li id="comment-287374" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zhongqifu.sinaapp.com/?p=103" class="url" rel="ugc external nofollow">【转】程序算法与人生选择 | 钟启富&#39;s Blog</a> </div>
+</li>
+<li id="comment-296892" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://argcandargv.com/archives/381" class="url" rel="ugc external nofollow">性能调优攻略 | argc &amp;&amp; argv</a> </div>
+</li>
+<li id="comment-640057" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-640057" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1b8d3088a31c34c421bbda263a9f2c7b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1b8d3088a31c34c421bbda263a9f2c7b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">另一种风情</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-640057"><time datetime="2013-08-06T15:10:41+08:00">2013年08月06日 15:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为何我算出来的结果跟文中提到的结果不同呢？编码是唯一的吗？<br/>
+根据严蔚敏数据结构教材中的例子程序测试的：<br/>
+00<br/>
+01<br/>
+100<br/>
+101<br/>
+110<br/>
+1110<br/>
+1111</p>
+</div>
+ </article>
+</li>
+<li id="comment-651828" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://a0k.pw/files/?p=19" class="url" rel="ugc external nofollow">Arnold&#39;s Home » C语言实现哈夫曼编码</a> </div>
+</li>
+<li id="comment-829997" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yoese.com/?p=1757" class="url" rel="ugc external nofollow">伙伴分配器的一个极简实现 | 有益</a> </div>
+</li>
+<li id="comment-1125918" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.0xsky.com/?p=806" class="url" rel="ugc external nofollow">服务器性能调优攻略 | xSky&#39;s Blog</a> </div>
+</li>
+<li id="comment-1304894" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1304894" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7bda51a71a581e01dcf1468d015c202e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7bda51a71a581e01dcf1468d015c202e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gkm_leo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-1304894"><time datetime="2014-02-24T11:19:31+08:00">2014年02月24日 11:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，请问，二叉树的两支是依据什么构建的？比如您的文章中的二叉树是唯一的吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1360913" class="comment even thread-even depth-1">
+<article id="div-comment-1360913" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/weishun" class="url" rel="ugc external nofollow">pythonwood</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-1360913"><time datetime="2014-03-11T22:58:22+08:00">2014年03月11日 22:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>明确简了点</p>
+</div>
+ </article>
+</li>
+<li id="comment-1402054" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1402054" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/34eb90a9036e4970ddb9db9cc4e07550?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/34eb90a9036e4970ddb9db9cc4e07550?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.weibo.com/jimbowhy" class="url" rel="ugc external nofollow">Jimbowhy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-1402054"><time datetime="2014-03-24T03:40:25+08:00">2014年03月24日 03:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太赞了，一看就懂，比起几百页的高科技教科书都好用！摘了，并添加Huffman的比特流解码部分。如果再有篇LZ77算法的简易版就高兴死我了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1410572" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lihongxu.net/?p=56" class="url" rel="ugc external nofollow">程序算法与人生选择 | 李红序</a> </div>
+</li>
+<li id="comment-1442287" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.penkzhou.com/post/question-about-tencent-interview/" class="url" rel="ugc external nofollow">腾讯实习面试题集合 | Penk Zhou&#39;s Tech Blog</a> </div>
+</li>
+<li id="comment-1538610" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://magiclee.biz/wordpress/?p=40" class="url" rel="ugc external nofollow">哈夫曼树及哈夫曼编码的实现（java) | 烛影下的天空</a> </div>
+</li>
+<li id="comment-1605124" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yutuo.net/archives/8ae7f7f6e1a39919.html" class="url" rel="ugc external nofollow">【转】程序算法与人生选择 - 宇托的狗窝</a> </div>
+</li>
+<li id="comment-1608112" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.coolside.cn/?p=33" class="url" rel="ugc external nofollow">性能调优攻略 | 酷思-CoolSide</a> </div>
+</li>
+<li id="comment-1675361" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yunyour.com/2015/03/130.html" class="url" rel="ugc external nofollow">雲遊光影 | 程序算法与人生选择</a> </div>
+</li>
+<li id="comment-1679709" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weihack.com/?p=10" class="url" rel="ugc external nofollow">性能调优攻略 | 品茶的博客</a> </div>
+</li>
+<li id="comment-1752209" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1752209" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/46f2cceca4ba84e033b52a1b562ea854?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/46f2cceca4ba84e033b52a1b562ea854?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">furskytl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-1752209"><time datetime="2015-08-31T15:04:36+08:00">2015年08月31日 15:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>优先队列是一个按序排列的数组？您是说C++ STL中的priority_queue吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1813916" class="comment even thread-even depth-1">
+<article id="div-comment-1813916" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3162304fe2bf2870a8f161fcbea5268d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3162304fe2bf2870a8f161fcbea5268d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小林</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-1813916"><time datetime="2016-03-24T16:41:16+08:00">2016年03月24日 16:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问有没有Huffman算法的C语言的实现方法，想要实现下，望大神指教…求指教求链接…谢谢!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1820855" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1820855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/82e6bcd867b8f1d6537fc69c0679d2cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/82e6bcd867b8f1d6537fc69c0679d2cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://ucnsulv.com" class="url" rel="ugc external nofollow">Kelli</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-1820855"><time datetime="2016-04-26T12:48:31+08:00">2016年04月26日 12:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>That’s an apt answer to an initeestrng question</p>
+</div>
+ </article>
+</li>
+<li id="comment-1907174" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://aes.jypc.org/?p=4570" class="url" rel="ugc external nofollow">基于 游程编码 与 哈夫曼编码 的状态数据压缩分析与实现 – 项目经验积累与分享</a> </div>
+</li>
+<li id="comment-1982341" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.nndev.cn/archives/553" class="url" rel="ugc external nofollow">性能调优攻略 – 技术人成长 – 聊技术，话成长</a> </div>
+</li>
+<li id="comment-2115240" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.weirong.li/2012/06/21/xingnengdiaoyougonglue/" class="url" rel="ugc external nofollow">性能调优攻略 | 围炉网</a> </div>
+</li>
+<li id="comment-2222225" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2222225" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d96cff8fbe82d201b681a46b838218c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d96cff8fbe82d201b681a46b838218c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nickr</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7459.html/comment-page-3#comment-2222225"><time datetime="2021-03-24T18:26:24+08:00">2021年03月24日 18:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写了一个 lua 版本:<br/>
+<a href="https://gist.github.com/nicoster/09b8bf9754db27406a9e416aac24d740" rel="nofollow ugc">https://gist.github.com/nicoster/09b8bf9754db27406a9e416aac24d740</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2370239" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2314136" class="url" rel="ugc external nofollow">HTTP/2帧格式简介 - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/7459.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/7459.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/7459.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">7459</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

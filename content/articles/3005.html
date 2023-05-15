@@ -1,0 +1,330 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>代码重构的一个示例 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3005 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3005" class="post-content post-3005 post type-post status-publish format-standard hentry category-process category-progdesign category-story tag-coding tag-program tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">代码重构的一个示例</span>
+<h1 class="entry-title">代码重构的一个示例</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3005.html" title="08:33" rel="bookmark"><time class="entry-date" datetime="2010-09-25T08:33:59+08:00" pubdate="">2010年09月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3005.html#comments" class="comments-link">79 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 43,901 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>还记得以前和大家提到过的《<a href="/articles/2058.html" target="_blank">各种流行的编程风格</a>》吗？有一些人问我那些编程风格具体是什么样子的。下面是一个代码重构的实例，让我们看看那个流行的编程风格是实践是什么样的。下面的这个实践不是虚构，如有雷同，请对号入座。</p>
+<p>首先，我们有一个表达式如下所示：</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">s = 7;</code></p>
+<p>很明显，这个表达式的变量名太没意义了，很不利于程序的可读性，所以，我们需要取一个有意义的变量名：</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">slots = 7;</code></p>
+<p>很好，不过，那个常量7是hard-code或是一个Magic number，而且，这常量没有名字也不利于代码的可读性啊。再改：</p>
+<p><span id="more-3005"></span></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">SEVEN = 7;
+...
+slots = SEVEN;</pre>
+<p>靠！上面，是这是哪门子的改法？（不过，我保证这是真实发生的），常量名也要有意义一点嘛，再改：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">SLOTS_PER_WIDGET = 7;
+...
+slots = SLOTS_PER_WIDGET;</pre>
+<p>这还差不多，不过，名字可能会重名啊，最好放到一个类中：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">import widgetConstants;
+...
+slots = widgetConstants.SLOTS_PER_WIDGET;</pre>
+<p>现在看起来好很多了，不过，即然面向对象了，我们当然要学会使用Design Pattern，比如Factory啊，或是Singleton啊什么的：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">widgetModelFactory = WidgetModelFactory.getInstance();
+widgetModel = widgetModelFactory.getWidgetModel() ;
+slots = widgetModel.getSlotsPerWidget();</pre>
+<p>当然，要是考虑到整体的类结构，上面的那些还不够，下面是我们最终的重构代码：（欢迎来到真实的Java世界）</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">context = Context.getCurrentContext();
+serviceDirectoryFactory = ServiceDirectoryFactory.getServiceDirectory(context);
+serviceDirectory = serviceDirectoryFactory.getServiceDirectory(context);
+serviceDescriptor = ServiceDescriptorFactory.getDescriptor(&#34;widgetModelFactory&#34;);
+widgetModelFactoryServiceLocator = serviceDirectory.getServiceLocator(serviceDescriptor,context);
+widgetModelFactory = (WidgetModelFactory)widgetModelFactoryServiceLocator.findService(context);
+widgetModel = widgetModelFactory.getWidgetModel(context);
+
+slots = widgetModel.getSlotsPerWidget();</pre>
+<p>这就是我们的面像对象的编程模式，记得N年前在面试那家著名的以鼓吹敏捷方法论的公司时，在用程序实现一个程序题的时候，他们对我的程序很不屑一顾，原因有两个，其一、我没有使用TDD写UT Case，其二、我的程序里没有设计模式。（我才知道，编程原来是为了测试和设计模式，而不是为了原来的需求），今天，仅以此文献给钟爱于<a href="/articles/2058.html" target="_blank">那些流行编码风格</a>的程序员们。</p>
+<p>其实，这段代码也是如下而已罢了。</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">slots = thisWidget.getSlotCount();</code></p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3005-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">流程方法</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">program</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>代码重构的一个示例</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-52182" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://w3er.com/%e6%9c%aa%e5%88%86%e7%b1%bb/%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e6%98%af%e4%b8%aa%e9%aa%97%e5%b1%80%ef%bc%9f%ef%bc%81/" class="url" rel="ugc external nofollow">面向对象是个骗局？！ | w3er</a> </div>
+</li>
+<li id="comment-52185" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://w3er.com/%e6%9c%aa%e5%88%86%e7%b1%bb/%e4%b8%80%e4%ba%9b%e9%b2%9c%e4%b8%ba%e4%ba%ba%e7%9f%a5%e7%9a%84%e7%bc%96%e7%a8%8b%e4%ba%8b%e5%ae%9e/" class="url" rel="ugc external nofollow">一些鲜为人知的编程事实 | w3er</a> </div>
+</li>
+<li id="comment-74090" class="comment even thread-even depth-1">
+<article id="div-comment-74090" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/112186fe6ab4748bf33af8a90141ae23?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/112186fe6ab4748bf33af8a90141ae23?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.houseofskulls.me" class="url" rel="ugc external nofollow">Mr.IroN</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-74090"><time datetime="2011-08-16T10:16:24+08:00">2011年08月16日 10:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近在公司实习，才知道一个人编程和一群人开发的区别…<br/>
+这几天我也多少重构过自己的代码以迎合小组的需要，这是很有必要的，个人拙见… 从<br/>
+s = 7<br/>
+到<br/>
+import widgetConstants;<br/>
+…<br/>
+slots = widgetConstants.SLOTS_PER_WIDGET;<br/>
+都是非常有必要的，一个人负责开发widgetConstants(或者大家共同维护这个东西)的话，代码将非常具有易读性…<br/>
+但到了后面，我相信“不过，即然面向对象了，我们当然要学会使用Design Pattern，比如Factory啊，或是Singleton啊什么的”这句话仅仅是调侃。也就是说从这里开始到后面都是当笑话讲了… 没必要卖弄自己有多么多么懂得面向对象，这对小组开发是不利的… 重构是为其他开发者提供方便的，而不是让他们抓狂的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-78795" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cnsst.com/wordpress/?p=76" class="url" rel="ugc external nofollow">重构代码的7个阶段 | 零度领域的博客-我的一米阳光</a> </div>
+</li>
+<li id="comment-78801" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cnsst.com/wordpress/?p=79" class="url" rel="ugc external nofollow">弱爆程序员的特征值 | 零度领域的博客-我的一米阳光</a> </div>
+</li>
+<li id="comment-88930" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-88930" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d97c65a61276c1f4434f3b82866ebffa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d97c65a61276c1f4434f3b82866ebffa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">damnman</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-88930"><time datetime="2011-10-24T14:55:51+08:00">2011年10月24日 14:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-10326"><p>
+<strong><a href="#comment-10326" rel="nofollow">陈皓 </a> :</strong>那一坨代码代码在Java里到处都是，不用动脑也能整出来。另，不叫egg hurt，应该叫egg pain, ;-)</p></blockquote>
+<p>专业点的应该叫 eggache</p>
+</div>
+ </article>
+</li>
+<li id="comment-198498" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.59n.net/147980.html" class="url" rel="ugc external nofollow">一些软件设计的原则 | 南龙的小站</a> </div>
+</li>
+<li id="comment-201593" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-201593" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12629ee4b3ed1138e9b441ac7127b6bd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12629ee4b3ed1138e9b441ac7127b6bd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shelllive</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-201593"><time datetime="2012-08-14T15:03:49+08:00">2012年08月14日 15:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我赞成楼主，你用例子挺好 </p>
+<p>让我立马知道 java里运用模式 是怎么回事</p>
+<p>下面的人跟你讨论争论技术上的细节，有点吹毛了</p>
+<p>不可能有完完整整百分百的技术</p>
+<p>希望你保持你的风格 行文方式不要受到影响 </p>
+<p>我受教了</p>
+</div>
+ </article>
+</li>
+<li id="comment-237129" class="comment even thread-even depth-1">
+<article id="div-comment-237129" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98a16f637adff9e7426e55e43195fa52?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98a16f637adff9e7426e55e43195fa52?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mass</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-237129"><time datetime="2012-12-14T01:17:01+08:00">2012年12月14日 01:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>SEVEN = 7那个笑翻了。。。还特意大写，笑的站不起来了，太欢乐了，哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-242704" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.obnote.com/archives/software_design_principles_1" class="url" rel="ugc external nofollow">软件设计原则（一） | OB-NOTE</a> </div>
+</li>
+<li id="comment-283491" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.zhutianwei.cn/?p=898" class="url" rel="ugc external nofollow">一些软件设计的原则 | 風落枯林</a> </div>
+</li>
+<li id="comment-532087" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-532087" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab5c26463154e12ad5e1eddc72f120e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab5c26463154e12ad5e1eddc72f120e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">luguo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-532087"><time datetime="2013-06-06T16:44:33+08:00">2013年06月06日 16:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好吧,我中枪了</p>
+</div>
+ </article>
+</li>
+<li id="comment-561856" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e4%b8%80%e4%ba%9b%e8%bd%af%e4%bb%b6%e8%ae%be%e8%ae%a1%e7%9a%84%e5%8e%9f%e5%88%99-3" class="url" rel="ugc external nofollow">一些软件设计的原则 - 程序员 - 开发者第1648976个问答</a> </div>
+</li>
+<li id="comment-574324" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-574324" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/db3bd9d40e25dc6cf2a3b7be473916ae?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/db3bd9d40e25dc6cf2a3b7be473916ae?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">felix</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-574324"><time datetime="2013-06-28T21:06:08+08:00">2013年06月28日 21:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人觉得最后两步有点过了</p>
+</div>
+ </article>
+</li>
+<li id="comment-836499" class="comment even thread-even depth-1">
+<article id="div-comment-836499" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/600069c911732c9b5bf868fe2ceb4dca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/600069c911732c9b5bf868fe2ceb4dca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haithink</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-836499"><time datetime="2013-10-22T10:27:41+08:00">2013年10月22日 10:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实，不应该把手段和工具当成了终极目标！不能拿着锤子就满世界都是钉子！</p>
+</div>
+ </article>
+</li>
+<li id="comment-964270" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-964270" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98eff43d3acd41941fb05df4705deb1b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98eff43d3acd41941fb05df4705deb1b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://debbbbie.iteye.com" class="url" rel="ugc external nofollow">debbbbie</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-964270"><time datetime="2013-11-22T10:40:54+08:00">2013年11月22日 10:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>专业挖坟~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1510254" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/itniu/3306.html" class="url" rel="ugc external nofollow">编程时间分配图 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1591903" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yutuo.net/archives/bff4ad536e39dace.html" class="url" rel="ugc external nofollow">【转】一些软件设计的原则 - 宇托的狗窝</a> </div>
+</li>
+<li id="comment-1710252" class="comment even thread-even depth-1">
+<article id="div-comment-1710252" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0f74188bc6d04fdd43f30e4cb114a409?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0f74188bc6d04fdd43f30e4cb114a409?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.stbioinf.com" class="url" rel="ugc external nofollow">YellowTree</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3005.html/comment-page-2#comment-1710252"><time datetime="2015-05-20T19:12:34+08:00">2015年05月20日 19:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习啦！过度重构容易把简单的问题搞复杂，而不是相反！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1797305" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.shenpengfei.sinaapp.com/?p=515" class="url" rel="ugc external nofollow">一些软件设计的原则 | 生活不只是眼前的苟且</a> </div>
+</li>
+<li id="comment-1830709" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e6%98%af%e4%b8%aa%e9%aa%97%e5%b1%80%ef%bc%9f%ef%bc%81.html" class="url" rel="ugc external nofollow">面向对象是个骗局？！ | | Codeba</a> </div>
+</li>
+<li id="comment-1921254" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1224" class="url" rel="ugc external nofollow">一些软件设计的原则 – 趣学</a> </div>
+</li>
+<li id="comment-2294384" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1045024" class="url" rel="ugc external nofollow">一些软件开发的原则 - 算法网</a> </div>
+</li>
+<li id="comment-2335750" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1773593" class="url" rel="ugc external nofollow">软件设计原则 - 算法网</a> </div>
+</li>
+<li id="comment-2337292" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1820206" class="url" rel="ugc external nofollow">关于软件设计使用中一些的原则简述 - 算法网</a> </div>
+</li>
+<li id="comment-2349047" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/4535.html" class="url" rel="ugc">一些软件设计的原则 | 酷 壳 - CoolShell</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/3005.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/3005.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">3005</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

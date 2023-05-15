@@ -1,0 +1,647 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>语言的数据亲和力 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4905 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4905" class="post-content post-4905 post type-post status-publish format-standard hentry category-progdesign category-proglanguage tag-c tag-groovy tag-java tag-json tag-xml">
+<header class="entry-header">
+<span class="screen-reader-text">语言的数据亲和力</span>
+<h1 class="entry-title">语言的数据亲和力</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4905.html" title="08:10" rel="bookmark"><time class="entry-date" datetime="2011-06-29T08:10:44+08:00" pubdate="">2011年06月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4905.html#comments" class="comments-link">31 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 20,690 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>[ 感谢 <a href="http://www.cnblogs.com/weidagang2046/" target="_blank">Todd 同学</a>投递本文 ]</strong></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">目前，程序设计语言似乎进入了一个蓬勃发展的时期，Javascript、Perl、Python、Ruby、Groovy等一批较新的语言正越来越多地被熟悉和使用，而C++、C#、Java等主流语言也在不断地融入函数式和动态性特征。程序员的百宝箱中可供选择的宝贝是越来多了，而社区中关于语言间的比较和争论也更为热烈，我们常常见到关于“面向过程和面向对象的比较”、“动态语言和静态语言的比较”、“命令式和函数式范式的比较”等比较。我注意到这类讨论的关注点多集中于设计相关话题，如“动态语言的Duck typing多态和静态语言的继承多态的比较”，“Prototype based和Class based的比较”等。但我认为还有一个十分重要的方面值得关注，这就是数据处理。</span></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">数据处理之所以重要是因为不论是本地信息存储还是系统间信息交换都需要建立在一定的数据格式基础上。另外，不管语言属于那种范式，设计上采用什么模式，在微观层次上程序很大一部分工作都是在做数据处理。所以，从数据处理角度比较和理解语言间的差异有重要的现实意义。虽然数据通常是平台和语言无关的，但不同的语言在处理某种格式的数据时会表现出不同的难度，甚至某些数据格式只能采用特定的语言才能实现，这就是数据亲和力的不同。</span></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">语言的数据亲和力(Data Affinity)指的是语言的数据模型与某种数据格式之间的匹配程度。语言对某种数据格式亲和力越强，则操作某类数据越容易。</span></p>
+<p> </p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%AD%97%E8%8A%82%E5%9D%97%E6%A0%BC%E5%BC%8F" title="二进制字节块格式">二进制字节块格式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%96%87%E6%9C%AC%E6%A0%BC%E5%BC%8F" title="文本格式 ">文本格式 </a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%BB%93%E6%9E%84%E5%8C%96%E6%96%87%E6%9C%AC%E6%A0%BC%E5%BC%8F" title="结构化文本格式">结构化文本格式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BA%8C%E8%BF%9B%E5%88%B6%E5%AD%97%E8%8A%82%E5%9D%97%E6%A0%BC%E5%BC%8F"></span><strong><span style="font-family: &#39;Lucida Console&#39;;">二进制字节块格式</span></strong><span class="ez-toc-section-end"></span></h4>
+<p> </p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">在偏底层的操作系统、嵌入式和通信系统中，二进制的字节块是最常见的一种数据格式。二进制数据布局紧凑和接近机器的特点使得它常常作为系统间通信或系统文件的数据格式，但一般高级语言都不方便直接和0101打交道，而是基于记录、结构体和类等结构化表示操作数据，这就存在着在底层的二进制字节块和高层的结构化数据直接的转换问题。</span></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;"><span id="more-4905"></span><br/>
+</span></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">C语言作为最主要的系统语言具有很高的字节块数据亲和力。这不仅因为C语言具有指针可以直接访问内存以外，还因为C的结构体(struct)可以和字节块建立起直接的映射关系。例如，在基于Socket连接的分布式系统中服务器端和客户端通过二进制的字节数据进行通信，通信双方只要事先定义共用的结构体，发送方先创建相应的结构体变量并填充字段，然后把变量对应的内存块copy到Socket，接收方从Socket读取字节块，然后把字节块强制类型转换为相应的结构体指针即可读取个字段信息。整个过程中通信的双方都没有复杂的信息编码和解码的过程。示例代码如下：</span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct t_data {
+    int version;
+    char type[10];
+    float value;
+};
+
+//发送方
+struct t_data data;
+data.version = 1;
+strcpy(data.type,  “degree”);
+data.value = 189.0;
+send(socket,  &amp;data,  sizeof(data));
+
+//接收方
+struct t_data data;
+read(socket,  &amp;data,  sizeof(data));
+printf(“%d, %s, %f”, data.version,  data.type, data.value);</pre>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">上面的方法在实际应用中还需要注意内存对齐问题和大小端问题。内存对齐问题可以通过编译器预处理命令来进行控制，保证内存中struct结构与传输的字节块具有相同的对齐方式；大小端问题需要通信的双方采用同样的大小端方式，否则就需要进行转换。</span></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">C++可以完全兼容C的结构体，但C++的类(包括class和struct)中如果定义了虚函数，则会丧失结构的字节块数据亲和力，这是C++编程时需要权衡的一个因素。而除了C/C++，其他语言中则难以见到字节块数据亲和力，其原因在于C/C++允许控制结构体/对象的内存布局，并允许对指针进行非类型安全的强制类型转换，这都是在Java，C#等语言中不允许的。所以，在Java、C#中进行字节块的编码解码就只能按照协议一个字段一个字段地按偏移量和长度进行解析。C/C++的指针以及结构体和内存的直接映射带来了对字节块数据的亲和力，但同时也留下了内存访问和类型安全的隐患；而Java、C#在拥有引用安全和类型安全的同时也失去了对字节块数据的亲和力。</span></p>
+<p> </p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E6%96%87%E6%9C%AC%E6%A0%BC%E5%BC%8F"></span><span style="font-family: &#39;Lucida Console&#39;;"><strong>文本格式</strong> </span><span class="ez-toc-section-end"></span></h4>
+<p><span style="font-family: &#39;Lucida Console&#39;;">文本格式是另一种十分常见的数据格式。《Unix编程艺术》中是这样描述文本格式的：”Text streams are a valuable universal format because they’re easy for human beings to read, write, and edit without specialized tools ”。基于文本流的管道处理是一种备受赞誉的Unix风格。Shell可以通过管道把各种功能单一的命令串联起来，让文本流在管道上流动，因而Shell语言具有很好的文本数据亲和力。许多文本数据处理任务Bash都可以一行搞定，这就是Hacker们酷爱的One Liner风格。</span></p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">下面我们来看两个用Bash进行文本处理的例子：</span></p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">1. 统计当前目录下的gz文件数目：</span></p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">ls –l *.gz | wc –l</code></p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">2. 在Web服务器日子service.log中统计2011年6月26和27两天中每天中各页面的PV</span></p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">cat service.log | grep ^2011-06-2[6-7] | cut –d ‘ ‘ –f 1, 3 | sort | uniq –c</code></p>
+<p> </p>
+<p>service.log:</p>
+<p style="padding-left: 30px;"><span style="font-family: &#39;Lucida Console&#39;;">2011-06-25 13:00:55 /music/c.htm Safari<br/>
+…<br/>
+2011-06-26 08:01:23 /main.htm IE<br/>
+2011-06-26 08:03:01 /sports/b.htm Chrome<br/>
+…<br/>
+2011-06-27 11:41:06 /main.htm IE<br/>
+2011-06-27 11:52:41 /news/a.htm Firefox</span></p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">输出:</span></p>
+<p style="padding-left: 30px;"><span style="font-family: &#39;Lucida Console&#39;;">210 2011-06-26 /main.htm<br/>
+231 2011-06-26 /news/a.htm<br/>
+155 2011-06-26 /sports/b.htm<br/>
+288 2011-06-27 /main.htm<br/>
+292 2011-06-27 /news/a.htm<br/>
+161 2011-06-27 /sports/b.htm</span></p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">上面的两个简单文本数据处理任务如果是在C或C++下实现则要麻烦得多，代码量至少是十几行或者数十行，加上编译调试，整个开发效率可能比Shell低一个数量级。除了Shell外，Perl也是以强大的文本数据处理而闻名的。我们来看一个Perl正则表达式的例子：</span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">while (&lt;STDIN&gt;) {
+    if (/hello\s(\w+)/i)  {
+        print “say hello to $1“
+     }
+     elsif (/goodbye\s(\w+)/i)  {
+         print “say goodbye to  $1”
+    }
+}</pre>
+<p><span style="font-family: &#39;Lucida Console&#39;;">输入：</span></p>
+<p style="padding-left: 30px;">HeLLo world</p>
+<p style="padding-left: 30px;">Goodbye bug</p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">输出：</span></p>
+<p style="padding-left: 30px;">say hello to world</p>
+<p style="padding-left: 30px;">say goodbye to bug</p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">上面的例子中我们看到Perl直接进行字符串匹配并进行数据提取的强大威力。Perl基于正则表达式的字符串处理不仅比C/C++等系统语言更强大，甚至比Python这样的动态语言也更强大和更方便，这是因为正则表达式是Perl语言的“一等公民”，这就使得Perl比其他以库的方式支持正则表达式功能的语言具有更好的文本数据亲和力。后来的Ruby也学习Perl把直接在语言上支持正则表达式。</span></p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9E%84%E5%8C%96%E6%96%87%E6%9C%AC%E6%A0%BC%E5%BC%8F"></span><strong><span style="font-family: &#39;Lucida Console&#39;;">结构化文本格式</span></strong><span class="ez-toc-section-end"></span></h4>
+<p><span style="font-family: &#39;Lucida Console&#39;;">XML是最近十几年来流行起来的一种通用（半）结构化的文本数据交换格式。XML除具有一般文本格式的优点外，还具有表达复杂的层次信息的优势，所以它至诞生以来就被大量用于配置文件和各种Web Service中。现代程序设计基本都少不了了XML打交道，不过在C++、Java和C#集中静态类型语言中处理XML却并不是一件十分轻松的事情。我们先来看一个Java解析和构建下面这个XML的例子：</span></p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;langs type=&#34;current&#34;&gt;
+  &lt;language&gt;Java&lt;/language&gt;
+  &lt;language&gt;Groovy&lt;/language&gt;
+  &lt;language&gt;JavaScript&lt;/language&gt;
+&lt;/langs&gt;</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">//Java解析XML
+DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+try {
+    DocumentBuilder db = dbf.newDocumentBuilder();
+    Document doc = db.parse(&#34;src/languages.xml&#34;);
+    Element langs = doc.getDocumentElement();
+    System.out.println(&#34;type = &#34; + langs.getAttribute(&#34;type&#34;));
+    NodeList list = langs.getElementsByTagName(&#34;language&#34;);
+    for(int i = 0 ; i &amp;lt; list.getLength();i++) {
+        Element language = (Element) list.item(i);
+        System.out.println(language.getTextContent());
+    }
+}catch(Exception e) {
+    e.printStackTrace();
+}
+
+//Java创建XML
+DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+try {
+    DocumentBuilder db = dbf.newDocumentBuilder();
+    Document doc = db.newDocument();
+    Element langs = doc.createElement(&#34;langs&#34;);
+    langs.setAttribute(&#34;type&#34;, &#34;current&#34;);
+    doc.appendChild(langs);
+
+    Element language1 = doc.createElement(&#34;language&#34;);
+    Text text1 = doc.createTextNode(&#34;Java&#34;);
+    language1.appendChild(text1);
+    langs.appendChild(language1);
+
+    Element language2 = doc.createElement(&#34;language&#34;);
+    Text text2 = doc.createTextNode(&#34;Groovy&#34;);
+    language2.appendChild(text2);
+    langs.appendChild(language2);
+    Element language3 = doc.createElement(&#34;language&#34;);
+    Text text3 = doc.createTextNode(&#34;JavaScript&#34;);
+    language3.appendChild(text3);
+    langs.appendChild(language3);
+} catch (Exception e) {
+    e.printStackTrace();
+}</pre>
+<p><span style="color: #800040; font-family: &#39;Lucida Console&#39;;"><br/>
+</span> 为了解析和创建小小的一段XML代码需要编写如此冗长的Java代码，而实现同样的功能动态语言Groovy则十分简洁：</p>
+<pre data-enlighter-language="groovy" class="EnlighterJSRAW">//Groovy解析XML
+def langs = new XmlParser().parse(&#34;languages.xml&#34;)
+println &#34;type = ${langs.attribute(&#34;type&#34;)}&#34;
+langs.language.each{
+    println it.text()
+}
+//Groovy创建XML
+def xml = new groovy.xml.MarkupBuilder()
+xml.langs(type:&#34;current&#34;){
+   language(&#34;Java&#34;)
+   language(&#34;Groovy&#34;)
+   language(&#34;JavaScript&#34;)
+}</pre>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">上面Groovy操作XML的代码简洁而富有表达力，代码与XML几乎是一一对应的，如同直接在XML上进行操作的DSL一样，而相应的Java代码则看不到XML的影子。这说明Groovy具有很高的XML数据的亲和力。为什么Java和Groovy在XML亲和力方面有这样的差异呢？原因在于Java要求所有的方法和属性都必须先定义再调用，严格的静态类型检查使得Java只能把XML元素作为“二等公民”来表达；而Groovy则没有静态类型检查的限制，可以自由地使用方法和属性来表达XML结构。上面用Groovy创建XML的例子中，groovy.xml.MarkupBuilder类中实际上并没有langs, language这些方法，但会在调用的时候自动创建相应的XML结构。</span></p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">除了XML外，JSON是另一种通用的半结构化的纯文本数据交换格式，它常被视为轻量级的XML。JSON的本意是Javascript的对象表示(Javascript Object Notation)，它属于Javascript的语法子集，所以Javascript对JSON有原生的支持。下面就是一个在Javascript中创建JSON对象的例子：</span></p>
+<p>[javascript]var json = { “langs” :<br/>
+{<br/>
+&#34;type” : &#34;current”,<br/>
+&#34;language” : [&#34;Java”, &#34;Groovy”, &#34;Javascript”]<br/>
+}<br/>
+}[/javascript]</p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">许多Javascript程序都会通过AJAX都从服务器获取JSON字符串，然后把字符串解析为JSON对象。由于Javascript对JSON的原生支持，所以，在Javascript中解析JSON字符串可以采用通用的eval方式，如：</span></p>
+<p>[javascript]var json = eval(“(&#34; + jsonStr + “)&#34;);</p>
+<p>alert(json.langs.type);[/javascript]</p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">甚至可以：</span></p>
+<p>[javascript]eval(“var json = ” + jsonStr);</p>
+<p>alert(json.langs.type);[/javascript]</p>
+<p> </p>
+<p><span style="font-family: &#39;Lucida Console&#39;;">不过eval的通用性带来了一定的安全隐患，所以一般只建议对受信任的数据源采用eval方式解析JSON，对于不受信任的数据源可以采用专门的JSON解析库。无论如何Javascript对JSON的原生支持都使得Javascript创建和解析JSON数据十分的简单，也就是说Javascript具有很高的JSON数据亲和力。另外，Groovy 1.8也加入了对JSON的原生支持，操作JSON与Javascript一样方便。</span></p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span><strong><span style="font-family: &#39;Lucida Console&#39;;">总结</span></strong><span class="ez-toc-section-end"></span></h4>
+<p><span style="font-family: &#39;Lucida Console&#39;;">到这里为止本文篇幅已经很长了，只能列举二进制字节块格式、文本格式和结构化文本格式3种典型的数据格式。实际上，数据亲和力的话题还有很多值得探讨的，比如C#的Linq。本文的探讨算是抛砖引玉，目的在于引起大家注意在比较语言的时候不要忽略了数据亲和力这样一个重要方面。本文的错误或不足，敬请指正，谢谢！</span></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4905-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Groovy</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">JSON</a>, <a href="javascript:void(0)" rel="tag">XML</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>语言的数据亲和力</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-62118" class="comment even thread-even depth-1">
+<article id="div-comment-62118" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f95e2292aae5808b111707fad2f75125?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f95e2292aae5808b111707fad2f75125?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tcdona</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62118"><time datetime="2011-06-29T08:51:30+08:00">2011年06月29日 08:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那么 lisp 呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-62121" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62121" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/06de5e3b87e89cede67165802b03b47c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/06de5e3b87e89cede67165802b03b47c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://redhacker.iteye.com" class="url" rel="ugc external nofollow">redhacker</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62121"><time datetime="2011-06-29T09:12:01+08:00">2011年06月29日 09:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>语言的亲和力？按照您这样比较，是不是要加上语言的sdk的版本？同一语言不同版本对你所提到的几种格式处理亲和力也是不同的，譬如对于二进制数据的处理，java的新版本nio据说“亲和力”就提高不少！另外java sdk老版本与新版本关于jaxb对于对象到xml的转换恐怕“亲和力”也相当高吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-62126" class="comment even thread-even depth-1">
+<article id="div-comment-62126" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0662a9f893a8b99aedc01a4e20898b7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0662a9f893a8b99aedc01a4e20898b7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">indexRoad</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62126"><time datetime="2011-06-29T09:25:20+08:00">2011年06月29日 09:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的不错，确实可以作为一种对语言选择的参考。 另外：文章主要的目的是正面 语言对数据的亲和力，而不是评论某个语言的亲和力怎样，列举的那几种语言只是举个论据而已</p>
+</div>
+ </article>
+</li>
+<li id="comment-62129" class="comment byuser comment-author-haoel odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62129" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62129"><time datetime="2011-06-29T09:29:48+08:00">2011年06月29日 09:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>&gt; 二进制格式在传输过程可能有比高的性效，效率和安全性（可以省很多带宽，加密）<br/>
+&gt; 纯文本的格式方便阅读，整理，搜索和分析。<br/>
+&gt; XML和Json统一了格式，标准化了，方便全世界集成和调用。不过我个人实在是不喜欢XML。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62134" class="comment even thread-even depth-1">
+<article id="div-comment-62134" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/341a3de86fc2953e1321aa35af301955?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/341a3de86fc2953e1321aa35af301955?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.itrufeng.com" class="url" rel="ugc external nofollow">itrufeng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62134"><time datetime="2011-06-29T09:46:48+08:00">2011年06月29日 09:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也觉得直接这样的对比是不靠谱的。<br/>
+语言各有所长<br/>
+再说我看文章将java语言 做为对比对象。解析xml<br/>
+小弟不才，学了4年java。我解析xml 只需要用xpath<br/>
+然后html.parser(“//language”)[1];<br/>
+就可以拿到Groovy这个值。类库众多。这样比是不是算公平呢？至于是什么类库。哪就多的去了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62137" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62137" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/953c1dc2ed7848a8eb06529f5b1fda3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/953c1dc2ed7848a8eb06529f5b1fda3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62137"><time datetime="2011-06-29T10:01:25+08:00">2011年06月29日 10:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>lisp程序员表示没有压力</p>
+</div>
+ </article>
+</li>
+<li id="comment-62147" class="comment even thread-even depth-1">
+<article id="div-comment-62147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ca4136a060a2574a936cdf6881f733c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ca4136a060a2574a936cdf6881f733c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">freefly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62147"><time datetime="2011-06-29T10:29:35+08:00">2011年06月29日 10:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之所以有这么多语言的差别，原因还是以前语言的不足。语言的死忠，各种不服，不能包而并举怎么能进步</p>
+</div>
+ </article>
+</li>
+<li id="comment-62172" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62172" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lilydjwg.is-programmer.com/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62172"><time datetime="2011-06-29T12:00:17+08:00">2011年06月29日 12:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于 XML，Python 的 lxml 库也十分强大。另外 JSON/YAML 就不用说了，可以直接映射到 Python 内建对象。</p>
+<p>对于二进制那个，貌似 Erlang 也很强大呢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62188" class="comment even thread-even depth-1">
+<article id="div-comment-62188" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0de763ffc22240f035686a4f794eb5d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0de763ffc22240f035686a4f794eb5d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mhsy2003</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62188"><time datetime="2011-06-29T13:16:42+08:00">2011年06月29日 13:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得C#的LinQ 2 XML 以及新版XElment API<br/>
+已经让其对XML具备很强的亲和力了，楼主的话有失公允。</p>
+<p> Console.WriteLine(“导出XML数据库”);<br/>
+var xdb =<br/>
+new XDocument(new XDeclaration(“1.0”, “UTF-8”, “”),<br/>
+new XElement(“XDB”,<br/>
+new XElement(“ESSTree”,essTreeXElement),<br/>
+new XElement(“DataSet”, new XAttribute(“Name”,”EESI”),<br/>
+from table in tableLists<br/>
+select table.ToTableXElement())));</p>
+</div>
+ </article>
+</li>
+<li id="comment-62190" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62190" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0de763ffc22240f035686a4f794eb5d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0de763ffc22240f035686a4f794eb5d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mhsy2003</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62190"><time datetime="2011-06-29T13:18:29+08:00">2011年06月29日 13:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-62188" rel="nofollow">@mhsy2003 </a><br/>
+回复帖子会吃我的空格，又没法插入图片，看不出我原来的样子。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62214" class="comment even thread-even depth-1">
+<article id="div-comment-62214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://szhaitao.blog.hexun.com/" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62214"><time datetime="2011-06-29T15:36:49+08:00">2011年06月29日 15:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>亲和力？我觉得就是对描述协议的比较。。。。。。<br/>
+二进制：高效（无论存储还是分析），但是一致性要求极高<br/>
+xml：冗余，一致性要求较高，分析开销很高（因为支持多层次）<br/>
+json：冗余，一致性要求较高，分析开销较高（因为支持多层次）<br/>
+tlv：tag-length-value<br/>
+ini：key=value<br/>
+本人一向反感xml，推崇ini（可以简单扩展以支持多层次信息）</p>
+</div>
+ </article>
+</li>
+<li id="comment-62241" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62241" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0f836f209597052ba1309bafb3f702f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0f836f209597052ba1309bafb3f702f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oldrev</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62241"><time datetime="2011-06-29T17:45:30+08:00">2011年06月29日 17:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>二进制进程内用用还可以，跨进程是不明智，跨网络是脑残<br/>
+XML：废话太多，不易写不易读，开销大<br/>
+JSON: 不错，但是不支持类型描述导致解析开销比较大，更适合动态语言<br/>
+YAML 之流：最烦这些TAB爱好者了</p>
+</div>
+ </article>
+</li>
+<li id="comment-62269" class="comment even thread-even depth-1">
+<article id="div-comment-62269" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lilydjwg.is-programmer.com/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62269"><time datetime="2011-06-29T21:16:44+08:00">2011年06月29日 21:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-62241" rel="nofollow">@oldrev </a> YAML 和 Tab 有什么关系？？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-62337" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a0be5332ee4da2321df4eb47ce5fbfc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a0be5332ee4da2321df4eb47ce5fbfc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://smilingwang.co.cc" class="url" rel="ugc external nofollow">SmilingWang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62337"><time datetime="2011-06-30T08:29:52+08:00">2011年06月30日 08:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>平时写写小程序，Python确实不错啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-62344" class="comment even thread-even depth-1">
+<article id="div-comment-62344" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c25d9ddf4d028fbbffc20ab66db43418?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c25d9ddf4d028fbbffc20ab66db43418?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">SadEmperor</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62344"><time datetime="2011-06-30T10:16:41+08:00">2011年06月30日 10:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-62241" rel="nofollow">@oldrev </a><br/>
+厄。。。 现在所有的网络传输，根本上不还都是基于socket的二进制数据么。。。 再说很多网络应用也都是直接用二进制啊。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62370" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75bdc1a95320bcac316084805c33e2a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75bdc1a95320bcac316084805c33e2a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">parsifal</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62370"><time datetime="2011-06-30T13:07:55+08:00">2011年06月30日 13:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>据说COBOL都要融合WEB开发工具了，程序设计语言确实是，似乎进入了一个蓬勃发展的时期。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62433" class="comment even thread-even depth-1">
+<article id="div-comment-62433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9614725b449fe7adf74f0abb1d8c4855?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9614725b449fe7adf74f0abb1d8c4855?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Wick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62433"><time datetime="2011-07-01T00:00:51+08:00">2011年07月01日 00:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>类似讨论无非是在开发效率和执行性能上做出权衡，数据亲和力是一个 fancy speaking</p>
+</div>
+ </article>
+</li>
+<li id="comment-62513" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-62513" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2240ea20aff83917bdb92c65e9e847d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2240ea20aff83917bdb92c65e9e847d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">water</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62513"><time datetime="2011-07-01T12:37:07+08:00">2011年07月01日 12:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>做过一个C++系统的升级，用一个UI库，需要把client改为C#实现，那个二进制msg的拼接和解析，真是恶心死了</p>
+</div>
+ </article>
+</li>
+<li id="comment-62695" class="comment even thread-even depth-1">
+<article id="div-comment-62695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eac5746099f58dfb139e34d9daf76e03?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eac5746099f58dfb139e34d9daf76e03?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xie.taosdo.com" class="url" rel="ugc external nofollow">红蜻蜓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62695"><time datetime="2011-07-02T18:40:37+08:00">2011年07月02日 18:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博客每篇都是这样原创的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-62845" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jaceju.net/blog/archives/1815" class="url" rel="ugc external nofollow">網站製作學習誌 » [Web] 連結分享</a> </div>
+</li>
+<li id="comment-62992" class="comment even thread-even depth-1">
+<article id="div-comment-62992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6f809b7c2cfcd1f1b6fb215e4c35f29d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6f809b7c2cfcd1f1b6fb215e4c35f29d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Gavin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-62992"><time datetime="2011-07-04T10:42:26+08:00">2011年07月04日 10:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于这个问题，我觉得，一方面，取决于语言本身的原生支持，另一方面，取决于类库的设计方式。传统的语言必须通过类库来解决问题，如果类库写的好用一些的话，我觉得类似java，c#，python等通用语言的各种数据的亲和力也可能很轻。但也许scala会更好。因为scala在设计的时候考虑了这样的问题。呵呵。</p>
+</div>
+ </article>
+</li>
+<li id="comment-63010" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63010" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d77620c096e9c613ac92e79974297854?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d77620c096e9c613ac92e79974297854?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kekec</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-63010"><time datetime="2011-07-04T13:37:27+08:00">2011年07月04日 13:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>编程语言对数据的操作能力取决于语言自身的特性和程序库的多寡和强弱。<br/>
+事实上，每种语言都能处理不同格式的数据，只是写出来的代码在简洁、效率、艺术性和易读性上存在差异。</p>
+</div>
+ </article>
+</li>
+<li id="comment-63307" class="comment even thread-even depth-1">
+<article id="div-comment-63307" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4ed2c3da73c9338406fead3644d71069?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4ed2c3da73c9338406fead3644d71069?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mytram</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-63307"><time datetime="2011-07-05T18:26:14+08:00">2011年07月05日 18:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Perl中要用elsif。</p>
+</div>
+ </article>
+</li>
+<li id="comment-63575" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63575" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6555f90c08f3339c3246893b396a10bd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6555f90c08f3339c3246893b396a10bd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jesse</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-63575"><time datetime="2011-07-06T18:33:57+08:00">2011年07月06日 18:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Scala中可以直接写xml，应该提一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-81047" class="comment even thread-even depth-1">
+<article id="div-comment-81047" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aa326442e1afcccad56609d49b3c5a63?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aa326442e1afcccad56609d49b3c5a63?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cxwangyi.wordpress.com" class="url" rel="ugc external nofollow">cxwangyi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-81047"><time datetime="2011-09-11T09:12:22+08:00">2011年09月11日 09:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>下一期里，Lisp和Protobuf应该说说。</p>
+</div>
+ </article>
+</li>
+<li id="comment-86268" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-86268" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6f4c06249a9f8b919a54ae77a00350e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6f4c06249a9f8b919a54ae77a00350e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.csdn.net/xuexingyang" class="url" rel="ugc external nofollow">boatman</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-86268"><time datetime="2011-10-09T11:18:28+08:00">2011年10月09日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉的还可以写的更长些，加些文本文件，二进制文件和数据库文件的东西。您认为呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-86992" class="comment even thread-even depth-1">
+<article id="div-comment-86992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ef6a85f878938ddeae49e28991c3186?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ef6a85f878938ddeae49e28991c3186?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">东子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-86992"><time datetime="2011-10-14T12:45:54+08:00">2011年10月14日 12:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>基本上能用json的基本不想用xml</p>
+</div>
+ </article>
+</li>
+<li id="comment-93047" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ec2-176-32-67-38.ap-northeast-1.compute.amazonaws.com/wordpress/?p=9" class="url" rel="ugc external nofollow">深入理解C语言 « 浮云落日</a> </div>
+</li>
+<li id="comment-160910" class="comment even thread-even depth-1">
+<article id="div-comment-160910" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fdeffba9c9e4f343a0258b0dd5933708?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fdeffba9c9e4f343a0258b0dd5933708?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Anita Mui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4905.html#comment-160910"><time datetime="2012-04-19T14:42:04+08:00">2012年04月19日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哥哥,讨论的是语言级的支持….再怎么用jar包,那些步骤是少不了的… 强类型就注定不可能简单实现.<a href="#comment-62134" rel="nofollow">@itrufeng </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-201090" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/c-pit-really-more.html" class="url" rel="ugc external nofollow">Definite Digest » C++的坑真的多吗？</a> </div>
+</li>
+<li id="comment-201475" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=490" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » C++的坑真的多吗？</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

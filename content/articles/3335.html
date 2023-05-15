@@ -1,0 +1,262 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Groovy是怎么实现createArray的 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3335 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3335" class="post-content post-3335 post type-post status-publish format-standard hentry category-misc category-proglanguage category-story tag-createarray tag-groovy">
+<header class="entry-header">
+<span class="screen-reader-text">Groovy是怎么实现createArray的</span>
+<h1 class="entry-title">Groovy是怎么实现createArray的</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3335.html" title="14:08" rel="bookmark"><time class="entry-date" datetime="2010-12-01T14:08:53+08:00" pubdate="">2010年12月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3335.html#comments" class="comments-link">10 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 6,728 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="http://groovy.codehaus.org/" target="_blank">Groovy</a>是一个基于 Java虚拟机的敏捷 动态语言。构建在强大的Java语言之上 并 添加了从Python，Ruby和Smalltalk等语言中学到的 诸多特征。为Java开发者提供了 现代最流行的编程语言特性，而且学习成本很低（几乎为零）。在以前的酷壳的<a rel="bookmark" href="/articles/2631.html">五大基于JVM的脚本语言</a>中也介绍过它。</p>
+<p>下面，让我们看看他的一个createArray的实现，请大家前去围观下面的Groovy的trunk上的源码吧。真是很好很强大。</p>
+<p><a href="http://svn.codehaus.org/groovy/trunk/groovy/groovy-core/src/main/org/codehaus/groovy/runtime/ArrayUtil.java" target="_blank">http://svn.codehaus.org/groovy/trunk/groovy/groovy-core/src/main/org/codehaus/groovy/runtime/ArrayUtil.java</a></p>
+<p>这里摘上前几个createArray重载函数让大家看看，（一共有250个重载函数）</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class ArrayUtil {
+    ... ...
+    ... ...
+ public static Object[] createArray(Object arg0, Object arg1) {
+ return new Object[]{
+ arg0, arg1};
+ }
+
+ public static Object[] createArray(Object arg0, Object arg1, Object arg2) {
+ return new Object[]{
+ arg0, arg1, arg2};
+ }
+
+ public static Object[] createArray(Object arg0, Object arg1, Object arg2, Object arg3) {
+ return new Object[]{
+ arg0, arg1, arg2, arg3};
+ }
+
+ public static Object[] createArray(Object arg0, Object arg1, Object arg2, Object arg3, Object arg4) {
+ return new Object[]{
+ arg0, arg1, arg2, arg3, arg4};
+ }
+
+ public static Object[] createArray(Object arg0, Object arg1, Object arg2, Object arg3, Object arg4, Object arg5) {
+ return new Object[]{
+ arg0, arg1, arg2, arg3, arg4, arg5};
+ }
+ ... ...
+ ... ...
+} </pre>
+<p>这里给了一些<a href="http://groovy.329449.n5.nabble.com/Guys-any-explanations-about-this-td3285524.html#a3285676" target="_blank">解释</a>：</p>
+<p><span id="more-3335"></span></p>
+<ul>
+<li><strong>First</strong>: the package is org.codehaus.groovy.runtime. This is NOT a class that any user of Groovy will ever use. There are plenty of XML utilities in groovy.lang or groovy.xml for you to use.</li>
+<li><strong>Second</strong>: This class is never invoked from code. It exists so that byte code statements have something to link against. If you dump the stack language of a .class file you may indeed see a “INVOKESTATIC org/codehaus/groovy/runtime/XMLUtil” invocation. This logic is used around the CallSite writing features.</li>
+<li><strong>Third</strong>: Implementing a dynamic language (Groovy) in a static language (Java) on a type less virtual machine (JVM) is hard. Every language has their work arounds. We generated some code so that we had something to link against. At one point, JRuby was generating reams of interfaces (IIRC) and have you seen the implementation of OpenJDK? Ever notice now many methods are overloaded for all the primitives plus Object. These are all workarounds to get the end user a good programming experience while still running on the JVM.</li>
+</ul>
+<p>大意是：这个类对于Groovy的使用者是不会用到的，也不会被调用到，因为在JVM下实现动态语言是有一定的难度，这算是一个work around。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3335-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">createArray</a>, <a href="javascript:void(0)" rel="tag">Groovy</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Groovy是怎么实现createArray的</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-16391" class="comment even thread-even depth-1">
+<article id="div-comment-16391" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dff2ae445235dbf2625e25ee9456d8a9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dff2ae445235dbf2625e25ee9456d8a9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.popo4j.com" class="url" rel="ugc external nofollow">popo4j</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16391"><time datetime="2010-12-01T15:02:23+08:00">2010年12月01日 15:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是很理解<br/>
+一般我用<br/>
+public static T[] createArray(T…t)<br/>
+泛型就好了啊<br/>
+可能为了兼容 JDK1.4吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-16401" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-16401" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/63c3984c3ca56d50b4fc7a8bfd3877b7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/63c3984c3ca56d50b4fc7a8bfd3877b7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">orangee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16401"><time datetime="2010-12-01T17:08:56+08:00">2010年12月01日 17:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个，说什么好呢……</p>
+</div>
+ </article>
+</li>
+<li id="comment-16406" class="comment even thread-even depth-1">
+<article id="div-comment-16406" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b61813525f0dd979f938c97f70b1f40f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b61813525f0dd979f938c97f70b1f40f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">canal</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16406"><time datetime="2010-12-01T17:45:10+08:00">2010年12月01日 17:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呃, 我倒是觉得它应该彻底点, 把{}都去掉</p>
+</div>
+ </article>
+</li>
+<li id="comment-16427" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-16427" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/97856de99194812ce377b50f47097288?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/97856de99194812ce377b50f47097288?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://helloyuhao.jimdo.com" class="url" rel="ugc external nofollow">雨碎江南</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16427"><time datetime="2010-12-01T21:41:53+08:00">2010年12月01日 21:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这….按代码行数计算工资的把..</p>
+</div>
+ </article>
+</li>
+<li id="comment-16432" class="comment even thread-even depth-1">
+<article id="div-comment-16432" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20f02d25cd1e0d9e61fe4098954e12bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20f02d25cd1e0d9e61fe4098954e12bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://shuqun.com/" class="url" rel="ugc external nofollow">Sutra</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16432"><time datetime="2010-12-01T22:23:19+08:00">2010年12月01日 22:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你应该再介绍一下这个bug票。</p>
+</div>
+ </article>
+</li>
+<li id="comment-16433" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-16433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20f02d25cd1e0d9e61fe4098954e12bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20f02d25cd1e0d9e61fe4098954e12bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://shuqun.com/" class="url" rel="ugc external nofollow">Sutra</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16433"><time datetime="2010-12-01T22:23:57+08:00">2010年12月01日 22:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://jira.codehaus.org/browse/GROOVY-4157" rel="nofollow ugc">http://jira.codehaus.org/browse/GROOVY-4157</a></p>
+<blockquote cite="#commentbody-16432"><p>
+<strong><a href="#comment-16432" rel="nofollow">Sutra</a> :</strong><br/>
+你应该再介绍一下这个bug票。
+</p></blockquote>
+<p>jira.codehaus.org/browse/GROOVY-4157 为什么会把url吃掉？？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-16895" class="comment even thread-even depth-1">
+<article id="div-comment-16895" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2adfeba904c77593a3e962b73eca19a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2adfeba904c77593a3e962b73eca19a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.absir.com" class="url" rel="ugc external nofollow">AB先生</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-16895"><time datetime="2010-12-04T23:02:00+08:00">2010年12月04日 23:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>玄学我改了，怎么还是不行呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-19749" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-19749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/500b4a1c9a8170bf5f9405beebd104ee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/500b4a1c9a8170bf5f9405beebd104ee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://sharronclemons.co.cc/" class="url" rel="ugc external nofollow">Sharron Clemons</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-19749"><time datetime="2010-12-22T04:36:46+08:00">2010年12月22日 04:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呃, 我倒是觉得它应该彻底点, 把{}都去掉</p>
+</div>
+ </article>
+</li>
+<li id="comment-21389" class="comment even thread-even depth-1">
+<article id="div-comment-21389" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5f8a51e21a0218e267aa025c0532e5c6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5f8a51e21a0218e267aa025c0532e5c6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tuoxie.me" class="url" rel="ugc external nofollow">tuoxie</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-21389"><time datetime="2011-01-03T14:18:18+08:00">2011年01月03日 14:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个文件肯定是脚本生成的，不可能是手写的，所以这么玩，成本是最低的嘞<br/>
+再补一句，Groovy真的不怎么帝</p>
+</div>
+ </article>
+</li>
+<li id="comment-21833" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-21833" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5f8a51e21a0218e267aa025c0532e5c6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5f8a51e21a0218e267aa025c0532e5c6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tuoxie.me" class="url" rel="ugc external nofollow">tuoxie</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3335.html#comment-21833"><time datetime="2011-01-05T22:17:25+08:00">2011年01月05日 22:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同情了。。。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

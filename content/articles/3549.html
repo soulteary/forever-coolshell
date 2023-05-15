@@ -1,0 +1,490 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Android将允许纯C/C++开发应用 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3549 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3549" class="post-content post-3549 post type-post status-publish format-standard hentry category-cplusplus category-itnews tag-android tag-c tag-google">
+<header class="entry-header">
+<span class="screen-reader-text">Android将允许纯C/C++开发应用</span>
+<h1 class="entry-title">Android将允许纯C/C++开发应用</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3549.html" title="08:39" rel="bookmark"><time class="entry-date" datetime="2011-01-24T08:39:50+08:00" pubdate="">2011年01月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3549.html#comments" class="comments-link">234 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 173,033 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>对于Android，长期以来，我一直有两件事搞不懂，</p>
+<ul>
+<li>一个是为什么Android要选用Java。对于嵌入式开发，CPU和内存都很宝贵，居然还使用Java。</li>
+<li>一个是为什么Android的<a href="https://developer.android.com" target="_blank">开发站点</a>要被墙。这只是一个技术网站啊。</li>
+</ul>
+<p>最近，在一个Android<a href="https://android-developers.blogspot.com/2011/01/gingerbread-ndk-awesomeness.html" target="_blank">开发人员的Blog</a>上证实了在NDK r5使用C/C++进行开发。（以前，Android 对C/C++开发的支持仅限于用C/C++开发动态链接库，然后在Java中以JNI的形式来调用）现在，你可以用纯C/C++开发了（参看下面的程序代码）。还有一段<a href="https://developer.android.com/reference/android/app/NativeActivity.html" target="_blank">完整的代码示例在这里</a>（墙，还有XML的manifest，<a href="/articles/3498.html" target="_blank">又见XML</a>）。看来，Google终于明白为什么使用Android的手机（如：Moto, 三星、索爱和HTC）的触摸体验远远不及object C搞出来的iPhone。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void android_main(struct android_app* state) {
+    // Make sure glue isn&#39;t stripped.
+    app_dummy();
+
+    // loop waiting for stuff to do.
+    while (1) {
+        // Read all pending events.
+        int ident;
+        int events;
+        struct android_poll_source* source;
+
+        // Read events and draw a frame of animation.
+        if ((ident = ALooper_pollAll(0, NULL, &amp;events,
+                (void**)&amp;source)) &gt;= 0) {
+            // Process this event.
+            if (source != NULL) {
+                source-&gt;process(state, source);
+            }
+        }
+        // draw a frame of animation
+        bringTheAwesome();
+    }
+}</pre>
+<p>我个人估计有两个原因为什么Google回头支持C/C++了，</p>
+<ol>
+<li>Google开始觉得自己整的JVM在性能上可以全面超越传统JVM，并接近C/C++，现在发现搞不定了。</li>
+<li>Google发现Java的程序员不像C/C++程序员那样注重程序的性能和效率，开发App太耗CPU和内存。</li>
+</ol>
+<p>于是只好转回支持C/C++。<strong>本来就是用C/C++写出来的Android嘛，居然不能用C/C++而只能用Java，真是太侮辱C/C++了</strong>。最后，只希望Google并不是又整了一个C/C++版的Dalvik虚拟机，不然就真是侮辱到极点了。</p>
+<p><em><span style="color: #800000;">——— 更新 2011/01/24 ————</span></em></p>
+<p>谢谢大家对这篇文章的评论，挺有意思的，欢迎讨论，我把我的回复更新在下面。不一定对，仅供大家参考。</p>
+<p><span id="more-3549"></span></p>
+<p>Java的学习成本低，开放性好，兼容性也高，我不否认（但请大家也别否认C/C++的效率要比Java要高。而C/C++的程序员在普遍上要比Java程序员更注意性能和效率）。这应该是Andorid的一开始的定位，可见，Google关注的是程序员，而不是用户。现在转回支持C/C++必然有他的原因，如果不是性能上的原因。那么就请大家分析一下别的原因。</p>
+<p>Android本来就是用C/C++写的，要跨平台，首先是Android自己跨平台。就像Linux一样，跨平台的首先是Linux，应用开发人员只需要符合Linux的API就OK了。JVM带来的便利只是无需重新编译（就算是无需重新编译，对于开发人员来说也要去那个平台做测试的，因为不同的平台的JVM同样是不一样的）。在Native平台上编译的成本其实并不高，这个编译过程完全可以在部署的时候自动化。</p>
+<p>有人说，Java的开发成本比C/C++低，但这和语言没有关系，这其实和封装程度有关系。C/C++同样可以封装得很好。而且，C/C++的程序员比JAVA程序来说，天生就对内存和性能要敏感的多。这更有利于在手机这样资源不足的平台上做开发。</p>
+<p>尤其对于像手机这样的时尚终端来说，在用户体验上花的成本要比在开发人员上花成本要大得多的多。我以为，Google 的Android 更多的关注了程序员，而不是用户。而iPhone更多的关注了用户，也让程序员在开发过程上受到了一些牺牲（iPhone的做法是如果程序员的程序要上App Store，先交99美刀的代码审查费，就像申请美国签证一样），但是，iPhone的程序员虽然在开发的方便上有一些牺牲，但是从收入上却得到了保障。最新的消息是苹果已向开发者支付20亿美元 音乐供应商分成达120亿美元。在《<a href="/articles/3363.html" target="_blank">偷了世界的程序员</a>》中对此有充分的论述。</p>
+<p><span style="color: #800000;">最后，请大家思考 几个问题——</span></p>
+<ul>
+<li><span style="color: #800000;">Android支持C/C++是为什么？如果是为了程序效率，那么这又是为什么？</span></li>
+<li><span style="color: #800000;">是开发人员更重要，还是用户更重要？（注意：我说的是“更重要”）</span></li>
+<li><span style="color: #800000;">在当今这种诸如iPhone或Andorid的开发模式下，是完全开放好，还是有适当的封闭好？</span></li>
+<li><span style="color: #800000;">开发和封闭的背后的商业驱动是什么？如何在开放和封闭中权衡用户、开发者、公司和版权商的利益？</span></li>
+</ul>
+<p>苹果公司给出了一个很不错的商业模式。</p>
+<p>（完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3549-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">业界新闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Android</a>, <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Google</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Android将允许纯C/C++开发应用</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1083868" class="comment even thread-even depth-1">
+<article id="div-comment-1083868" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1a7e5d898146ba64857296bac258bee5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1a7e5d898146ba64857296bac258bee5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HgameMax</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1083868"><time datetime="2013-12-20T11:29:03+08:00">2013年12月20日 11:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天2013快结尾了。<br/>
+事实告诉我们，当我们完成了农田的开垦有了收获之后，我们会要求的更加多。但是，土地是有限的人的精力也是如此。</p>
+<p>Google选择Java 源于开垦的需要。而C++却不适合。理由有三<br/>
+1。复杂，且很难保证软件质量和高效率的BUG修复，这势必会提高前提开荒的成本。<br/>
+2。安卓的源代码开放，必然导致他有大量的变种。C++对这样的初始环境势必很不适应。<br/>
+3。开始的时候Google不知道客户想要什么，那他如何去定制统一个规格标准呢？如果没有统一的规格标准C++的开发成本还是很让人头疼的！<br/>
+归根结底，选择JAVA的原因是因为成本。这也是为什么2011到现在C++依旧没有动静的原因。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1398325" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1398325" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/060da4a948d9f6d92554f11ea9150626?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/060da4a948d9f6d92554f11ea9150626?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xishuaiya</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1398325"><time datetime="2014-03-20T14:59:43+08:00">2014年03月20日 14:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>唉，今天才看到这个文章，嘴痒：<br/>
+随着framework层功能越来越强大,Android系统中C++部分的功能越来越不完整；<br/>
+使用C++进行Android开发的难度也会进一步上升；<br/>
+感觉Google以后也不可能会开放完整的C++接口进行应用开发了；<br/>
+NDK存在的意义我觉得就是为了让我们自定义Android的Native层，自定义Android系统更加容易；</p>
+</div>
+ </article>
+</li>
+<li id="comment-1403559" class="comment even thread-even depth-1">
+<article id="div-comment-1403559" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/409162d29261c474d215d68bbf8d7c30?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/409162d29261c474d215d68bbf8d7c30?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">我是红名字</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1403559"><time datetime="2014-03-25T13:16:55+08:00">2014年03月25日 13:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>11年发的帖子，到现在14年。3年了一点动静都没有，是不是已经放弃对C++的支持了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1446227" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1446227" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/17273ca380459664202d48d61390cd31?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/17273ca380459664202d48d61390cd31?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sunny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1446227"><time datetime="2014-04-25T17:46:52+08:00">2014年04月25日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果android回到C++ 不如去用meego Sailfish了，用户多了就开始脑残了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1470251" class="comment even thread-even depth-1">
+<article id="div-comment-1470251" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ca3919da7f4b8a85f80b819f074e5c96?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ca3919da7f4b8a85f80b819f074e5c96?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ligboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1470251"><time datetime="2014-05-27T10:16:59+08:00">2014年05月27日 10:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应用只要符合linux api就可以移植了，这个观点有些问题。c\c++编译之后的机器码，即使在相同linux版本，库环境，但在不同cpu架构（特别是指令集相差比较大的架构）之间是不同的。你为x86编译的和为arm编译的应用就不能通用。</p>
+<p>所以google选择Dalvik是有道理的和必要的，因为他首要的解决问题就是两个：1. 如何让开发者方便的跨平台开发；2. 为了应用开发生态的迅速壮大，必须选择一门平台无关、较为主流而且比较成熟的语言，所以只有java相比较最合适。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1497381" class="trackback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.vimeo.com/spinbikethailand" class="url" rel="ugc external nofollow">จักรยานปั่นออกกำลังกาย</a> </div>
+</li>
+<li id="comment-1548823" class="comment even thread-even depth-1">
+<article id="div-comment-1548823" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/81fec66d8b9dcc30bc7ef72a4760ecfd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/81fec66d8b9dcc30bc7ef72a4760ecfd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1548823"><time datetime="2014-09-24T17:27:08+08:00">2014年09月24日 17:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为是设计失误，我有两次经历：一次是从长沙驱车到宁乡，仅仅是帮用户重启了系统，应用就可以发送数据了（系统进入活死机状态，界面没死，但后台不工作。导致用户怀疑我们的应用）；另一次，是同事电话怎么也打不通，后来只有上去直接找，告诉他电话打不通，重启后，一切OK（但从此进入一种怀疑状态，发送短信后，总想：移动不会延时吧，他的系统最近重启了吗？）;另外，我自己的机器反应慢，操作总是错位，譬如我按一下开，结果没反应，那就再按一下，等下，开一下，马上又关了，在事情紧急时，让人抓狂。<br/>
+我个人认为开始就应该两条腿走路，java迅速扩充市场,C++开发自身的系统应用。当应用丰富了时，由于C++原生应用用户体念由于java应用，必然将整个系统由淘宝转到天猫了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1592545" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/itniu/3631.html" class="url" rel="ugc external nofollow">输出从1到1000的数 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1613497" class="comment even thread-even depth-1">
+<article id="div-comment-1613497" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f25cab87ac9bf1e76b1e91167d855b3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f25cab87ac9bf1e76b1e91167d855b3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hety</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1613497"><time datetime="2014-11-25T13:33:55+08:00">2014年11月25日 13:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可以直接支持么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1630128" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1630128" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/deafea665555b510576a901a7fef8be4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/deafea665555b510576a901a7fef8be4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Adler</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1630128"><time datetime="2014-12-15T17:36:48+08:00">2014年12月15日 17:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想不到這個貼子的生命力這麼強勁。都四年了，依然有人回覆。<br/>
+做了這麼多年Android，感覺Google是不會把精力放到C++的，能給你個NDK來優化一下已經是皇恩浩蕩啦。<br/>
+Java其實也不是不好，就是太繁瑣，怎麼寫都覺得多餘。<br/>
+現在Google應該是等Go Language成熟，最後實現Google專利大一統。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1633964" class="comment even thread-even depth-1">
+<article id="div-comment-1633964" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a96f2d2b1fbc5dbaba46dac97226b4a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a96f2d2b1fbc5dbaba46dac97226b4a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.modtosofl.com" class="url" rel="ugc external nofollow">kshdjj</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1633964"><time datetime="2014-12-23T06:36:33+08:00">2014年12月23日 06:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写高效的C/C++程序要求高，绝大多数软件大公司创始者也不曾用好，所以用 VB,Java 抢先侵占应用领域。直到很多同类型产品出现，要竞争时才改用高效的 C/C++. 例如，用C语言写 网站的高速的CGI 软件，普通的程序员很困难，就让程序员用 ASP。PHP 制作 低效的CGI 软件。关于是否用 （编译型语言）C 或者用 （不用编译的解释型语言） VB,Java, ,,, 的讨论将永远存在。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1637762" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1637762" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d7e3d7f14c28ca249a8fe564557ade45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d7e3d7f14c28ca249a8fe564557ade45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jacoblx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1637762"><time datetime="2014-12-31T04:42:04+08:00">2014年12月31日 04:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-513836" rel="nofollow">@KuKu </a> </p>
+<p><a href="#comment-1403559" rel="nofollow">@我是红名字 </a><br/>
+早就支持了啊，你去官方开发站看看，可以下载ndk开发包</p>
+</div>
+ </article>
+</li>
+<li id="comment-1641306" class="comment even thread-even depth-1">
+<article id="div-comment-1641306" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a51dca31aa6035be056dbf1df48855b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a51dca31aa6035be056dbf1df48855b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">福临天下</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1641306"><time datetime="2015-01-06T18:07:23+08:00">2015年01月06日 18:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在2015年了，还是没有动静！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1659582" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1659582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0c070a2f2e066c0945e6286d2179052e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0c070a2f2e066c0945e6286d2179052e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tiaoweiliao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1659582"><time datetime="2015-02-11T17:46:36+08:00">2015年02月11日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不知道大家有没有用过Qt for Android</p>
+</div>
+ </article>
+</li>
+<li id="comment-1664447" class="comment even thread-even depth-1">
+<article id="div-comment-1664447" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0315bc94b1d17a83ba59b6384f727ad4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0315bc94b1d17a83ba59b6384f727ad4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">STK</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1664447"><time datetime="2015-02-19T15:27:35+08:00">2015年02月19日 15:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我只能飘过…<br/>
+可悲的是从来写过一个Andriod应用。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1714357" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1714357" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dd0c914691d1c7bfa285fea7454c0a4c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dd0c914691d1c7bfa285fea7454c0a4c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">异常者Doorn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1714357"><time datetime="2015-05-26T17:13:32+08:00">2015年05月26日 17:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于我这个C++强，但JAVA不强的人来说，我怎么算<a href="#comment-275479" rel="nofollow">@rinidaye </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1725419" class="comment even thread-even depth-1">
+<article id="div-comment-1725419" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/34cef3825c1913c34b0b779358f5b97e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/34cef3825c1913c34b0b779358f5b97e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/jackchiang/" class="url" rel="ugc external nofollow">lightmoral</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1725419"><time datetime="2015-06-22T07:21:31+08:00">2015年06月22日 07:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大神您好，看您的博客学到很多东西，关于Android应用体验的问题；</p>
+<p>套用 Linus 的话：很多不合格的程序员在使用 Java；<br/>
+1、他们不知何时把消耗资源的对象提交给GC销毁；<br/>
+2、不知怎样对Java代码进行性能优化；<br/>
+3、没有晚获取早关闭的习惯；<br/>
+4、建立了不必要的对象占用内存资源；<br/>
+5、不懂使用C/C++实现的本地方法；<br/>
+6、使用了消耗资源的浮点数和枚举；<br/>
+7、使用了接口的引用，会多花费一倍的时间；</p>
+<p>个人认为，随着硬件性能的提升，语言之间的性能差异会越来越小，直到用户无法察觉；</p>
+<p>Android支持C/C++应该是出于在智能家居领域的应用考虑；<br/>
+对公司来说，用户第一，员工第二，股东第三；<br/>
+Android 3.0 据说不开源了；<br/>
+苹果不开源，完全是为了公司利益，用户必须使用苹果的应用，从而达到公司收益。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1730481" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1730481" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2397455316507058cbe62f54170355bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2397455316507058cbe62f54170355bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1730481"><time datetime="2015-07-02T18:15:44+08:00">2015年07月02日 18:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个开放的环境， 所以需要更普适的平台。<br/>
+后来者， 所以更需要开发者的快速支持， 更快打造一个生态环境 而不是更好。而且本身开放意味着不会太精细。</p>
+<p>但是只有开发者的生态不是好生态。 更需要有用户，所以需要强调用户体验。</p>
+<p>看微博说 ORCAL已经获得了Java的版权了。。 google 脚步也放缓了。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1783613" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cdlin.com/40824" class="url" rel="ugc external nofollow">陈皓：Why C++ ? 王者归来 | 写代码度日的骚年</a> </div>
+</li>
+<li id="comment-1795521" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1795521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cbc46b276e2708fa93c51b36646a1e4c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cbc46b276e2708fa93c51b36646a1e4c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Coco</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1795521"><time datetime="2015-11-27T13:08:08+08:00">2015年11月27日 13:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不一定 用 JVM， windows HAL 硬件抽象层 不是 很好的解决了多CPU 厂商。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1801436" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weiyx.org/archives/922.html" class="url" rel="ugc external nofollow">Why C++ ? 王者归来-涛涛博客</a> </div>
+</li>
+<li id="comment-1809576" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1809576" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3de25725de20e16f1e67d13387fe2651?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3de25725de20e16f1e67d13387fe2651?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1809576"><time datetime="2016-02-15T11:18:00+08:00">2016年02月15日 11:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你搞不懂是很正常的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1840736" class="comment even thread-even depth-1">
+<article id="div-comment-1840736" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/792a7bac81582c4cc856ac7fb977dd44?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/792a7bac81582c4cc856ac7fb977dd44?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1840736"><time datetime="2016-06-01T16:30:24+08:00">2016年06月01日 16:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>咋还不把这篇删了，这都2016.6.1了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1845933" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hutlive.com/961.html" class="url" rel="ugc external nofollow">如果同时有两个项目让你选择，一个是使用C++的QT，一个是用JAVA的Android，你愿意往哪个方向发展？请说出您的理由。 – HutLive – 学无止境 ，屋阅网</a> </div>
+</li>
+<li id="comment-1936838" class="comment even thread-even depth-1">
+<article id="div-comment-1936838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cf232d112ef7cd426631437db6520ac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cf232d112ef7cd426631437db6520ac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">间桐嘤</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-1936838"><time datetime="2018-08-06T11:30:46+08:00">2018年08月06日 11:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>都8021年了，醒醒</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370258" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370258" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/61efeee8422115ebfd9dcef33f584939?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/61efeee8422115ebfd9dcef33f584939?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">YUCHO</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-2370258"><time datetime="2022-03-13T18:28:00+08:00">2022年03月13日 18:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2022前来考古</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370830" class="comment even depth-2">
+<article id="div-comment-2370830" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5f16e4230cd3892c992dcf3c19fbd47a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5f16e4230cd3892c992dcf3c19fbd47a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小火山</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3549.html/comment-page-5#comment-2370830"><time datetime="2022-10-20T09:29:56+08:00">2022年10月20日 09:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>考古结论是啥？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/3549.html/comment-page-4#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/3549.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/3549.html/comment-page-3#comments">3</a>
+<a class="page-numbers" href="/articles/3549.html/comment-page-4#comments">4</a>
+<span aria-current="page" class="page-numbers current">5</span> <span id="cp_post_id">3549</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

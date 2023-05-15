@@ -1,0 +1,635 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>bash代码注入的安全漏洞 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11973 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11973" class="post-content post-11973 post type-post status-publish format-standard hentry category-unixlinux category-technews category-operatingsystem category-netsecurity tag-bash tag-env tag-export tag-318 tag-305 tag-761">
+<header class="entry-header">
+<span class="screen-reader-text">bash代码注入的安全漏洞</span>
+<h1 class="entry-title">bash代码注入的安全漏洞</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11973.html" title="07:56" rel="bookmark"><time class="entry-date" datetime="2014-09-28T07:56:46+08:00" pubdate="">2014年09月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11973.html#comments" class="comments-link">136 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 107,875 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-11979" src="/uploads/2014/09/bashbug-300x152.jpg" alt="bashbug" width="300" height="152" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>很多人或许对上半年发生的安全问题“心脏流血”（Heartbleed Bug）事件记忆颇深，这两天，又出现了另外一个“毁灭级”的漏洞——Bash软件安全漏洞。这个漏洞由法国GNU/Linux爱好者Stéphane Chazelas所发现。随后，美国电脑紧急应变中心（US-CERT）、红帽以及多家从事安全的公司于周三（北京时间9月24日）发出警告。 关于这个安全漏洞的细节可参看美国政府计算安全的这两个漏洞披露：<a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-6271">CVE-2014-6271</a> 和 <a href="http://web.nvd.nist.gov/view/vuln/detail?vulnId=CVE-2014-7169">CVE-2014-7169</a>。</p>
+<p>这个漏洞其实是非常经典的“注入式攻击”，也就是可以向 bash注入一段命令，从bash1.14 到4.3都存在这样的漏洞。我们先来看一下这个安全问题的症状。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Shellshock_CVE-2014-6271" title="Shellshock (CVE-2014-6271)">Shellshock (CVE-2014-6271)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#AfterShock_%E2%80%93_CVE-2014-7169_%EF%BC%88%E5%8F%88%E5%8F%ABIncomplete_fix_to_Shellshock%EF%BC%89" title="AfterShock – CVE-2014-7169 （又叫Incomplete fix to Shellshock）">AfterShock – CVE-2014-7169 （又叫Incomplete fix to Shellshock）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%8E%9F%E7%90%86%E5%92%8C%E6%8A%80%E6%9C%AF%E7%BB%86%E8%8A%82" title="原理和技术细节">原理和技术细节</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#bash%E7%9A%84%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F" title="bash的环境变量">bash的环境变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#bash%E7%9A%84%E5%87%BD%E6%95%B0" title="bash的函数">bash的函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#bash%E7%9A%84bug" title="bash的bug">bash的bug</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#bash%E6%BC%8F%E6%B4%9E%E7%9A%84%E5%BD%B1%E5%93%8D%E6%9C%89%E5%A4%9A%E5%A4%A7" title="bash漏洞的影响有多大">bash漏洞的影响有多大</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%85%B3%E4%BA%8E_AfterShock_%E2%80%93_CVE-2014-7169_%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC%E7%9A%84%E8%A7%A3%E9%87%8A" title="关于 AfterShock – CVE-2014-7169 测试脚本的解释">关于 AfterShock – CVE-2014-7169 测试脚本的解释</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Shellshock_CVE-2014-6271"></span>Shellshock (CVE-2014-6271)<span class="ez-toc-section-end"></span></h4>
+<p>下面是一个简单的测试：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ env VAR=&#39;() { :;}; echo Bash is vulnerable!&#39; bash -c &#34;echo Bash Test&#34;</code></p>
+<p>如果你发现上面这个命令在你的bash下有这样的输出，那你就说明你的bash是有漏洞的：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">Bash is vulnerable!
+Bash Test</pre>
+<p>简单地看一下，其实就是向环境变量中注入了一段代码 <strong>echo Bash is vulnerable</strong>。关于其中的原理我会在后面给出。</p>
+<p>很快，CVE-2014-6271的官方补丁出来的了——<a href="https://lists.gnu.org/archive/html/bug-bash/2014-09/msg00081.html" target="_blank">Bash-4.3 Official Patch 25</a>。</p>
+<p><span id="more-11973"></span></p>
+<h4><span class="ez-toc-section" id="AfterShock_%E2%80%93_CVE-2014-7169_%EF%BC%88%E5%8F%88%E5%8F%ABIncomplete_fix_to_Shellshock%EF%BC%89"></span>AfterShock – CVE-2014-7169 （又叫Incomplete fix to Shellshock）<span class="ez-toc-section-end"></span></h4>
+<p>但随后，马上有人在Twitter上发贴——<a href="https://twitter.com/taviso/statuses/514887394294652929" target="_blank">说这是一个不完整的fix</a>，并给出了相关的攻击方法。</p>
+<p><a href="https://twitter.com/taviso/statuses/514887394294652929" target="_blank"><img decoding="async" loading="lazy" class="aligncenter size-medium wp-image-11974" src="/uploads/2014/09/bash-300x153.jpg" alt="" width="300" height="153" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></a></p>
+<p>也就是下面这段测试代码（注意，其中的sh在linux下等价于bash）：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">env X=&#39;() { (a)=&gt;\&#39; sh -c &#34;echo date&#34;; cat echo</code></p>
+<p>上面这段代码运行起来会报错，但是它要的就是报错，报错后会在你在当前目录下生成一个echo的文件，这个文件的内容是一个时间文本。下面是上面 这段命令执行出来的样子。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ env X=&#39;() { (a)=&gt;\&#39; sh -c &#34;echo date&#34;; cat echo
+sh: X: line 1: syntax error near unexpected token `=&#39;
+sh: X: line 1: `&#39;
+sh: error importing function definition for `X&#39;
+Sat Sep 27 22:06:29 CST 2014</pre>
+<p>这段测试脚本代码相当的诡异，就像“天书”一样，我会在后面详细说明这段代码的原理。</p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E7%90%86%E5%92%8C%E6%8A%80%E6%9C%AF%E7%BB%86%E8%8A%82"></span>原理和技术细节<span class="ez-toc-section-end"></span></h4>
+<p>要说清楚这个原理和细节，我们需要从 bash的环境变量开始说起。</p>
+<h5><span class="ez-toc-section" id="bash%E7%9A%84%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"></span>bash的环境变量<span class="ez-toc-section-end"></span></h5>
+<p>环境变量大家知道吧，这个不用我普及了吧。环境变量是操作系统运行shell中的变量，很多程序会通过环境变量改变自己的执行行为。在bash中要定义一个环境变量的语法很简单（注：=号的前后不能有空格）：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ var=&#34;hello world&#34;</code></p>
+<p>然后你就可以使用这个变量了，比如：echo $var什么的。但是，我们要知道，这个变量只是一个当前shell的“局部变量”，只在当前的shell进程中可以访问，这个shell进程fork出来的进程是访问不到的。</p>
+<p>你可以做这样的测试：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ var=&#34;hello coolshell&#34;
+$ echo $var
+hello coolshell
+$ bash
+$ echo $var
+</pre>
+<p>上面的测试中，第三个命令执行了一个bash，也就是开了一个bash的子进程，你就会发现var不能访问了。</p>
+<p>为了要让shell的子进程可以访问，我们需要export一下：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ export var=&#34;hello coolshell&#34;</code></p>
+<p>这样，这个环境变量就会在其子进程中可见了。</p>
+<p>如果你要查看一下有哪些环境变量可以在子进程中可见（也就是是否被export了），你可使用<strong>env</strong>命令。不过，env命令也可以用来定义export的环境变量。如下所示：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ env var=&#34;hello haoel&#34;</code></p>
+<p>有了这些基础知识还不够，我们还要知道一个基础知识——shell的函数。</p>
+<h5><span class="ez-toc-section" id="bash%E7%9A%84%E5%87%BD%E6%95%B0"></span>bash的函数<span class="ez-toc-section-end"></span></h5>
+<p>在bash下定义一个函数很简单，如下所示：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ foo(){ echo &#34;hello coolshell&#34;; }
+$ foo
+hello coolshell</pre>
+<p>有了上面的环境变量的基础知识后，你一定会想试试这个函数是否可以在子进程中调用，答案当然是不行的。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ foo(){ echo &#34;hello coolshell&#34;; }
+$ foo
+hello coolshell
+$ bash
+$ foo
+bash: foo: command not found</pre>
+<p>你看，和环境变量是一样的，如果要在子进程中可以访问的话，那么，还是一样的，需要export，export有个参数 -f，意思是export一个函数。如：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="4">$ foo(){ echo &#34;hello coolshell&#34;; }
+$ foo
+hello coolshell
+$ export -f foo
+$ bash
+$ foo
+hello coolshell</pre>
+<p>好了，我讲了这么半天的基础知识，别烦，懂了这些，你才会很容易地理解这两个漏洞是怎么回事。</p>
+<p>好，现在要进入正题。</p>
+<h5><span class="ez-toc-section" id="bash%E7%9A%84bug"></span>bash的bug<span class="ez-toc-section-end"></span></h5>
+<p>从上面我们可以看到，bash的变量和函数用了一模一样的机制，如果你用env命令看一下export出来的东西，你会看到上面我们定义的变量和函数都在，如下所示（我省略了其它的环境变量）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ env
+var=hello coolshell
+foo=() { echo &#34;hello coolshell&#34;
+}</pre>
+<p>原来，都用同样的方式啊——<strong>无论是函数还是变量都是变量啊</strong>。于是，看都不用看bash的源代码，聪明的黑客就能猜得到——<strong>bash判断一个环境变量是不是一个函数，就看它的值是否以”()”开始</strong>。于是，一股邪念涌上心头。</p>
+<p>黑客定义了这样的环境变量（注：() 和 { 间的空格不能少）：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ export X=&#39;() { echo &#34;inside X&#34;; }; echo &#34;outside X&#34;;&#39;</code></p>
+<p>env一下，你会看到X已经在了：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ env
+X=(){ echo &#34;inside X&#34;; }; echo &#34;outside X&#34;;</pre>
+<p>然后，<strong>当我们在当前的bash shell进程下产生一个bash的子进程时，新的子进程会读取父进程的所有export的环境变量，并复制到自己的进程空间中，很明显，上面的X变量的函数的后面还注入了一条命令：echo “outside X”，这会在父进程向子进程复制的过程中被执行吗？</strong>（关于fork相关的东西你可以看一下我以前写的《<a title="一个fork的面试题" href="/articles/7965.html" target="_blank">fork的一个面试题</a>》）</p>
+<p>答案是肯定的。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ export X=&#39;() { echo &#34;inside X&#34;; }; echo &#34;outside X&#34;;&#39;
+$ bash
+outside X</pre>
+<p>你看，一个代码注入就这样完成了。这就是bash的bug—— <strong>函数体外面的代码被默认地执行了</strong>。</p>
+<p>我们并不一定非要像上面那样创建另一个bash的子进程，我们可以使用bash -c的参数来执行一个bash子进程命令。就像这个安全漏洞的测试脚本一样：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">env VAR=&#39;() { :;}; echo Bash is vulnerable!&#39; bash -c &#34;echo Bash Test&#34;</code></p>
+<p>其中，() { :;} 中的冒号就相当于/bin/true，返回true并退出。而bash -c其实就是在spawn一个bash的echo的子进程，用于触发函数体外的echo命令。所以，更为友好一点的测试脚本应该是：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">env VAR=&#39;() { :;}; echo Bash is vulnerable!&#39; bash -c &#34;echo 如果你看到了vulnerable字样说明你的bash有安全问题&#34;</code></p>
+<p>OK，你应该明白这个漏洞是怎么一回事了吧。</p>
+<h4><span class="ez-toc-section" id="bash%E6%BC%8F%E6%B4%9E%E7%9A%84%E5%BD%B1%E5%93%8D%E6%9C%89%E5%A4%9A%E5%A4%A7"></span>bash漏洞的影响有多大<span class="ez-toc-section-end"></span></h4>
+<p>在网上看到好多人说这个漏洞不大，还说这个事只有那些陈旧的执行CGI脚本的网站才会有，现在已经没有网站用CGI了。我靠，这真是无知者无畏啊。</p>
+<p>我举个例子，如果你的网站中有调用操作系统的shell命令，比如你用PHP执行个exec之类的东西。这样的需求是有的，特别是对于一些需要和操作系统交互的重要的后台用于系统管理的程序。于是就会开一个bash的进程来执行。</p>
+<p>我们还知道，现在的HTTP服务器基本上都是以子进程式的，所以，其中必然会存在export 一些环境变量的事，而有的环境变量的值是从用户端来的，比如：HTTP_USER_AGENT这样的环境变量，只由浏览器发出的。其实这个变量你想写成什么就写成什么。</p>
+<p>于是，我可以把这个HTTP_USER_AGENT的环境变量设置成上述的测试脚本，只不过，我会把echo Bash is vulnerable!这个东西换成别的更为凶残的命令。呵呵。</p>
+<p>关于这个漏洞会影响哪些已有的系统，你可以自己Google，几乎所有的报告这个漏洞的文章都说了（比如：<a href="https://securityblog.redhat.com/2014/09/24/bash-specially-crafted-environment-variables-code-injection-attack/" target="_blank">这篇</a>，<a href="https://www.digitalocean.com/community/tutorials/how-to-protect-your-server-against-the-shellshock-bash-vulnerability" target="_blank">这篇</a>），我这里就不复述了。</p>
+<p>注：如果你要看看你的网站有没有这样的问题，你可以用这个在线工具测试一下：<a href="http://shellshock.brandonpotter.com/">‘ShellShock’ Bash Vulnerability CVE-2014-6271 Test Tool</a>。</p>
+<p>现在，你知道这事可能会很大了吧。还不赶快去打补丁。（注，yum update bash 把bash版本升级到 4.1.2-15.el6_5.2 ， ）</p>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8E_AfterShock_%E2%80%93_CVE-2014-7169_%E6%B5%8B%E8%AF%95%E8%84%9A%E6%9C%AC%E7%9A%84%E8%A7%A3%E9%87%8A"></span>关于 AfterShock – CVE-2014-7169 测试脚本的解释<span class="ez-toc-section-end"></span></h4>
+<p>很多同学没有看懂下面这个测试脚本是什么意思，我这里解释一下。</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">env X=&#39;() { (a)=&gt;\&#39; sh -c &#34;echo date&#34;; cat echo</code></p>
+<ul>
+<li>X=&#39;() { (a)=&gt;\’ 这个不用说了，定义一个X的环境变量。但是，这个函数不完整啊，是的，这是故意的。另外你一定要注意，\’不是为了单引号的转义，X这个变量的值就是 <strong>() { (a)=&gt;\</strong></li>
+</ul>
+<ul>
+<li>其中的 (a)=这个东西目的就是为了让bash的解释器出错（语法错误）。</li>
+</ul>
+<ul>
+<li>语法出错后，在缓冲区中就会只剩下了 “&gt;\”这两个字符。</li>
+</ul>
+<ul>
+<li>于是，这个神奇的bash会把后面的命令echo date换个行放到这个缓冲区中，然后执行。</li>
+</ul>
+<p>相当于在shell 下执行了下面这个命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ &gt;\
+echo date</pre>
+<p>如果你了解bash，你会知道 \ 是用于命令行上换行的，于是相当于执行了：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW"> $ &gt;echo date</code></p>
+<p>这不就是一个重定向么？上述的命令相当于：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ date &gt; echo </code></p>
+<p>于是，你的当前目录下会出现一个echo的文件，这个文件的内容就是date命令的输出。</p>
+<p><strong>能发现这个种玩法的人真是个变态，完全是为bash的源代码量身定制的一个攻击</strong>。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11973-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">技术新闻</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Bash</a>, <a href="javascript:void(0)" rel="tag">env</a>, <a href="javascript:void(0)" rel="tag">export</a>, <a href="javascript:void(0)" rel="tag">安全</a>, <a href="javascript:void(0)" rel="tag">安全补丁</a>, <a href="javascript:void(0)" rel="tag">环境变量</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>bash代码注入的安全漏洞</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1571515" class="comment even thread-even depth-1">
+<article id="div-comment-1571515" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a65bacaa97a9e62e83566a52d67bd6b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a65bacaa97a9e62e83566a52d67bd6b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shanjigo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1571515"><time datetime="2014-10-14T10:24:21+08:00">2014年10月14日 10:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>讲解的非常清楚，明白。难得！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1580237" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1580237" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9a038d17376ab80c6b114f9bf95d487?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9a038d17376ab80c6b114f9bf95d487?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jackyshan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1580237"><time datetime="2014-10-22T16:45:49+08:00">2014年10月22日 16:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好多玩法，hacker思想好怪异啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1580296" class="comment even thread-even depth-1">
+<article id="div-comment-1580296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c17ff2ae158be9549f4b05722e13ef39?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c17ff2ae158be9549f4b05722e13ef39?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">roxillius</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1580296"><time datetime="2014-10-22T18:13:00+08:00">2014年10月22日 18:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚开始学bash的时候 看过一本advanced bash scripting里边百分之九十的例子都是这哥们提供的， 这下哥们更出名了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1581407" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1581407" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e44dee50d3cbe4d2388ca689cf0cc3cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e44dee50d3cbe4d2388ca689cf0cc3cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">梦流星</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1581407"><time datetime="2014-10-24T01:27:49+08:00">2014年10月24日 01:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1558266" rel="nofollow">@Jayvic </a><br/>
+不是这样的, 是在apache传递参数给php的时候, 这时候http头的信息 比如user-agent 这些参数 都是以环境变量的方式传递给php子进程的, 这个时候就会造成注入漏洞</p>
+</div>
+ </article>
+</li>
+<li id="comment-1585962" class="comment even thread-even depth-1">
+<article id="div-comment-1585962" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d9f4792a3f9f22adb65b1da8dcfaf88?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d9f4792a3f9f22adb65b1da8dcfaf88?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.jfsg.net/" class="url" rel="ugc external nofollow">减肥水果</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1585962"><time datetime="2014-10-28T09:59:47+08:00">2014年10月28日 09:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章说的不错赞一个！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1587994" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1587994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/85b5fa780e6dc9e90b0398ba310512b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/85b5fa780e6dc9e90b0398ba310512b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.3gcnbeta.com" class="url" rel="ugc external nofollow">北漂IT民工</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1587994"><time datetime="2014-10-30T15:22:25+08:00">2014年10月30日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>夸大了点。Web服务器不用cgi如何影响？ APACHE都没有几个人用了。更不用mod_cgi。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1591391" class="comment even thread-even depth-1">
+<article id="div-comment-1591391" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc7e244a9126be4183a7c5b4f59a4650?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc7e244a9126be4183a7c5b4f59a4650?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hwppw.com/" class="url" rel="ugc external nofollow">户外品牌网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1591391"><time datetime="2014-11-03T12:03:41+08:00">2014年11月03日 12:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刚好在找这方面的内容 学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1592641" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1592641" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f1a6355b7c2f8726cb41cd28fe66b1ed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f1a6355b7c2f8726cb41cd28fe66b1ed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hao60.net" class="url" rel="ugc external nofollow">养生</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1592641"><time datetime="2014-11-04T13:56:53+08:00">2014年11月04日 13:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，阿里云的解决方法目前看是最完美的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1602962" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1602962" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1602962"><time datetime="2014-11-14T15:22:40+08:00">2014年11月14日 15:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第二种玩法真心变态。。。这人是多么了解bash呀，至少使用bash超过1w小时。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1607962" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1607962" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4a3f3bfe74fa4ab2e69df150ecaac35?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4a3f3bfe74fa4ab2e69df150ecaac35?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zhidao91.com" class="url" rel="ugc external nofollow">知道91博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1607962"><time datetime="2014-11-19T01:25:35+08:00">2014年11月19日 01:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>linux大神啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1621652" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1027" class="url" rel="ugc external nofollow">Google Inbox如何跨平台重用代码？ | 星达红</a> </div>
+</li>
+<li id="comment-1630354" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1030" class="url" rel="ugc external nofollow">DHH 谈混合移动应用开发 | 星达红</a> </div>
+</li>
+<li id="comment-1641393" class="comment even thread-even depth-1">
+<article id="div-comment-1641393" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf7680a8437573f399c4e53f1fa8b49d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf7680a8437573f399c4e53f1fa8b49d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.iitshare.com/" class="url" rel="ugc external nofollow">爱分享</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1641393"><time datetime="2015-01-06T22:59:32+08:00">2015年01月06日 22:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章分析的挺细，有点深度</p>
+</div>
+ </article>
+</li>
+<li id="comment-1645282" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1645282" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ffda26864125066ea073cc43b60256d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/weishun" class="url" rel="ugc external nofollow">pythonwood</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1645282"><time datetime="2015-01-15T19:50:19+08:00">2015年01月15日 19:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://www.nitscan.com/?post=62" rel="nofollow ugc">http://www.nitscan.com/?post=62</a></p>
+<p> CVE-2014-6271</p>
+<p>+env X=&#39;() { :; }; echo “CVE-2014-6271 vulnerable”‘ bash -c id</p>
+<p>CVE-2014-7169</p>
+<p>env X=&#39;() { (a)=&gt;\’ bash -c “echo date”; cat echo</p>
+<p>CVE-2014-7186</p>
+<p>bash -c ‘true &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF &lt;&lt;EOF&#39; || echo &#34;CVE-2014-7186 vulnerable, redir_stack&#34;</p>
+<p>CVE-2014-7187</p>
+<p>(for x in {1..200} ; do echo &#34;for x$x in ; do :&#34;; done; for x in {1..200} ; do echo done ; done) | bash || echo &#34;CVE-2014-7187 vulnerable, word_lineno&#34;</p>
+</div>
+ </article>
+</li>
+<li id="comment-1645515" class="comment even thread-even depth-1">
+<article id="div-comment-1645515" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de320648c92a9aee8187879b0b856cb1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de320648c92a9aee8187879b0b856cb1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.j2st.com" class="url" rel="ugc external nofollow">Jackey90</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1645515"><time datetime="2015-01-16T13:01:53+08:00">2015年01月16日 13:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很仔细啊 连我这个shell初级用户都可以看的明白</p>
+</div>
+ </article>
+</li>
+<li id="comment-1645537" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1645537" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de5be69d9b9baf9221728e66202c8e36?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de5be69d9b9baf9221728e66202c8e36?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dcfans.com.cn" class="url" rel="ugc external nofollow">单车</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1645537"><time datetime="2015-01-16T15:42:23+08:00">2015年01月16日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>单车：www.dcfans.com.cn</p>
+</div>
+ </article>
+</li>
+<li id="comment-1668749" class="comment even thread-even depth-1">
+<article id="div-comment-1668749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hetiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1668749"><time datetime="2015-02-28T10:08:38+08:00">2015年02月28日 10:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1557576" rel="nofollow">@zehlp </a><br/>
+同样有这个疑问。哪个blog介绍了这点？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1668775" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1668775" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hetiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1668775"><time datetime="2015-02-28T11:22:12+08:00">2015年02月28日 11:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1557576"><p>
+<strong><a href="#comment-1557576" rel="nofollow">zehlp</a> :</strong><br/>
+皓叔能不能帮忙解释一下：为什么在fork子进程时，复制父进程的环境变量的过程中会执行到注入的语句呢？我看了相关的blog，没弄明白。还是说，可以不深究这个问题，只要知道他就是会运行的？
+</p></blockquote>
+<p>从BASH源码variables.c中可以发现，其在判断变量是否为函数并不严格，只要首字母为”() {”开头即对代码进行parse_and_execute执行，该函数就好比于php的eval函数，会把参数值当成命令去执行。由于函数体后被插入了bash代码，经过此函数时，未做校验，直接执行了一系列的环境变量赋值操作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1668786" class="comment even thread-even depth-1">
+<article id="div-comment-1668786" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hetiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1668786"><time datetime="2015-02-28T11:39:38+08:00">2015年02月28日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1558075"><p>
+<strong><a href="#comment-1558075" rel="nofollow">booirror</a> :</strong><br/>
+() 和 { 间的空格不能少，这是为什么？
+</p></blockquote>
+<p>bash源码variables.c中判断变量是否为函数的这一行：<br/>
+if (privmode == 0 &amp;&amp; read_but_dont_execute == 0 &amp;&amp; STREQN (“() {“, string, 4))<br/>
+字符串”() {“中间有空格，如果没空格bash不会判断为函数。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1679210" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1679210" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9b6ea6e937e226ea5f24325ef6f1c8e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9b6ea6e937e226ea5f24325ef6f1c8e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tshare365.com/" class="url" rel="ugc external nofollow">tshare365</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1679210"><time datetime="2015-03-23T18:25:05+08:00">2015年03月23日 18:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分析的很到位，不过服务器还都的重启才能生效吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1684865" class="comment even thread-even depth-1">
+<article id="div-comment-1684865" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccb42cc09217622b1d3592045d401413?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccb42cc09217622b1d3592045d401413?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chenmx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1684865"><time datetime="2015-04-02T16:25:28+08:00">2015年04月02日 16:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>安全问题的确防不胜防，要了解缘由，需要明白底层</p>
+</div>
+ </article>
+</li>
+<li id="comment-1689618" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1689618" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98ee72f7f1a4b8a388cd8a2183abf24e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98ee72f7f1a4b8a388cd8a2183abf24e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NER0</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1689618"><time datetime="2015-04-13T22:26:24+08:00">2015年04月13日 22:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>對設計粗糙，語法詭異的「Bash語言」，我想引用一句愛因斯坦的名言，出來混，遲早是要還的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1707653" class="comment even thread-even depth-1">
+<article id="div-comment-1707653" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a65df8ec796d4682b415805a5f1344a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a65df8ec796d4682b415805a5f1344a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/gityf" class="url" rel="ugc external nofollow">voipman</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1707653"><time datetime="2015-05-15T16:05:50+08:00">2015年05月15日 16:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>[tst]$ ls<br/>
+[tst]$ touch f1<br/>
+[tst]$ touch f2<br/>
+[tst]$ ls<br/>
+f2 file<br/>
+[tst]$ env X=&#39;() { (a)=\’&gt;\’ sh -c “date”<br/>
+[tst]$ ls<br/>
+‘ f2 file<br/>
+[tst]$ cat \’<br/>
+2015年 05月 15日 星期五 15:51:27 CST<br/>
+[tst]$ env X=&#39;() { (a)=\’&gt;\’ sh -c “rm f*”</p>
+<p>大神，看了你的描述，很有收获，想咨询一下，我测试的这句shell是注入吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1707654" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1707654" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a65df8ec796d4682b415805a5f1344a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a65df8ec796d4682b415805a5f1344a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/gityf" class="url" rel="ugc external nofollow">voipman</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1707654"><time datetime="2015-05-15T16:08:17+08:00">2015年05月15日 16:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1707653" rel="nofollow">@voipman </a><br/>
+粘贴的有点错误，touch file</p>
+</div>
+ </article>
+</li>
+<li id="comment-1710492" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iteaer.com/?p=431" class="url" rel="ugc external nofollow">关于移动端的钓鱼式攻击 | IT茶人---茗香燕归来</a> </div>
+</li>
+<li id="comment-1741998" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1741998" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bead4c918318e8ed94f18113bf5c5b76?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bead4c918318e8ed94f18113bf5c5b76?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">macaw_w</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1741998"><time datetime="2015-07-30T21:46:48+08:00">2015年07月30日 21:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>env VAR=&#39;() { :;}; echo Bash is vulnerable!’ bash -c “echo Bash Test”<br/>
+VAR=&#39;() { :;}; echo Bash is vulnerable!’ bash -c “echo Bash Test”<br/>
+在bash里面env似乎只有查询的作用，上面2个是一样的<br/>
+env后面的也带不到子shell里面去</p>
+</div>
+ </article>
+</li>
+<li id="comment-1800708" class="comment even thread-even depth-1">
+<article id="div-comment-1800708" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/663d6553e2666d98c566614ac540d847?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/663d6553e2666d98c566614ac540d847?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Favor</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1800708"><time datetime="2015-12-14T10:32:13+08:00">2015年12月14日 10:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>能发现这个种玩法的人真是个变态，完全是为bash的源代码量身定制的一个攻击。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914406" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qianpangzi.com/2017/01/07/%e4%bb%8e-mongodb-%e8%b5%8e%e9%87%91%e4%ba%8b%e4%bb%b6-%e7%9c%8b%e5%ae%89%e5%85%a8%e9%97%ae%e9%a2%98/" class="url" rel="ugc external nofollow">从 MongoDB “赎金事件” 看安全问题 - 钱胖子</a> </div>
+</li>
+<li id="comment-1915186" class="comment even thread-even depth-1">
+<article id="div-comment-1915186" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5fdc5bf413760842928aa3b206d814a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5fdc5bf413760842928aa3b206d814a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ferry</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1915186"><time datetime="2017-07-11T21:16:37+08:00">2017年07月11日 21:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不明觉厉</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916709" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1916709" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c1a64b5ff0479c53db408b7d9569c8c9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c1a64b5ff0479c53db408b7d9569c8c9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">secnoodle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11973.html/comment-page-3#comment-1916709"><time datetime="2017-08-23T15:46:12+08:00">2017年08月23日 15:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>通俗易懂，感谢详细讲解</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917024" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=114" class="url" rel="ugc external nofollow">如何免费的让网站启用HTTPS – IT青年文摘</a> </div>
+</li>
+<li id="comment-1917052" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.kyrios.cn/2017/08/30/pwnable9-shellshock/" class="url" rel="ugc external nofollow">Pwnable(9)–shellshock – Kyrios&#39; Blog</a> </div>
+</li>
+<li id="comment-1924890" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.kyrios.cn/2017/04/08/pwnable1/" class="url" rel="ugc external nofollow">Pwnable.kr学习笔记 – Kyrios&#39; Blog</a> </div>
+</li>
+<li id="comment-1942879" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/10116.html" class="url" rel="ugc external nofollow">从 MongoDB “赎金事件” 看安全问题 – 西部IT科技</a> </div>
+</li>
+<li id="comment-1997769" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cn-sec.com/archives/62483.html" class="url" rel="ugc external nofollow">Shellshock漏洞回顾与分析测试 | CN-SEC 中文网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11973.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11973.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/11973.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">11973</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

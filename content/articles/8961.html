@@ -1,0 +1,513 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>从面向对象的设计模式看软件设计 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8961 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8961" class="post-content post-8961 post type-post status-publish format-standard hentry category-unixlinux category-misc category-progdesign tag-design tag-design-pattern tag-object-oriented tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">从面向对象的设计模式看软件设计</span>
+<h1 class="entry-title">从面向对象的设计模式看软件设计</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8961.html" title="08:15" rel="bookmark"><time class="entry-date" datetime="2013-02-01T08:15:59+08:00" pubdate="">2013年02月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8961.html#comments" class="comments-link">92 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 91,180 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>前些天发了一篇《<a title="如此理解面向对象编程" href="/articles/8745.html" target="_blank" rel="bookmark">如此理解面向对象编程</a>》的文章，然后引起了大家的热议。然后我在<a href="http://weibo.com/1401880315/z9wWHrrVR" target="_blank">微博上说</a>了一句——“<strong>那23个经典的设计模式和OO半毛钱关系没有，只不过人家用OO来实现罢了……OO的设计模式思想和Unix的设计思想基本没什么差别</strong>”，结果引来了一点点争议。所以，我写下这篇文章把我的观点说明一下。我希望这样可以让大家更容易地理解什么是设计模式。<strong>我顺便帮OO和 Unix/Linux搞搞基</strong>。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E6%A8%A1%E5%BC%8F" title="什么是模式">什么是模式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#GoF%E7%9A%8423%E4%B8%AA%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F" title="GoF的23个设计模式">GoF的23个设计模式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%90%8E%E8%AE%B0" title="后记">后记</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E9%A4%90%E5%90%8E%E7%94%9C%E7%82%B9" title="餐后甜点">餐后甜点</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%86%8D%E9%80%81%E4%B8%80%E4%B8%AA%E6%9E%9C%E7%9B%98" title="再送一个果盘">再送一个果盘</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BB%80%E4%B9%88%E6%98%AF%E6%A8%A1%E5%BC%8F"></span>什么是模式<span class="ez-toc-section-end"></span></h4>
+<p>在正式说明GoF的那23个经典的设计模式其实和OO关系不大并和Unix的设计思想很相似的这个观点之前，让我先来说说什么是模式？设计模式的英文是Design Pattern，模式是Pattern的汉译。所谓Pattern就是一种规则，或是一种模型，或是一种习惯。Pattern这个东西到处都是，并不只有技术圏子里才有。比如：</p>
+<ul>
+<li>文章有文章的Pattern。如新闻有新闻的Pattern（第一段话简述了整个新闻），诗歌总是抒情的，论文总是死板的，讲稿总是高谈的，漫画总是幽默的，……</li>
+<li><span style="line-height: 13px;">小说有小说的Pattern。比如，</span>
+<ul>
+<li><span style="line-height: 13px;">武侠小说必然要整个武林大会，整几个NB的武功和大师，分个正派和反派，还有一个或数个惊天阴谋，坏人总是要在一开始占尽优势，好人总是要力挽狂澜……</span></li>
+<li><span style="line-height: 13px;">言情小说总是要有第三者，总是要有负心人，里面的女子总是要哭得死去活来，但又痴心不改，……</span></li>
+</ul>
+</li>
+<li> 新闻联播的模式是：头10分钟领导很忙，中间10分钟人民很幸福，后10分钟国外很乱。中国政府官方宣传稿也模式也很明显，各种赞美，口号，胜利，总是要坚持个什么，团结个什么，迈向个什么，某某精神，某某思想，群众情绪稳定，不明真相，等等……</li>
+<li>春节的模式是，回家，吃饺子，放个鞭炮，给压岁钱，同学聚会…… 同学聚会的模式基本上都是在饭桌上回忆一下校园时光，比较一下各自的当前处境，调戏一下女同学……</li>
+<li>…… ……</li>
+</ul>
+<p>这就是Pattern，只要你细心观察，你会发现这世间有很多很多的Pattern。</p>
+<p><span id="more-8961"></span></p>
+<h4><span class="ez-toc-section" id="GoF%E7%9A%8423%E4%B8%AA%E8%AE%BE%E8%AE%A1%E6%A8%A1%E5%BC%8F"></span>GoF的23个设计模式<span class="ez-toc-section-end"></span></h4>
+<p>《<a href="http://product.china-pub.com/25961" target="_blank">设计模式</a>》这本书中，GoF这四个人总结了23个经典的面向对象的设计模式，某中有5个创建模式，7个结构模式，11个行为模式。<strong>很多人都会觉得这是面向对象的设计模式，很多人也觉得非面向对象不能用这些模式。我觉得这是一种教条主义。</strong>就像《<a title="各种流行的编程风格" href="/articles/2058.html" target="_blank">那些流行的编程方法</a>》中的“设计模式驱动型编程”一样，就像《<a title="如此理解面向对象编程" href="/articles/8745.html" target="_blank">如此理解面向对象</a>》一样的那么的滑稽。</p>
+<p>好了，回到我的论点——“<strong>GoF的这23个设计模式和OO关系不大，并且和Unix的设计思想基本一致，只不过GoF用OO实现了它们</strong>”，就像我上面说过的那些生活中的Pattern一样，只要你仔细思考，你会发现这23个设计模式在我们的生活和社会中也能有他们的身影。而且也一样可以用OO的方式实现之。</p>
+<p>让我们来看看这23个经典的设计模式中的几个常用的模式：</p>
+<p><strong>Factory 模式</strong>，这个模式可能是是个人都知道的模式。这个模式在现实社会中就像各种工厂一样，工厂跨界的不多，基本上都是在生产同一类的产品，有的生产汽车，有的生产电视，有的生产衣服，有的生产卫生纸……基本上来说，一个生产线上只有做同一类的东西。这和Factory模式很相似。编程中，像内存池，线程池，连接池等池化技术都是这个模式，当然，Factory给你的一个对象，而不单单只是资源，factory创建出来的对象都有同样的接口可以被多态调用。<strong>这其实和Unix把所有的硬件都factory成文件一样，并提供了read/write等文件操作来让你操作任意设备的I/O</strong>。</p>
+<p><strong>Abstract Factor</strong>y：抽象工厂这个模式是创建一组有同一主题的不同的类。这个模式在现实社会当中也有很多例子，比如：</p>
+<ul>
+<li>移动公司的合约机计划，88套餐（通话100分钟，短信100条，彩信，20条，上网200M），128套餐（通话200分钟，短信150条，彩信50条，上网500M）……</li>
+</ul>
+<ul>
+<li>家里的装修，总是要有厨卫，有门，有灯，有沙发，有茶几，有床，有衣柜，有电视，有冰箱，有洗衣机……，这些都是必需的，只是每个家庭里的具体装修不一样。</li>
+</ul>
+<ul>
+<li>Diablo游戏中的Normal，Hard，Nightmare，Hell模式，这些模式的怪和场景和故事情况都差不多，就是每个场景的怪物和装备的属性不一样。或是WarCraft中的地图就是一个Abstract Factory模式(注：Warcraft的地图什么都能干)。这和学校中的小学，初中，高中，大学差不多，都是一样的学习环境，一样的教学方式，一样的教室，都要期中考和期末考，都有班长和科代表，就是学的东西的难度不一样，但基本上都是语文，英语，数，理，化，还有永远都有的政治课。学校就是一个抽象工厂。</li>
+</ul>
+<p>这就是抽象工厂的业务模型（或是：Business Pattern），你觉得是不是不一定非要用OO来实现这样的模式？（我们思考一下，我们会不会被先入为主了，觉得不会OO都不知道怎么实现了），不用OO，用相同格式但内容不同的配置文件是不是也能实现？在Unix下<strong>，抽象工厂这个模式在Unix下就像是/etc/rcX.d下的那些东西，1代表命令行单用户，2，代表命令行多用户，3代表命令行多用户完整模式启动，5代表图形界面启动，0代表关机，6代表重启，你要切换的话，init &lt;X&gt;就行了</strong>。</p>
+<p><strong>Prototype模式</strong>，原型模式，复制一个类的实现。这个模式在现实中的例子也有很多：传真，复印，都是这个模式。<strong>Unix进程和Github项目的Fork就是一种。进程fork明显不是OO的模型</strong>（参看：<a title="一个fork的面试题" href="/articles/7965.html" target="_blank">关于Fork的一道面试题</a>）。用非OO的方法同样可以实现这个模式。</p>
+<p><strong>Singleton模式</strong>，单例模式。生活中，公司只有一个CEO，法律限制你只能有一个老婆，你只能有一个身份证号，一个TCP端口只能被一个进程使用，等等。软件开发方面，并不一定只有OO才能做到，你可以用一个全局变量，一个中心服务器，甚至可以使用行政手段来约束开发中不会出现多个实例。<strong>Unix下实现单例进程的一个最常用的实践是在进程启动的时候用“(S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH)”模式打开一个“锁文件”</strong>。</p>
+<p><strong>Adapter模式</strong>，适配器模式。可以兼容欧洲美国中国的插头或插座，万能读卡器，可以播放各种格式多媒体文件的插放器，可以解析FTP/HTTP/HTTPS/等网络协议的浏览器，可以兼容各大银行的银联接口、支付宝、Paypal、VISA等银行接口，可以适配各种后端的解释器的Nginx或Apache，等等。用非OO的编程方式就是重新包装成一个标准接口。<strong>这个模式很像Unix下的/dev下的那些文件，操作系统把系统设备适配成文件，于是你就可以使用read/write来进行读写了</strong>。</p>
+<p><strong>Bridge模式</strong>，桥接模式。这个模式用的更多，比如一个灯具可以接各种灯泡或灯管，一个电钻可以换上不同的钻头来适应不同的材料，一辆汽车可以随时更换不同的轮胎来适应不同的路面，你的桌面可以随时更换一个图片来适应你的心情，你的单反相机可以更换不同的镜头来拍不同的照片…… 桥接模式说白了就是组件化，模块化，可以自由拼装。在OO中，其主要是通过让业务类组合一个标准接口来完成，这在非OO的程序设计中用得实在是太多了，主要是通过回调函数或是标准接口来实现。这个也是Unix设计哲学中的主要思想。<strong>在Unix中，文件的权限使用的就是Bridge模式，标准接口是用户，用户组和其它，rwx三个模式，然后用 chmod/chown改一改，这文件就有不同的属主和属性了</strong>。</p>
+<p><strong>Decorator模式</strong>，装饰模式。这个模式在生活中太多了，你给你的手机或电脑贴个什么，挂个什么，吃东西的时候加点什么佐料，多点肉还是多个蛋，一个Unix/Linux命令的各种参数是对这个命令的修饰，等等。<strong>我觉得这个模式在Unix中最经常的体现就是通过管道把命令连接起来来完成一个功能</strong>，比如：ps -elf  是列进程的，用管道 grep hchen就可以达到过滤的目的，grep的逻辑没有侵入ps中，grep 修饰了 ps，但是其组合起来完成了一个特定的功能。可见，这和OO没有什么关系。</p>
+<p><strong>Facade模式，</strong>这个模式我们每个人从会编程的时候就在无意识地用这个模式了。这个模式就是把一大堆类拼装起来，并统一往外提供提口。在现实生活中这样的例子太多了，比如：旅行社把机票，酒店，景点，导游，司机，进店打了一个包叫旅行；IBM把主机，存储，OS，J2EE，DB，网络，流程打了个包叫企业级解决方案。Unix中最典型的一个例子就是用Shell脚本组合各种命令来创造一个新的功能，这是的Shell中的各种命令通过标准I/O这个接口进行组合交互。</p>
+<p><strong>Proxy模式</strong>，代理模式。我们租个房，买个机票，打个官司，都少不了代理，人大代表代理了老百姓去行使政治权力。我们去饭馆里吃饭也是一种代理模式，因为我们只管吃就好了，洗菜做饭洗碗的工作都被Proxy帮你干了，于是你就省事多了。操作系统就是硬件的代理，CDN就是网站的代理，……使用代理你可以让事情变理更简单，也可以在代理层加入一些权限检查，这样可以让业务模块更关注业务，而把一些非业务的事情剥离出来交给代理以完成解耦。可见这个模式和OO没啥关系。<strong>Unix下这个模式最佳体现就是Shell，它代理了系统调用并提供UI</strong>。还有很多命令会帮你把/proc目录下的那些文件内容整理和显示出来。</p>
+<p><strong>Chain of Responsibility模式</strong>，劫匪来抢银行，保安搞不定，就交给110，110搞不定就交给武警。有什么事件发生时的响应的Escalation Path，办公中的逐级审批。这个模式用一个函数指针数组或是栈结构就可以实现了。这个思想很像编程中的异常处理机制，一层一层地往上传递异常直到异常被捕捉。<strong>在Unix下，一个最简单的例子就是用 &amp;&amp; 或 || 来把命令拼起来，如：cmd1 &amp;&amp; cmd2  或 cmd3 || cmd4 ， 如果cmd1失败了，cmd2就不会执行，如果cmd3失败了，cmd4才会执行。</strong>如： cd lib &amp;&amp; rm -rf .o 或 ping -c1 coolshell.cn &amp;&amp; ssh <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ddb5bcb2b8b19dbeb2b2b1aeb5b8b1b1f3beb3">[email protected]</a></p>
+<p><strong>Command模式</strong>，这恐怕是软件里最多的模式了，比如：编译器里的Undo/Redo，宏录制。还有数据库的事务处理，线程池，设置向导，包括程序并行执行的指令集等等。这个模式主要是把一个对象的行为封装成一个一个的有相同接口的command，然后交给一个统一的命令执行器执行或管理这些命令。<strong>这个模式和我们的Unix/Linux机器启动时在/etc/init.d下的那些S和K开头的脚本很像，把各种daemon的启动和退出行为封装成一个脚本其支持reload/start/stop/status这样的命令，然后把他们按一定的规范做符号链接到/etc/init.d目录下，这样操作系统就会接管这些daemon的启动和退出</strong>。</p>
+<p><strong>Observer模式</strong>，观察者模式，这个模式也叫pub-sub模式，很像我们用手机订阅手机报，微博的follow的信息流也是这样的一个模式。MVC中的C会sub V中的事件，用非OO的方式其实也是一个回调函数的事。在很多异步系统中，你需要知道最终的调用有没有成功，比如说调用支付宝的支付接口，你需要向支付宝注册一个回调的接口，以便支付宝回调你。<strong>Linux下的一些系统调用如epoll/aio/inotify/signal都是这种思路</strong>。</p>
+<p><strong>Strategy 模式</strong>，策略模式，这个模式和Bridge模式很像，只不过Bridge是结构模式，其主要是用于对象的构造；而Strategy是行为模式，主要是用于对象的行为。策略模式很像浏览器里的各种插件，只要你装了某个插件，你就有某个功能。你可以安装多个插件来让你的浏览器有更多的功能（书本上的这个模式是你只能选用一个算法，当然，我们不用那么教条）。<strong>就像《<a title="你可能不知道的Shell" href="/articles/8619.html" target="_blank">你可能不知道的Shell</a>》中的那个设置设置$EDITOR变量后可以按ctrl+x e启动编译器，或是用set -o vi或set -o emacs 来让自己的shell像vi或 emacs 一样，或是像find -exec或xargs一样的拼装命令</strong>。</p>
+<p><strong>Bridge 和 Strategy是OO设计模式里的“Favor Composition Over Inheritance” 的典范，其实现了接口与实现分离的</strong>。Unix中的Shell就是一种，你可随意地更换不同的Shell。还有Emacs中的LISP驱动C，C实现了引擎，交给LISP实现逻辑。把程序分为前端和后端，通过socket专用应用协议进行通讯，前端实现策略，后端实现机制。再看看makefile把编译器和源代码的解耦，命令行输出这个接口可以把一个复杂的功能解耦并抽像成各种各样小而美的小功能命令，等等这样的例子，你会发现，还有大量的编程框架都会多少采用这样的思想，可以让你的软件像更换汽车零件一样方便。我在用<a title="用Unix的设计思想来应对多变的需求" href="/articles/7236.html" target="_blank">Unix的设计思想来应对变更的需求</a>中说过灯具厂，灯泡厂，和开关厂的例子。</p>
+<h4><span class="ez-toc-section" id="%E5%90%8E%E8%AE%B0"></span>后记<span class="ez-toc-section-end"></span></h4>
+<p>因为写作仓促，上面的那些东西，可能会你让你觉得有些牵强，那么抱歉了，你可以帮我看看在生活中和 Unix里有没有更帅的例子。</p>
+<p>不过，我们会发现上面OO搞出来的那么多模式在Unix下看来好像没有那么复杂，而且Unix下看起来并没有那么多模式，而且Unix中的设计模式无非就是这么几个关键词：<strong>单一，简洁，模块，拼装</strong>。我们再来看看OO设计的两大准则：<strong>1）钟情于组合而不是继承，2）依赖于接口而不是实现</strong>。还有S.O.L.I.D原则也一样（如果你仔细观察，你会发现SOLID原则在Unix下也是完美地体现）。你看，Unix和OO设计模式是不是完美的统一吗？</p>
+<p>我有种强烈的感觉——<strong>Unix对这些所谓的OO的设计模式实现得更好</strong>。因为Unix就一条设计模式！再次推荐《<em><a href="http://book.douban.com/subject/5387401/" target="_blank">The Art of Unix Programming</a></em>》</p>
+<p><img decoding="async" class="size-full wp-image-8967 aligncenter" alt="Unix Kiss" src="/uploads/2013/01/kiss.png" width="468" height="219" srcset="" sizes="(max-width: 468px) 100vw, 468px"/></p>
+<h4><span class="ez-toc-section" id="%E9%A4%90%E5%90%8E%E7%94%9C%E7%82%B9"></span>餐后甜点<span class="ez-toc-section-end"></span></h4>
+<p>我上面提到了《<em><a href="http://book.douban.com/subject/5387401/" target="_blank">The Art of Unix Programming</a></em>》，所以我有必要再谈谈这本书中我中毒最深的一章《模块性：保持清晰和简洁》中所谈到的胶合层。</p>
+<p>胶合层这一节中说了，我们开发软件一般要么Top-Down，要么Bottom-Up，这两种方法都有好有不好。顶层一般是应用逻辑层，底层一般是原语层（我理解为技术沉淀层，或是技术基础层）。自顶向下的开发，你可能会因为开发到底层后发现底层可沉淀的东西越来越不爽（因为被可能被很多业务逻辑所侵入），如果自底向上的开发，你可能越到上层你越发现很多你下面干的基础上工作有很多用不上（比如干多了）。所以，最好的方式是同时进行，一会顶层，一会底层，来来回回的开发——说白了就是在开发中不断的重构，边开发边理解边沉淀。</p>
+<p>无论怎么样，你会发现需要一层胶合层来胶合业务逻辑层和底层原语层（软件开发中的业务层和技术层的胶合），Unix的设计哲学认为，这层胶合层应该尽量地薄，胶合层越多，我们就只能在其中苦苦挣扎。</p>
+<p>其实，<strong>胶合层原则就是分离原则上更为上层地体现，策略（业务逻辑）和机制（基础技术或原语）的清楚的分离。你可以看到，OO和Unix都是在做这样的分离。但是需要注意到的时，OO用抽象接口来做这个分离——很多OO的模式中，抽象层太多了，导致胶合层太过于复杂了，也就是说，OO鼓励了——“厚重地胶合和复杂层次”，反而增加了程序的复杂度（这种情况在恶化中）。而Unix采用的是薄的胶合层，薄地相当的优雅</strong>。（通过这段话的描述，我相信你会明白了《<a title="如此理解面向对象编程" href="/articles/8745.html" target="_blank" rel="bookmark">如此理解面向对象编程</a>》中的个例子——为什么用OO来实现会比用非OO来实现更为地恶心——那就是因为OO胶合层太复杂了）</p>
+<p><strong>OO的最大的问题就——接口复杂度太高，胶合层太多！</strong>（注：Unix编程艺术这本书里说了软件有三个复杂度：代码量、接口、实现，这三个东西构成了我们的软件复杂度）</p>
+<h4><span class="ez-toc-section" id="%E5%86%8D%E9%80%81%E4%B8%80%E4%B8%AA%E6%9E%9C%E7%9B%98"></span>再送一个果盘<span class="ez-toc-section-end"></span></h4>
+<p>大家一定记得《<a title="SteveY对Amazon和Google平台的长篇大论 - 60,581 人阅读" href="/articles/5701.html">SteveY对Amazon和Google平台的长篇大论</a>》中Amazon中那个令人非常向往的SOA式的架构。因为以前在Amazon，有些话不好说。现在可以说了，我在Amazon里，我个人对这个服务化的架构相当的不待见，太复杂，复杂以乱七八糟，方向是好的，想法也是好的，但是这东西和OO一样，造成大量的接口复杂度，今天的Amazon，完全没人知道各个服务是怎么个调用的，一团乱麻（其内部并不像你看到的AWS那么的美妙。注：AWS是非常不错的，是相当好的设计）。</p>
+<p><strong>那么我们怎么来解决SOA的接口复杂度问题？其实，Unix早就给出了答案——数据驱动编程</strong>（详见：《Unix编程艺术》的第9.1章），在我离开Amazon的时候，美国总部的Principle SDE们在吐槽今天Amazon的SOA架构，更好的架构应该是数据驱动式的。（今天还在Amazon的同学可以上内网boardcast上看看相关的Principle Talk视频）</p>
+<p>（瞎扯一句：这本来是我想在2012年杭州QCon上的分享的一个主题，无奈当时被大会组织者给拒了，所以只好讲了一个《建一支小团队》，今天有多人还是不能明白甚至反感我的那个《小团队》的演讲，但是我相信那是必然的趋势，就像十年前大家在说“程序员只能干到30岁”时，当时的我我却毫不犹豫地相信十年后，30岁以上的有经验的老程序员一定会成为各个公司角逐和竟争的红人）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8961-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">design pattern</a>, <a href="javascript:void(0)" rel="tag">Object-Oriented</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>从面向对象的设计模式看软件设计</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-300211" class="comment even thread-even depth-1">
+<article id="div-comment-300211" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/084c0085b470f4794db243d4174bbf79?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/084c0085b470f4794db243d4174bbf79?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">imwls</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-300211"><time datetime="2013-03-01T10:32:52+08:00">2013年03月01日 10:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>整篇文章的观点实在是太牵强了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-304052" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-304052" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/53147994e372349cca44e9169b726a63?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/53147994e372349cca44e9169b726a63?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Crazyghost</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-304052"><time datetime="2013-03-05T17:01:03+08:00">2013年03月05日 17:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>楼主所言极是，模式并不是一成不变的，也不是只有OO的才是模式，模式只是一种解耦的思想，具体怎么去做还要看自己的实际设计，有时候，用简单的方法胜过去套用模式。可惜的是理解这些的程序员太少了，许多程序员都是把自己的水平看得太高了，满嘴的术语，实际做的时候，总是生搬硬套。</p>
+</div>
+ </article>
+</li>
+<li id="comment-315353" class="comment even thread-even depth-1">
+<article id="div-comment-315353" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5263c95e22572abf610da07a7f3304ef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5263c95e22572abf610da07a7f3304ef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">过客匆匆</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-315353"><time datetime="2013-03-23T17:05:12+08:00">2013年03月23日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>酷哥， 一直在关注您和您的文章， 收获很大的， 很佩服您的大局观和对思考的精神， 不知道什么时候可以介绍一个大数据处理方面的文章以及应该为大数据处理积累的技术</p>
+</div>
+ </article>
+</li>
+<li id="comment-322556" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-322556" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/91c0eccfab21b885312a94a85fab58a3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/91c0eccfab21b885312a94a85fab58a3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhangzl419</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-322556"><time datetime="2013-04-07T15:40:15+08:00">2013年04月07日 15:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>pattern就是成规</p>
+</div>
+ </article>
+</li>
+<li id="comment-351206" class="comment even thread-even depth-1">
+<article id="div-comment-351206" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/425ed774b192d8fe83a0a81780c2ddd1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/425ed774b192d8fe83a0a81780c2ddd1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://t-f-w.5166.info" class="url" rel="ugc external nofollow">自由狼-台风</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-351206"><time datetime="2013-04-27T00:05:16+08:00">2013年04月27日 00:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说个和本文【主要】内容无关的感想：</p>
+<p>能干事实的领导的发言稿往往不那么 pattern ；<br/>
+但这样的领导不多；干到高层的更少。</p>
+<p>越大的干事实的领导越不 pattern ；<br/>
+而且往往是要被想方设法搞下去的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-555848" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/%e9%99%88%e7%9a%93%e4%bb%8e%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e7%9a%84%e8%ae%be%e8%ae%a1%e6%a8%a1%e5%bc%8f%e7%9c%8b%e8%bd%af%e4%bb%b6%e8%ae%be%e8%ae%a1" class="url" rel="ugc external nofollow">陈皓:从面向对象的设计模式看软件设计 - 编程语言综合 - 开发者第1355412个问答</a> </div>
+</li>
+<li id="comment-582273" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/9949.html" class="url" rel="ugc">IoC/DIP其实是一种管理思想 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-582310" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ttsgs.com/2013/07/05/iocdip%e5%85%b6%e5%ae%9e%e6%98%af%e4%b8%80%e7%a7%8d%e7%ae%a1%e7%90%86%e6%80%9d%e6%83%b3/" class="url" rel="ugc external nofollow">IoC/DIP其实是一种管理思想 | 天天三国杀</a> </div>
+</li>
+<li id="comment-586916" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://enjoyhacking.com/?p=298" class="url" rel="ugc external nofollow">Design Patterns | ƃuıʞɔɐɥ ʎoɾuǝ</a> </div>
+</li>
+<li id="comment-598283" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-598283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7abeafca4b4f16a8d41dd8dbaea80d28?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7abeafca4b4f16a8d41dd8dbaea80d28?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">书痕</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-598283"><time datetime="2013-07-18T10:37:11+08:00">2013年07月18日 10:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>让我想起了电影《死亡密码》</p>
+</div>
+ </article>
+</li>
+<li id="comment-623659" class="comment even thread-even depth-1">
+<article id="div-comment-623659" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59261ec3d29b0dcdd4f623bd05cb4cf8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59261ec3d29b0dcdd4f623bd05cb4cf8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">天之彼岸</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-623659"><time datetime="2013-07-31T22:13:44+08:00">2013年07月31日 22:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作为一个即将30的人，每次听到别人说30岁后程序猿就走下坡路了巨他妈烦，似乎转职成管理者或者别的比如市场，是程序猿那唯一的独木桥。非常喜欢云风至今写着代码的习惯。其实，一个程序员到了一定级别（这里指技术实力）是想继续敲代码还是转管理职或者做点别的，那完全是个人的选择，但是因为你自己这么选择就教育别人说年纪大了写不出好的代码，这是什么神逻辑？没想到楼主这种大牛也会说出“程序猿只能干到30是错的“。哈哈。。。顿时有种吾道不孤的赶脚。（请允许我窃喜下）</p>
+</div>
+ </article>
+</li>
+<li id="comment-709055" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhanghaohao.cn/archives/306" class="url" rel="ugc external nofollow">IoC/DIP其实是一种管理思想 | 张浩浩博客</a> </div>
+</li>
+<li id="comment-1068295" class="comment even thread-even depth-1">
+<article id="div-comment-1068295" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40238a5477103c2be988d455bd4d9e52?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40238a5477103c2be988d455bd4d9e52?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">乐动</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1068295"><time datetime="2013-12-15T15:33:09+08:00">2013年12月15日 15:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为你是从这几个模式的使用方式上面来分析的，而皓子是从设计模式实现意义的角度来看的，通过unix中出现的一些事例，来论证设计模式在任何地方都存在，并且皓子一开始就强调了这一点。 <a href="#comment-287494" rel="nofollow">@躺着读书 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1137193" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1137193" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2ebd6ce501d79013ba4be364f214128?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2ebd6ce501d79013ba4be364f214128?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">arisu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1137193"><time datetime="2014-01-03T16:57:25+08:00">2014年01月03日 16:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>通俗易懂，比贴代码好</p>
+</div>
+ </article>
+</li>
+<li id="comment-1163118" class="comment even thread-even depth-1">
+<article id="div-comment-1163118" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c13e370b207643df5004611ddc16cf6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c13e370b207643df5004611ddc16cf6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">天空</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1163118"><time datetime="2014-01-10T14:39:38+08:00">2014年01月10日 14:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>高端</p>
+</div>
+ </article>
+</li>
+<li id="comment-1213898" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://javablogs.org/?p=153" class="url" rel="ugc external nofollow">分布式系统的事务处理 | java博客，java教程</a> </div>
+</li>
+<li id="comment-1382135" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://prepoet.com/2014/01/04/blog-reading-at-2014/" class="url" rel="ugc external nofollow">blog <span class="__cf_email__" data-cfemail="c9bbaca8ada0a7ae89fbf9f8fd">[email protected]</span></a> </div>
+</li>
+<li id="comment-1398049" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11265.html" class="url" rel="ugc">Python修饰器的函数式编程 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1398128" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=968" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 | 星达红</a> </div>
+</li>
+<li id="comment-1398958" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=19515" class="url" rel="ugc external nofollow">Python修饰器的函数式编程</a> </div>
+</li>
+<li id="comment-1413647" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=287" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | skynetdoc</a> </div>
+</li>
+<li id="comment-1416943" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.marksaas.com/2014/04/%e4%bb%8e%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e7%9a%84%e8%ae%be%e8%ae%a1%e6%a8%a1%e5%bc%8f%e7%9c%8b%e8%bd%af%e4%bb%b6%e8%ae%be%e8%ae%a1.html" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 | 智云网</a> </div>
+</li>
+<li id="comment-1423055" class="comment even thread-even depth-1">
+<article id="div-comment-1423055" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/614454a7977f48dc5c2e5bf3e8f10091?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/614454a7977f48dc5c2e5bf3e8f10091?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">追逐</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1423055"><time datetime="2014-04-14T11:58:50+08:00">2014年04月14日 11:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于楼主，只有膜拜！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1443792" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ihybits.com/wordpress/?p=296" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 | ihybits</a> </div>
+</li>
+<li id="comment-1449716" class="comment even thread-even depth-1">
+<article id="div-comment-1449716" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/867ee3778d35556999e2981018dee2e5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/867ee3778d35556999e2981018dee2e5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">学玄学许</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1449716"><time datetime="2014-04-29T22:36:41+08:00">2014年04月29日 22:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很少看到这么有深度的文章。可惜许多IT人都失去思考力了，恐怕很难理解楼主的意图。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1480723" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.aliyun.com/904" class="url" rel="ugc external nofollow">阿里云产品博客 » IoC/DIP其实是一种管理思想</a> </div>
+</li>
+<li id="comment-1498498" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=137" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | skynetdoc</a> </div>
+</li>
+<li id="comment-1510563" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30311.html" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 – 马开东博客</a> </div>
+</li>
+<li id="comment-1593066" class="comment even thread-even depth-1">
+<article id="div-comment-1593066" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ac0adbbc69701a426201f66723813a0a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ac0adbbc69701a426201f66723813a0a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xgdxiao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1593066"><time datetime="2014-11-05T00:17:22+08:00">2014年11月05日 00:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>思想是相通的。实际上设计模式也可理解为内聚耦合、职责分离、机制策略这些基本软件工程思想在一些具体问题上的应用，S.O.L.I.D原则更是传统软件工程思想在OO领域的应用。但是思想和应用还是有距离的，好的想法未必就能运用好。所以设计模式还是有它的很大的价值，它指明了怎么去应用这些思想——也就是说：并不是说，你读懂了《The Art of Unix Programming》，就可以不学设计模式了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1696684" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1696684" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0d315c6b001e2b8143ef5e77b1d80004?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0d315c6b001e2b8143ef5e77b1d80004?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ryan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1696684"><time datetime="2015-04-25T21:50:50+08:00">2015年04月25日 21:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>下午温习了一下设计模式，再看这篇文章特别有感觉，灰常感谢博主的好文</p>
+</div>
+ </article>
+</li>
+<li id="comment-1716707" class="comment even thread-even depth-1">
+<article id="div-comment-1716707" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92c4375afa42f092a71056c766a0a4d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92c4375afa42f092a71056c766a0a4d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Vitali</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1716707"><time datetime="2015-06-03T12:06:49+08:00">2015年06月03日 12:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>后悔这么晚才看到撸主的博文啊！！谢谢！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1725934" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1725934" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/584868b0059ed69f089a99c3a392e2ed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/584868b0059ed69f089a99c3a392e2ed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qixinkui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1725934"><time datetime="2015-06-23T12:48:30+08:00">2015年06月23日 12:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有道理，但没有说透，我觉得之前的这篇讨论更好些：<br/>
+<a href="http://blog.zhenghui.org/2011/04/18/more-words-on-abstraction/" rel="nofollow ugc">http://blog.zhenghui.org/2011/04/18/more-words-on-abstraction/</a></p>
+<p>模式也分为不同层次和粒度的模式，在您文中，“模式”和“抽象”几乎是等价的。最近看一本数学科普书《数学的语言：化无形为可见》，里面认为数学就是研究模式的科学（模式的模式的模式，终极抽象吧）</p>
+<p>某种程度上，说GOF设计模式是专用于OO的并不为过，因为其中的一些的确在FP中已经固化成为语言的一部分，或者一些很小的惯用法，这时候你还好意思说它是模式么？（在早期的汇编语言者看来，switch case都可以算作模式呢）。</p>
+<p>OO的本义是什么？我认为OO甚至和继承多态之类没关系，原始的意思大概只有 对象封装 和 消息传递 这2个了。</p>
+<p>数据驱动编程也分为不同的层次，小到代码中的表驱动法，大到LOP（language oriented programming)，直至机制与策略相分离的原则，《如此理解面向对象编程》文中pike所说的方法其实是典型的表驱动。还有一本书提到数据驱动编程作为三大软件设计思想源流的是 booch 的 《面向对象分析与设计》。</p>
+<p>胶合层如何构筑? 如果胶合层所倚赖的底层不完善，很难做到薄胶合层，因为自己要去补足其不足的部分；面对问题的不断复杂化与变化，最终胶合层内部难免出现进一步的分化，用胶合层语言实现的逻辑又会渐渐分化为 较为稳定的机制 和 容易变化的策略。从这个角度讲，评价一个胶合层语言是否优秀，是否应该考量用胶合层实现胶合层自身需要多大功夫？（从这个角度来讲，lisp还是王者，7个原语做基础，很容易自身实现自身。Any sufficiently complicated C or Fortran program contains an ad hoc, informally-specified, bug-ridden, slow implementation of half of Common Lisp. 格林斯潘第十定律）</p>
+<p>Sometimes data is just data and functions are just functions.<br/>
+说的真好，有时候数据就是数据，函数就是函数，前者适用所谓的OO，后者适用面向过程，而数据驱动编程与此二者是正交的，更具有普遍的适应性。但是数据驱动编程的内涵太丰富，包括FP我认为也脱胎于LOP。</p>
+<p>TAOUP 一书中多个篇章都与此所指的数据驱动编程相关，比如文本化一节，比如微语言一节，等等。<br/>
+一个有趣的巧合是：TAOUP可以直观的看做 TAO UP，向上抛出之道，把机制的东西固化下来实现，把策略的东西向上抛出，丢给用户或者配置者。做到了机制与策略相分离，自然能做到接口实现分离，高内聚低耦合，DRY，可测试性等等。</p>
+<p>language is everything。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825110" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/python%e4%bf%ae%e9%a5%b0%e5%99%a8%e7%9a%84%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b-codeba-cc.html" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1825145" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/iocdip%e5%85%b6%e5%ae%9e%e6%98%af%e4%b8%80%e7%a7%8d%e7%ae%a1%e7%90%86%e6%80%9d%e6%83%b3-codeba-cc.html" class="url" rel="ugc external nofollow">IoC/DIP其实是一种管理思想 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1916043" class="comment even thread-even depth-1">
+<article id="div-comment-1916043" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/19b36783a38d74a3533c72b23f521dd4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/19b36783a38d74a3533c72b23f521dd4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://酷壳" class="url" rel="ugc external nofollow">周周</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1916043"><time datetime="2017-08-08T09:56:23+08:00">2017年08月08日 09:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>融汇贯通，举一反三，深入浅出，把中国的哲学思想表现出来了，做导师可以引导更多人，对社会贡献更大</p>
+</div>
+ </article>
+</li>
+<li id="comment-1921449" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1259" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 – 趣学</a> </div>
+</li>
+<li id="comment-1921452" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1261" class="url" rel="ugc external nofollow">IOC/DIP其实是一种管理思想 – 趣学</a> </div>
+</li>
+<li id="comment-1933164" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1933164" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/daef4b5e332e796f26efd7bfa00ab4b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/daef4b5e332e796f26efd7bfa00ab4b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Xuxin Jin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-1933164"><time datetime="2018-07-06T09:38:48+08:00">2018年07月06日 09:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>既然面向对象不适合胶合层，那为什么GOF要用面向对象来解释设计模式？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2016832" class="comment even thread-even depth-1">
+<article id="div-comment-2016832" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/803e219d4311b1b5a4eca46558d8141b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/803e219d4311b1b5a4eca46558d8141b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">FR</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8961.html/comment-page-2#comment-2016832"><time datetime="2019-09-03T23:01:33+08:00">2019年09月03日 23:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在还在Amazon. 前端时间在内部推进Data Oriented Architecture 项目，看看文章的时间，6年前了，DOA到现在还是很难。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2129022" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11265.html" class="url" rel="ugc">Python修饰器的函数式编程 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2267746" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://onebyone.icu/archives/2784" class="url" rel="ugc external nofollow">从面向对象的设计模式看软件设计 — OneByOne DotNet</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8961.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8961.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">8961</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

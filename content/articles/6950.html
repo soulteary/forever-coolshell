@@ -1,0 +1,264 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>需求变化与IoC | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6950 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6950" class="post-content post-6950 post type-post status-publish format-standard hentry category-progdesign category-602 tag-design tag-design-pattern tag-ioc">
+<header class="entry-header">
+<span class="screen-reader-text">需求变化与IoC</span>
+<h1 class="entry-title">需求变化与IoC</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6950.html" title="11:01" rel="bookmark"><time class="entry-date" datetime="2012-03-26T11:01:07+08:00" pubdate="">2012年03月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6950.html#comments" class="comments-link">73 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 42,905 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>【<span style="color: #cc0000;">感谢 Todd投递本文 – 微博帐号</span>：@<a title="weidagang" onclick="if (!window.__cfRLUnblockHandlers) return false; pageTracker._trackPageview(&#39;/outgoing/weibo.com/weidagang?referer=http%3A%2F%2Fcoolshell.cn%2F&#39;);" href="http://weibo.com/weidagang" target="_blank" data-cf-modified-8a8031348295ae0c3cb3c966-="">weidagang</a> 】</p>
+<h4>需求又变了，怎么办？</h4>
+<p>先上一个轻松的段子：</p>
+<blockquote><p>程序员XX遭遇车祸成植物人，医生说活下来的希望只有万分之一，唤醒更为渺茫。可他的Lead和亲人没有放弃，他们根据XX工作如命的作风，每天都在他身边念：“XX，需求又改了，该干活了，你快来呀！”，奇迹终于发生了，XX醒来了，第一句话：“需求又改了？”。</p></blockquote>
+<p>这个段子用幽默的方式反映了需求变化是每一个程序员、架构师或项目经理都会经常遇到的问题。面对这个问题，不同的人有不同的应对之道，最近微博上有一段关于需求变化的讨论：</p>
+<blockquote><p>@假装刺猬的猪：我们在软件开发过程中，会持续碰到客户需求变更的情况。如果没有领域建模，我们单纯将问题使用直觉将问题解决，那么等到客户需求变更或者有新的需求时，就会面临一个僵硬的前设计！无法在以前的设计上持续深入的优化模型，导致需求变更无法及时深化。设计实现均滞后与变更！</p>
+<p>@高煥堂: &lt;碰到客户需求变更的情况&gt;是合理的；但&lt;领域建模&gt;不是美好的手段!!!</p>
+<p>@weidagang: 要不被客户牵着鼻子走，需要自己有很强的设计能力，<strong>反过来</strong>让客户跟着你的设计来满足你的要求。能做到这点的公司很少，但这是软件行业唯一有希望的出路。</p>
+<p>@高煥堂: &lt;这是软件行业唯一有希望的出路&gt;。 Great!!</p></blockquote>
+<p>如何应对需求变化？ @假装刺猬的猪 的答案是领域建模，并持续优化模型，适应需求的变化。@高煥堂 则认为领域建模不是美好的手段。我进一步补充，应该<strong>“反过来”</strong>让自己在需求变化中处于主导地位，而不是被动地适应。</p>
+<p><span id="more-6950"></span></p>
+<h4>控制反转 (IoC)</h4>
+<p>什么样就算是“反过来”了呢？举个例子：</p>
+<blockquote><p>用户想购买一台普通PC，他只想电脑能流畅运行魔兽世界，他根本不想知道什么叫主板，什么叫内存，什么叫CPU；但他不得不接受必须购买主板、CPU、内存的事实，因为PC架构是产业标准，而不是由用户定的。客户有选择的权利，但没有设计的权利，客户的需求必须在设计框架下得到满足。</p></blockquote>
+<p>这里我们要问PC架构是保护了谁的利益？显然，直接的受益者是厂商。如果没有PC架构的保护，厂商就会直接面对客户，客户说我需要功能A，我马上分析设计实现功能A；客户说我要功能B，我马上分析设计实现功能B … 有了PC架构的保护，厂商就变得更加强势，用户的一切需求都必须在PC架构下来谈。厂商可以倾听用户的声音，不断改进产品，但设计主导权永远在自己手中。我们IT行业常常用“做产品”和“做项目”的视角来区分不同的公司，但很少有人用“做设计”的视角来看。实际上，关键的问题在于设计主导权是厂商还是在客户。如果设计主导权在客户，不管是做产品、做服务还是做项目，其命运必然是疲于奔命应付客户，最后获得微薄的利润；如果设计主导权在厂商，不管做产品、做服务还是做项目都能有更多的话语权和更高的利润。</p>
+<p>当然，光有设计还不够，必须客户接受才能起到通过设计掌握主导权的作用。这一方面需要自己具有很强的设计能力，如苹果就是以设计能力著称的公司；另一方面，和其他厂商结盟壮大阵营也是一种方法，如最著名的Wintel联盟(Windows+Intel)，以及现在的日益壮大的Android阵营都属于此类。假如有厂商不遵守PC产业标准，说我的PC就没有主板，没有显卡，因为用户更不不需要这些东西；那么，它要么像苹果一样独树一帜成为一种新的标准，要么无人问津。</p>
+<p>我所谈到的“反过来”本质上就是软件设计中的控制反转 (Inversion of Control, IoC)思想。IoC是每一个初级程序员向高级进阶所需要了解的<strong>最重要</strong>的设计思想。由于Spring等开发框架的流行，知道IoC概念的程序员不在少数，但不少人对于IoC的理解仅仅停留在通过依赖注入 (Dependency Injection)实现解耦这个层面。实际上，IoC的应用不仅包括解耦，它还是框架的基本原理，在非计算机领域，IoC也是无处不在，如果你能从上面的例子中体会到IoC，这才算是融会贯通了。</p>
+<p>软件开发中一种最常见的模式是“以用户为出发点，以需求分析为核心”。该模式提倡从用户需求中分析推导出设计和实现，比如，TDD式的设计正是这类典型。而IoC式的软件设计与此截然相反，IoC的设计是一种“以愿景（自身利益是愿景的重要方面）为出发点，以架构为核心”的模式。如果用户的需求是一台电脑，我们如何能通过第一种模式分析需求推导出“主板-CPU-内存-外设”的PC架构呢？恐怕很难。IoC式的设计是以用户看不见摸不着的架构为核心，自己主导设计，用户需求是设计的约束条件和验证手段，而不是出发点和目标。我们想要掌握主动，不被需求变化搞得疲于奔命，就必须熟练使用第二种模式。</p>
+<p>我们的人生都被环境和各种客观条件所束缚，多数人只能随波逐流，听从命运的安排。你有没有想过要拥有人生的主导权呢？既然你是程序员，你懂IoC，你能否设计自己的人生框架呢？Yes，you can!</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6950-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">design pattern</a>, <a href="javascript:void(0)" rel="tag">IoC</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>需求变化与IoC</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-284161" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/cong-mian-xiang-dui-xiang-di-she-ji-mo-shi-kan-ruan-jian-she-ji.html" class="url" rel="ugc external nofollow">Definite Digest » 从面向对象的设计模式看软件设计</a> </div>
+</li>
+<li id="comment-548231" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.golang.name/unix%e6%80%9d%e6%83%b3%e5%af%b9%e5%a4%9a%e5%8f%98%e7%9a%84%e9%9c%80%e6%b1%82%e7%9a%84%e5%a4%84%e7%90%86/" class="url" rel="ugc external nofollow">Unix思想对多变的需求的处理 | 小书童</a> </div>
+</li>
+<li id="comment-909359" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=20" class="url" rel="ugc external nofollow">IoC/DIP其实是一种管理思想 | multiprocess</a> </div>
+</li>
+<li id="comment-914190" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/archives/2271" class="url" rel="ugc external nofollow">类型的本质和函数式实现Multiprocess | Multiprocess</a> </div>
+</li>
+<li id="comment-939796" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/archives/14" class="url" rel="ugc external nofollow">类型的本质和函数式实现 | Multiprocess</a> </div>
+</li>
+<li id="comment-1029183" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xuqinghe.cn/blog/2013/12/02/%e4%b9%9f%e8%b0%88dependency-injection/" class="url" rel="ugc external nofollow">也谈Dependency Injection | 庖丁解牛</a> </div>
+</li>
+<li id="comment-1338971" class="comment even thread-even depth-1">
+<article id="div-comment-1338971" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0a0fba4e7a8f4967d85c82e85d0bed96?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0a0fba4e7a8f4967d85c82e85d0bed96?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://prepoet.com" class="url" rel="ugc external nofollow">PREPOET</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6950.html/comment-page-2#comment-1338971"><time datetime="2014-03-06T18:23:41+08:00">2014年03月06日 18:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>IoC，最近课堂上学到的新词汇，很富有深意的编程思想</p>
+</div>
+ </article>
+</li>
+<li id="comment-1338974" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://prepoet.com/2014/01/04/blog-reading-at-2014/" class="url" rel="ugc external nofollow">blog <span class="__cf_email__" data-cfemail="f98b9c989d90979eb9cbc9c8cd">[email protected]</span></a> </div>
+</li>
+<li id="comment-1421268" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/11432.html" class="url" rel="ugc">从Code Reivew谈如何做技术 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1442921" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kaixuan.me/?p=140" class="url" rel="ugc external nofollow">从Code Review 谈如何做技术 / 蔡凯旋的博客</a> </div>
+</li>
+<li id="comment-1443825" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.marksaas.com/2014/04/%e4%bb%8ecode-review-%e8%b0%88%e5%a6%82%e4%bd%95%e5%81%9a%e6%8a%80%e6%9c%af.html" class="url" rel="ugc external nofollow">从Code Review 谈如何做技术 | marksaas</a> </div>
+</li>
+<li id="comment-1453633" class="comment byuser comment-author-jkand1 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1453633" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6950.html/comment-page-2#comment-1453633"><time datetime="2014-05-05T11:09:01+08:00">2014年05月05日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>yes, I can</p>
+</div>
+ </article>
+</li>
+<li id="comment-1454715" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.momobest.net/2014/05/06/%e5%85%b3%e4%ba%8ecode-review/" class="url" rel="ugc external nofollow">关于Code Review | Andy-攻城狮的荣耀</a> </div>
+</li>
+<li id="comment-1479176" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://kandian.suanfazu.com/%e4%bb%8e-code-review-%e8%b0%88%e5%a6%82%e4%bd%95%e5%81%9a%e6%8a%80%e6%9c%af/" class="url" rel="ugc external nofollow">从 Code Review 谈如何做技术 | 今日看点 - 算法组</a> </div>
+</li>
+<li id="comment-1541898" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.xuejianbin.com/?p=546" class="url" rel="ugc external nofollow">用Unix的设计思想来应对多变的需求 | news snack</a> </div>
+</li>
+<li id="comment-1686846" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1686846" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/efcb193ae314af60b10232b69e93435b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/efcb193ae314af60b10232b69e93435b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chuck13</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6950.html/comment-page-2#comment-1686846"><time datetime="2015-04-07T18:38:29+08:00">2015年04月07日 18:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>读起楼主的文章我第一个想到的就是 SAP…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1854959" class="comment even thread-even depth-1">
+<article id="div-comment-1854959" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/05a1bf0967cfe647a3a21153f0670215?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/05a1bf0967cfe647a3a21153f0670215?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">不曾离开的小耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6950.html/comment-page-2#comment-1854959"><time datetime="2016-07-03T14:18:33+08:00">2016年07月03日 14:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>理想和现实总会有差距 有时为了更通用 一样会变为过度设计 当你不够强势 一切会很苍白</p>
+</div>
+ </article>
+</li>
+<li id="comment-1862353" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1137" class="url" rel="ugc external nofollow">缓存更新的套路 | 星达红</a> </div>
+</li>
+<li id="comment-1893832" class="comment byuser comment-author-shen520110 even thread-even depth-1">
+<article id="div-comment-1893832" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f0f25363bff2d1efb208c78249dac3f7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f0f25363bff2d1efb208c78249dac3f7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shen520110</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6950.html/comment-page-2#comment-1893832"><time datetime="2016-10-26T16:56:28+08:00">2016年10月26日 16:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ioc式的软件设计，我觉得现实生活中最生动的例子就是电信行业了。你要买套餐，只能在移动联通的设计好的套餐里面选择，从来没有听说过为了满足谁谁的需要定制了一个。而他们之所以能做到这一步，是因为在这个行业里面已经处于垄断的地位了。<br/>
+当然，这个只是个极端的例子。在不同的领域里面，想一直处于垄断地位很难。大部分的做法是，努力走在所有同行的前面。然后成为行业老大，掌握话语权，为这个行业指定标准。<br/>
+同样，我觉得软件行业，不管从事的是哪个领域内的开发，如果想掌握主动权，想牵着客户的鼻子走的话，就应该在这个领域内努力甩开其他的对手，然后成为制定标准的那一，掌握主动权。这样，客户在提出需求的时候也会参照这个标准，让其他同行向我们靠拢。<br/>
+但是，这可不是一朝一夕就能完成的。但是作为目标为之努力的话，多多少少不会受制于人吧。<br/>
+个人见解，</p>
+</div>
+ </article>
+</li>
+<li id="comment-1901060" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1901060" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65fe05bef6700db44e5dec02596fabac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65fe05bef6700db44e5dec02596fabac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">帕拉丁</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6950.html/comment-page-2#comment-1901060"><time datetime="2016-11-23T23:12:27+08:00">2016年11月23日 23:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-149598" rel="nofollow">@neutra </a><br/>
+其实小公司首先要解决的是生存问题，做项目肯定是公司的主页，在项目基础上对项目进行提纯，将项目打造成产品，这个是一般小公司的发展之道，你那种坚持直接做产品的方式不太适合市场，很多小公司都是在产品还没有见到成效就熬不住了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1921240" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1222" class="url" rel="ugc external nofollow">需求变化与IOC – 趣学</a> </div>
+</li>
+<li id="comment-1921299" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.7xue.top/?p=1229" class="url" rel="ugc external nofollow">用UNIX的设计思想来应对多变的需求 – 趣学</a> </div>
+</li>
+<li id="comment-2370810" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/202761" class="url" rel="ugc external nofollow">需求变化与IoC - Java天堂</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6950.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6950.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">6950</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,471 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>无锁队列的实现 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8239 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8239" class="post-content post-8239 post type-post status-publish format-standard hentry category-cplusplus category-progdesign tag-algorithm tag-c tag-performance tag-queue">
+<header class="entry-header">
+<span class="screen-reader-text">无锁队列的实现</span>
+<h1 class="entry-title">无锁队列的实现</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8239.html" title="08:26" rel="bookmark"><time class="entry-date" datetime="2012-09-07T08:26:55+08:00" pubdate="">2012年09月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8239.html#comments" class="comments-link">241 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 274,102 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<p style="text-align: center;"><strong><em>————注：本文于2019年11月4日更新————</em></strong></p>
+<p>关于无锁队列的实现，网上有很多文章，虽然本文可能和那些文章有所重复，但是我还是想以我自己的方式把这些文章中的重要的知识点串起来和大家讲一讲这个技术。下面开始正文。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%85%B3%E4%BA%8ECAS%E7%AD%89%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C" title="关于CAS等原子操作">关于CAS等原子操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%97%A0%E9%94%81%E9%98%9F%E5%88%97%E7%9A%84%E9%93%BE%E8%A1%A8%E5%AE%9E%E7%8E%B0" title="无锁队列的链表实现">无锁队列的链表实现</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#CAS%E7%9A%84ABA%E9%97%AE%E9%A2%98" title="CAS的ABA问题">CAS的ABA问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E8%A7%A3%E5%86%B3ABA%E7%9A%84%E9%97%AE%E9%A2%98" title="解决ABA的问题">解决ABA的问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%94%A8%E6%95%B0%E7%BB%84%E5%AE%9E%E7%8E%B0%E6%97%A0%E9%94%81%E9%98%9F%E5%88%97" title="用数组实现无锁队列">用数组实现无锁队列</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#_%E5%B0%8F%E7%BB%93" title=" 小结"> 小结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8ECAS%E7%AD%89%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C"></span>关于CAS等原子操作<span class="ez-toc-section-end"></span></h4>
+<p><img decoding="async" class="alignright size-full wp-image-8245" title="lock free bicycle" src="/uploads/2012/09/lock_free_bicycle.jpg" alt="" width="350" height="261" srcset="" sizes="(max-width: 350px) 100vw, 350px"/>在开始说无锁队列之前，我们需要知道一个很重要的技术就是CAS操作——Compare &amp; Set，或是 Compare &amp; Swap，<strong>现在几乎所有的CPU指令都支持CAS的原子操作，X86下对应的是 <span style="color: #ff0000;">CMPXCHG </span>汇编指令。</strong>有了这个原子操作，我们就可以用其来实现各种无锁（lock free）的数据结构。</p>
+<p>这个操作用C语言来描述就是下面这个样子：（代码来自<a href="https://en.wikipedia.org/wiki/Compare-and-swap" target="_blank" rel="noopener noreferrer">Wikipedia的Compare And Swap</a>词条）意思就是说，看一看内存<code>*reg</code>里的值是不是<code>oldval</code>，如果是的话，则对其赋值<code>newval</code>。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int compare_and_swap (int* reg, int oldval, int newval)
+{
+  int old_reg_val = *reg;
+  if (old_reg_val == oldval) {
+     *reg = newval;
+  }
+  return old_reg_val;
+}
+</pre>
+<p>我们可以看到，<code>old_reg_val</code> 总是返回，于是，我们可以在 <code>compare_and_swap</code> 操作之后对其进行测试，以查看它是否与 <code>oldval</code>相匹配，因为它可能有所不同，这意味着另一个并发线程已成功地竞争到 <code>compare_and_swap</code> 并成功将 <code>reg</code> 值从 <code>oldval</code> 更改为别的值了。</p>
+<p>这个操作可以变种为返回bool值的形式（返回 bool值的好处在于，可以调用者知道有没有更新成功）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">bool compare_and_swap (int *addr, int oldval, int newval)
+{
+  if ( *addr != oldval ) {
+      return false;
+  }
+  *addr = newval;
+  return true;
+}</pre>
+<p>与CAS相似的还有下面的原子操作：（这些东西大家自己看Wikipedia，也没什么复杂的）</p>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Fetch-and-add" target="_blank" rel="noopener noreferrer">Fetch And Add</a>，一般用来对变量做 +1 的原子操作</li>
+<li><a title="Test-and-set" href="https://en.wikipedia.org/wiki/Test-and-set">Test-and-set</a>，写值到某个内存位置并传回其旧值。汇编指令BST</li>
+<li><a title="Test and Test-and-set" href="https://en.wikipedia.org/wiki/Test_and_Test-and-set">Test and Test-and-set</a>，用来低低Test-and-Set的资源争夺情况</li>
+</ul>
+<p><strong>注：</strong>在实际的C/C++程序中，CAS的各种实现版本如下：</p>
+<p><span id="more-8239"></span></p>
+<p><strong>1）GCC的CAS</strong></p>
+<p style="padding-left: 30px;">GCC4.1+版本中支持CAS的原子操作（完整的原子操作可参看<a href="http://gcc.gnu.org/onlinedocs/gcc-4.1.1/gcc/Atomic-Builtins.html" target="_blank" rel="noopener noreferrer"> GCC Atomic Builtins</a>）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">bool __sync_bool_compare_and_swap (type *ptr, type oldval type newval, ...)
+type __sync_val_compare_and_swap (type *ptr, type oldval type newval, ...)</pre>
+<p><strong>2）Windows的CAS</strong></p>
+<p style="padding-left: 30px;">在Windows下，你可以使用下面的Windows API来完成CAS：（完整的Windows原子操作可参看MSDN的<a href="http://msdn.microsoft.com/en-us/library/windows/desktop/ms686360(v=vs.85).aspx#interlocked_functions" target="_blank" rel="noopener noreferrer">InterLocked Functions</a>）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c"> InterlockedCompareExchange ( __inout LONG volatile *Target,
+                                 __in LONG Exchange,
+                                 __in LONG Comperand);</pre>
+<p><strong>3) C++11中的CAS</strong></p>
+<p style="padding-left: 30px;">C++11中的STL中的atomic类的函数可以让你跨平台。（完整的C++11的原子操作可参看 <a href="http://en.cppreference.com/w/cpp/atomic" target="_blank" rel="noopener noreferrer">Atomic Operation Library</a>）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">template&lt; class T &gt;
+bool atomic_compare_exchange_weak( std::atomic* obj,
+                                   T* expected, T desired );
+template&lt; class T &gt;
+bool atomic_compare_exchange_weak( volatile std::atomic* obj,
+                                   T* expected, T desired );
+</pre>
+<h4><span class="ez-toc-section" id="%E6%97%A0%E9%94%81%E9%98%9F%E5%88%97%E7%9A%84%E9%93%BE%E8%A1%A8%E5%AE%9E%E7%8E%B0"></span>无锁队列的链表实现<span class="ez-toc-section-end"></span></h4>
+<p>下面的代码主要参考于两篇论文：</p>
+<ul>
+<li>John D. Valois 1994年10月在拉斯维加斯的并行和分布系统系统国际大会上的一篇论文——《<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.53.8674&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener noreferrer">Implementing Lock-Free Queues</a>》</li>
+<li>美国纽约罗切斯特大学 Maged M. Michael 和 Michael L. Scott 在1996年3月发表的一篇论文 《<a href="https://www.cs.rochester.edu/u/scott/papers/1996_PODC_queues.pdf" target="_blank" rel="noopener noreferrer">Simple, Fast, and Practical Non-Blocking and Blocking ConcurrentQueue Algorithms</a>》</li>
+</ul>
+<p>（注：下面的代码并不完全与这篇论文相同）</p>
+<p>初始化一个队列的代码很简，初始化一个dummy结点（注：在链表操作中，使用一个dummy结点，可以少掉很多边界条件的判断），如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">InitQueue(Q)
+{
+    node = new node()
+    node-&gt;next = NULL;
+    Q-&gt;head = Q-&gt;tail = node;
+}
+</pre>
+<p>我们先来看一下进队列用CAS实现的方式，基本上来说就是链表的两步操作：</p>
+<ol>
+<li>第一步，把tail指针的next指向要加入的结点。 <code>tail-&gt;next = p;</code></li>
+<li>第二步，把tail指针移到队尾。 <code>tail = p;</code></li>
+</ol>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">EnQueue(Q, data) //进队列
+{
+    //准备新加入的结点数据
+    n = new node();
+    n-&gt;value = data;
+    n-&gt;next = NULL;
+
+    do {
+        p = Q-&gt;tail; //取链表尾指针的快照
+    } while( CAS(p-&gt;next, NULL, n) != TRUE); 
+    //while条件注释：如果没有把结点链在尾指针上，再试
+
+    CAS(Q-&gt;tail, p, n); //置尾结点 tail = n;
+}</pre>
+<p>我们可以看到，程序中的那个 do-while 的 Retry-Loop 中的 CAS 操作：如果 <code>p-&gt;next</code> 是 <code>NULL</code>，那么，把新结点 <code>n</code> 加到队尾。如果不成功，则重新再来一次！</p>
+<p>就是说，很有可能我在准备在队列尾加入结点时，别的线程已经加成功了，于是tail指针就变了，于是我的CAS返回了false，于是程序再试，直到试成功为止。这个很像我们的抢电话热线的不停重播的情况。</p>
+<p>但是你会看到，为什么我们的“置尾结点”的操作（第13行）不判断是否成功，因为：</p>
+<ol>
+<li>如果有一个线程T1，它的while中的CAS如果成功的话，那么其它所有的 随后线程的CAS都会失败，然后就会再循环，</li>
+<li>此时，如果T1 线程还没有更新tail指针，其它的线程继续失败，因为<code>tail-&gt;next</code>不是NULL了。</li>
+<li>直到T1线程更新完 <code>tail</code> 指针，于是其它的线程中的某个线程就可以得到新的 <code>tail</code> 指针，继续往下走了。</li>
+<li>所以，只要线程能从 while 循环中退出来，意味着，它已经“独占”了，<code>tail</code> 指针必然可以被更新。</li>
+</ol>
+<p>这里有一个潜在的问题——<strong>如果T1线程在用CAS更新tail指针的之前，线程停掉或是挂掉了，那么其它线程就进入死循环了</strong>。下面是改良版的EnQueue()</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c" data-enlighter-highlight="10,11">EnQueue(Q, data) //进队列改良版 v1
+{
+    n = new node();
+    n-&gt;value = data;
+    n-&gt;next = NULL;
+
+    p = Q-&gt;tail;
+    oldp = p
+    do {
+        while (p-&gt;next != NULL)
+            p = p-&gt;next;
+    } while( CAS(p.next, NULL, n) != TRUE); //如果没有把结点链在尾上，再试
+
+    CAS(Q-&gt;tail, oldp, n); //置尾结点
+}</pre>
+<p>我们让每个线程，自己fetch 指针 <code>p</code> 到链表尾。但是这样的fetch会很影响性能。而且，如果一个线程不断的EnQueue，会导致所有的其它线程都去 fetch 他们的 <code>p</code> 指针到队尾，能不能不要所有的线程都干同一个事？这样可以节省整体的时间？</p>
+<p>比如：直接 fetch <code>Q-&gt;tail</code> 到队尾？因为，所有的线程都共享着 Q-&gt;tail，所以，一旦有人动了它后，相当于其它的线程也跟着动了，于是，我们的代码可以改进成如下的实现：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">EnQueue(Q, data) //进队列改良版 v2 
+{
+    n = new node();
+    n-&gt;value = data;
+    n-&gt;next = NULL;
+
+    while(TRUE) {
+        //先取一下尾指针和尾指针的next
+        tail = Q-&gt;tail;
+        next = tail-&gt;next;
+
+        //如果尾指针已经被移动了，则重新开始
+        if ( tail != Q-&gt;tail ) continue;
+
+        //如果尾指针的 next 不为NULL，则 fetch 全局尾指针到next
+        if ( next != NULL ) {
+            CAS(Q-&gt;tail, tail, next);
+            continue;
+        }
+
+        //如果加入结点成功，则退出
+        if ( CAS(tail-&gt;next, next, n) == TRUE ) break;
+    }
+    CAS(Q-&gt;tail, tail, n); //置尾结点
+}
+</pre>
+<p>上述的代码还是很清楚的，相信你一定能看懂，而且，这也是 Java 中的 <code>ConcurrentLinkedQueue</code> 的实现逻辑，当然，我上面的这个版本比 Java 的好一点，因为没有 if 嵌套，嘿嘿。</p>
+<p>好了，我们解决了EnQueue，我们再来看看DeQueue的代码：（很简单，我就不解释了）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">DeQueue(Q) //出队列
+{
+    do{
+        p = Q-&gt;head;
+        if (p-&gt;next == NULL){
+            return ERR_EMPTY_QUEUE;
+        }
+    while( CAS(Q-&gt;head, p, p-&gt;next) != TRUE );
+    return p-&gt;next-&gt;value;
+}</pre>
+<p><strong>我们可以看到，DeQueue的代码操作的是 <code>head-&gt;next</code>，而不是 <code>head</code> 本身。这样考虑是因为一个边界条件，我们需要一个dummy的头指针来解决链表中如果只有一个元素，<code>head</code> 和 <code>tail</code> 都指向同一个结点的问题，这样 <code>EnQueue</code> 和 <code>DeQueue</code> 要互相排斥了</strong>。</p>
+<p>但是，如果 <code>head</code> 和 <code>tail</code> 都指向同一个结点，这意味着队列为空，应该返回 <code>ERR_EMPTY_QUEUE</code>，但是，在判断 <code>p-&gt;next == NULL</code> 时，另外一个EnQueue操作做了一半，此时的 p-&gt;next 不为 NULL了，但是 tail 指针还差最后一步，没有更新到新加的结点，这个时候就会出现，在 EnQueue 并没有完成的时候， DeQueue 已经把新增加的结点给取走了，此时，队列为空，但是，head 与 tail 并没有指向同一个结点。如下所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-20047" src="/uploads/2012/09/lock.free_.queue_-224x300.png" alt="" width="400" height="537" srcset="" sizes="(max-width: 400px) 100vw, 400px"/></p>
+<p>虽然，EnQueue的函数会把 tail 指针置对，但是，这种情况可能还是会导致一些并发问题，所以，严谨来说，我们需要避免这种情况。于是，我们需要加入更多的判断条件，还确保这个问题。下面是相关的改进代码：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">DeQueue(Q) //出队列，改进版
+{
+    while(TRUE) {
+        //取出头指针，尾指针，和第一个元素的指针
+        head = Q-&gt;head;
+        tail = Q-&gt;tail;
+        next = head-&gt;next;
+
+        // Q-&gt;head 指针已移动，重新取 head指针
+        if ( head != Q-&gt;head ) continue;
+        
+        // 如果是空队列
+        if ( head == tail &amp;&amp; next == NULL ) {
+            return ERR_EMPTY_QUEUE;
+        }
+        
+        //如果 tail 指针落后了
+        if ( head == tail &amp;&amp; next == NULL ) {
+            CAS(Q-&gt;tail, tail, next);
+            continue;
+        }
+
+        //移动 head 指针成功后，取出数据
+        if ( CAS( Q-&gt;head, head, next) == TRUE){
+            value = next-&gt;value;
+            break;
+        }
+    }
+    free(head); //释放老的dummy结点
+    return value;
+}</pre>
+<p>上面这段代码的逻辑和 Java 的 <code>ConcurrentLinkedQueue</code> 的 <code>poll</code> 方法很一致了。也是《<a href="https://www.cs.rochester.edu/u/scott/papers/1996_PODC_queues.pdf" target="_blank" rel="noopener noreferrer">Simple, Fast, and Practical Non-Blocking and Blocking ConcurrentQueue Algorithms</a>》这篇论文中的实现。</p>
+<h4><span class="ez-toc-section" id="CAS%E7%9A%84ABA%E9%97%AE%E9%A2%98"></span>CAS的ABA问题<span class="ez-toc-section-end"></span></h4>
+<p>所谓ABA（<a href="https://en.wikipedia.org/wiki/ABA_problem" target="_blank" rel="noopener noreferrer">见维基百科的ABA词条</a>），问题基本是这个样子：</p>
+<ol>
+<li>进程P1在共享变量中读到值为A</li>
+<li>P1被抢占了，进程P2执行</li>
+<li>P2把共享变量里的值从A改成了B，再改回到A，此时被P1抢占。</li>
+<li>P1回来看到共享变量里的值没有被改变，于是继续执行。</li>
+</ol>
+<p>虽然P1以为变量值没有改变，继续执行了，但是这个会引发一些潜在的问题。<strong>ABA问题最容易发生在lock free 的算法中的，CAS首当其冲，因为CAS判断的是指针的值。很明显，值是很容易又变成原样的。</strong></p>
+<p>比如上述的DeQueue()函数，因为我们要让head和tail分开，所以我们引入了一个dummy指针给head，当我们做CAS的之前，如果head的那块内存被回收并被重用了，而重用的内存又被EnQueue()进来了，这会有很大的问题。（<strong>内存管理中重用内存基本上是一种很常见的行为</strong>）</p>
+<p>这个例子你可能没有看懂，维基百科上给了一个活生生的例子——</p>
+<blockquote><p>你拿着一个装满钱的手提箱在飞机场，此时过来了一个火辣性感的美女，然后她很暖昧地挑逗着你，并趁你不注意的时候，把用一个一模一样的手提箱和你那装满钱的箱子调了个包，然后就离开了，你看到你的手提箱还在那，于是就提着手提箱去赶飞机去了。</p></blockquote>
+<p>这就是ABA的问题。</p>
+<h4><span class="ez-toc-section" id="%E8%A7%A3%E5%86%B3ABA%E7%9A%84%E9%97%AE%E9%A2%98"></span>解决ABA的问题<span class="ez-toc-section-end"></span></h4>
+<p>维基百科上给了一个解——使用double-CAS（双保险的CAS），例如，在32位系统上，我们要检查64位的内容</p>
+<p style="padding-left: 30px;">1）一次用CAS检查双倍长度的值，前半部是值，后半部分是一个计数器。</p>
+<p style="padding-left: 30px;">2）只有这两个都一样，才算通过检查，要吧赋新的值。并把计数器累加1。</p>
+<p>这样一来，ABA发生时，虽然值一样，但是计数器就不一样（但是在32位的系统上，这个计数器会溢出回来又从1开始的，这还是会有ABA的问题）</p>
+<p>当然，我们这个队列的问题就是不想让那个内存重用，这样明确的业务问题比较好解决，论文《<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.53.8674&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener noreferrer">Implementing Lock-Free Queues</a>》给出一这么一个方法——<strong>使用结点内存引用计数refcnt</strong>！（论文《<a href="https://www.cs.rochester.edu/u/scott/papers/1996_PODC_queues.pdf" target="_blank" rel="noopener noreferrer">Simple, Fast, and Practical Non-Blocking and Blocking ConcurrentQueue Algorithms</a>》中的实现方法也基本上是一样的，用到的是增加一个计数，可以理解为版本号）</p>
+<p>）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c" data-enlighter-highlight="9,14">SafeRead(q)
+{
+    loop:
+        p = q-&gt;next;
+        if (p == NULL){
+            return p;
+        }
+
+        Fetch&amp;Add(p-&gt;refcnt, 1);
+
+        if (p == q-&gt;next){
+            return p;
+        }else{
+            Release(p);
+        }
+    goto loop;
+}</pre>
+<p>其中的 Fetch&amp;Add和Release分是是加引用计数和减引用计数，都是原子操作，这样就可以阻止内存被回收了。</p>
+<h4><span class="ez-toc-section" id="%E7%94%A8%E6%95%B0%E7%BB%84%E5%AE%9E%E7%8E%B0%E6%97%A0%E9%94%81%E9%98%9F%E5%88%97"></span>用数组实现无锁队列<span class="ez-toc-section-end"></span></h4>
+<p>本实现来自论文《<a href="http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.53.8674&amp;rep=rep1&amp;type=pdf" target="_blank" rel="noopener noreferrer">Implementing Lock-Free Queues</a>》</p>
+<p>使用数组来实现队列是很常见的方法，因为没有内存的分部和释放，一切都会变得简单，实现的思路如下：</p>
+<p style="padding-left: 30px;">1）数组队列应该是一个ring buffer形式的数组（环形数组）</p>
+<p style="padding-left: 30px;">2）数组的元素应该有三个可能的值：HEAD，TAIL，EMPTY（当然，还有实际的数据）</p>
+<p style="padding-left: 30px;">3）数组一开始全部初始化成EMPTY，有两个相邻的元素要初始化成HEAD和TAIL，这代表空队列。</p>
+<p style="padding-left: 30px;">4）EnQueue操作。假设数据x要入队列，定位TAIL的位置，使用double-CAS方法把(TAIL, EMPTY) 更新成 (x, TAIL)。需要注意，如果找不到(TAIL, EMPTY)，则说明队列满了。</p>
+<p style="padding-left: 30px;">5）DeQueue操作。定位HEAD的位置，把(HEAD, x)更新成(EMPTY, HEAD)，并把x返回。同样需要注意，如果x是TAIL，则说明队列为空。</p>
+<p>算法的一个关键是——如何定位HEAD或TAIL？</p>
+<p style="padding-left: 30px;">1）我们可以声明两个计数器，一个用来计数EnQueue的次数，一个用来计数DeQueue的次数。</p>
+<p style="padding-left: 30px;">2）这两个计算器使用使用Fetch&amp;ADD来进行原子累加，在EnQueue或DeQueue完成的时候累加就好了。</p>
+<p style="padding-left: 30px;">3）累加后求个模什么的就可以知道TAIL和HEAD的位置了。</p>
+<p>如下图所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-8240" title="Lock-Free Queue(Array)" src="/uploads/2012/09/lock-free-array.jpg" alt="" width="477" height="215" srcset="" sizes="(max-width: 477px) 100vw, 477px"/></p>
+<h4 style="text-align: left;"><span class="ez-toc-section" id="_%E5%B0%8F%E7%BB%93"></span> 小结<span class="ez-toc-section-end"></span></h4>
+<p style="text-align: left;">以上基本上就是所有的无锁队列的技术细节，这些技术都可以用在其它的无锁数据结构上。</p>
+<p style="text-align: left; padding-left: 30px;">1）无锁队列主要是通过CAS、FAA这些原子操作，和Retry-Loop实现。</p>
+<p style="text-align: left; padding-left: 30px;">2）对于Retry-Loop，我个人感觉其实和锁什么什么两样。只是这种“锁”的粒度变小了，主要是“锁”HEAD和TAIL这两个关键资源。而不是整个数据结构。</p>
+<p style="text-align: left;">还有一些和Lock Free的文章你可以去看看：</p>
+<ul>
+<li>Code Project 上的雄文 《<a href="http://www.codeproject.com/Articles/153898/Yet-another-implementation-of-a-lock-free-circular" target="_blank" rel="noopener noreferrer">Yet another implementation of a lock-free circular array queue</a>》</li>
+<li>Herb Sutter的《<a href="http://www.drdobbs.com/parallel/writing-lock-free-code-a-corrected-queue/210604448?pgno=1" target="_blank" rel="noopener noreferrer">Writing Lock-Free Code: A Corrected Queue</a>》– 用C++11的std::atomic模板。</li>
+<li>IBM developerWorks的《<a href="http://www.ibm.com/developerworks/cn/aix/library/au-multithreaded_structures2/index.html" target="_blank" rel="noopener noreferrer">设计不使用互斥锁的并发数据结构</a>》</li>
+</ul>
+<div>【<strong>注：我配了一张look-free的自行车，寓意为——如果不用专门的车锁，那么自行得自己锁自己！</strong>】</div>
+<p style="text-align: left;"> （全文完）</p>
+<p><audio style="display: none;" controls="controls"></audio></p>
+<p><audio style="display: none;" controls="controls"></audio></p>
+<p><audio style="display: none;" controls="controls"></audio></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8239-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Performance</a>, <a href="javascript:void(0)" rel="tag">Queue</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>无锁队列的实现</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2305858" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2305858" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/78455d207f34491317929540a7850ce9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/78455d207f34491317929540a7850ce9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小谢</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8239.html/comment-page-5#comment-2305858"><time datetime="2021-09-20T16:00:00+08:00">2021年09月20日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同感，这个确实有问题</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2361323" class="comment odd alt depth-2">
+<article id="div-comment-2361323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8fa189de2b9d7e331af9f04f35e53a4a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8fa189de2b9d7e331af9f04f35e53a4a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">姚尧</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8239.html/comment-page-5#comment-2361323"><time datetime="2022-01-25T16:05:50+08:00">2022年01月25日 16:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第二个DeQueue函数第18行next==NULL是不是应该改为next!=NULL</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2334833" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1749336" class="url" rel="ugc external nofollow">muduo网络库学习之Timestamp类、AtomicIntegerT 类封装中的知识点 - 算法网</a> </div>
+</li>
+<li id="comment-2336953" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1804216" class="url" rel="ugc external nofollow">C++实现无锁队列 - 算法网</a> </div>
+</li>
+<li id="comment-2369866" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2369866" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/58e81f67d90082c831ee23a846570172?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/58e81f67d90082c831ee23a846570172?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8239.html/comment-page-5#comment-2369866"><time datetime="2022-02-27T10:36:22+08:00">2022年02月27日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>DeQueue(Q) //出队列，改进版<br/>
+。。。<br/>
+// 如果是空队列<br/>
+if ( head == tail &amp;&amp; next == NULL ) {<br/>
+return ERR_EMPTY_QUEUE;<br/>
+}</p>
+<p><code> //如果 tail 指针落后了<br/>
+if ( head == tail &amp;&amp; next == NULL ) {<br/>
+CAS(Q-&gt;tail, tail, next);<br/>
+continue;<br/>
+}<br/>
+</code></p>
+<p>这里两个if条件一样的,但是执行的操作不现，没看懂。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370889" class="comment odd alt depth-2">
+<article id="div-comment-2370889" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/efa8e47dd8fb1ce500298d25b680fa43?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/efa8e47dd8fb1ce500298d25b680fa43?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">六道烈火</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8239.html/comment-page-5#comment-2370889"><time datetime="2022-11-07T15:35:51+08:00">2022年11月07日 15:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>//如果 tail 指针落后了 {修改}<br/>
+if ( head == tail &amp;&amp; next != NULL ) {<br/>
+CAS(Q-&gt;tail, tail, next);<br/>
+continue;<br/>
+}</p>
+<p>这里应该是 !=<br/>
+// 证明全局尾指针没有被更新，尝试更新一下 “主动操作”<br/>
+//尾指针落后了，所以我们要更新尾指针，然后在循环一次</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370728" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/207407.html" class="url" rel="ugc external nofollow">学习笔记—程序员练级攻略（入门篇、修养篇、专业基础篇、软件设计篇、高手成长篇） – 源码巴士</a> </div>
+</li>
+<li id="comment-2370832" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370832" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cd89888f0d11368992cf5ace88514e75?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cd89888f0d11368992cf5ace88514e75?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vaney</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8239.html/comment-page-5#comment-2370832"><time datetime="2022-10-20T15:42:53+08:00">2022年10月20日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>p = Q-&gt;tail; //取链表尾指针的快照 这个不是原子操作，没有影响吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371070" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/95962" class="url" rel="ugc external nofollow">无锁队列的实现 | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371092" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/146647" class="url" rel="ugc external nofollow">CAS | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371202" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/402727" class="url" rel="ugc external nofollow">muduo笔记 原子类AtomicIntegerT | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8239.html/comment-page-4#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8239.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/8239.html/comment-page-3#comments">3</a>
+<a class="page-numbers" href="/articles/8239.html/comment-page-4#comments">4</a>
+<span aria-current="page" class="page-numbers current">5</span> <span id="cp_post_id">8239</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

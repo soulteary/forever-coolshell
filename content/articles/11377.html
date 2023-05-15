@@ -1,0 +1,739 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C语言结构体里的成员数组和指针 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11377 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11377" class="post-content post-11377 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C语言结构体里的成员数组和指针</span>
+<h1 class="entry-title">C语言结构体里的成员数组和指针</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11377.html" title="08:17" rel="bookmark"><time class="entry-date" datetime="2014-04-01T08:17:15+08:00" pubdate="">2014年04月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11377.html#comments" class="comments-link">195 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 146,867 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>单看这文章的标题，你可能会觉得好像没什么意思。你先别下这个结论，相信这篇文章会对你理解C语言有帮助。这篇文章产生的背景是在微博上，看到<a title="Laruence" href="http://weibo.com/laruence" target="_blank">@Laruence</a>同学出了一个关于C语言的题，<a href="http://weibo.com/1170999921/ADojDbuSe" target="_blank">微博链接</a>。微博截图如下。我觉得好多人对这段代码的理解还不够深入，所以写下了这篇文章。</p>
+<p style="text-align: center;"><a href="http://weibo.com/1170999921/ADojDbuSe" target="_blank"><img decoding="async" class="aligncenter size-full wp-image-11378" alt="zero_array" src="/uploads/2014/03/zero_array.png" width="549" height="204" srcset="" sizes="(max-width: 549px) 100vw, 549px"/></a></p>
+<p>为了方便你把代码copy过去编译和调试，我把代码列在下面：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+struct str{
+    int len;
+    char s[0];
+};
+
+struct foo {
+    struct str *a;
+};
+
+int main(int argc, char** argv) {
+    struct foo f={0};
+    if (f.a-&gt;s) {
+        printf( f.a-&gt;s);
+    }
+    return 0;
+}
+</pre>
+<p>你编译一下上面的代码，在VC++和GCC下都会在14行的printf处crash掉你的程序。<a title="Laruence" href="http://weibo.com/laruence" target="_blank">@Laruence</a> 说这个是个经典的坑，我觉得这怎么会是经典的坑呢？上面这代码，你一定会问，为什么if语句判断的不是f.a？而是f.a里面的数组？写这样代码的人脑子里在想什么？还是用这样的代码来玩票？不管怎么样，看过原微博的回复，我个人觉得大家主要还是对C语言理解不深，如果这算坑的话，那么全都是坑。</p>
+<p><span id="more-11377"></span></p>
+<p>接下来，你调试一下，或是你把14行的printf语句改成：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">printf(&#34;%x\n&#34;, f.a-&gt;s);</code></p>
+<p>你会看到程序不crash了。程序输出：4。 这下你知道了，访问0x4的内存地址，不crash才怪。于是，你一定会有如下的问题：</p>
+<p style="padding-left: 30px;"><strong>1）为什么不是 13行if语句出错？f.a被初始化为空了嘛，用空指针访问成员变量为什么不crash？</strong></p>
+<p style="padding-left: 30px;"><strong>2）为什么会访问到了0x4的地址？靠，4是怎么出来的？</strong></p>
+<p style="padding-left: 30px;"><strong>3）代码中的第4行，char s[0] 是个什么东西？零长度的数组？为什么要这样玩？</strong></p>
+<p>让我们从基础开始一点一点地来解释C语言中这些诡异的问题。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%AD%E7%9A%84%E6%88%90%E5%91%98" title="结构体中的成员">结构体中的成员</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%8C%87%E9%92%88%E5%92%8C%E6%95%B0%E7%BB%84%E7%9A%84%E5%B7%AE%E5%88%AB" title="指针和数组的差别">指针和数组的差别</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%85%B3%E4%BA%8E%E9%9B%B6%E9%95%BF%E5%BA%A6%E7%9A%84%E6%95%B0%E7%BB%84" title="关于零长度的数组">关于零长度的数组</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%90%8E%E8%AE%B0" title="后记">后记</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9E%84%E4%BD%93%E4%B8%AD%E7%9A%84%E6%88%90%E5%91%98"></span>结构体中的成员<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们需要知道——<strong>所谓变量，其实是内存地址的一个抽像名字罢了</strong>。在静态编译的程序中，所有的变量名都会在编译时被转成内存地址。机器是不知道我们取的名字的，只知道地址。</p>
+<p>所以有了——栈内存区，堆内存区，静态内存区，常量内存区，我们代码中的所有变量都会被编译器预先放到这些内存区中。</p>
+<p>有了上面这个基础，我们来看一下结构体中的成员的地址是什么？我们先简单化一下代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct test{
+    int i;
+    char *p;
+};</pre>
+<p>上面代码中，test结构中i和p指针，在C的编译器中保存的是相对地址——也就是说，他们的地址是相对于struct test的实例的。如果我们有这样的代码：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">struct test t;</code></p>
+<p>我们用gdb跟进去，对于实例t，我们可以看到：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># t实例中的p就是一个野指针
+(gdb) p t
+$1 = {i = 0, c = 0 &#39;\000&#39;, d = 0 &#39;\000&#39;, p = 0x4003e0 &#34;1\355I\211\...&#34;}
+
+# 输出t的地址
+(gdb) p &amp;t
+$2 = (struct test *) 0x7fffffffe5f0
+
+#输出(t.i)的地址
+(gdb) p &amp;(t.i)
+$3 = (char **) 0x7fffffffe5f0
+
+#输出(t.p)的地址
+(gdb) p &amp;(t.p)
+$4 = (char **) 0x7fffffffe5f4</pre>
+<p>我们可以看到，t.i的地址和t的地址是一样的，t.p的址址相对于t的地址多了个4。说白了，<strong>t.i 其实就是(&amp;t + 0x0)</strong>, <strong>t.p 的其实就是 (&amp;t + 0x4)</strong>。0x0和0x4这个偏移地址就是成员i和p在编译时就被编译器给hard code了的地址。于是，你就知道，<strong>不管结构体的实例是什么——访问其成员其实就是加成员的偏移量</strong>。</p>
+<p>下面我们来做个实验：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct test{
+    int i;
+    short c;
+    char *p;
+};
+
+int main(){
+    struct test *pt=NULL;
+    return 0;
+}</pre>
+<p>编译后，我们用gdb调试一下，当初始化pt后，我们看看如下的调试：（我们可以看到就算是pt为NULL，访问其中的成员时，其实就是在访问相对于pt的内址）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) p pt
+$1 = (struct test *) 0x0
+(gdb) p pt-&gt;i
+Cannot access memory at address 0x0
+(gdb) p pt-&gt;c
+Cannot access memory at address 0x4
+(gdb) p pt-&gt;p
+Cannot access memory at address 0x8</pre>
+<p>注意：上面的pt-&gt;p的偏移之所以是0x8而不是0x6，是因为内存对齐了（我在64位系统上）。关于内存对齐，可参看《<a title="深入理解C语言" href="/articles/5761.html" target="_blank" rel="bookmark">深入理解C语言</a>》一文。</p>
+<p>好了，现在你知道为什么原题中会访问到了0x4的地址了吧，因为是相对地址。</p>
+<p>相对地址有很好多处，其可以玩出一些有意思的编程技巧，比如把C搞出面向对象式的感觉来，你可以参看我正好11年前的文章《<a href="http://blog.csdn.net/haoel/article/details/2864" target="_blank">用C写面向对像的程序</a>》（用指针类型强转的危险玩法——相对于C++来说，C++编译器帮你管了继承和虚函数表，语义也清楚了很多）</p>
+<h4><span class="ez-toc-section" id="%E6%8C%87%E9%92%88%E5%92%8C%E6%95%B0%E7%BB%84%E7%9A%84%E5%B7%AE%E5%88%AB"></span>指针和数组的差别<span class="ez-toc-section-end"></span></h4>
+<p>有了上面的基础后，你把源代码中的struct str结构体中的char s[0];改成char *s;试试看，你会发现，在13行if条件的时候，程序因为Cannot access memory就直接挂掉了。为什么声明成char s[0]，程序会在14行挂掉，而声明成char *s，程序会在13行挂掉呢？<strong>那么char *s 和 char s[0]有什么差别呢</strong>？</p>
+<p>在说明这个事之前，有必要看一下汇编代码，用GDB查看后发现：</p>
+<ul>
+<li>对于char s[0]来说，汇编代码用了lea指令，lea   0x04(%rax),   %rdx</li>
+<li>对于char*s来说，汇编代码用了mov指令，mov 0x04(%rax),   %rdx</li>
+</ul>
+<p>lea全称load effective address，是把地址放进去，而mov则是把地址里的内容放进去。所以，就crash了。</p>
+<p>从这里，我们可以看到，<strong>访问成员数组名其实得到的是数组的相对地址，而访问成员指针其实是相对地址里的内容</strong>（这和访问其它非指针或数组的变量是一样的）</p>
+<p>换句话说，<strong>对于数组 char s[10]来说，数组名 s 和 &amp;s 都是一样的</strong>（不信你可以自己写个程序试试）。在我们这个例子中，也就是说，都表示了偏移后的地址。这样，如果我们访问 指针的地址（或是成员变量的地址），那么也就不会让程序挂掉了。</p>
+<p>正如下面的代码，可以运行一点也不会crash掉（你汇编一下你会看到用的都是lea指令）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct test{
+    int i;
+    short c;
+    char *p;
+    char s[10];
+};
+
+int main(){
+    struct test *pt=NULL;
+    printf(&#34;&amp;s = %x\n&#34;, pt-&gt;s); //等价于 printf(&#34;%x\n&#34;, &amp;(pt-&gt;s) );
+    printf(&#34;&amp;i = %x\n&#34;, &amp;pt-&gt;i); //因为操作符优先级，我没有写成&amp;(pt-&gt;i)
+    printf(&#34;&amp;c = %x\n&#34;, &amp;pt-&gt;c);
+    printf(&#34;&amp;p = %x\n&#34;, &amp;pt-&gt;p);
+    return 0;
+}</pre>
+<p><strong>看到这里，你觉得这能算坑吗？不要出什么事都去怪语言，大家要想想是不是问题出在自己身上。</strong></p>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8E%E9%9B%B6%E9%95%BF%E5%BA%A6%E7%9A%84%E6%95%B0%E7%BB%84"></span>关于零长度的数组<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们要知道，<strong>0长度的数组在ISO C和C++的规格说明书中是不允许的</strong>。这也就是为什么在VC++2012下编译你会得到一个警告：“arning C4200: 使用了非标准扩展 : 结构/联合中的零大小数组”。</p>
+<p>那么为什么gcc可以通过而连一个警告都没有？那是因为gcc 为了预先支持C99的这种玩法，所以，让“零长度数组”这种玩法合法了。关于GCC对于这个事的文档在这里：“<a title="Arrays of Length Zero" href="http://gcc.gnu.org/onlinedocs/gcc/Zero-Length.html" target="_blank">Arrays of Length Zero</a>”，文档中给了一个例子（我改了一下，改成可以运行的了）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdlib.h&gt;
+#include &lt;string.h&gt;
+
+struct line {
+   int length;
+   char contents[0]; // C99的玩法是：char contents[]; 没有指定数组长度
+};
+
+int main(){
+    int this_length=10;
+    struct line *thisline = (struct line *)
+                     malloc (sizeof (struct line) + this_length);
+    thisline-&gt;length = this_length;
+    memset(thisline-&gt;contents, &#39;a&#39;, this_length);
+    return 0;
+}</pre>
+<p>上面这段代码的意思是：我想分配一个不定长的数组，于是我有一个结构体，其中有两个成员，一个是length，代表数组的长度，一个是contents，代码数组的内容。后面代码里的 this_length（长度是10）代表是我想分配的数据的长度。（这看上去是不是像一个C++的类？）这种玩法英文叫：Flexible Array，中文翻译叫：柔性数组。</p>
+<p>我们来用gdb看一下：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) p thisline
+$1 = (struct line *) 0x601010
+
+(gdb) p *thisline
+$2 = {length = 10, contents = 0x601010 &#34;\n&#34;}
+
+(gdb) p thisline-&gt;contents
+$3 = 0x601014 &#34;aaaaaaaaaa&#34;</pre>
+<p>我们可以看到：在输出*thisline时，我们发现其中的成员变量contents的地址居然和thisline是一样的（偏移量为0x0??!!）。但是当我们输出thisline-&gt;contents的时候，你又发现contents的地址是被offset了0x4了的，内容也变成了10个‘a’。（我觉得这是一个GDB的bug，VC++的调试器就能很好的显示）</p>
+<p>我们继续，如果你sizeof(char[0])或是 sizeof(int[0]) 之类的零长度数组，你会发现sizeof返回了0，这就是说，零长度的数组是存在于结构体内的，但是不占结构体的size。你可以简单的理解为一个没有内容的占位标识，直到我们给结构体分配了内存，这个占位标识才变成了一个有长度的数组。</p>
+<p>看到这里，你会说，为什么要这样搞啊，把contents声明成一个指针，然后为它再分配一下内存不行么？就像下面一样。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="3,9">struct line {
+   int length;
+   char *contents;
+};
+
+int main(){
+    int this_length=10;
+    struct line *thisline = (struct line *)malloc (sizeof (struct line));
+    thisline-&gt;contents = (char*) malloc( sizeof(char) * this_length );
+    thisline-&gt;length = this_length;
+    memset(thisline-&gt;contents, &#39;a&#39;, this_length);
+    return 0;
+}</pre>
+<p>这不一样清楚吗？而且也没什么怪异难懂的东西。是的，这也是普遍的编程方式，代码是很清晰，也让人很容易理解。即然这样，那为什么要搞一个零长度的数组？有毛意义？！</p>
+<p>这个事情出来的原因是——<strong>我们想给一个结构体内的数据分配一个连续的内存！</strong>这样做的意义有两个好处：</p>
+<p style="padding-left: 30px;"><strong>第一个意义是，方便内存释放</strong>。如果我们的代码是在一个给别人用的函数中，你在里面做了二次内存分配，并把整个结构体返回给用户。用户调用free可以释放结构体，但是用户并不知道这个结构体内的成员也需要free，所以你不能指望用户来发现这个事。所以，如果我们把结构体的内存以及其成员要的内存一次性分配好了，并返回给用户一个结构体指针，用户做一次free就可以把所有的内存也给释放掉。（读到这里，你一定会觉得C++的封闭中的析构函数会让这事容易和干净很多）</p>
+<p style="padding-left: 30px;"><strong>第二个原因是，这样有利于访问速度</strong>。连续的内存有益于提高访问速度，也有益于减少内存碎片。（其实，我个人觉得也没多高了，反正你跑不了要用做偏移量的加法来寻址）</p>
+<p>我们来看看是怎么个连续的，用gdb的x命令来查看：(我们知道，用struct line {}中的那个char contents[]不占用结构体的内存，所以，struct line就只有一个int成员，4个字节，而我们还要为contents[]分配10个字节长度，所以，一共是14个字节)</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) x /14b thisline
+0x601010:       10      0       0       0       97      97      97      97
+0x601018:       97      97      97      97      97      97</pre>
+<p>从上面的内存布局我们可以看到，前4个字节是 int length，后10个字节就是char contents[]。</p>
+<p>如果用指针的话，会变成这个样子：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) x /16b thisline
+0x601010:       1       0       0       0       0       0       0       0
+0x601018:       32      16      96      0       0       0       0       0
+(gdb) x /10b this-&gt;contents
+0x601020:       97      97      97      97      97      97      97      97
+0x601028:       97      97</pre>
+<p>上面一共输出了四行内存，其中，</p>
+<ul>
+<li>第一行前四个字节是 int length，第一行的后四个字节是对齐。</li>
+<li>第二行是char* contents，64位系统指针8个长度，他的值是0x20 0x10 0x60 也就是0x601020。</li>
+<li>第三行和第四行是char* contents指向的内容。</li>
+</ul>
+<p>从这里，我们看到，<strong>其中的差别——数组的原地就是内容，而指针的那里保存的是内容的地址</strong>。</p>
+<h4><span class="ez-toc-section" id="%E5%90%8E%E8%AE%B0"></span>后记<span class="ez-toc-section-end"></span></h4>
+<p>好了，我的文章到这里就结束了。但是，请允许我再唠叨两句。</p>
+<p style="padding-left: 30px;"><strong>1）看过这篇文章，你觉得C复杂吗？我觉得并不简单。某些地方的复杂程度不亚于C++。</strong></p>
+<p style="padding-left: 30px;"><strong>2）那些学不好C++的人一定是连C都学不好的人。连C都没学好，你们根本没有资格鄙视C++。</strong></p>
+<p style="padding-left: 30px;"><strong>3）当你们在说有坑的时候，你得问一下自己，是真有坑还是自己的学习能力上出了问题。</strong></p>
+<p>如果你觉得你的C语言还不错，欢迎你看看《<a title="C语言的谜题" href="/articles/945.html" target="_blank">C语言的谜题</a>》还有《<a title="谁说C语言很简单？" href="/articles/873.html" target="_blank">谁说C语言很简单？</a>》还有《<a href="/articles/830.html" target="_blank">语言的歧义</a>》以及《<a title="深入理解C语言" href="/articles/5761.html" target="_blank" rel="bookmark">深入理解C语言</a>》一文。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11377-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C语言结构体里的成员数组和指针</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1620063" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1620063" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7bfb8a916a0cb49b1f039951a00a6094?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7bfb8a916a0cb49b1f039951a00a6094?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tomwang1013</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1620063"><time datetime="2014-12-03T12:04:02+08:00">2014年12月03日 12:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，问个问题，为啥同一个表达式f.a-&gt;s在if后面和printf里面解释会不一样呢？if里面它的值是4，而printf中就报错了？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2361083" class="comment odd alt depth-2">
+<article id="div-comment-2361083" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b7556aa6a892426a4a2022e95445664d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b7556aa6a892426a4a2022e95445664d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">乐意</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-2361083"><time datetime="2022-01-24T14:02:08+08:00">2022年01月24日 14:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>放在printf中时，把f.a-&gt;s（4）解析为指向要打印字符串的首地址，当要打印0x4地址的内容时，当然会造成非法访问以及报错。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1639459" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1639459" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4df1530fe1cb8ee7cd250e3645c5c535?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4df1530fe1cb8ee7cd250e3645c5c535?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">七重</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1639459"><time datetime="2015-01-03T12:13:58+08:00">2015年01月03日 12:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>上面说那样的操作是为了内存释放方便，这个有点欠妥吧，即使结构体中变量写成指针形式也可以一次性申请，一次性释放，申请内存时加上字节对齐应该就可以。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1647507" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1647507" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cbab80e9ad81eb64b4bcab7e46fe555?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cbab80e9ad81eb64b4bcab7e46fe555?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rgbyuv</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1647507"><time datetime="2015-01-20T10:41:42+08:00">2015年01月20日 10:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我调试的结果和你的有出入：<br/>
+(gdb) p thisline<br/>
+$3 = (struct line *) 0x804b008<br/>
+(gdb) p *thisline<br/>
+$4 = {length = 0, contents = 0x804b00c “”}</p>
+</div>
+ </article>
+</li>
+<li id="comment-1663462" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1663462" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/25e1ad5bacff6376feeb0ae09ecefe4a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/25e1ad5bacff6376feeb0ae09ecefe4a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bwangel</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1663462"><time datetime="2015-02-17T17:11:14+08:00">2015年02月17日 17:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>到了，今天才明白，皓哥，您这文章是小半天才能看完一篇的。我原来一直都是瞎看，实在是惭愧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1663535" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=17773" class="url" rel="ugc external nofollow">大神是如何玩C语言的！ | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1672171" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1672171" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eaaf3ff77bb47187463f17a1fdbf7e63?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eaaf3ff77bb47187463f17a1fdbf7e63?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">飞翔的问候</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1672171"><time datetime="2015-03-08T22:11:16+08:00">2015年03月08日 22:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好。关于这段话<br/>
+&gt; 我们可以看到：在输出*thisline时，我们发现其中的成员变量contents的地址居然和thisline是一样的（偏移量为0x0??!!）。但是当我们输出thisline-&gt;contents的时候，你又发现contents的地址是被offset了0x4了的，内容也变成了10个‘a’。（我觉得这是一个GDB的bug，VC++的调试器就能很好的显示）</p>
+<p>我在ubuntu 14.10 64位系统上用gdb测试，后两个contents的地址是一样的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1688835" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.havebug.com/archives/7793.html" class="url" rel="ugc external nofollow">大神是如何玩C语言的！ - 有Bug</a> </div>
+</li>
+<li id="comment-1709932" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1709932" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/067f56306c4e07ecd2628ff17c0c1839?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/067f56306c4e07ecd2628ff17c0c1839?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">king</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1709932"><time datetime="2015-05-19T23:56:38+08:00">2015年05月19日 23:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那是不是只要结构体初始化后，输出它的地址就都是相对的了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1719993" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1719993" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12e93fa54f5801e2c4d404826724bf22?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12e93fa54f5801e2c4d404826724bf22?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Everett</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1719993"><time datetime="2015-06-10T11:49:05+08:00">2015年06月10日 11:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人总结：<br/>
+有些变量既有地址也有内存，<br/>
+但是有些变量只有地址没有内存。它只是一个地址的代号而已。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1719994" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1719994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12e93fa54f5801e2c4d404826724bf22?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12e93fa54f5801e2c4d404826724bf22?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Everett</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1719994"><time datetime="2015-06-10T11:50:53+08:00">2015年06月10日 11:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1479017" rel="nofollow">@ilinix </a><br/>
+确实 总结精辟</p>
+</div>
+ </article>
+</li>
+<li id="comment-1727755" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wuyudong.com/archives/648" class="url" rel="ugc external nofollow">工学1号馆 » C语言柔性数组</a> </div>
+</li>
+<li id="comment-1731184" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mikwei.com/?p=4370" class="url" rel="ugc external nofollow">大神是如何玩C语言的！ | 可维博客</a> </div>
+</li>
+<li id="comment-1733232" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1733232" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7e8138c32baa3846875f49b0b59cfd9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7e8138c32baa3846875f49b0b59cfd9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">buxizhizhou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1733232"><time datetime="2015-07-09T11:46:58+08:00">2015年07月09日 11:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个其实就是printf输出的是字符串的内容嘛。你char *s=”abc”; printf(s);输出的就是s的内容，现在这个程序里printf也是要输出那个地址的内容，而因为结构体指针是null，所以取结构体的成员变量地址是可以的，而取值是错误的！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1733573" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.programerhome.com/?p=25291" class="url" rel="ugc external nofollow">读陈浩的《C语言结构体里的成员数组和指针》总结，零长度数组 | 程序员之家</a> </div>
+</li>
+<li id="comment-1733776" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.aliog.com/38201.html" class="url" rel="ugc external nofollow">读陈浩的《C语言结构体里的成员数组和指针》总结，零长度数组 - 编程语言 - 阿里欧歌</a> </div>
+</li>
+<li id="comment-1745936" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1745936" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65ca701565711383888f0b4afda51e8f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65ca701565711383888f0b4afda51e8f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jueying</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1745936"><time datetime="2015-08-12T17:07:11+08:00">2015年08月12日 17:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>(gdb) x /16b thisline，这句和(gdb) x /14b thisline的调试结果一样啊，只是多显示了两个，是不是写错了？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1751141" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1751141" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ChengMo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1751141"><time datetime="2015-08-28T11:56:47+08:00">2015年08月28日 11:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@jueying 没有看清楚吧？<br/>
+(gdb) x /16b thisline 上面有一行“如果这里改用指针的话”</p>
+<p>这里为了展示指针和char [0]的区别</p>
+<p>@Leo<br/>
+“第一个意义是，方便内存释放。”对于这一点，没有很清楚<br/>
+如果在把结构体交给其他函数之前，已经把char abc[0]进行了内存分配，连同一个length变量一起传递。<br/>
+这样另一个函数接收到的，就是已经分配好的length的内存，可以直接使用了？如果用户free这个结构体呢？<br/>
+那段 length的内存会怎么处理？系统回收么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754085" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1754085" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a72e5176e10d9dcae9796622e67312be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a72e5176e10d9dcae9796622e67312be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">water</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1754085"><time datetime="2015-09-06T16:32:54+08:00">2015年09月06日 16:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2）为什么会访问到了0x4的地址？靠，4是怎么出来的？<br/>
+———-这个没有解释，按照您的说法，4是一个偏移结构体的地址。但是输出的时候，应该打印绝对地址。<br/>
+假设4是绝对地址，那么反推整个数据结构的地址是0！！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1758599" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1758599" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/297eefc1b68d907a7b02bd49aa4e5fda?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/297eefc1b68d907a7b02bd49aa4e5fda?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gggeee111000</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1758599"><time datetime="2015-09-15T21:24:18+08:00">2015年09月15日 21:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>解析鞭辟入里，很值得收藏</p>
+</div>
+ </article>
+</li>
+<li id="comment-1801134" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1801134" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/13a1dadc4e20248d539bc36f7f8ac9e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/13a1dadc4e20248d539bc36f7f8ac9e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.lua.ren" class="url" rel="ugc external nofollow">糖果</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1801134"><time datetime="2015-12-16T12:22:17+08:00">2015年12月16日 12:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对这篇文章的评论，只有四个字：“庖丁解牛”C语言。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1839182" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2096" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 – linux运维部落</a> </div>
+</li>
+<li id="comment-1898960" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1898960" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5a4286072ad07228675691e18bcd1ac0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5a4286072ad07228675691e18bcd1ac0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.noanylove.com" class="url" rel="ugc external nofollow">NoAnyLove</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1898960"><time datetime="2016-11-16T12:19:50+08:00">2016年11月16日 12:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Ubuntu 16.04 x64，gcc 5.4下，char s[0]的例子不再使用lea指令，而是将0x4的偏移加到了rax上，</p>
+<p>0x40052e movq $0x0,-0x8(%rbp) // 初始化f.a为0<br/>
+0x40053d mov -0x10(%rbp),%rax // 这句执行完，rax就等于0了<br/>
+0x400541 add $0x4,%rax<br/>
+0x400545 test %rax,%rax<br/>
+0x400548 je 0x40055f<br/>
+0x40054a mov -0x10(%rbp),%rax<br/>
+0x40054e add $0x4,%rax<br/>
+0x400552 mov %rax,%rdi<br/>
+0x400555 mov $0x0,%eax<br/>
+0x40055a callq 0x400400<br/>
+0x40055f mov $0x0,%eax<br/>
+0x400564 leaveq</p>
+<p>而char *s的例子，则编译为了</p>
+<p>0x400535 movq $0x0,-0x10(%rbp) // 初始化f.a为0<br/>
+0x40053d mov -0x10(%rbp),%rax<br/>
+0x400541 mov 0x8(%rax),%rax // 在这里崩溃，因为rax为0<br/>
+0x400545 test %rax,%rax<br/>
+0x400548 je 0x40055f<br/>
+0x40054a mov -0x10(%rbp),%rax<br/>
+0x40054e mov 0x8(%rax),%rax<br/>
+0x400541 mov 0x8(%rax),%rax<br/>
+0x400545 test %rax,%rax<br/>
+0x400548 je 0x40055f<br/>
+0x40054a mov -0x10(%rbp),%rax<br/>
+0x40054e mov 0x8(%rax),%rax<br/>
+0x400552 mov %rax,%rdi<br/>
+0x400555 mov $0x0,%eax<br/>
+0x40055a callq 0x400400<br/>
+0x40055f mov $0x0,%eax<br/>
+0x400564 leaveq</p>
+<p>不知道是不是因为编译器升级导致编译成的汇编指令不同，还是因为是64位系统的原因。<br/>
+我比较困惑的是，为什么这里是mov 0x8(%rax),%rax，而不是mov 0x4(%rax),%rax，char *s的偏移应该是4吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1901704" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://fabyang.com/blog/2016/11/26/c%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 - fab</a> </div>
+</li>
+<li id="comment-1909794" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1909794" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1909794"><time datetime="2017-01-03T14:52:29+08:00">2017年01月03日 14:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在vs2013中：如果是cpp文件，结构体中数组长度是0会警告不生成默认的拷贝构造函数，如果是c文件不警告成功编译。对于数组是局部变量则编译出错。<br/>
+在gcc中：都不警告成功编译。对于数组是局部变量也成功编译。<br/>
+而我在 《imperfect c++》1.2.5 中看到一个例子 must_be_same_size 作者使用 局部变量数组长度是0 无法通过编译来做编译约束，真是个错误啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1910107" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yang.lol/2017/01/06/c-%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C 语言结构体里的成员数组和指针 – lol</a> </div>
+</li>
+<li id="comment-1913209" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yang.life/fab/%e7%bc%96%e7%a8%8b/c/%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88" class="url" rel="ugc external nofollow">C 语言结构体里的成员数组和指针 – hahaha</a> </div>
+</li>
+<li id="comment-1914140" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914140" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc79edecd863f3ad74a00eb197569767?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc79edecd863f3ad74a00eb197569767?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaoyu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1914140"><time datetime="2017-05-23T09:19:20+08:00">2017年05月23日 09:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>printf( f.a-&gt;s);其实关键这里看有没有间接访问,例如%x %p都只是访问指针的内容，而没有做间接访问</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914241" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ixyzero.com/blog/archives/3335.html" class="url" rel="ugc external nofollow">由printf导致的「Segmentation fault (core dumped)」 | ASPIRE</a> </div>
+</li>
+<li id="comment-1919292" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://os.psmeimei.com/2017/10/18/%e6%88%91%e7%9a%84%e6%97%a5%e5%b8%b8%e5%b7%a5%e5%85%b7-gdb%e7%af%87/" class="url" rel="ugc external nofollow">我的日常工具——gdb篇-操作系统相关</a> </div>
+</li>
+<li id="comment-1920830" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1920830" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张洪浪</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1920830"><time datetime="2017-11-16T18:12:04+08:00">2017年11月16日 18:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>指针其实也可以申请连续内存，然后一次性释放：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct ds{
+    size_t size;
+    int *ptr ;
+} *p ;
+p = (struct ds *)malloc ( sizeof (struct ds) + len* sizeof ( int ) ) ;
+p -&gt;size= len;
+p-&gt;ptr =(int *)( p+1 );</pre>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1920831" class="comment odd alt depth-2 parent">
+<article id="div-comment-1920831" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张洪浪</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-1920831"><time datetime="2017-11-16T18:21:03+08:00">2017年11月16日 18:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>p-&gt;ptr = p-&gt;ptr+1;</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2001695" class="comment even depth-3">
+<article id="div-comment-2001695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/237e68b36cad3eafbb9f6e7e09716201?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/237e68b36cad3eafbb9f6e7e09716201?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">邱杰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-2001695"><time datetime="2019-06-13T11:41:38+08:00">2019年06月13日 11:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你这样需要多做一次寻址</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1921841" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://fitwuxc.com/?p=1" class="url" rel="ugc external nofollow">C语言结构体中的零长数组 – FITWU</a> </div>
+</li>
+<li id="comment-1945072" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tingyucanhe.com/2018/10/26/knowledge-tree-dynamic-memory-management/" class="url" rel="ugc external nofollow">知识谱系(CH13): 动态内存管理 – LUA</a> </div>
+</li>
+<li id="comment-2025463" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/09/29/5d9025822336b/" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | 大专栏</a> </div>
+</li>
+<li id="comment-2224666" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.vpsman.net/35416.html" class="url" rel="ugc external nofollow">C语言之动态内存管理 - VPS菜鸟园 - VPS菜鸟园</a> </div>
+</li>
+<li id="comment-2265082" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2265082" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/69821bf944e57294ccb75309d18924ef?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/69821bf944e57294ccb75309d18924ef?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-2265082"><time datetime="2021-06-17T14:37:15+08:00">2021年06月17日 14:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>发现个sicp彩蛋</p>
+</div>
+ </article>
+</li>
+<li id="comment-2349155" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2349155" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/67de0c507684b651f5252c1c5a8f6408?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/67de0c507684b651f5252c1c5a8f6408?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.csdn.net/blueskybluesoul" class="url" rel="ugc external nofollow">Camio1945</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-2349155"><time datetime="2021-12-16T19:37:29+08:00">2021年12月16日 19:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“访问0x4的内存地址，不crash才怪。”<br/>
+为了理解和验证这句话，我花了老大劲又写了一篇博客，录了一个视频，感兴趣的可以看看。<br/>
+博客叫《为什么printf(1)报错、而printf(0)不报错？》<br/>
+博客地址：https://blog.csdn.net/blueskybluesoul/article/details/121969482<br/>
+视频地址：<br/>
+<a href="https://www.bilibili.com/video/BV1AR4y1W7VX/" rel="nofollow ugc">https://www.bilibili.com/video/BV1AR4y1W7VX/</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2361102" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2361102" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b7556aa6a892426a4a2022e95445664d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b7556aa6a892426a4a2022e95445664d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">乐意</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11377.html/comment-page-4#comment-2361102"><time datetime="2022-01-24T15:37:41+08:00">2022年01月24日 15:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实并没有一块真正的内存空间来存放数组名的值，无论结构体是否初始化，只要知道结构体类型，数组名的内容都是不变的。他始终为结构体地址+数组起始地址与结构体起始地址的偏移量</p>
+<p>而指针就不一样了<br/>
+指针的内容是有一块具体的内存空间来存储的，当结构体没有初始化时，这个内存空间就是非法访问的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371086" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/127790" class="url" rel="ugc external nofollow">我的日常工具——gdb篇 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11377.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11377.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/11377.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/11377.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">11377</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

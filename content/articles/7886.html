@@ -1,0 +1,327 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>代码执行的效率 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7886 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7886" class="post-content post-7886 post type-post status-publish format-standard hentry category-misc category-proglanguage tag-c tag-coding tag-compiler tag-performance tag-php tag-pythondev">
+<header class="entry-header">
+<span class="screen-reader-text">代码执行的效率</span>
+<h1 class="entry-title">代码执行的效率</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7886.html" title="08:18" rel="bookmark"><time class="entry-date" datetime="2012-07-13T08:18:32+08:00" pubdate="">2012年07月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7886.html#comments" class="comments-link">70 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 52,419 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>在《<a title="性能调优攻略" href="/articles/7490.html" target="_blank">性能调优攻略</a>》里，我说过，要调优性需要找到程序中的Hotspot，也就是被调用最多的地方，这种地方，只要你能优化一点点，你的性能就会有质的提高。在这里我给大家举三个关于代码执行效率的例子（它们都来自于网上）</p>
+<h4><strong>第一个例子</strong></h4>
+<p><strong> PHP中Getter和Setter的效率</strong>（<a href="http://www.reddit.com/r/programming/comments/wdsgn/today_i_learned_that_creating_getters_setters_in/" target="_blank">来源reddit</a>）</p>
+<p>这个例子比较简单，你可以跳过。</p>
+<p>考虑下面的PHP代码：我们可看到，使用Getter/Setter的方式，性能要比直接读写成员变量要差一倍以上。</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">&lt;?php
+	//dog_naive.php
+
+	class dog {
+		public $name = &#34;&#34;;
+		public function setName($name) {
+			$this-&amp;gt;name = $name;
+		}
+		public function getName() {
+			return $this-&amp;gt;name;
+		}
+	}
+
+	$rover = new dog();
+        //通过Getter/Setter方式
+	for ($x=0; $x&lt;10; $x++) {
+		$t = microtime(true);
+		for ($i=0; $i&lt;1000000; $i++) {
+			$rover-&gt;setName(&#34;rover&#34;);
+			$n = $rover-&gt;getName();
+		}
+		echo microtime(true) - $t;
+		echo &#34;\n&#34;;
+	}
+        //直接存取变量方式
+        for ($x=0; $x&lt;10; $x++) {
+		$t = microtime(true);
+		for($i=0; $i&lt;1000000; $i++) {
+			$rover-&gt;name = &#34;rover&#34;;
+			$n = $rover-&gt;name;
+		}
+		echo microtime(true) - $t;
+		echo &#34;\n&#34;;
+	}
+?&gt;</pre>
+<p>这个并没有什么稀，因为有函数调用的开销，函数调用需要压栈出栈，需要传值，有时还要需要中断，要干的事太多了。所以，代码多了，效率自然就慢了。所有的语言都这个德行，这就是为什么C++要引入inline的原因。而且Java在打开优化的时候也可以优化之。但是对于动态语言来说，这个事就变得有点困难了。</p>
+<p><span id="more-7886"></span></p>
+<p>你可能会以为使用下面的代码（Magic Function）会好一些，但实际其性能更差。</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">class dog {
+	private $_name = &#34;&#34;;
+	function __set($property,$value) {
+		if($property == &#39;name&#39;) $this-&gt;_name = $value;
+	}
+	function __get($property) {
+		if($property == &#39;name&#39;) return $this-&gt;_name;
+	}
+}</pre>
+<p>动态语言的效率从来都是一个问题，如果你需要PHP有更好的性能，你可能需要使用<a href="https://github.com/facebook/hiphop-php" target="_blank">FaceBook的HipHop</a>来把PHP编译成C语言。</p>
+<h4><strong>第二个例子</strong></h4>
+<p><strong>为什么Python程序在函数内执行得更快？</strong>（<a href="http://stackoverflow.com/questions/11241523/why-does-python-code-run-faster-in-a-function" target="_blank">来源StackOverflow</a>）</p>
+<p>考虑下面的代码，一个在函数体内，一个是全局的代码。</p>
+<p>函数内的代码执行效率为 1.8s</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">def main():
+    for i in xrange(10**8):
+        pass
+main()</pre>
+<p>函数体外的代码执行效率为 4.5s</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">for i in xrange(10**8):
+    pass</pre>
+<p>不用太纠结时间，只是一个示例，我们可以看到效率查得很多。为什么会这样呢？我们使用 <a href="https://docs.python.org/library/dis.html" target="_blank"><code>dis</code> module</a> 反汇编函数体内的bytecode 代码，使用 <a href="https://docs.python.org/library/functions.html#compile" target="_blank"><code>compile</code> builtin</a> 反汇编全局bytecode，我们可以看到下面的反汇编（注意我高亮的地方）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="2">13 FOR_ITER                 6 (to 22)
+16 STORE_FAST               1 (i)
+19 JUMP_ABSOLUTE           13</pre>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="2">13 FOR_ITER                 6 (to 22)
+16 STORE_NAME               1 (i)
+19 JUMP_ABSOLUTE           13</pre>
+<p>我们可以看到，差别就是 <a href="https://docs.python.org/library/dis.html#opcode-STORE_FAST" target="_blank"><code>STORE_FAST</code></a> 和 <code><a href="https://docs.python.org/library/dis.html#opcode-STORE_NAME" target="_blank">STORE_NAME</a>，前者比后者快很多。所以，在全局代码中，变量i成了一个全局变量，而函数中的i是放在本地变量表中，所以在全局变量表中查找变量就慢很多。如果你在main函数中声明global i 那么效率也就下来了。</code>原因是，本地变量是存在一个数组中（直到），用一个整型常量去访问，而全局变量存在一个dictionary中，查询很慢。</p>
+<p><code>（注：在</code>C/C++中，这个不是一个问题）</p>
+<h4><strong>第三个例子</strong></h4>
+<p><strong> 为什么排好序的数据在遍历时会更快？</strong>（<a href="http://stackoverflow.com/questions/11227809/why-is-processing-a-sorted-array-faster-than-an-unsorted-array" target="_blank">来源StackOverflow</a>）</p>
+<p>参看如下C/C++的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="4"> for (unsigned i = 0; i &lt; 100000; ++i) {
+   // primary loop
+    for (unsigned j = 0; j &lt; arraySize; ++j) {
+        if (data[j] &gt;= 128)
+            sum += data[j];
+    }
+}</pre>
+<p>如果你的data数组是排好序的，那么性能是1.93s，如果没有排序，性能为11.54秒。差5倍多。无论是C/C++/Java，或是别的什么语言都基本上一样。</p>
+<p>这个问题的原因是——<strong> <a href="https://en.wikipedia.org/wiki/Branch_predictor">branch prediction</a> （分支预判）</strong>伟大的stackoverflow给了一个非常不错的解释。</p>
+<p>考虑我们一个铁路分叉，当我们的列车来的时候， 扳道员知道分个分叉通往哪，但不知道这个列车要去哪儿，司机知道要去哪，但是不知道走哪条分叉。所以，我们需要让列车停下来，然后司机和扳道员沟通一下。这样的性能太差了。</p>
+<p>所以，我们可以优化一下，那就是猜，我们至少有50%的概率猜对，如果猜对了，火车行驶性能巨高，猜错了，就得让火车退回来。如果我猜对的概率高，那么，我们的性能就会高，否则老是猜错了，性能就很差。</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-7893" title="muxnt" src="/uploads/2012/07/muxnt.jpg" alt="" width="440" height="330" srcset="" sizes="(max-width: 440px) 100vw, 440px"/></p>
+<p style="text-align: center;">Image by Mecanismo, from Wikimedia Commons:<a href="https://commons.wikimedia.org/wiki/File:Entroncamento_do_Transpraia.JPG">http://commons.wikimedia.org/wiki/File:Entroncamento_do_Transpraia.JPG</a></p>
+<p>我们的if-else 就像这个铁路分叉一样，下面红箭头所指的就是搬道器。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7892" title="pyfwC" src="/uploads/2012/07/pyfwC.png" alt="" width="567" height="91" srcset="" sizes="(max-width: 567px) 100vw, 567px"/></p>
+<p>那么，我们的搬道器是怎么预判的呢？就是使用过去的历史数据，如果历史数据有90%以上的走左边，那么就走左边。所以，我们排好序的数据就更容易猜得对。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">T = 走分支（条件表达式为true）
+N = 不走分支(条件表达式为false)
+
+data[] = 0, 1, 2, 3, 4, ... 126, 127, 128, 129, 130, ... 250, 251, 252, ...
+branch = N  N  N  N  N  ...   N    N    T    T    T  ...   T    T    T  ...
+
+= NNNNNNNNNNNN ... NNNNNNNTTTTTTTTT ... TTTTTTTTTT  (easy to predict)</pre>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">data[] = 226, 185, 125, 158, 198, 144, 217, 79, 202, 118,  14, 150, 177, 182, 133, ...
+branch =   T,   T,   N,   T,   T,   T,   T,  N,   T,   N,   N,   T,   T,   T,   N  ...
+
+= TTNTTTTNTNNTTTN ...   (completely random - hard to predict)</pre>
+<p>从上面我们可以看到，排好序的数据更容易预测分支。</p>
+<p>对此，那我们怎么办？我们需要在这种循环中除去if-else语句。比如：</p>
+<p>我们把条件语句：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if (data[j] &gt;= 128)
+sum += data[j];
+</pre>
+<p>变成：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int t = (data[j] - 128) &gt;&gt; 31;
+sum += ~t &amp; data[j];</pre>
+<p>“没有分叉”的性能基本上和“排好序有分支”一个样，无论是C/C++，还是Java。</p>
+<blockquote><p><strong>注：</strong>在GCC下，如果你使用 <code>-O3</code> or <code>-ftree-vectorize</code> 编译参数，GCC会帮你优化分叉语句为无分叉语句。VC++2010没有这个功能。</p></blockquote>
+<p><strong>最后，推荐大家一个网站——<a href="https://developers.google.com/speed/" target="_blank">Google Speed</a>，网站上的有一些教程告诉你<a href="https://developers.google.com/speed/articles/" target="_blank">如何写出更快的Web程序</a>。</strong></p>
+<p><strong></strong>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7886-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Compiler</a>, <a href="javascript:void(0)" rel="tag">Performance</a>, <a href="javascript:void(0)" rel="tag">PHP</a>, <a href="javascript:void(0)" rel="tag">Python</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>代码执行的效率</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-370861" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/842.html" class="url" rel="ugc external nofollow">并发框架Disruptor译文 | 午后小憩</a> </div>
+</li>
+<li id="comment-372548" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/855.html" class="url" rel="ugc external nofollow">Linus：利用二级指针删除单向链表 | 午后小憩</a> </div>
+</li>
+<li id="comment-829984" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yoese.com/?p=1749" class="url" rel="ugc external nofollow">类型的本质和函数式实现 | 有益</a> </div>
+</li>
+<li id="comment-852523" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=25" class="url" rel="ugc external nofollow">类型的本质和函数式实现 | zengine</a> </div>
+</li>
+<li id="comment-1213889" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://javablogs.org/?p=150" class="url" rel="ugc external nofollow">Lua简明教程 | java博客，java教程</a> </div>
+</li>
+<li id="comment-1218139" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.jobbole.com/23773/" class="url" rel="ugc external nofollow">陈皓：代码执行的效率 - 博客 - 伯乐在线</a> </div>
+</li>
+<li id="comment-1386961" class="comment even thread-even depth-1">
+<article id="div-comment-1386961" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/daac5a91a997115e658d62820e7b7aa7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/daac5a91a997115e658d62820e7b7aa7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wakuku</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7886.html/comment-page-2#comment-1386961"><time datetime="2014-03-17T20:12:08+08:00">2014年03月17日 20:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198877" rel="nofollow">@iEverX </a><br/>
+其中代码中的t是什么变量，它的值是什么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1398129" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=968" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 | 星达红</a> </div>
+</li>
+<li id="comment-1510564" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30311.html" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 – 马开东博客</a> </div>
+</li>
+<li id="comment-1527571" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1527571" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a694aaff0df2a4fe7d31d7f198cd342?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a694aaff0df2a4fe7d31d7f198cd342?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/fbwfbi" class="url" rel="ugc external nofollow">fbwfbi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7886.html/comment-page-2#comment-1527571"><time datetime="2014-09-06T18:10:58+08:00">2014年09月06日 18:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子哥，有时还会去查看以前的博客么，作为一名严谨的coder，看到错别字，还是要即时校正的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1541617" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.xuejianbin.com/?p=2326" class="url" rel="ugc external nofollow">Linus：利用二级指针删除单向链表 | news snack</a> </div>
+</li>
+<li id="comment-1584123" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1584123" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40391db38689bdc25f57ffee90fe065d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40391db38689bdc25f57ffee90fe065d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Rocky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7886.html/comment-page-2#comment-1584123"><time datetime="2014-10-26T16:15:14+08:00">2014年10月26日 16:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198939" rel="nofollow">@clonne </a><br/>
+鸡蛋好吃也不能老吃鸡蛋，有时候吃点咸菜不也是不错的搭配吗。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1584128" class="comment even thread-even depth-1">
+<article id="div-comment-1584128" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40391db38689bdc25f57ffee90fe065d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40391db38689bdc25f57ffee90fe065d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Rocky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7886.html/comment-page-2#comment-1584128"><time datetime="2014-10-26T16:23:24+08:00">2014年10月26日 16:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-198940" rel="nofollow">@haiyidao </a><br/>
+分</p>
+<blockquote cite="#commentbody-199038"><p>
+<strong><a href="#comment-199038" rel="nofollow">clonne</a> :</strong><br/>
+<a href="#comment-199016" rel="nofollow">@xxx </a><br/>
+那些人是傻子
+</p></blockquote>
+<p>呵呵 你们是被问题淹没了吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1910264" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dev.go2live.cn/python/%e9%99%88%e7%9a%93%ef%bc%9a%e4%bb%a3%e7%a0%81%e6%89%a7%e8%a1%8c%e7%9a%84%e6%95%88%e7%8e%87.html" class="url" rel="ugc external nofollow">陈皓：代码执行的效率 | 演道网</a> </div>
+</li>
+<li id="comment-2072489" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/20793.html" class="url" rel="ugc">程序员应该知道的CPU缓存的事 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2072499" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2020/03/01/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e4%b8%8e%e7%a8%8b%e5%ba%8f%e5%91%98%e7%9b%b8%e5%85%b3%e7%9a%84cpu%e7%bc%93%e5%ad%98%e7%9f%a5%e8%af%86/" class="url" rel="ugc external nofollow">【酷壳】 与程序员相关的CPU缓存知识 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2082648" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaohuodong.cn/70637.html" class="url" rel="ugc external nofollow">与程序员相关的CPU缓存知识 - 微信红包网</a> </div>
+</li>
+<li id="comment-2371058" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/55344.html" class="url" rel="ugc external nofollow">python程序在函数内执行得更快 - 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/7886.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/7886.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">7886</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

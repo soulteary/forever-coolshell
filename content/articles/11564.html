@@ -1,0 +1,447 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>TCP 的那些事儿（上） | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11564 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11564" class="post-content post-11564 post type-post status-publish format-standard hentry category-progdesign category-proglanguage category-netsecurity tag-ack tag-isn tag-msl tag-sack tag-syn tag-tcp tag-time_wait">
+<header class="entry-header">
+<span class="screen-reader-text">TCP 的那些事儿（上）</span>
+<h1 class="entry-title">TCP 的那些事儿（上）</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11564.html" title="08:15" rel="bookmark"><time class="entry-date" datetime="2014-05-28T08:15:36+08:00" pubdate="">2014年05月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11564.html#comments" class="comments-link">237 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 488,049 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-11654" src="/uploads/2014/05/tin-can-phone.jpg" alt="" width="360" height="257" srcset="" sizes="(max-width: 360px) 100vw, 360px"/>TCP是一个巨复杂的协议，因为他要解决很多问题，而这些问题又带出了很多子问题和阴暗面。所以学习TCP本身是个比较痛苦的过程，但对于学习的过程却能让人有很多收获。关于TCP这个协议的细节，我还是推荐你去看<a href="http://www.kohala.com/start/" target="_blank">W.Richard Stevens</a>的《<a href="http://book.douban.com/subject/1088054/" target="_blank">TCP/IP 详解 卷1：协议</a>》（当然，你也可以去读一下<a href="http://tools.ietf.org/html/rfc793" target="_blank">RFC793</a>以及后面N多的RFC）。另外，本文我会使用英文术语，这样方便你通过这些英文关键词来查找相关的技术文档。</p>
+<p>之所以想写这篇文章，目的有三个，</p>
+<ul>
+<li>一个是想锻炼一下自己是否可以用简单的篇幅把这么复杂的TCP协议描清楚的能力。</li>
+<li>另一个是觉得现在的好多程序员基本上不会认认真真地读本书，喜欢快餐文化，所以，希望这篇快餐文章可以让你对TCP这个古典技术有所了解，并能体会到软件设计中的种种难处。并且你可以从中有一些软件设计上的收获。</li>
+<li>最重要的希望这些基础知识可以让你搞清很多以前一些似是而非的东西，并且你能意识到基础的重要。</li>
+</ul>
+<p>所以，本文不会面面俱到，只是对TCP协议、算法和原理的科普。</p>
+<p><span id="more-11564"></span></p>
+<p>我本来只想写一个篇幅的文章的，但是TCP真TMD的复杂，比C++复杂多了，这30多年来，各种优化变种争论和修改。所以，写着写着就发现只有砍成两篇。</p>
+<ul>
+<li>上篇中，主要向你介绍TCP协议的定义和丢包时的重传机制。</li>
+<li>下篇中，重点介绍TCP的流迭、拥塞处理。</li>
+</ul>
+<p>废话少说，首先，我们需要知道TCP在网络OSI的七层模型中的第四层——Transport层，IP在第三层——Network层，ARP在第二层——Data Link层，在第二层上的数据，我们叫Frame，在第三层上的数据叫Packet，第四层的数据叫Segment。</p>
+<p>首先，我们需要知道，我们程序的数据首先会打到TCP的Segment中，然后TCP的Segment会打到IP的Packet中，然后再打到以太网Ethernet的Frame中，传到对端后，各个层解析自己的协议，然后把数据交给更高层的协议处理。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#TCP%E5%A4%B4%E6%A0%BC%E5%BC%8F" title="TCP头格式">TCP头格式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#TCP%E7%9A%84%E7%8A%B6%E6%80%81%E6%9C%BA" title="TCP的状态机">TCP的状态机</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93%E4%B8%AD%E7%9A%84Sequence_Number" title="数据传输中的Sequence Number">数据传输中的Sequence Number</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#TCP%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6" title="TCP重传机制">TCP重传机制</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E8%B6%85%E6%97%B6%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6" title="超时重传机制">超时重传机制</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%BF%AB%E9%80%9F%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6" title="快速重传机制">快速重传机制</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#SACK_%E6%96%B9%E6%B3%95" title="SACK 方法">SACK 方法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#Duplicate_SACK_%E2%80%93_%E9%87%8D%E5%A4%8D%E6%94%B6%E5%88%B0%E6%95%B0%E6%8D%AE%E7%9A%84%E9%97%AE%E9%A2%98" title="Duplicate SACK – 重复收到数据的问题">Duplicate SACK – 重复收到数据的问题</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="TCP%E5%A4%B4%E6%A0%BC%E5%BC%8F"></span>TCP头格式<span class="ez-toc-section-end"></span></h4>
+<p>接下来，我们来看一下TCP头的格式</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter wp-image-11572" src="/uploads/2014/05/TCP-Header-01.jpg" alt="" width="700" height="284" srcset="" sizes="(max-width: 700px) 100vw, 700px"/>TCP头格式（<a href="http://nmap.org/book/tcpip-ref.html" target="_blank">图片来源</a>）</p>
+<p>你需要注意这么几点：</p>
+<ul>
+<li>TCP的包是没有IP地址的，那是IP层上的事。但是有源端口和目标端口。</li>
+<li>一个TCP连接需要四个元组来表示是同一个连接（src_ip, src_port, dst_ip, dst_port）准确说是五元组，还有一个是协议。但因为这里只是说TCP协议，所以，这里我只说四元组。</li>
+<li>注意上图中的四个非常重要的东西：
+<ul>
+<li><strong>Sequence Number</strong>是包的序号，<strong>用来解决网络包乱序（reordering）问题。</strong></li>
+<li><strong>Acknowledgement Number</strong>就是ACK——用于确认收到，<strong>用来解决不丢包的问题</strong>。</li>
+<li><strong>Window又叫Advertised-Window</strong>，也就是著名的滑动窗口（Sliding Window），<strong>用于解决流控的</strong>。</li>
+<li><strong>TCP Flag</strong> ，也就是包的类型，<strong>主要是用于操控TCP的状态机的</strong>。</li>
+</ul>
+</li>
+</ul>
+<p>关于其它的东西，可以参看下面的图示</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-11573" src="/uploads/2014/05/TCP-Header-02.jpg" alt="" width="700" height="214" srcset="" sizes="(max-width: 700px) 100vw, 700px"/></p>
+<p style="text-align: center;">（<a href="http://nmap.org/book/tcpip-ref.html" target="_blank">图片来源</a>）</p>
+<h4><span class="ez-toc-section" id="TCP%E7%9A%84%E7%8A%B6%E6%80%81%E6%9C%BA"></span>TCP的状态机<span class="ez-toc-section-end"></span></h4>
+<p>其实，<strong>网络上的传输是没有连接的，包括TCP也是一样的</strong>。而TCP所谓的“连接”，其实只不过是在通讯的双方维护一个“连接状态”，让它看上去好像有连接一样。所以，TCP的状态变换是非常重要的。</p>
+<p>下面是：“<strong>TCP协议的状态机</strong>”（<a href="http://www.tcpipguide.com/free/t_TCPOperationalOverviewandtheTCPFiniteStateMachineF-2.htm" target="_blank">图片来源</a>） 和 “<strong>TCP建链接</strong>”、“<strong>TCP断链接</strong>”、“<strong>传数据</strong>” 的对照图，我把两个图并排放在一起，这样方便在你对照着看。另外，下面这两个图非常非常的重要，你一定要记牢。（吐个槽：看到这样复杂的状态机，就知道这个协议有多复杂，复杂的东西总是有很多坑爹的事情，所以TCP协议其实也挺坑爹的）</p>
+<p><img decoding="async" loading="lazy" src="/uploads/2014/05/tcpfsm.png" alt="" width="386" height="550" align="top" srcset=""/> <img decoding="async" loading="lazy" src="/uploads/2014/05/tcp_open_close.jpg" alt="" width="370" height="520" srcset=""/></p>
+<p>很多人会问，为什么建链接要3次握手，断链接需要4次挥手？</p>
+<ul>
+<li><strong>对于建链接的3次握手，</strong>主要是要初始化Sequence Number 的初始值。通信的双方要互相通知对方自己的初始化的Sequence Number（缩写为ISN：Inital Sequence Number）——所以叫SYN，全称Synchronize Sequence Numbers。也就上图中的 x 和 y。这个号要作为以后的数据通信的序号，以保证应用层接收到的数据不会因为网络上的传输的问题而乱序（TCP会用这个序号来拼接数据）。</li>
+</ul>
+<ul>
+<li><strong>对于4次挥手，</strong>其实你仔细看是2次，因为TCP是全双工的，所以，发送方和接收方都需要Fin和Ack。只不过，有一方是被动的，所以看上去就成了所谓的4次挥手。如果两边同时断连接，那就会就进入到CLOSING状态，然后到达TIME_WAIT状态。下图是双方同时断连接的示意图（你同样可以对照着TCP状态机看）：</li>
+</ul>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter wp-image-11586" src="/uploads/2014/05/tcpclosesimul.png" alt="" width="500" height="395" srcset="" sizes="(max-width: 500px) 100vw, 500px"/><br/>
+两端同时断连接（<a href="http://www.tcpipguide.com/free/t_TCPConnectionTermination-4.htm" target="_blank">图片来源</a>）</p>
+<p> </p>
+<p>另外，有几个事情需要注意一下：</p>
+<ul>
+<li><strong>关于建连接时SYN超时</strong>。试想一下，如果server端接到了clien发的SYN后回了SYN-ACK后client掉线了，server端没有收到client回来的ACK，那么，这个连接处于一个中间状态，即没成功，也没失败。于是，server端如果在一定时间内没有收到的TCP会重发SYN-ACK。在Linux下，默认重试次数为5次，重试的间隔时间从1s开始每次都翻售，5次的重试时间间隔为1s, 2s, 4s, 8s, 16s，总共31s，第5次发出后还要等32s都知道第5次也超时了，所以，总共需要 1s + 2s + 4s+ 8s+ 16s + 32s = 2^6 -1 = 63s，TCP才会把断开这个连接。</li>
+</ul>
+<ul>
+<li><strong>关于SYN Flood攻击</strong>。一些恶意的人就为此制造了SYN Flood攻击——给服务器发了一个SYN后，就下线了，于是服务器需要默认等63s才会断开连接，这样，攻击者就可以把服务器的syn连接的队列耗尽，让正常的连接请求不能处理。于是，Linux下给了一个叫<strong>tcp_syncookies</strong>的参数来应对这个事——当SYN队列满了后，TCP会通过源地址端口、目标地址端口和时间戳打造出一个特别的Sequence Number发回去（又叫cookie），如果是攻击者则不会有响应，如果是正常连接，则会把这个 SYN Cookie发回来，然后服务端可以通过cookie建连接（即使你不在SYN队列中）。请注意，<strong>请先千万别用tcp_syncookies来处理正常的大负载的连接的情况</strong>。因为，synccookies是妥协版的TCP协议，并不严谨。对于正常的请求，你应该调整三个TCP参数可供你选择，第一个是：tcp_synack_retries 可以用他来减少重试次数；第二个是：tcp_max_syn_backlog，可以增大SYN连接数；第三个是：tcp_abort_on_overflow 处理不过来干脆就直接拒绝连接了。</li>
+</ul>
+<ul>
+<li><strong>关于ISN的初始化</strong>。ISN是不能hard code的，不然会出问题的——比如：如果连接建好后始终用1来做ISN，如果client发了30个segment过去，但是网络断了，于是 client重连，又用了1做ISN，但是之前连接的那些包到了，于是就被当成了新连接的包，此时，client的Sequence Number 可能是3，而Server端认为client端的这个号是30了。全乱了。<a href="http://tools.ietf.org/html/rfc793" target="_blank">RFC793</a>中说，ISN会和一个假的时钟绑在一起，这个时钟会在每4微秒对ISN做加一操作，直到超过2^32，又从0开始。这样，一个ISN的周期大约是4.55个小时。因为，我们假设我们的TCP Segment在网络上的存活时间不会超过Maximum Segment Lifetime（缩写为MSL – <a href="https://en.wikipedia.org/wiki/Maximum_Segment_Lifetime" target="_blank">Wikipedia语条</a>），所以，只要MSL的值小于4.55小时，那么，我们就不会重用到ISN。</li>
+</ul>
+<ul>
+<li><strong>关于 MSL 和 TIME_WAIT</strong>。通过上面的ISN的描述，相信你也知道MSL是怎么来的了。我们注意到，在TCP的状态图中，从TIME_WAIT状态到CLOSED状态，有一个超时设置，这个超时设置是 2*MSL（<a href="http://tools.ietf.org/html/rfc793" target="_blank">RFC793</a>定义了MSL为2分钟，Linux设置成了30s）为什么要这有TIME_WAIT？为什么不直接给转成CLOSED状态呢？主要有两个原因：1）TIME_WAIT确保有足够的时间让对端收到了ACK，如果被动关闭的那方没有收到Ack，就会触发被动端重发Fin，一来一去正好2个MSL，2）有足够的时间让这个连接不会跟后面的连接混在一起（你要知道，有些自做主张的路由器会缓存IP数据包，如果连接被重用了，那么这些延迟收到的包就有可能会跟新连接混在一起）。你可以看看这篇文章《<a href="http://www.serverframework.com/asynchronousevents/2011/01/time-wait-and-its-design-implications-for-protocols-and-scalable-servers.html" target="_blank">TIME_WAIT and its design implications for protocols and scalable client server systems</a>》</li>
+</ul>
+<ul>
+<li><strong>关于TIME_WAIT数量太多</strong>。从上面的描述我们可以知道，TIME_WAIT是个很重要的状态，但是如果在大并发的短链接下，TIME_WAIT 就会太多，这也会消耗很多系统资源。只要搜一下，你就会发现，十有八九的处理方式都是教你设置两个参数，一个叫<strong>tcp_tw_reuse</strong>，另一个叫<strong>tcp_tw_recycle</strong>的参数，这两个参数默认值都是被关闭的，后者recyle比前者resue更为激进，resue要温柔一些。另外，如果使用tcp_tw_reuse，必需设置tcp_timestamps=1，否则无效。这里，你一定要注意，<strong>打开这两个参数会有比较大的坑——可能会让TCP连接出一些诡异的问题</strong>（因为如上述一样，如果不等待超时重用连接的话，新的连接可能会建不上。正如<a href="https://www.kernel.org/doc/Documentation/networking/ip-sysctl.txt" target="_blank">官方文档</a>上说的一样“<strong>It should not be changed without advice/request of technical experts</strong>”）。</li>
+</ul>
+<ul>
+<ul style="padding-left: 30px;">
+<li><strong>关于tcp_tw_reuse</strong>。官方文档上说tcp_tw_reuse 加上tcp_timestamps（又叫PAWS, for Protection Against Wrapped Sequence Numbers）可以保证协议的角度上的安全，但是你需要tcp_timestamps在两边都被打开（你可以读一下<a href="http://lxr.free-electrons.com/ident?i=tcp_twsk_unique">tcp_twsk_unique</a>的源码<span style="color: #000000;"> </span>）。我个人估计还是有一些场景会有问题。</li>
+</ul>
+</ul>
+<ul style="padding-left: 30px;">
+<ul>
+<li><strong>关于tcp_tw_recycle</strong>。如果是tcp_tw_recycle被打开了话，会假设对端开启了tcp_timestamps，然后会去比较时间戳，如果时间戳变大了，就可以重用。但是，如果对端是一个NAT网络的话（如：一个公司只用一个IP出公网）或是对端的IP被另一台重用了，这个事就复杂了。建链接的SYN可能就被直接丢掉了（你可能会看到connection time out的错误）（如果你想观摩一下Linux的内核代码，请参看源码<a href="http://lxr.free-electrons.com/ident?i=tcp_timewait_state_process"> tcp_timewait_state_process</a>）。</li>
+</ul>
+</ul>
+<ul style="padding-left: 30px;">
+<ul>
+<li><strong style="color: #373737;">关于tcp_max_tw_buckets</strong>。这个是控制并发的TIME_WAIT的数量，默认值是180000，如果超限，那么，系统会把多的给destory掉，然后在日志里打一个警告（如：<span style="color: #373737;">time wait bucket table overflow</span>），官网文档说这个参数是用来对抗DDoS攻击的。也说的默认值180000并不小。这个还是需要根据实际情况考虑。</li>
+</ul>
+</ul>
+<p><strong>Again，使用tcp_tw_reuse和tcp_tw_recycle来解决TIME_WAIT的问题是非常非常危险的，因为这两个参数违反了TCP协议（<a href="http://tools.ietf.org/html/rfc1122" target="_blank">RFC 1122</a>） </strong></p>
+<p>其实，TIME_WAIT表示的是你主动断连接，所以，这就是所谓的“不作死不会死”。试想，如果让对端断连接，那么这个破问题就是对方的了，呵呵。另外，如果你的服务器是于HTTP服务器，那么设置一个<a href="https://en.wikipedia.org/wiki/HTTP_persistent_connection" target="_blank">HTTP的KeepAlive</a>有多重要（浏览器会重用一个TCP连接来处理多个HTTP请求），然后让客户端去断链接（你要小心，浏览器可能会非常贪婪，他们不到万不得已不会主动断连接）。</p>
+<h4><span class="ez-toc-section" id="%E6%95%B0%E6%8D%AE%E4%BC%A0%E8%BE%93%E4%B8%AD%E7%9A%84Sequence_Number"></span>数据传输中的Sequence Number<span class="ez-toc-section-end"></span></h4>
+<p>下图是我从Wireshark中截了个我在访问coolshell.cn时的有数据传输的图给你看一下，SeqNum是怎么变的。（使用Wireshark菜单中的Statistics -&gt;Flow Graph… ）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-11595" src="/uploads/2014/05/tcp_data_seq_num.jpg" alt="" width="381" height="361" srcset="" sizes="(max-width: 381px) 100vw, 381px"/></p>
+<p>你可以看到，<strong>SeqNum的增加是和传输的字节数相关的</strong>。上图中，三次握手后，来了两个Len:1440的包，而第二个包的SeqNum就成了1441。然后第一个ACK回的是1441，表示第一个1440收到了。</p>
+<p><strong>注意</strong>：如果你用Wireshark抓包程序看3次握手，你会发现SeqNum总是为0，不是这样的，Wireshark为了显示更友好，使用了Relative SeqNum——相对序号，你只要在右键菜单中的protocol preference 中取消掉就可以看到“Absolute SeqNum”了</p>
+<h4><span class="ez-toc-section" id="TCP%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6"></span>TCP重传机制<span class="ez-toc-section-end"></span></h4>
+<p>TCP要保证所有的数据包都可以到达，所以，必需要有重传机制。</p>
+<p>注意，接收端给发送端的Ack确认只会确认最后一个连续的包，比如，发送端发了1,2,3,4,5一共五份数据，接收端收到了1，2，于是回ack 3，然后收到了4（注意此时3没收到），此时的TCP会怎么办？我们要知道，因为正如前面所说的，<strong>SeqNum和Ack是以字节数为单位，所以ack的时候，不能跳着确认，只能确认最大的连续收到的包</strong>，不然，发送端就以为之前的都收到了。</p>
+<h5><span class="ez-toc-section" id="%E8%B6%85%E6%97%B6%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6"></span>超时重传机制<span class="ez-toc-section-end"></span></h5>
+<p>一种是不回ack，死等3，当发送方发现收不到3的ack超时后，会重传3。一旦接收方收到3后，会ack 回 4——意味着3和4都收到了。</p>
+<p>但是，这种方式会有比较严重的问题，那就是因为要死等3，所以会导致4和5即便已经收到了，而发送方也完全不知道发生了什么事，因为没有收到Ack，所以，发送方可能会悲观地认为也丢了，所以有可能也会导致4和5的重传。</p>
+<p>对此有两种选择：</p>
+<ul>
+<li>一种是仅重传timeout的包。也就是第3份数据。</li>
+<li>另一种是重传timeout后所有的数据，也就是第3，4，5这三份数据。</li>
+</ul>
+<p>这两种方式有好也有不好。第一种会节省带宽，但是慢，第二种会快一点，但是会浪费带宽，也可能会有无用功。但总体来说都不好。因为都在等timeout，timeout可能会很长（在下篇会说TCP是怎么动态地计算出timeout的）</p>
+<h5><span class="ez-toc-section" id="%E5%BF%AB%E9%80%9F%E9%87%8D%E4%BC%A0%E6%9C%BA%E5%88%B6"></span>快速重传机制<span class="ez-toc-section-end"></span></h5>
+<p>于是，TCP引入了一种叫<strong>Fast Retransmit</strong> 的算法，<strong>不以时间驱动，而以数据驱动重传</strong>。也就是说，如果，包没有连续到达，就ack最后那个可能被丢了的包，如果发送方连续收到3次相同的ack，就重传。Fast Retransmit的好处是不用等timeout了再重传。</p>
+<p>比如：如果发送方发出了1，2，3，4，5份数据，第一份先到送了，于是就ack回2，结果2因为某些原因没收到，3到达了，于是还是ack回2，后面的4和5都到了，但是还是ack回2，因为2还是没有收到，于是发送端收到了三个ack=2的确认，知道了2还没有到，于是就马上重转2。然后，接收端收到了2，此时因为3，4，5都收到了，于是ack回6。示意图如下：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-11599" src="/uploads/2014/05/FASTIncast021.png" alt="" width="450" height="291" srcset="" sizes="(max-width: 450px) 100vw, 450px"/></p>
+<p>Fast Retransmit只解决了一个问题，就是timeout的问题，它依然面临一个艰难的选择，就是，是重传之前的一个还是重传所有的问题。对于上面的示例来说，是重传#2呢还是重传#2，#3，#4，#5呢？因为发送端并不清楚这连续的3个ack(2)是谁传回来的？也许发送端发了20份数据，是#6，#10，#20传来的呢。这样，发送端很有可能要重传从2到20的这堆数据（这就是某些TCP的实际的实现）。可见，这是一把双刃剑。</p>
+<h5><span class="ez-toc-section" id="SACK_%E6%96%B9%E6%B3%95"></span>SACK 方法<span class="ez-toc-section-end"></span></h5>
+<p>另外一种更好的方式叫：<strong>Selective Acknowledgment (SACK)</strong>（参看<a href="http://tools.ietf.org/html/rfc2018" target="_blank">RFC 2018</a>），这种方式需要在TCP头里加一个SACK的东西，ACK还是Fast Retransmit的ACK，SACK则是汇报收到的数据碎版。参看下图：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-11600" src="/uploads/2014/05/tcp_sack_example-1024x577.jpg" alt="" width="600" height="338" srcset="" sizes="(max-width: 600px) 100vw, 600px"/></p>
+<p>这样，在发送端就可以根据回传的SACK来知道哪些数据到了，哪些没有到。于是就优化了Fast Retransmit的算法。当然，这个协议需要两边都支持。在 Linux下，可以通过<strong>tcp_sack</strong>参数打开这个功能（Linux 2.4后默认打开）。</p>
+<p>这里还需要注意一个问题——<strong>接收方Reneging，所谓Reneging的意思就是接收方有权把已经报给发送端SACK里的数据给丢了</strong>。这样干是不被鼓励的，因为这个事会把问题复杂化了，但是，接收方这么做可能会有些极端情况，比如要把内存给别的更重要的东西。<strong>所以，发送方也不能完全依赖SACK，还是要依赖ACK，并维护Time-Out，如果后续的ACK没有增长，那么还是要把SACK的东西重传，另外，接收端这边永远不能把SACK的包标记为Ack。</strong></p>
+<p>注意：SACK会消费发送方的资源，试想，如果一个攻击者给数据发送方发一堆SACK的选项，这会导致发送方开始要重传甚至遍历已经发出的数据，这会消耗很多发送端的资源。详细的东西请参看《<a href="http://www.ibm.com/developerworks/cn/linux/l-tcp-sack/" target="_blank">TCP SACK的性能权衡</a>》</p>
+<h5><span class="ez-toc-section" id="Duplicate_SACK_%E2%80%93_%E9%87%8D%E5%A4%8D%E6%94%B6%E5%88%B0%E6%95%B0%E6%8D%AE%E7%9A%84%E9%97%AE%E9%A2%98"></span>Duplicate SACK – 重复收到数据的问题<span class="ez-toc-section-end"></span></h5>
+<p>Duplicate SACK又称D-SACK，<strong>其主要使用了SACK来告诉发送方有哪些数据被重复接收了</strong>。<a href="http://www.ietf.org/rfc/rfc2883.txt" target="_blank">RFC-2883 </a>里有详细描述和示例。下面举几个例子（来源于<a href="http://www.ietf.org/rfc/rfc2883.txt" target="_blank">RFC-2883</a>）</p>
+<p>D-SACK使用了SACK的第一个段来做标志，</p>
+<ul>
+<li>如果SACK的第一个段的范围被ACK所覆盖，那么就是D-SACK</li>
+</ul>
+<ul>
+<li>如果SACK的第一个段的范围被SACK的第二个段覆盖，那么就是D-SACK</li>
+</ul>
+<p><strong>示例一：ACK丢包</strong></p>
+<p>下面的示例中，丢了两个ACK，所以，发送端重传了第一个数据包（3000-3499），于是接收端发现重复收到，于是回了一个SACK=3000-3500，因为ACK都到了4000意味着收到了4000之前的所有数据，所以这个SACK就是D-SACK——旨在告诉发送端我收到了重复的数据，而且我们的发送端还知道，数据包没有丢，丢的是ACK包。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">	Transmitted  Received    ACK Sent
+	Segment      Segment     (Including SACK Blocks)
+
+	3000-3499    3000-3499   3500 (ACK dropped)
+	3500-3999    3500-3999   4000 (ACK dropped)
+	3000-3499    3000-3499   4000, SACK=3000-3500
+                                        ---------</pre>
+<p><strong> 示例二，网络延误</strong></p>
+<p>下面的示例中，网络包（1000-1499）被网络给延误了，导致发送方没有收到ACK，而后面到达的三个包触发了“Fast Retransmit算法”，所以重传，但重传时，被延误的包又到了，所以，回了一个SACK=1000-1500，因为ACK已到了3000，所以，这个SACK是D-SACK——标识收到了重复的包。</p>
+<p>这个案例下，发送端知道之前因为“Fast Retransmit算法”触发的重传不是因为发出去的包丢了，也不是因为回应的ACK包丢了，而是因为网络延时了。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">    Transmitted    Received    ACK Sent
+    Segment        Segment     (Including SACK Blocks)
+
+    500-999        500-999     1000
+    1000-1499      (delayed)
+    1500-1999      1500-1999   1000, SACK=1500-2000
+    2000-2499      2000-2499   1000, SACK=1500-2500
+    2500-2999      2500-2999   1000, SACK=1500-3000
+    1000-1499      1000-1499   3000
+                   1000-1499   3000, SACK=1000-1500
+                                          ---------</pre>
+<p> </p>
+<p>可见，引入了D-SACK，有这么几个好处：</p>
+<p style="padding-left: 30px;">1）可以让发送方知道，是发出去的包丢了，还是回来的ACK包丢了。</p>
+<p style="padding-left: 30px;">2）是不是自己的timeout太小了，导致重传。</p>
+<p style="padding-left: 30px;">3）网络上出现了先发的包后到的情况（又称reordering）</p>
+<p style="padding-left: 30px;">4）网络上是不是把我的数据包给复制了。</p>
+<p> <strong>知道这些东西可以很好得帮助TCP了解网络情况，从而可以更好的做网络上的流控</strong>。</p>
+<p>Linux下的tcp_dsack参数用于开启这个功能（Linux 2.4后默认打开）</p>
+<p>好了，上篇就到这里结束了。如果你觉得我写得还比较浅显易懂，那么，欢迎移步看下篇《<a href="/articles/11609.html" target="_blank">TCP的那些事（下）</a>》</p>
+<p style="text-align: right;"><strong> <a href="/articles/11609.html" target="_blank">TCP的那些事儿（下）&gt;&gt;&gt;</a></strong></p>
+<p style="text-align: left;">（上篇完）</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11564-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ACK</a>, <a href="javascript:void(0)" rel="tag">ISN</a>, <a href="javascript:void(0)" rel="tag">MSL</a>, <a href="javascript:void(0)" rel="tag">SACK</a>, <a href="javascript:void(0)" rel="tag">SYN</a>, <a href="javascript:void(0)" rel="tag">TCP</a>, <a href="javascript:void(0)" rel="tag">TIME_WAIT</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>TCP 的那些事儿（上）</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2094291" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ithothub.com/tcp/2020042311392206.html" class="url" rel="ugc external nofollow">arp缓存超时 网络问题追查记录 unres_qlen-IT技术资讯</a> </div>
+</li>
+<li id="comment-2095205" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://code0xff.cn/2019/06/14/tcp_established_and_closed-2/" class="url" rel="ugc external nofollow">TCP连接的建立和终止 – 记录每个瞬间</a> </div>
+</li>
+<li id="comment-2095705" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xianjie.run/index.php/2020/04/26/%e6%b7%b1%e5%85%a5%e6%8e%a2%e7%b4%a2-tcp-time-wait/" class="url" rel="ugc external nofollow">深入探索 TCP TIME-WAIT – 喵技术</a> </div>
+</li>
+<li id="comment-2111642" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2111642" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f2477920f552a48331f9a9e65846517?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f2477920f552a48331f9a9e65846517?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">帽帽</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2111642"><time datetime="2020-05-28T07:52:21+08:00">2020年05月28日 07:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“一种是不回ack，死等3，当发送方发现收不到3的ack超时后，会重传3。一旦接收方收到3后，会ack 回 4——意味着3和4都收到了。” 这里我感觉应该是ack回5， 因为发送的数据是1,2,3,4,5 算上 SYN，此时ack应该是5才表示收到了4</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370193" class="comment even depth-2">
+<article id="div-comment-2370193" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20835cbe1b1ece09abb86de6ec170700?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20835cbe1b1ece09abb86de6ec170700?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hellcat</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2370193"><time datetime="2022-02-28T10:57:08+08:00">2022年02月28日 10:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对的 这里的ACK是累计确认, 当收到3之后, 接收方的缓冲区中就会是 1 2 3 4 (5还在路上), 因此ACK需要是4 + 1 = 5.</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2112016" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.go2live.cn/nocate/%e2%80%8btcp-%e6%8b%a5%e5%a1%9e%e6%8e%a7%e5%88%b6%e8%af%a6%e8%a7%a3.html" class="url" rel="ugc external nofollow">​TCP 拥塞控制详解 | 演道网</a> </div>
+</li>
+<li id="comment-2128986" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2020/07/05/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e8%ae%a1%e6%97%b6%e6%94%bb%e5%87%bb-time-attacks/" class="url" rel="ugc external nofollow">【酷壳】 计时攻击 Time Attacks | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2150487" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codingskill.one/archives/10687" class="url" rel="ugc external nofollow">徹底弄懂TCP協議：從三次握手說起 – CodingSkill</a> </div>
+</li>
+<li id="comment-2152889" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2152889" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a900b34a747baed7ee3153ef77ab2967?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a900b34a747baed7ee3153ef77ab2967?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">洛烨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2152889"><time datetime="2020-09-12T21:51:35+08:00">2020年09月12日 21:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢您的分享，受益匪浅！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2176407" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://altairaki.cn/index.php/2020/08/16/%e3%80%90tcp%e3%80%91%e4%b8%ba%e4%bb%80%e4%b9%88%e6%98%af%e4%b8%89%e6%ac%a1%e6%8f%a1%e6%89%8b%e5%9b%9b%e6%ac%a1%e6%8c%a5%e6%89%8b/" class="url" rel="ugc external nofollow">【TCP】为什么是三次握手四次挥手 – Glassy Sky</a> </div>
+</li>
+<li id="comment-2176408" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://altairaki.cn/index.php/2020/08/16/tcpopen3way-tcpclose/" class="url" rel="ugc external nofollow">【TCP】为什么三次握手四次挥手 – Glassy Sky</a> </div>
+</li>
+<li id="comment-2268368" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2268368" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df45442bf2605cfc183221a3e82e0f70?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df45442bf2605cfc183221a3e82e0f70?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imjmj.com/" class="url" rel="ugc external nofollow">亚马逊图片设计</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2268368"><time datetime="2021-06-23T00:28:26+08:00">2021年06月23日 00:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>再来学习一边。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2269122" class="comment even depth-2">
+<article id="div-comment-2269122" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2dc1534be6e29edacc41ea2acc6638f9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2dc1534be6e29edacc41ea2acc6638f9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bright</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2269122"><time datetime="2021-06-24T15:50:51+08:00">2021年06月24日 15:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>数据传输中的Sequence Number 图片右边comment存在许多错误</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2282141" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2282141" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ecba8aa4f4d5e266d19db61ab941e8b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ecba8aa4f4d5e266d19db61ab941e8b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jacky1205</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2282141"><time datetime="2021-08-02T10:27:28+08:00">2021年08月02日 10:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>&gt; Sequence Number是包的序号，用来解决网络包乱序（reordering）问题</p>
+<p>除了乱序，还是判断是否是重复发送的包</p>
+<p>&gt; Acknowledgement Number就是ACK——用于确认收到，用来解决不丢包的问题</p>
+<p>最后一段应该是：用来解决可能丢包的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-2308023" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1270621" class="url" rel="ugc external nofollow">TCP中的三次握手 - 算法网</a> </div>
+</li>
+<li id="comment-2370240" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2314163" class="url" rel="ugc external nofollow">从TCP三次握手说起——浅析TCP协议中的疑难杂症（真心不错） - 算法网</a> </div>
+</li>
+<li id="comment-2370241" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2314193" class="url" rel="ugc external nofollow">彻底弄懂TCP协议：从三次握手说起 - 算法网</a> </div>
+</li>
+<li id="comment-2370261" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370261" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c404a795e14a0e1cff4a522be8883e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c404a795e14a0e1cff4a522be8883e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zyd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2370261"><time datetime="2022-03-14T17:50:51+08:00">2022年03月14日 17:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人认为 syncookie 的真实目的不是大佬描述的那样，是通过tcp连接关键信息编码成syn包的seq，目的是保存链接信息，而不用消耗本地资源保存半链接队列（而syn攻击主要就是利用半链接队列进行攻击），如果对方返回ack 根据ack=seq+1 推算出真实seq 解码来获取链接信息</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370322" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2409018" class="url" rel="ugc external nofollow">循序渐进搞懂 TCP 三次握手核心 - 算法网</a> </div>
+</li>
+<li id="comment-2370405" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.zsxqs.com/682/" class="url" rel="ugc external nofollow">循序渐进搞懂 TCP 三次握手核心 – 知识星宿</a> </div>
+</li>
+<li id="comment-2370558" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2449056" class="url" rel="ugc external nofollow">TCP首部报文段格式 - 算法网</a> </div>
+</li>
+<li id="comment-2370593" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/22263.html" class="url" rel="ugc">从一次经历谈 TIME_WAIT 的那些事 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2370650" class="comment even thread-even depth-1">
+<article id="div-comment-2370650" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31615c96195f50b1dd2f966a9cf4aa87?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31615c96195f50b1dd2f966a9cf4aa87?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张晋坤</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11564.html/comment-page-5#comment-2370650"><time datetime="2022-08-18T20:51:43+08:00">2022年08月18日 20:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>温习大佬多年前的博客，依然收益良多，能把复杂的知识说的通俗易懂太难了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370769" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/561193.html" class="url" rel="ugc external nofollow">NGINX 正向代理，请求报文返回值200，NGINX error.log 显示http_code 400 – 源码巴士</a> </div>
+</li>
+<li id="comment-2370777" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.1111down.com/77706.html" class="url" rel="ugc external nofollow">理解TCP三次握手，為什麼是三次？兼談初始化序號、發送和確認序號</a> </div>
+</li>
+<li id="comment-2370901" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/79415.html" class="url" rel="ugc external nofollow">漫谈TCP - SEOOS技术门户</a> </div>
+</li>
+<li id="comment-2371139" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/363871" class="url" rel="ugc external nofollow">[面试干货] | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11564.html/comment-page-4#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11564.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/11564.html/comment-page-3#comments">3</a>
+<a class="page-numbers" href="/articles/11564.html/comment-page-4#comments">4</a>
+<span aria-current="page" class="page-numbers current">5</span> <span id="cp_post_id">11564</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

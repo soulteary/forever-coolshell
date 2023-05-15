@@ -1,0 +1,531 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>GDB中应该知道的几个调试方法 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3643 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3643" class="post-content post-3643 post type-post status-publish format-standard hentry category-tools tag-gdb">
+<header class="entry-header">
+<span class="screen-reader-text">GDB中应该知道的几个调试方法</span>
+<h1 class="entry-title">GDB中应该知道的几个调试方法</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3643.html" title="09:34" rel="bookmark"><time class="entry-date" datetime="2011-02-10T09:34:08+08:00" pubdate="">2011年02月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3643.html#comments" class="comments-link">43 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 104,604 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>七、八年前写过一篇《<a href="http://blog.csdn.net/haoel/archive/2003/07/02/2879.aspx" target="_blank">用GDB调试程序</a>》，于是，从那以后，很多朋友在MSN上以及给我发邮件询问我关于GDB的问题，一直到今天，还有人在问GDB的相关问题。这么多年来，有一些问题是大家反复在问的，一方面，我觉得我以前的文章可能没有说清楚，另一方面，我觉得大家常问的问题正是最有用的，所以，在这里罗列出来。希望大家补充。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%B8%80%E3%80%81%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%B0%83%E8%AF%95" title="一、多线程调试">一、多线程调试</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E4%BA%8C%E3%80%81%E8%B0%83%E8%AF%95%E5%AE%8F" title="二、调试宏">二、调试宏</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E4%B8%89%E3%80%81%E6%BA%90%E6%96%87%E4%BB%B6" title="三、源文件">三、源文件</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%9B%9B%E3%80%81%E6%9D%A1%E4%BB%B6%E6%96%AD%E7%82%B9" title="四、条件断点">四、条件断点</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E4%BA%94%E3%80%81%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%8F%82%E6%95%B0" title="五、命令行参数">五、命令行参数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%85%AD%E3%80%81gdb%E7%9A%84%E5%8F%98%E9%87%8F" title="六、gdb的变量">六、gdb的变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E4%B8%83%E3%80%81x%E5%91%BD%E4%BB%A4" title="七、x命令">七、x命令</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%85%AB%E3%80%81command%E5%91%BD%E4%BB%A4" title="八、command命令">八、command命令</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E3%80%81%E5%A4%9A%E7%BA%BF%E7%A8%8B%E8%B0%83%E8%AF%95"></span>一、多线程调试<span class="ez-toc-section-end"></span></h4>
+<p>多线程调试可能是问得最多的。其实，重要就是下面几个命令：</p>
+<ul>
+<li>info thread 查看当前进程的线程。</li>
+<li>thread &lt;ID&gt; 切换调试的线程为指定ID的线程。</li>
+<li>break file.c:100 thread all  在file.c文件第100行处为所有经过这里的线程设置断点。</li>
+<li>set scheduler-locking off|on|step，这个是问得最多的。在使用step或者continue命令调试当前被调试线程的时候，其他线程也是同时执行的，怎么只让被调试程序执行呢？通过这个命令就可以实现这个需求。
+<ul>
+<li>off 不锁定任何线程，也就是所有线程都执行，这是默认值。</li>
+<li>on 只有当前被调试程序会执行。</li>
+<li>step 在单步的时候，除了next过一个函数的情况(熟悉情况的人可能知道，这其实是一个设置断点然后continue的行为)以外，只有当前线程会执行。</li>
+</ul>
+</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E4%BA%8C%E3%80%81%E8%B0%83%E8%AF%95%E5%AE%8F"></span>二、调试宏<span class="ez-toc-section-end"></span></h4>
+<p>这个问题超多。在GDB下，我们无法print宏定义，因为宏是预编译的。但是我们还是有办法来调试宏，这个需要GCC的配合。</p>
+<p>在GCC编译程序的时候，加上<strong>-ggdb3</strong>参数，这样，你就可以调试宏了。</p>
+<p>另外，你可以使用下述的GDB的宏调试命令 来查看相关的宏。</p>
+<ul>
+<li>info macro – 你可以查看这个宏在哪些文件里被引用了，以及宏定义是什么样的。</li>
+<li>macro – 你可以查看宏展开的样子。</li>
+</ul>
+<p><span id="more-3643"></span></p>
+<h4><span class="ez-toc-section" id="%E4%B8%89%E3%80%81%E6%BA%90%E6%96%87%E4%BB%B6"></span>三、源文件<span class="ez-toc-section-end"></span></h4>
+<p>这个问题问的也是很多的，太多的朋友都说找不到源文件。在这里我想提醒大家做下面的检查：</p>
+<ol>
+<li>编译程序员是否加上了-g参数以包含debug信息。</li>
+<li>路径是否设置正确了。使用GDB的directory命令来设置源文件的目录。</li>
+</ol>
+<p>下面给一个调试/bin/ls的示例（ubuntu下）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ apt-get source coreutils
+$ sudo apt-get install coreutils-dbgsym
+$ gdb /bin/ls
+GNU gdb (GDB) 7.1-ubuntu
+(gdb) list main
+1192    ls.c: No such file or directory.
+in ls.c
+(gdb) directory ~/src/coreutils-7.4/src/
+Source directories searched: /home/hchen/src/coreutils-7.4:$cdir:$cwd
+(gdb) list main
+1192        }
+1193    }
+1194
+1195    int
+1196    main (int argc, char **argv)
+1197    {
+1198      int i;
+1199      struct pending *thispend;
+1200      int n_files;
+1201</pre>
+<h4><span class="ez-toc-section" id="%E5%9B%9B%E3%80%81%E6%9D%A1%E4%BB%B6%E6%96%AD%E7%82%B9"></span>四、条件断点<span class="ez-toc-section-end"></span></h4>
+<p>条件断点是语法是：break  [where] if [condition]，这种断点真是非常管用。尤其是在一个循环或递归中，或是要监视某个变量。注意，这个设置是在GDB中的，只不过每经过那个断点时GDB会帮你检查一下条件是否满足。</p>
+<h4><span class="ez-toc-section" id="%E4%BA%94%E3%80%81%E5%91%BD%E4%BB%A4%E8%A1%8C%E5%8F%82%E6%95%B0"></span>五、命令行参数<span class="ez-toc-section-end"></span></h4>
+<p>有时候，我们需要调试的程序需要有命令行参数，很多朋友都不知道怎么设置调试的程序的命令行参数。其实，有两种方法：</p>
+<ol>
+<li>gdb命令行的 –args 参数</li>
+<li>gdb环境中 set args命令。</li>
+</ol>
+<h4><span class="ez-toc-section" id="%E5%85%AD%E3%80%81gdb%E7%9A%84%E5%8F%98%E9%87%8F"></span>六、gdb的变量<span class="ez-toc-section-end"></span></h4>
+<p>有时候，在调试程序时，我们不单单只是查看运行时的变量，我们还可以直接设置程序中的变量，以模拟一些很难在测试中出现的情况，比较一些出错，或是switch的分支语句。使用set命令可以修改程序中的变量。</p>
+<p>另外，你知道gdb中也可以有变量吗？就像shell一样，gdb中的变量以$开头，比如你想打印一个数组中的个个元素，你可以这样：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) set $i = 0
+
+(gdb) p a[$i++]
+
+...  #然后就一路回车下去了
+
+</pre>
+<p>当然，这里只是给一个示例，表示程序的变量和gdb的变量是可以交互的。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%83%E3%80%81x%E5%91%BD%E4%BB%A4"></span>七、x命令<span class="ez-toc-section-end"></span></h4>
+<p>也许，你很喜欢用p命令。所以，当你不知道变量名的时候，你可能会手足无措，因为p命令总是需要一个变量名的。x命令是用来查看内存的，在gdb中 “help x” 你可以查看其帮助。</p>
+<ul>
+<li>x/x 以十六进制输出</li>
+<li>x/d 以十进制输出</li>
+<li>x/c 以单字符输出</li>
+<li>x/i  反汇编 – 通常，我们会使用 <code>x/10i $ip-20 来查看当前的汇编（$ip是指令寄存器）</code></li>
+<li>x/s 以字符串输出</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%85%AB%E3%80%81command%E5%91%BD%E4%BB%A4"></span>八、command命令<span class="ez-toc-section-end"></span></h4>
+<p>有一些朋友问我如何自动化调试。这里向大家介绍command命令，简单的理解一下，其就是把一组gdb的命令打包，有点像字处理软件的“宏”。下面是一个示例：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">(gdb) break func
+Breakpoint 1 at 0x3475678: file test.c, line 12.
+(gdb) command 1
+Type commands for when breakpoint 1 is hit, one per line.
+End with a line saying just &#34;end&#34;.
+&gt;print arg1
+&gt;print arg2
+&gt;print arg3
+&gt;end
+(gdb)</pre>
+<p>当我们的断点到达时，自动执行command中的三个命令，把func的三个参数值打出来。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3643-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程工具</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">GDB</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>GDB中应该知道的几个调试方法</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-28609" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://icoder.me/index.php/2011/02/10/zz-gdb-tips/" class="url" rel="ugc external nofollow">[转+摘]GDB中应该知道的几个调试方法</a> </div>
+</li>
+<li id="comment-28731" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-28731" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f3e232ee129f31366b9e744d1e7ca942?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f3e232ee129f31366b9e744d1e7ca942?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mrx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-28731"><time datetime="2011-02-11T00:48:17+08:00">2011年02月11日 00:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>some more (on 8. command命令):</p>
+<p><a href="http://www.chemie.fu-berlin.de/chemnet/use/info/gdb/gdb_16.html" rel="nofollow ugc">http://www.chemie.fu-berlin.de/chemnet/use/info/gdb/gdb_16.html</a><br/>
+Canned Sequences of Commands:</p>
+<p>A user-defined command is a sequence of GDB commands to which you assign a new name as a command. This is done with the define command. User commands may accept up to 10 arguments separated by whitespace. Arguments are accessed within the user command via $arg0…$arg9. A trivial example:<br/>
+define adder<br/>
+print $arg0 + $arg1 + $arg2<br/>
+…</p>
+<p>To execute the command use:<br/>
+adder 1 2 3<br/>
+…</p>
+<p>When you start GDB, it automatically executes commands from its init files. These are files named `.gdbinit’.</p>
+<p>You can also request the execution of a command file with the source command:<br/>
+source filename<br/>
+…</p>
+</div>
+ </article>
+</li>
+<li id="comment-28749" class="comment even thread-even depth-1">
+<article id="div-comment-28749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/62abc06dea742fd6833d0afc89f8ecca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/62abc06dea742fd6833d0afc89f8ecca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ifree</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-28749"><time datetime="2011-02-11T02:14:17+08:00">2011年02月11日 02:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢了,比文档说的清楚多了.</p>
+</div>
+ </article>
+</li>
+<li id="comment-28834" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-28834" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f73cf65e13b416d160a53b9843cc395?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f73cf65e13b416d160a53b9843cc395?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://abruzzi.javaeye.com" class="url" rel="ugc external nofollow">juntao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-28834"><time datetime="2011-02-11T09:49:42+08:00">2011年02月11日 09:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>非常好，谢谢分享。<br/>
+补充一个，如果要打印一个序列化过的结构体，这个序列太长的话，往往会被gdb省略掉，如：<br/>
+gdb&gt;p string<br/>
+“xxxx”,…”” //会有省略号出现，无法看到完整的字符串</p>
+<p>此时可以设置：<br/>
+gdb&gt;set print elements 0</p>
+<p>再次：<br/>
+gdb&gt;p string<br/>
+“xxxx”,”yyyy”, “”//显示完整的字符串</p>
+</div>
+ </article>
+</li>
+<li id="comment-28902" class="comment even thread-even depth-1">
+<article id="div-comment-28902" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f9e72272c18aac966f11cd15c9735dc6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f9e72272c18aac966f11cd15c9735dc6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hx699.com" class="url" rel="ugc external nofollow">丰禾</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-28902"><time datetime="2011-02-11T14:44:26+08:00">2011年02月11日 14:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>路过，瞧瞧不错，特意支持一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-29168" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.am82.com/houzan/archives/5224/" class="url" rel="ugc external nofollow">GDB中应该知道的几个调试方法【转】 « 葡萄树 On The Road — 一个会操作计算机的民工</a> </div>
+</li>
+<li id="comment-29212" class="comment even thread-even depth-1">
+<article id="div-comment-29212" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f9e72272c18aac966f11cd15c9735dc6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f9e72272c18aac966f11cd15c9735dc6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hx699.com" class="url" rel="ugc external nofollow">丰禾</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-29212"><time datetime="2011-02-12T14:11:35+08:00">2011年02月12日 14:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错呢。新年愉快么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-29975" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-29975" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75bdc1a95320bcac316084805c33e2a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75bdc1a95320bcac316084805c33e2a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">parsifal</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-29975"><time datetime="2011-02-17T15:06:51+08:00">2011年02月17日 15:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>兄弟们哪，gdb工具很强大，一定要好好用哇</p>
+</div>
+ </article>
+</li>
+<li id="comment-31673" class="comment even thread-even depth-1">
+<article id="div-comment-31673" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2619d947861d1002c2f2f3d95fc1b29?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2619d947861d1002c2f2f3d95fc1b29?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.google.com/profiles/xubeisi" class="url" rel="ugc external nofollow">xubeisi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-31673"><time datetime="2011-02-23T22:04:43+08:00">2011年02月23日 22:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>五、命令行参数</p>
+<p>有时候，我们需要调试的程序需要有命令行参数，很多朋友都不知道怎么设置调试的程序的命令行参数。其实，有两种方法：</p>
+<p>1.gdb命令行的 –args 参数<br/>
+2.gdb环境中 set args命令。<br/>
+3.gdb中，run后加参数，run 1 2(r 1 2)</p>
+</div>
+ </article>
+</li>
+<li id="comment-33122" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/3790.html" class="url" rel="ugc">如何调试makefile变量 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-40386" class="comment even thread-even depth-1">
+<article id="div-comment-40386" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a68c251d365a1f2367276fba997f2ed9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a68c251d365a1f2367276fba997f2ed9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">islandboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-40386"><time datetime="2011-03-29T10:53:49+08:00">2011年03月29日 10:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你好，<br/>
+我用gdb,在windows eclipse &amp; MinGW下调试c++时，提示No source available for “__mingw_CRTStartup() at 0x4010db” 。不知道什么原因，理论上MinGW的入口函数已经编译进去？请问有可能是什么原因呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-132019" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.daijun.info/?p=1005" class="url" rel="ugc external nofollow">GDB学习笔记 » 怀疑一切</a> </div>
+</li>
+<li id="comment-260941" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/8883.html" class="url" rel="ugc">应该知道的Linux技巧 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-261025" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ubuntuhome.com/should-konw-linux-tips.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | Ubuntu Home</a> </div>
+</li>
+<li id="comment-261277" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.domyself.me/archives/some-linux-kits-should-know/" class="url" rel="ugc external nofollow">DoMyself » Blog Archive » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-261673" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://gjkiss.info/2013/01/%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e7%9a%84linux%e6%8a%80%e5%b7%a7" class="url" rel="ugc external nofollow">牧场勿语 » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-264005" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://web.itivy.com/your-must-know-linux-skill/" class="url" rel="ugc external nofollow">你不得不知道的Linux技巧 – WEB开发家园</a> </div>
+</li>
+<li id="comment-264566" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zoio.info/basic/os/225.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 贱八哥技术网</a> </div>
+</li>
+<li id="comment-265507" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2013/01/%e5%ba%94%e8%af%a5%e7%9f%a5%e9%81%93%e7%9a%84linux%e6%8a%80%e5%b7%a7/" class="url" rel="ugc external nofollow">Google Reader分享 » 应该知道的Linux技巧</a> </div>
+</li>
+<li id="comment-271729" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dejunhou.com/archives/24" class="url" rel="ugc external nofollow">应该知道的Linux技巧(转载） | Hou Dejun</a> </div>
+</li>
+<li id="comment-276831" class="comment even thread-even depth-1">
+<article id="div-comment-276831" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c73e6da812103b518961c6c03de1f344?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c73e6da812103b518961c6c03de1f344?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">@阿信only</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-276831"><time datetime="2013-01-23T18:23:39+08:00">2013年01月23日 18:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>陈老师好：<br/>
+有个小问题，发现commands里面如果包含了step命令却是无效的。我把断点1设置在调用某一自定义函数func1的地方，想在step进入func1之前打印一个参数：<br/>
+commands 1:<br/>
+&gt;p something<br/>
+&gt;step<br/>
+&gt;end<br/>
+这样的commands会step进func1，但是会在func1的第一行停住，需要继续输入命令；<br/>
+我再在func1的首行设断点2，并编写2的commands:<br/>
+commands 2:<br/>
+&gt;c<br/>
+&gt;end</p>
+<p>发现这样仍然需要敲回车确认是否continue……不想一直敲回车怎么办？<br/>
+期待回复，谢啦！</p>
+</div>
+ </article>
+</li>
+<li id="comment-290348" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.yuanjing.net/tech/server/532.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 远景站长</a> </div>
+</li>
+<li id="comment-322484" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.crazyshell.net/?p=162" class="url" rel="ugc external nofollow">应该知道的Linux技巧–陈皓 | 疯狂的贝壳-crazyshell.net</a> </div>
+</li>
+<li id="comment-584961" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://icoder.duapp.com/?p=922" class="url" rel="ugc external nofollow">[转+摘]GDB中应该知道的几个调试方法 - iCoderMe</a> </div>
+</li>
+<li id="comment-719010" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.zhanghaohao.cn/archives/341" class="url" rel="ugc external nofollow">应该了解的Linux技巧 | 张浩浩博客</a> </div>
+</li>
+<li id="comment-820770" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tianya.standsun.com/?p=593" class="url" rel="ugc external nofollow">gdb 多级目录 成员函数 中断点 高级调试 | 天涯技术博客</a> </div>
+</li>
+<li id="comment-1018388" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kookyx.com/blog/?p=102" class="url" rel="ugc external nofollow">[转]Linux基础学习技巧 | 古辛</a> </div>
+</li>
+<li id="comment-1141850" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bberzy.com/2013/02/linux-skills/" class="url" rel="ugc external nofollow">应该知道的Linux技巧【转载】 | Yuzhic</a> </div>
+</li>
+<li id="comment-1417460" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.21ops.com/linux/23634.html" class="url" rel="ugc external nofollow">linux技巧大搜集 - 新世纪Linux社区</a> </div>
+</li>
+<li id="comment-1448230" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1448230" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a5cb5ce413785668c3bc5af2a523cbe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a5cb5ce413785668c3bc5af2a523cbe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.openasm.com" class="url" rel="ugc external nofollow">OpenASM</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-1448230"><time datetime="2014-04-28T09:53:43+08:00">2014年04月28日 09:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>陈老师你好：<br/>
+我去CSDN翻阅了你以前的技术文档，但是好像第二页老是404页面，你的排名靠前的技术文章能抽闲暇时间搬过来吗？<br/>
+都是很好的学习资料，还有，鄙视一下TSU PRESS</p>
+</div>
+ </article>
+</li>
+<li id="comment-1448231" class="comment even thread-even depth-1">
+<article id="div-comment-1448231" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a5cb5ce413785668c3bc5af2a523cbe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a5cb5ce413785668c3bc5af2a523cbe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.openasm.com" class="url" rel="ugc external nofollow">OpenASM</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-1448231"><time datetime="2014-04-28T09:54:38+08:00">2014年04月28日 09:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>能把这篇重要的《用GDB调试程序》先搬过来吗？<a href="#comment-1448230" rel="nofollow">@OpenASM </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1552871" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cricode.com/3609.html" class="url" rel="ugc external nofollow">GDB常用命令参考 – 快课网</a> </div>
+</li>
+<li id="comment-1672056" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jkeabc.com/p/564438.html" class="url" rel="ugc external nofollow">Linux下服务器端开发流程及相关工具介绍(C++) – 剑客|关注科技互联网</a> </div>
+</li>
+<li id="comment-1693532" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cpper.net/archive/67/" class="url" rel="ugc external nofollow">gdbserver 移植与多线程调试 | c++开发</a> </div>
+</li>
+<li id="comment-1751892" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.code123.cc/1479.html" class="url" rel="ugc external nofollow">GDB调试常用命令参考 - code123</a> </div>
+</li>
+<li id="comment-1771237" class="comment byuser comment-author-leslie odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1771237" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/72544442f9b6a57d484ebe30f1c66b6c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/72544442f9b6a57d484ebe30f1c66b6c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Leslie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-1771237"><time datetime="2015-10-10T15:24:25+08:00">2015年10月10日 15:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1812237" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.freebay.cc/1479.html" class="url" rel="ugc external nofollow">GDB调试常用命令参考-FreeBay.CC</a> </div>
+</li>
+<li id="comment-1857519" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2145" class="url" rel="ugc external nofollow">GDB中应该知道的几个调试方法 – linux运维部落</a> </div>
+</li>
+<li id="comment-1888390" class="comment even thread-even depth-1">
+<article id="div-comment-1888390" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7ef3a7b3e90ff209b979f43ae57e999?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7ef3a7b3e90ff209b979f43ae57e999?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://reborncodinglife.com/" class="url" rel="ugc external nofollow">俊采</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-1888390"><time datetime="2016-09-28T11:38:33+08:00">2016年09月28日 11:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢分享，附上我的博客：http://reborncodinglife.com/</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913498" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codingblog.cn/blog/6828.html" class="url" rel="ugc external nofollow">Linux下服务器端开发流程及相关工具介绍(C++) – CodingBlog</a> </div>
+</li>
+<li id="comment-1913544" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tiangr.com/ying-gai-zhi-dao-de-linux-ji-qiao.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧 | 甜果儿</a> </div>
+</li>
+<li id="comment-1920484" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1920484" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/424cf98ac3a2c98658597282af06e4e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/424cf98ac3a2c98658597282af06e4e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Copper</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-1920484"><time datetime="2017-11-07T22:00:18+08:00">2017年11月07日 22:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>《用GDB调试程序》也是系列文章啊，要不也给搬运到这里来？<br/>
+还是那句话，csdn将来不知道会成什么样，未雨绸缪吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2025261" class="comment even thread-even depth-1">
+<article id="div-comment-2025261" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0a677bcbaba82998ac86178730d0c07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0a677bcbaba82998ac86178730d0c07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.linuxblogs.cn" class="url" rel="ugc external nofollow">肖邦</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3643.html#comment-2025261"><time datetime="2019-09-28T21:57:22+08:00">2019年09月28日 21:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GDB 调试系列文章应该帮助了很多初学者，讲的非常详细和全面。闲来无事，把文章总结（搬运）整理到了自己的小站点上了。</p>
+<p><a href="https://www.linuxblogs.cn/articles/15041200.html" rel="nofollow ugc">https://www.linuxblogs.cn/articles/15041200.html</a></p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

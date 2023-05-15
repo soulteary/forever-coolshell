@@ -1,0 +1,841 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>我做系统架构的一些原则 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21672 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21672" class="post-content post-21672 post type-post status-publish format-standard hentry category-progdesign category-602 tag-architecture tag-design tag-58 tag-862">
+<header class="entry-header">
+<span class="screen-reader-text">我做系统架构的一些原则</span>
+<h1 class="entry-title">我做系统架构的一些原则</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21672.html" title="15:46" rel="bookmark"><time class="entry-date" datetime="2021-12-21T15:46:41+08:00" pubdate="">2021年12月21日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21672.html#comments" class="comments-link">163 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 209,621 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-21682" src="/uploads/2021/12/bachelor-mechanical-eng-icon@72x.png" alt="" width="250" height="250" srcset="" sizes="(max-width: 250px) 100vw, 250px"/>工作 20 多年了，这 20 来年看到了很多公司系统架构，也看到了很多问题，在跟这些公司进行交流和讨论的时候，包括进行实施和方案比较的时候，都有很多各种方案的比较和妥协，因为相关的经历越来越多，所以，逐渐形成了自己的逻辑和方法论。今天，想写下这篇文章，把我的这些个人的经验和想法总结下来，希望能够让更多的人可以参考和借鉴，并能够做出更好的架构来。另外，我的这些思维方式和原则都针对于现有市面上众多不合理的架构和方案，所以，也算是一种“纠正”……（注意，这篇文章所说的这些架构上的原则，一般适用于相对比较复杂的业务，如果只是一些简单和访问量不大的应用，那么你可能会得出相反的结论）</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%8E%9F%E5%88%99%E4%B8%80%EF%BC%9A%E5%85%B3%E6%B3%A8%E4%BA%8E%E7%9C%9F%E6%AD%A3%E7%9A%84%E6%94%B6%E7%9B%8A%E8%80%8C%E4%B8%8D%E6%98%AF%E6%8A%80%E6%9C%AF%E6%9C%AC%E8%BA%AB" title="原则一：关注于真正的收益而不是技术本身">原则一：关注于真正的收益而不是技术本身</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%8E%9F%E5%88%99%E4%BA%8C%EF%BC%9A%E4%BB%A5%E5%BA%94%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%92%8C_API_%E4%B8%BA%E8%A7%86%E8%A7%92%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF%E4%BB%A5%E8%B5%84%E6%BA%90%E5%92%8C%E6%8A%80%E6%9C%AF%E4%B8%BA%E8%A7%86%E8%A7%92" title="原则二：以应用服务和 API 为视角，而不是以资源和技术为视角">原则二：以应用服务和 API 为视角，而不是以资源和技术为视角</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%8E%9F%E5%88%99%E4%B8%89%EF%BC%9A%E9%80%89%E6%8B%A9%E6%9C%80%E4%B8%BB%E6%B5%81%E5%92%8C%E6%88%90%E7%86%9F%E7%9A%84%E6%8A%80%E6%9C%AF" title="原则三：选择最主流和成熟的技术">原则三：选择最主流和成熟的技术</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%8E%9F%E5%88%99%E5%9B%9B%EF%BC%9A%E5%AE%8C%E5%A4%87%E6%80%A7%E4%BC%9A%E6%AF%94%E6%80%A7%E8%83%BD%E6%9B%B4%E9%87%8D%E8%A6%81" title="原则四：完备性会比性能更重要">原则四：完备性会比性能更重要</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%8E%9F%E5%88%99%E4%BA%94%EF%BC%9A%E5%88%B6%E5%AE%9A%E5%B9%B6%E9%81%B5%E5%BE%AA%E6%9C%8D%E4%BB%8E%E6%A0%87%E5%87%86%E3%80%81%E8%A7%84%E8%8C%83%E5%92%8C%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5" title="原则五：制定并遵循服从标准、规范和最佳实践">原则五：制定并遵循服从标准、规范和最佳实践</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%8E%9F%E5%88%99%E5%85%AD%EF%BC%9A%E9%87%8D%E8%A7%86%E6%9E%B6%E6%9E%84%E6%89%A9%E5%B1%95%E6%80%A7%E5%92%8C%E5%8F%AF%E8%BF%90%E7%BB%B4%E6%80%A7" title="原则六：重视架构扩展性和可运维性">原则六：重视架构扩展性和可运维性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8E%9F%E5%88%99%E4%B8%83%EF%BC%9A%E5%AF%B9%E6%8E%A7%E5%88%B6%E9%80%BB%E8%BE%91%E8%BF%9B%E8%A1%8C%E5%85%A8%E9%9D%A2%E6%94%B6%E5%8F%A3" title="原则七：对控制逻辑进行全面收口">原则七：对控制逻辑进行全面收口</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%8E%9F%E5%88%99%E5%85%AB%EF%BC%9A%E4%B8%8D%E8%A6%81%E8%BF%81%E5%B0%B1%E8%80%81%E6%97%A7%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%8A%80%E6%9C%AF%E5%80%BA%E5%8A%A1" title="原则八：不要迁就老旧系统的技术债务">原则八：不要迁就老旧系统的技术债务</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%8E%9F%E5%88%99%E4%B9%9D%EF%BC%9A%E4%B8%8D%E8%A6%81%E4%BE%9D%E8%B5%96%E8%87%AA%E5%B7%B1%E7%9A%84%E7%BB%8F%E9%AA%8C%EF%BC%8C%E8%A6%81%E4%BE%9D%E8%B5%96%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%92%8C%E5%AD%A6%E4%B9%A0" title="原则九：不要依赖自己的经验，要依赖于数据和学习">原则九：不要依赖自己的经验，要依赖于数据和学习</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%8E%9F%E5%88%99%E5%8D%81%EF%BC%9A%E5%8D%83%E4%B8%87%E8%A6%81%E5%B0%8F%E5%BF%83_X_%E2%80%93_Y_%E9%97%AE%E9%A2%98%EF%BC%8C%E8%A6%81%E8%BF%BD%E9%97%AE%E5%8E%9F%E5%A7%8B%E9%9C%80%E6%B1%82" title="原则十：千万要小心 X – Y 问题，要追问原始需求">原则十：千万要小心 X – Y 问题，要追问原始需求</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-11" href="#%E5%8E%9F%E5%88%99%E5%8D%81%E4%B8%80%EF%BC%9A%E6%BF%80%E8%BF%9B%E8%83%9C%E4%BA%8E%E4%BF%9D%E5%AE%88%EF%BC%8C%E5%88%9B%E6%96%B0%E4%B8%8E%E5%AE%9E%E7%94%A8%E5%B9%B6%E4%B8%8D%E5%86%B2%E7%AA%81" title="原则十一：激进胜于保守，创新与实用并不冲突">原则十一：激进胜于保守，创新与实用并不冲突</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E4%B8%80%EF%BC%9A%E5%85%B3%E6%B3%A8%E4%BA%8E%E7%9C%9F%E6%AD%A3%E7%9A%84%E6%94%B6%E7%9B%8A%E8%80%8C%E4%B8%8D%E6%98%AF%E6%8A%80%E6%9C%AF%E6%9C%AC%E8%BA%AB"></span>原则一：关注于真正的收益而不是技术本身<span class="ez-toc-section-end"></span></h4>
+<p>对于软件架构来说，我觉得第一重要的是架构的收益，如果不说收益，只是为了技术而技术，而没有任何意义。对于技术收益来说，我觉得下面这几个收益是非常重要的：</p>
+<ul>
+<li><strong>是否可以降低技术门槛加快整个团队的开发流程</strong>。能够加快整个团队的工程流程，快速发布，是软件工程一直在解决的问题，所以，系统架构需要能够进行并行开发，并行上线和并行运维，而不会让某个团队成为瓶颈点。（注：就算拖累团队的原因是组织构架，也不妨碍我们做出并行的系统架构设计）</li>
+<li><strong>是否可以让整个系统可以运行的更稳定</strong>。要让整个系统可以运行的更为的稳定，提升整个系统的 SLA，就需要对有计划和无计划的停机做相应的解决方案（参看《<a title="关于高可用的系统" href="/articles/17459.html" target="_blank" rel="noopener">关于高可用的架构</a>》）</li>
+<li><strong>是否可以通过简化和自动化降低成本</strong>。最高优化的成本是人力成本，人的成本除了慢和贵，还有经常不断的 human error。如果不能降低人力成本，反而需要更多的人，那么这个架构设计一定是失败的。除此之外，是时间成本，资金成本。</li>
+</ul>
+<p>如果一个系统架构不能在上面三个事上起到作用，那就没有意义了。</p>
+<p><span id="more-21672"></span></p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E4%BA%8C%EF%BC%9A%E4%BB%A5%E5%BA%94%E7%94%A8%E6%9C%8D%E5%8A%A1%E5%92%8C_API_%E4%B8%BA%E8%A7%86%E8%A7%92%EF%BC%8C%E8%80%8C%E4%B8%8D%E6%98%AF%E4%BB%A5%E8%B5%84%E6%BA%90%E5%92%8C%E6%8A%80%E6%9C%AF%E4%B8%BA%E8%A7%86%E8%A7%92"></span>原则二：以应用服务和 API 为视角，而不是以资源和技术为视角<span class="ez-toc-section-end"></span></h4>
+<p>国内很多公司都会有很多分工，基本上都会分成运维和开发，运维又会分成基础运维和应用运维，开发则会分成基础核心开发和业务开发。不同的分工会导致完全不同的视角和出发点。比如，基础运维和开发的同学更多的只是关注资源的利用率和性能，而应用运维和业务开发则更多关注的是应用和服务上的东西。这两者本来相关无事，但是因为分布式架构的演进，导致有一些系统已经说不清楚是基础层的还是应用层的了，比如像服务治理上的东西，里面即有底层基础技术，也需要业务的同学来配合，包括 k8s 也样，里面即有底层的如网络这样的技术，也有需要业务配合的 readniess和 liveness 这样的健康检查，以及业务应用需要 configMap 等等 ……</p>
+<p><strong>这些东西都让我感觉到所谓 DevOps，其实就是因为很多技术和组件已经分不清是 Dev 还是 Ops 的了，所以，需要合并 Dev和 Ops</strong>。而且，整个组织和架构的优化，已经不能通过调优单一分工或是单一组件能够有很大提升的了。其需要有一种自顶向下的，整体规划，统一设计的方式，才能做到整体的提升（可以试想一下城市交通的优化，当城市规模到一定程度的时候，整体的性能你是无法通过优化几条路或是几条街区来完成的，你需要对整个城市做整体的功能体的规划才可能达到整体效率的提升）。而为了做到整体的提升，需要所有的人都要有一个统一的视角和目标，这几年来，我觉得这个目标就是——<strong>要站在服务和 对外API的视角来看问题，而不是技术和底层的角度。</strong></p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E4%B8%89%EF%BC%9A%E9%80%89%E6%8B%A9%E6%9C%80%E4%B8%BB%E6%B5%81%E5%92%8C%E6%88%90%E7%86%9F%E7%9A%84%E6%8A%80%E6%9C%AF"></span>原则三：选择最主流和成熟的技术<span class="ez-toc-section-end"></span></h4>
+<p>技术选型是一件很重要的事，技术一旦选错，那会导致整个架构需要做调整，而对架构的调整重来都不是一件简单的事，我在过去几年内，当系统越来越复杂的时候，用户把他们的  PHP，Python, .NET，或 Node.js 的架构完全都迁移到 Java + Go 的架构上来的案例不断的发生。这个过程还是非常痛苦的，但是你没有办法，当你的系统越来越复杂，越来越大时，你就再也不能在一些玩具技术上玩了，你需要的更为工业化的技术。</p>
+<ul>
+<li><strong>尽可能的使用更为成熟更为工业化的技术栈，而不是自己熟悉的技术栈</strong>。 所谓工业化的技术栈，你可以看看大多数公司使用的技术栈，比如：互联网，金融，电信……等等 ，大公司会有更多的技术投入，也需要更大规模的生产，所以，他们使用的技术通常来说都是比较工业化的。在技术选型上，千万不要被——“你看某个视频公司也在用这个技术”，或是一些在论坛上看到的一些程序员吐槽技术的观点（没有任何的数据，只有自己的喜好）来决定自己的技术，还是看看主流大多数公司实际在用的技术栈，会更靠谱一些。</li>
+<li><strong>选择全球流行的技术，而不是中国流行的技术</strong>。技术这个东西一定是一个全球化的东西，不是一个局域化的事。所以，一定要选国际化的会更好。另外，千万不要被某些公司的“特别案例”骗过去了，那怕这个案例很性感，关键还是要看解决问题的思路和采用的技术是否具有普世性。只有普世性的技术有更强的生命力。</li>
+<li><strong>尽可能的使用红利大的主流技术，而不要自己发明轮子，更不要魔改</strong>。我见过好些个公司魔改开源软件，比如有个公司同魔改mesos，最后改着改着发现自己发明另一个 kubernetes。我还见过很多公司或技术团队喜欢自己发明自己的专用轮子，最后都会被主流开源软件所取代。完全没有必要。不重新发明轮子，不魔改，不是因为自己技术不能，而是因为，这个世界早已不是自己干所有事的年代了，这个时代是要想尽方法跟整个产业，整个技术社区融合和合作，这样才会有最大的收益。那些试图因为某个特例需要自成一套的玩法，短期没问题，但长期来说，我都不看好。</li>
+<li><strong>绝大多数情况下，如无非常特殊要求，选 Java基本是不会错的</strong>。一方面，这是因为 Java 的业务开发的生产力是非常好的，而且有 Spring 框架保障，代码很难写烂，另外，Java 的社区太成熟了，你需要的各种架构和技术都可以很容易获得，技术红利实在是太大。这种运行在JVM上的语言有太多太多的好处了。在 Java 的技术栈上，你的架构风险和架构的成本（无论是人力成本，时间成本和资金成本）从长期来说都是最优的</li>
+</ul>
+<p>在我见过的公司中，好些公司的架构都被技术负责人个人的喜好、擅长和个人经验给绑架了，完全不是从一个客观的角度来进行技术选型。其实，从 0 到 1 的阶段，你用什么样的技术都行，如果你做一个简单的应用，没有事务处理没有复杂的交易流程，比如一些论坛、社交之类的应用，你用任何语言都行。但是如果有一天你的系统变复杂了，需要处理交易了，量也上来了，从 1 到 10，甚至从 10 到 100，你的开发团队也变大了，需要构建的系统越来越大，你可能会发现你只有一个选择，就是 Java。想想京东从.NET 到 Java，淘宝从 PHP 到 Java……</p>
+<p>注，一些有主观喜好的人一定会对我上述对 Java 的描述感到不适，我还用一些证据说明一下——全中国所有的电商平台，几百家银行，三大电信运营商，所有的保险公司，劵商的系统，医院里的系统，电子政府系统，等等，基本都是用 Java 开发的，包括 AWS 的主流语言也是 Java，阿里云一开始用 C++/Python 写控制系统，后面也开始用 Java ……你可能会说 B站是用 go语言，但是你可能不知道 B 站的电商和大数据是用 Java……懂着数据分析的同学，建议上各大招聘网站上搜一下 Java 的职位数量，你就知道某个技术是否主流和热门……</p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E5%9B%9B%EF%BC%9A%E5%AE%8C%E5%A4%87%E6%80%A7%E4%BC%9A%E6%AF%94%E6%80%A7%E8%83%BD%E6%9B%B4%E9%87%8D%E8%A6%81"></span>原则四：完备性会比性能更重要<span class="ez-toc-section-end"></span></h4>
+<p>我发现好些公司的架构师做架构的时候，首要考虑的是架构的性能是否能够撑得住多大多大的流量，而不是考虑系统的完备性和扩展性。所以，我已经多次见过这样的案例了，一开始直接使用 MongoDB 这样的非关系型数据库，或是把数据直接放在 Redis 里，而直接放弃关系型数据库的数据完备性的模型，而在后来需要在数据上进行关系查询的时候，发现 NoSQL 的数据库在 Join 上都表现的太差，然后就开始各种飞线，为了不做 Join 就开始冗余数据，然而自己又维护不好冗余数据后带来的数据一致性的问题，导致数据上的各种错乱丢失。</p>
+<p>所以，我给如下的一些如下的架构原则：</p>
+<ul>
+<li><strong>使用最科学严谨的技术模型为主，并以不严谨的模型作为补充</strong>。对于上面那个案例来说，就是——永远使用完备支持 ACID 的关系型数据库，然后用 NoSQL 作补充，而不是完全放弃关系型数据库。这里的原则就是所谓的“先紧后松”，一开始紧了，你可以慢慢松，但是开始松了，以后你想紧再也紧不过来了。</li>
+<li><strong>性能上的东西，总是有很多解的</strong>。我这么多年的经历告诉我，性能上的事，总是有解的，手段也是最多的，这个比起架构的完备性和扩展性来说真的不必太过担心。</li>
+</ul>
+<p>为了追求所谓的性能，把整个系统的完备性丢失掉，相当地得不偿失。</p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E4%BA%94%EF%BC%9A%E5%88%B6%E5%AE%9A%E5%B9%B6%E9%81%B5%E5%BE%AA%E6%9C%8D%E4%BB%8E%E6%A0%87%E5%87%86%E3%80%81%E8%A7%84%E8%8C%83%E5%92%8C%E6%9C%80%E4%BD%B3%E5%AE%9E%E8%B7%B5"></span>原则五：制定并遵循服从标准、规范和最佳实践<span class="ez-toc-section-end"></span></h4>
+<p>这个原则是非常重要的，因为只有服从了标准，你的架构才能够有更好的扩展性。比如：我经常性的见到很多公司的系统既没有服从业界标准，也没有形成自己公司的标准，感觉就像一群乌合之众一样。最典型的例子就是 HTTP 调用的状态返回码。业内给你的标准是 200表示成功，3xx 跳转，4xx 表示调用端出错，5xx 表示服务端出错，我实在是不明白为什么无论成功和失败大家都喜欢返回 200，然后在 body 里指出是否error（前两年我在微信公众号里看到一个有一定名气的互联网老兵推荐使用无论正确还是出错都返回 200 的做法，我在后台再三确认后，我发现这样的架构师真是害人不浅）。这样做最大的问题是——监控系统将在一种低效的状态下工作。监控系统需要把所有的网络请求包打开后才知道是否是错误，而且完全不知道是调用端出错还是服务端出错，于是一些像重试或熔断这样的控制系统完全不知道怎么搞（如果是 4xx错，那么重试或熔断是没有意义的，只有 5xx 才有意义）。<strong>有时候，我会有种越活越退步的感觉，错误码设计这种最基本最基础的东西为什么会没有？并且一个公司会任由着大家乱来？这些基础技能怎么就这样丢掉了？</strong></p>
+<p>还有，我还见过一些公司，他们整个组织没有一个统一的用户 ID 的设计，各个系统之间同步用户的数据是通过用户的身份证 ID，是的，就是现实世界的身份证 ID，包括在网关上设置的用户白名单居然也是用身份证 ID。我对这个公司的内的用户隐私管理有很大的担忧。一个企业，一个组织，如果没有标准和规范，也就会有抽象，这一定是要出各种乱子的。</p>
+<p>下面，我罗列一些你需要注意的标准和规范（包括但不限于）：</p>
+<ul>
+<li><strong>服务间调用的协议标准和规范</strong>。这其中包括 Restful API路径, HTTP 方法、状态码、标准头、自定义头等，返回数据 JSon Scheme……等。</li>
+<li><strong>一些命名的标准和规范</strong>。这其中包括如：用户 ID，服务名、标签名、状态名、错误码、消息、数据库……等等</li>
+<li><strong>日志和监控的规范</strong>。这其中包括：日志格式，监控数据，采样要求，报警……等等</li>
+<li><strong>配置上的规范</strong>。这其中包括：操作系统配置、中间件配置，软件包……等等</li>
+<li><strong>中间件使用的规范</strong>。数据库，缓存、消息队列……等等</li>
+<li><strong>软件和开发库版本统一</strong>。整个组织架构内，软件或开发库的版本最好每年都升一次级，然后在各团队内统一。</li>
+</ul>
+<p>这里重要说一下两个事：</p>
+<ul>
+<li><strong>Restful API 的规范</strong>。我觉得是非常重要的，这里给两个我觉得写得最好的参考：<a href="https://github.com/paypal/api-standards/blob/master/api-style-guide.md" target="_blank" rel="noopener">Paypal</a> 和 <a href="https://github.com/microsoft/api-guidelines" target="_blank" rel="noopener">Microsoft</a> 。Restful API 有一个标准和规范最大的好处就是监视可以很容易地做各种统计分析，控制系统可以很容易的做流量编排和调度。</li>
+<li><strong>另一个是服务调用链追踪</strong>。对于服务调用链追踪来说，基本上都是参考于 <a href="https://research.google/pubs/pub36356/" target="_blank" rel="noopener">Google Dapper</a> 这篇论文，目前有很多的实现，最严格的实现是 <a href="https://zipkin.io/" target="_blank" rel="noopener">Zipkin</a>，这也是 Spring Cloud Sleuth 的底层实现。Zipkin 贴近 Google Dapper 论文的好处在于——无状态，快速地把 Span 发出来，不消耗服务应用侧的内存和 CPU。这意味着，监控系统宁可自己死了也不能干扰实际应用。</li>
+<li><strong>软件升级</strong>。我发现很多公司包括 BAT，他们完全没有软件升级的活动，全靠开发人员自发。然而，这种成体系的活动，是永远不可能靠大众的自发形成的。一个公司至少一年要有一次软件版本升级的review，然后形成软件版本的统一和一致，这样会极太简化系统架构的复杂度。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E5%85%AD%EF%BC%9A%E9%87%8D%E8%A7%86%E6%9E%B6%E6%9E%84%E6%89%A9%E5%B1%95%E6%80%A7%E5%92%8C%E5%8F%AF%E8%BF%90%E7%BB%B4%E6%80%A7"></span>原则六：重视架构扩展性和可运维性<span class="ez-toc-section-end"></span></h4>
+<p>在我见过很多架构里，技术人员只考虑当下，但从来不考虑系统的未来扩展性和可运维性。所谓的管生不管养。如果你生下来的孩子胳膊少腿，严重畸形，那么未来是很难玩的。因为架构和软件不是写好就完的，是需要不断修改不断维护的，80%的软件成本都是在维护上。所以，如何让你的架构有更好的扩展性，可以更容易地运维，这个是比较重要的。所谓的扩展性，意味着，我可以很容易地加更多的功能，或是加入更多的系统，而所谓可运维，就是说我可以对线上的系统做任意的变更。扩展性要求的是有标准规范且不耦合的业务架构，可运维性要求的则是可控的能力，也就是一组各式各样的控制系统。</p>
+<ul>
+<li><strong>通过服务编排架构来降低服务间的耦合</strong>。比如：通过一个业务流程的专用服务，或是像 Workflow，Event Driven Architecture ， Broker，Gateway，Service Discovery 等这类的的中间件来降低服务间的依赖关系。</li>
+<li><strong>通过服务发现或服务网关来降低服务依赖所带来的运维复杂度</strong>。服务发现可以很好的降低相关依赖服务的运维复杂度，让你可以很轻松的上线或下线服务，或是进行服务伸缩。</li>
+<li><strong>一定要使用各种软件设计的原则</strong>。比如：像SOLID这样的原则（参看《<a title="一些软件设计的原则" href="/articles/4535.html">一些软件设计的原则</a>》），IoC/DIP，SOA 或 Spring Cloud 等 架构的最佳实践（参看《<a title="SteveY对Amazon和Google平台的吐槽 - 67,710 人阅读" href="/articles/5701.html" target="_blank" rel="noopener">SteveY对Amazon和Google平台的吐槽</a>》中的 Service Interface 的那几条军规），分布式系统架构的相关实践（参看：《<a title="分布式系统的事务处理" href="/articles/10910.html" target="_blank" rel="noopener">分布式系统的事务处理</a>》，或微软件的 《<a href="https://docs.microsoft.com/en-us/azure/architecture/patterns/" target="_blank" rel="noopener">Cloud Design Patterns</a>》）……等等</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E4%B8%83%EF%BC%9A%E5%AF%B9%E6%8E%A7%E5%88%B6%E9%80%BB%E8%BE%91%E8%BF%9B%E8%A1%8C%E5%85%A8%E9%9D%A2%E6%94%B6%E5%8F%A3"></span>原则七：对控制逻辑进行全面收口<span class="ez-toc-section-end"></span></h4>
+<p>所有的程序都会有两种逻辑，一种是业务逻辑，一种是控制逻辑，业务逻辑就是完成业务的逻辑，控制逻辑是辅助，比如你用多线程，还是用分布式，是用数据库还是用文件，如何配置、部署，运维、监控，事务控制，服务发现，弹性伸缩，灰度发布，高并发，等等，等等 ……这些都是控制逻辑，跟业务逻辑没有一毛钱关系。控制逻辑的技术深度会通常会比业务逻辑要深一些，门槛也会要高一些，所以，最好要专业的程序员来负责控制逻辑的开发，统一规划统一管理，进行收口。这其中包括：</p>
+<ul>
+<li><strong>流量收口</strong>。包括南北向和东西向的流量的调度，主要通过流量网关，开发框架 SDK或 Service Mesh 这样的技术。</li>
+<li><strong>服务治理收口</strong>。包括：服务发现、健康检查，配置管理、事务、事件、重试、熔断、限流……主要通过开发框架 SDK – 如：Spring Cloud，或服务网格Service Mesh等技术。</li>
+<li><strong>监控数据收口</strong>。包括：日志、指标、调用链……主要通过一些标准主流的探针，再加上后台的数据清洗和数据存储来完成，最好是使用无侵入式的技术。监控的数据必须统一在一个地方进行关联，这样才会产生信息。</li>
+<li><strong>资源调度有应用部署的收口</strong>。包括：计算、网络和存储的收口，主要是通过容器化的方案，如k8s来完成。</li>
+<li><strong>中间件的收口</strong>。包括：数据库，消息，缓存，服务发现，网关……等等。这类的收口方式一般要在企业内部统一建立一个共享的云化的中间件资源池。</li>
+</ul>
+<p>对此，这里的原则是：</p>
+<ul>
+<li><strong>你要选择容易进行业务逻辑和控制逻辑分离的技术</strong>。这里，Java 的 JVM+字节码注入+AOP 式的Spring 开发框架，会带给你太多的优势。</li>
+<li><strong>你要选择可以享受“前人种树，后人乘凉”的有技术红利的技术</strong>。如：有庞大社区而且相互兼容的技术，如：Java, Docker,  Ansible，HTTP，Telegraf/Collectd……</li>
+<li><strong>中间件你要使用可以 支持HA集群和多租户的技术</strong>。这里基本上所有的主流中间件都会支持 HA 集群方式的。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E5%85%AB%EF%BC%9A%E4%B8%8D%E8%A6%81%E8%BF%81%E5%B0%B1%E8%80%81%E6%97%A7%E7%B3%BB%E7%BB%9F%E7%9A%84%E6%8A%80%E6%9C%AF%E5%80%BA%E5%8A%A1"></span>原则八：不要迁就老旧系统的技术债务<span class="ez-toc-section-end"></span></h4>
+<p>我发现很多公司都很非常大的技术债务，这些债务具体表现如下：</p>
+<ul>
+<li><strong>使用老旧的技术</strong>。比如，使用HTTP1.0， Java 1.6，Websphere，ESB，基于 socket的通讯协议，过时的模型……等等</li>
+<li><strong>不合理的设计</strong>。比如，在 gateway 中写大量的业务逻辑，单体架构，数据和业务逻辑深度耦合，错误的系统架构（把缓存当数据库，用消息队列同步数据）……等等</li>
+<li> <strong>缺少配套设施</strong>。比如，没有自动化测试，没有好的软件文档，没有质量好的代码，没有标准和规范……等等</li>
+</ul>
+<p>来找我寻求技术帮助的人都有各种各样的问题。我都会对他们苦口婆心地说同样的一句话——“<strong>如果你是来找我 case-by-case 解决问题，我兴趣不大，因为，你们千万不要寄希望能够很简单的把一辆夏利车改成一辆法拉利跑车，或是把一栋地基没打好的歪楼搞正。以前欠下的技术债，都得要还，没打好的地基要重新打，没建配套设施都要建。这些基础设施如果不按照正确科学的方式建立的话，你是不可能有一个好的的系统，我也没办法帮你 case-by-case 的解决问题……</strong>”，一开始，他们都会对我说，没问题，我们就是要还债，但是，最后发现要还的债真多，有点承受不了，就开始现原形了。</p>
+<p>他们开始为自己的“欠的技术债”找各种合理化的理由——给你解释各种各样的历史原因和不得以而为之的理由。谈着谈着，让我有一种感觉——他们希望得到一种什么都不改什么都不付出的方式就可以进步的心态，他们宁可让新的技术 low 下来迁就于这些技术债，把新的技术滥用地乱七八糟的。有一个公司，他们的系统架构和技术选型基本都搞错了，使用错误的模型构建系统，导致整个系统的性能非常之差，也才几千万条数据，但他们想的不是还债，不是把地基和配套设施建好，而且要把楼修的更高，上更多的系统——他们觉得现有的系统挺好，性能问题的原因是他们没一个大数据平台，所以要建大数据平台……</p>
+<p>我见过很多很多公司，包括大如 BAT 这样的公司，都会在原来的技术债上进行更多的建设，然后，技术债越来越大，利息越来越大，最终成为一个高利贷，再也还不了（我在《<a href="/articles/11656.html" target="_blank" rel="noopener">开发团队的效率</a>》一文中讲过一个 WatchDog 的架构模式，一个系统烂了，不是去改这个系统，而是在旁边建一个系统来看着它，我很难理解为什么会有这样的逻辑，也许是为了要解决更多的就业……）</p>
+<p>这里有几个原则和方法我是非常坚持的，分享给大家：</p>
+<ul>
+<li><strong>与其花大力气迁就技术债务，不如直接还技术债。是所谓的长痛不如短痛。</strong></li>
+<li><strong>建设没有技术债的“新城区”，并通过“<a href="https://docs.microsoft.com/en-us/azure/architecture/patterns/anti-corruption-layer" target="_blank" rel="noopener">防腐层</a> ”的架构模型，不要让技术债侵入“新城区”</strong>。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E4%B9%9D%EF%BC%9A%E4%B8%8D%E8%A6%81%E4%BE%9D%E8%B5%96%E8%87%AA%E5%B7%B1%E7%9A%84%E7%BB%8F%E9%AA%8C%EF%BC%8C%E8%A6%81%E4%BE%9D%E8%B5%96%E4%BA%8E%E6%95%B0%E6%8D%AE%E5%92%8C%E5%AD%A6%E4%B9%A0"></span>原则九：不要依赖自己的经验，要依赖于数据和学习<span class="ez-toc-section-end"></span></h4>
+<p>有好些人来找我跟我说他们的技术问题，然后希望我能够给他们一个答案。我说，我需要了解一下你现有系统的情况，也就是需要先做个诊断，我只有得到这些数据后，我才可能明白真正的原因是什么 ，我才可能给你做出一个比较好的技术方案。我个人觉得这是一种对对方负责的方法，因为技术手段太多了，所有的技术手段都有适应的场景，并且有各种 trade-off，所以，只有调研完后才能做出决定。这跟医生看病是一样的，确诊病因不能靠经验，还是要靠诊断数据。在科学面前，所有的经验都是靠不住的……</p>
+<p>另外，如果有一天你在做技术决定的时候，开始凭自己以往的经验，那么你就已经不可能再成长了。人都是不可能通过不断重复过去而进步的，人的进步从来都是通过学习自己不知道的东西。所以，千万不要依赖于自己的经验做决定。做任何决定之前，最好花上一点时间，上网查一下相关的资料，技术博客，文章，论文等 ，同时，也看看各个公司，或是各个开源软件他们是怎么做的？然后，比较多种方案的 Pros/Cons，最终形成自己的决定，这样，才可能做出一个更好的决定。</p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E5%8D%81%EF%BC%9A%E5%8D%83%E4%B8%87%E8%A6%81%E5%B0%8F%E5%BF%83_X_%E2%80%93_Y_%E9%97%AE%E9%A2%98%EF%BC%8C%E8%A6%81%E8%BF%BD%E9%97%AE%E5%8E%9F%E5%A7%8B%E9%9C%80%E6%B1%82"></span>原则十：千万要小心 X – Y 问题，要追问原始需求<span class="ez-toc-section-end"></span></h4>
+<p>对于 <a title="X-Y Problem" href="/articles/10804.html">X-Y 问题</a>，也就是说，用户为了解决 X问题，他觉得用 Y 可以解，于是问我 Y 怎么搞，结果搞到最后，发现原来要解决的 X 问题，这个时候最好的解决方案不是 Y，而是 Z。 这种 X-Y 问题真是相当之多，见的太多太多了。所以，每次用户来找我的时候，我都要不断地追问什么是 X 问题。</p>
+<p>比如，好些用户都会来问我他们要一个大数据流式处理，结果追问具体要解决什么样的问题时，才发现他们的问题是因为服务中有大量的状态，需要把相同用户的数据请求放在同一个服务上处理，而且设计上导致一个慢函数拖慢整个应用服务。最终就是做一下性能调优就好了，根本没有必要上什么大数据的流式处理。</p>
+<p>我很喜欢追问为什么 ，这种追问，会让客户也跟着来一起重新思考。比如，有个客户来找我评估的一个技术架构的决定，从理论上来说，好像这个架构在用户的这个场景下非常不错。但是，这个场景和这个架构是我职业生涯从来没有见过的。于是，我开始追问这个为什么会是这么一个场景？当我追问的时候，我发现用户都感到这个场景的各种不合理。最后引起了大家非常深刻的研讨，最终用户把那个场景修正后，而架构就突然就变成了一个常见且成熟的的模型……</p>
+<h4><span class="ez-toc-section" id="%E5%8E%9F%E5%88%99%E5%8D%81%E4%B8%80%EF%BC%9A%E6%BF%80%E8%BF%9B%E8%83%9C%E4%BA%8E%E4%BF%9D%E5%AE%88%EF%BC%8C%E5%88%9B%E6%96%B0%E4%B8%8E%E5%AE%9E%E7%94%A8%E5%B9%B6%E4%B8%8D%E5%86%B2%E7%AA%81"></span>原则十一：激进胜于保守，创新与实用并不冲突<span class="ez-toc-section-end"></span></h4>
+<p>我对技术的态度是比较激进的，但是，所谓的激进并不是瞎搞，也不是见新技术就上，而是积极拥抱会改变未来的新技术，如：Docker/Go，我就非常快地跟进，但是像区块链或是 Rust 这样的，我就不是很积极。因为，其并没有命中我认为的技术趋势的几个特征（参看《<a title="Go语言、Docker 和新技术" href="/articles/18190.html" target="_blank" rel="noopener">Go,Docker 和新技术</a> 》）。当然，我也不是不喜欢的就不学了，我对区块链和 Rust 我一样学习，我也知道这些技术的优势，但我不会大规模使用它们。另外，我也尊重保守的决定，这里面没有对和错。但是，我个人觉得对技术激进的态度比起保守来说有太多的好处了。一方面来说，对于用户来说，很大程度上来说，新技术通常都表面有很好的竞争力，而且我见太多这样成功的公司都在积极拥抱新的技术的，而保守的通常来说都越来越不好。</p>
+<p>有一些人会跟我说，我们是实用主义，我们不需要创新，能解决当下的问题就好，所以，我们不需要新技术，现有的技术用好就行了。这类的公司，他们的技术设计第一天就在负债，虽然可以解决当下问题，但是马上就会出现新的问题，然后他们会疲于解决各种问题。最后呢，最后还是会走到新的技术上。</p>
+<p>这里的逻辑很简单 —— <strong>进步永远来自于探索，探索是要付出代价的，但是收益更大</strong>。对我而言，不敢冒险才是最大的冒险，不敢犯错才是最大的错误，害怕失去会让你失去的更多……</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21672-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Architecture</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">程序员</a>, <a href="javascript:void(0)" rel="tag">程序设计</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>我做系统架构的一些原则</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2353229" class="comment even thread-even depth-1">
+<article id="div-comment-2353229" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f33a72c407259af0db67a6d5c9bc7b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f33a72c407259af0db67a6d5c9bc7b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://maruifu.cn" class="url" rel="ugc external nofollow">小马哥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2353229"><time datetime="2021-12-26T22:44:22+08:00">2021年12月26日 22:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>阅读有感！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2354292" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2354292" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b448b70dccbcf1eda57d33275d947662?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b448b70dccbcf1eda57d33275d947662?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">amadis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2354292"><time datetime="2021-12-29T10:10:56+08:00">2021年12月29日 10:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果不说收益”<br/>
+有个乱码</p>
+</div>
+ </article>
+</li>
+<li id="comment-2354295" class="comment even thread-even depth-1">
+<article id="div-comment-2354295" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a3d337648fa42cb5d0747311151a6d5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a3d337648fa42cb5d0747311151a6d5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yth</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2354295"><time datetime="2021-12-29T10:32:01+08:00">2021年12月29日 10:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问关于Sogou的workflow，有人关注、使用么？很想听听大家（特别期待chenhao）对它的技术架构，应用场景的分析看法</p>
+</div>
+ </article>
+</li>
+<li id="comment-2354657" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.starrocket.io/posts/newsletter-2021-12-30/" class="url" rel="ugc external nofollow">科技創業週報 #317：手寫筆記是一門好生意 | Star Rocket Blog</a> </div>
+</li>
+<li id="comment-2354660" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2354660" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab9dbd2984c145ecb9b931a51d61e0b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab9dbd2984c145ecb9b931a51d61e0b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">happen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2354660"><time datetime="2021-12-30T10:02:15+08:00">2021年12月30日 10:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>准备发群里给上级看看了，祝我好运。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2361869" class="comment odd alt depth-2">
+<article id="div-comment-2361869" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ae616aa37bd80c11833d004faf2e052?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ae616aa37bd80c11833d004faf2e052?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">allean</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2361869"><time datetime="2022-01-27T17:58:48+08:00">2022年01月27日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>牛逼</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2354757" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2354757" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b34d0edb58ae4eacd30a6320be162c0d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b34d0edb58ae4eacd30a6320be162c0d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.yuque.com/yunhaibao" class="url" rel="ugc external nofollow">五六七</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2354757"><time datetime="2021-12-30T18:16:22+08:00">2021年12月30日 18:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不少同感😊</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355037" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2355037" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/829970201cb92cbb63b3833af5ecb4f2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/829970201cb92cbb63b3833af5ecb4f2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yangyang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355037"><time datetime="2021-12-31T10:15:54+08:00">2021年12月31日 10:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老板发我的，哈哈</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2355141" class="comment even depth-2">
+<article id="div-comment-2355141" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af72b83155091a2bd0896e3d0811cb8e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af72b83155091a2bd0896e3d0811cb8e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">代码里淘沙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355141"><time datetime="2021-12-31T16:34:34+08:00">2021年12月31日 16:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同, 组长分享的, 左耳听风大佬的文章o(￣▽￣)</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2355042" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2355042" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1331ca34425f8dc7765e377d2c3d9bcb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1331ca34425f8dc7765e377d2c3d9bcb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://nickfan.github.io" class="url" rel="ugc external nofollow">隐逸山林</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355042"><time datetime="2021-12-31T10:46:46+08:00">2021年12月31日 10:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因为大部分人都没法让全公司新旧团队成员对协议规范的标准保持在你一样的层面，新招的小白对http码都不了解成功1，失败0，前端收非200的响应，还需要手工解析内容中的message，改成返回一个200头加json字符串他直接解析下标，做完下班，他不香吗？<br/>
+团队的水准大概率是由木桶的短板决定的，而大概率多短是由公司的开价和HR的kpi紧急程度决定的而不在架构师。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355055" class="comment even thread-even depth-1">
+<article id="div-comment-2355055" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14be4c31a975f533878350e8aa08d604?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14be4c31a975f533878350e8aa08d604?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kevin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355055"><time datetime="2021-12-31T12:10:36+08:00">2021年12月31日 12:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很接地气，又说到各种点上了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355067" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2355067" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7df04bf41592ebc0ebbc250de5608cc9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7df04bf41592ebc0ebbc250de5608cc9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qingwang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355067"><time datetime="2021-12-31T12:37:29+08:00">2021年12月31日 12:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“包括 k8s 也样”<br/>
+这句，应该是”包括 k8s 也一样”</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355123" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2355123" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83dbf60e00d11ec6d8878e99280f5fd8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83dbf60e00d11ec6d8878e99280f5fd8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">粟鑫</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355123"><time datetime="2021-12-31T15:46:48+08:00">2021年12月31日 15:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>医院里的系统 大部分 是.NET，Java社区红利 目前是大，但是在云原生时代，Java 已经落后。目前的.NET Core 和 .NET 6 性能上更是数倍于JAVA。不是说哪种语言好坏，技术栈的好坏，云原生时代，什么技术栈都不重要了，多技术栈才是趋势，用适合的技术栈解决适合的问题。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370273" class="comment odd alt depth-2">
+<article id="div-comment-2370273" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b404f47a704b07048bc7494926691cca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b404f47a704b07048bc7494926691cca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">朱永光</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370273"><time datetime="2022-03-18T17:35:44+08:00">2022年03月18日 17:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不能同意更多</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370296" class="comment even depth-2">
+<article id="div-comment-2370296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c24b540d43872963ce51fb983b51302?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c24b540d43872963ce51fb983b51302?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">snowtraces</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370296"><time datetime="2022-03-25T11:40:10+08:00">2022年03月25日 11:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>医院系统相关公司也在转型，传统业务存储过程一把梭，也在往微服务化演变，例如卫宁的WiNEX</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370297" class="comment odd alt depth-2">
+<article id="div-comment-2370297" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/13326600c5dc316305ed20143f35ddd6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/13326600c5dc316305ed20143f35ddd6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370297"><time datetime="2022-03-25T16:02:03+08:00">2022年03月25日 16:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看到java已经落后,我笑了</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2355124" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2355124" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7cf6a1664c68978885366e9dabce6907?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7cf6a1664c68978885366e9dabce6907?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.xttblog.com" class="url" rel="ugc external nofollow">业余草</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355124"><time datetime="2021-12-31T15:49:00+08:00">2021年12月31日 15:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很好，受益匪浅！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355135" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2355135" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83dbf60e00d11ec6d8878e99280f5fd8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83dbf60e00d11ec6d8878e99280f5fd8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">粟鑫</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355135"><time datetime="2021-12-31T16:18:13+08:00">2021年12月31日 16:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原则三，把主流技术就定位从JAVA ，这个合适吗？未来的趋势,java 已经不适合云原生时代，国内大环境都是jdk8 (包括阿里) 不愿意升级。在云原生时代。服务网格时代，特别是Dapr（dapr.io）这样的技术的出现，将中间件下沉为运行时，什么技术栈已不重要。个人看好.NET JAVA GO Python</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2360027" class="comment even depth-2">
+<article id="div-comment-2360027" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/66b1ea3c91acedeb39358904092d6bf6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/66b1ea3c91acedeb39358904092d6bf6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">BarleyBig</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2360027"><time datetime="2022-01-17T14:53:54+08:00">2022年01月17日 14:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞同，在云原生时代，技术栈本身已经不再是桎梏。尤其是k8s、服务网格、云函数、wasm等技术的兴盛，系统架构将会变得更加复杂，传统的java一锅端已经远远不能满足需求,这也是go语言兴起的原因之一。<br/>
+个人看好go，js，python，.net。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2355147" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2355147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6fb94b18bd54b72c9446d34415c163c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6fb94b18bd54b72c9446d34415c163c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小明明</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355147"><time datetime="2021-12-31T16:44:47+08:00">2021年12月31日 16:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不应该把技术只依托于一种,这次log4j下次如果是jvm的漏洞呢,技术应该多元化才是好的发展，况且java这么吃资源,有些公司上来就要N倍于其他语言的资源但是实际性能其实基本一样</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355218" class="comment even thread-even depth-1">
+<article id="div-comment-2355218" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bc8a0f467df7424e8d343d85199fa47b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bc8a0f467df7424e8d343d85199fa47b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jimmapzya</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2355218"><time datetime="2021-12-31T20:25:47+08:00">2021年12月31日 20:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“最严格的实现是 Zipkin，这也是 Spring Cloud Sleuth 的底层实现”—-Spring Cloud Sleuth类似于一个starter，自动装配了很多bean，借助于追踪库进行span的生成（sleuth2.x默认使用brave追踪库，这个库属于openzipkin这个开源组织），可以选择将日志上送到zipkin服务，或是其他平台，sleuth-3.X已经和brave剥离自己抽象了一层tracer，brave作为一个可选追踪库。Spring-cloud-sleuth和zipkin是没有关系的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356444" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2356444" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大墨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2356444"><time datetime="2022-01-03T10:31:51+08:00">2022年01月03日 10:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“如果有一天你在做技术决定的时候，开始凭自己以往的经验，那么你就已经不可能再成长了。人都是不可能通过不断重复过去而进步的，人的进步从来都是通过学习自己不知道的东西。所以，千万不要依赖于自己的经验做决定”<br/>
+很受益，不限于技术决定</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356813" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2356813" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a85262e67cb0f2f6f0678fd1a12b8a45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a85262e67cb0f2f6f0678fd1a12b8a45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qingtian16265</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2356813"><time datetime="2022-01-04T09:41:07+08:00">2022年01月04日 09:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章内容很好，但可能是受限于写作时间仓促或是其他什么原因，里面有很多语句与用词有误。虽不影响阅读，但对于内容本身来说，可能加入一到两次的审阅与修正后，文章可以表现得更完美。一点小建议，谢谢~</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2356945" class="comment odd alt depth-2">
+<article id="div-comment-2356945" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4dd2f87d125e43d43f9644084760b44b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4dd2f87d125e43d43f9644084760b44b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cjr</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2356945"><time datetime="2022-01-04T17:18:52+08:00">2022年01月04日 17:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一点小建议：看到哪里有不妥的直接指出来最好。毕竟人脑都自带滤镜一些小问题自动会柔化，不改也不是大问题。但一说问题就是要作者多一两次审阅与修正，其实是比较浪费时间的。大家看的时候觉得不妥的直接提，作者直接改，后续也不会有细致的读者再提类似的总理，其实效率更高。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2356861" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2356861" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d6c2556ef3a1c1c1f02d01258249b57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d6c2556ef3a1c1c1f02d01258249b57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">雷大锤</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2356861"><time datetime="2022-01-04T12:59:56+08:00">2022年01月04日 12:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很好，学习学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356887" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2356887" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a214775dc036cf2afb276b8d6992347?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a214775dc036cf2afb276b8d6992347?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kenny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2356887"><time datetime="2022-01-04T14:21:01+08:00">2022年01月04日 14:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>腾讯不用JAVA，主要C和GO</p>
+</div>
+ </article>
+</li>
+<li id="comment-2356940" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2356940" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/95be779184f062293e9f72e518ca2841?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/95be779184f062293e9f72e518ca2841?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">DZG</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2356940"><time datetime="2022-01-04T17:06:29+08:00">2022年01月04日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然GUI开发在架构层面上面临的变化更多，但基本原则都有共通之处，老师厉害，收获颇多！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2357607" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2357607" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e5432b6635a8ed1b31329adffe8b7dd4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e5432b6635a8ed1b31329adffe8b7dd4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">程玉庭</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2357607"><time datetime="2022-01-06T16:52:45+08:00">2022年01月06日 16:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>打扰问一下。【用消息队列同步数据】 这个的问题是在哪里？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2357753" class="comment even depth-2 parent">
+<article id="div-comment-2357753" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da20f1812123734faf5d9e0bd07645f9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da20f1812123734faf5d9e0bd07645f9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Saltpond</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2357753"><time datetime="2022-01-07T01:28:14+08:00">2022年01月07日 01:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>队列无法保证数据的顺序性</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2366863" class="comment odd alt depth-3">
+<article id="div-comment-2366863" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d70792b1b20dd21cc337f9629087af44?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d70792b1b20dd21cc337f9629087af44?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://mutoe.com" class="url" rel="ugc external nofollow">mutoe</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2366863"><time datetime="2022-02-16T12:59:32+08:00">2022年02月16日 12:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>fifo可以吗？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2357784" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2357784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c150e01554dd7afd790bc0dafa895aa5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c150e01554dd7afd790bc0dafa895aa5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Agenric</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2357784"><time datetime="2022-01-07T13:24:55+08:00">2022年01月07日 13:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以，需要合并 Dev和 Ops。<br/>
+强迫症发现少个空格。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2357787" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2357787" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b142d88b9043d4495888a82076a464d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b142d88b9043d4495888a82076a464d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">惜时自珍</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2357787"><time datetime="2022-01-07T15:12:50+08:00">2022年01月07日 15:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>路漫漫其修远兮，吾将上下而求索。<br/>
+不敢冒险才是最大的冒险，不敢犯错才是最大的错误，害怕失去会让你失去的更多。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2357831" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2357831" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cd1fb32e5af3632954752fd8040ae455?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cd1fb32e5af3632954752fd8040ae455?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pudongliang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2357831"><time datetime="2022-01-08T15:10:06+08:00">2022年01月08日 15:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这样的文章需要多读几次才能吸收</p>
+</div>
+ </article>
+</li>
+<li id="comment-2358342" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2358342" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/13802acfea4833f88b04e58a8612ee51?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/13802acfea4833f88b04e58a8612ee51?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">火山</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2358342"><time datetime="2022-01-10T20:16:15+08:00">2022年01月10日 20:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益匪浅！学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2359246" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2359246" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/83dbf60e00d11ec6d8878e99280f5fd8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/83dbf60e00d11ec6d8878e99280f5fd8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">alvinsu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2359246"><time datetime="2022-01-14T11:57:46+08:00">2022年01月14日 11:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看看 .NET 6 和 jdk 17 的性能测试<br/>
+<a href="https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/csharp.html" rel="nofollow ugc">https://benchmarksgame-team.pages.debian.net/benchmarksgame/fastest/csharp.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2360024" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2360024" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92293f5ce34eb8b9cfa6506bf27e0c55?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92293f5ce34eb8b9cfa6506bf27e0c55?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zxk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2360024"><time datetime="2022-01-17T12:22:52+08:00">2022年01月17日 12:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的真好,句句戳我心,但是现实很残酷.因为你不是领导,CTO或者什么,真希望他们能虚心接受学习这篇文章</p>
+</div>
+ </article>
+</li>
+<li id="comment-2360232" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2360232" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wardenlym</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2360232"><time datetime="2022-01-19T11:24:45+08:00">2022年01月19日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有时候，我会有种越活越退步的感觉，错误码设计这种最基本最基础的东西为什么会没有？并且一个公司会任由着大家乱来？这些基础技能怎么就这样丢掉了？</p>
+<p>这个问题你上面已经自问自答了：</p>
+<p>因为你招了太多的Java程序员。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2366013" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2366013" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2366013"><time datetime="2022-02-12T13:29:00+08:00">2022年02月12日 13:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>难道不是因为这个公司没有技术管理和技术规范，任由程序员乱来吗？跟Java有什么关系</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2366361" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/22173.html" class="url" rel="ugc">“一把梭：REST API 全用 POST” | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2370213" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370213" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9f45f72114e51734965af1eb939e76b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9f45f72114e51734965af1eb939e76b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lizy0329</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370213"><time datetime="2022-03-02T10:54:01+08:00">2022年03月02日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于返回码那个东西，腾讯就是所有状态都返回200，里面还有一个自定义的 code。然后很多公司都直接抄腾讯，我们就是</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370919" class="comment even depth-2">
+<article id="div-comment-2370919" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ace6c291e0de2ef9881a1257873313d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ace6c291e0de2ef9881a1257873313d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Adrian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370919"><time datetime="2022-11-22T09:47:06+08:00">2022年11月22日 09:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>gitee.com 好多项目都是这样</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370242" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370242" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/880bd30441685ee7727c269d1a19b953?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/880bd30441685ee7727c269d1a19b953?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhucebuliaopx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370242"><time datetime="2022-03-10T11:28:56+08:00">2022年03月10日 11:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益匪浅</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370393" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://mapcoding.cn/%e8%bd%ac%e8%bd%bd%e6%88%91%e5%81%9a%e7%b3%bb%e7%bb%9f%e6%9e%b6%e6%9e%84%e7%9a%84%e4%b8%80%e4%ba%9b%e5%8e%9f%e5%88%99/" class="url" rel="ugc external nofollow">[转载]我做系统架构的一些原则 - 程序员的自我修养</a> </div>
+</li>
+<li id="comment-2370442" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370442" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de782ad9d82e8b0e922fde9081d4f570?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de782ad9d82e8b0e922fde9081d4f570?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">adsf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370442"><time datetime="2022-05-06T11:09:53+08:00">2022年05月06日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我想让你来我们公司搞那个ERP系统，来压压里面的高管和我的导师</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370505" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2370505" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f5eb737a9f61529211946b01413826d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f5eb737a9f61529211946b01413826d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lnewp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370505"><time datetime="2022-06-09T22:48:57+08:00">2022年06月09日 22:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个问题，一个查询订单详情的接口，返回404，应该认为是url不存在，还是订单不存在</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370521" class="comment odd alt depth-2">
+<article id="div-comment-2370521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e2662be5cbd38e68801bff9b48a20d9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e2662be5cbd38e68801bff9b48a20d9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fifsky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370521"><time datetime="2022-06-14T16:00:22+08:00">2022年06月14日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个问题我们也思考过，所以我们可以避开了404这个错误码，统一使用400代替了，业务数据的不存在，和资源的不存在有时候确实犹豫不决</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2370520" class="comment even thread-even depth-1">
+<article id="div-comment-2370520" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e2662be5cbd38e68801bff9b48a20d9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e2662be5cbd38e68801bff9b48a20d9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fifsky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370520"><time datetime="2022-06-14T15:58:55+08:00">2022年06月14日 15:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于http状态码这一条，今天拿博主的文章怼人了，对方说我们的接口设计太草率，成功没有code，把我气得第一时间想到耗子哥的文章</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370808" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/614727.html" class="url" rel="ugc external nofollow">做软件系统架构的原则 – 源码巴士</a> </div>
+</li>
+<li id="comment-2370857" class="comment even thread-even depth-1">
+<article id="div-comment-2370857" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a74b237a08bf53ca87ba8cefe665bf97?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a74b237a08bf53ca87ba8cefe665bf97?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">无名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21672.html/comment-page-2#comment-2370857"><time datetime="2022-10-27T18:18:38+08:00">2022年10月27日 18:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原则五这里，接口程序异常，返回500，那么如果业务处理过程中，不满足某些业务条件，返回处理失败，那么接口时返回500还是200，这个问题困扰我很久了，问过很多人，都各有各的答案，换了三个公司，每个公司里也是各有各的做法，目前遇到过如下情况：<br/>
+1、统一200，返回的数据里显示有没有异常<br/>
+2、抛出异常，返回4xx<br/>
+3、抛出异常、返回5xx<br/>
+到底使用哪一种更为合适点</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371003" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.johngo689.com/286568/" class="url" rel="ugc external nofollow">[附源码]Python计算机毕业设计Django房屋租赁系统_Johngo学长</a> </div>
+</li>
+<li id="comment-2371167" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://aigc.luomor.com/2023/03/21/%e6%88%91%e5%81%9a%e7%b3%bb%e7%bb%9f%e6%9e%b6%e6%9e%84%e7%9a%84%e4%b8%80%e4%ba%9b%e5%8e%9f%e5%88%99/" class="url" rel="ugc external nofollow">我做系统架构的一些原则 - 文心AIGC</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/21672.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/21672.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">21672</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

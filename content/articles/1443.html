@@ -1,0 +1,280 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++的std::string的“读时也拷贝”技术！ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1443 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1443" class="post-content post-1443 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C++的std::string的“读时也拷贝”技术！</span>
+<h1 class="entry-title">C++的std::string的“读时也拷贝”技术！</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1443.html" title="21:19" rel="bookmark"><time class="entry-date" datetime="2009-09-19T21:19:33+08:00" pubdate="">2009年09月19日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1443.html#comments" class="comments-link">10 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 21,744 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>C++的std::string的读时也拷贝技术！</p>
+<p>嘿嘿，你没有看错，我也没有写错，是读时也拷贝技术。什么?我的错，你之前听说写过时才拷贝，嗯，不错的确有这门技术，英文是Copy On Write，简写就是COW,非常’牛’！那么我们就来看看这个’牛’技术的效果吧。</p>
+<p>我们先编写一段程序<br/>
+<span id="more-1443"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;string&gt;
+#include &lt;iostream&gt;
+#include &lt;sys/time.h&gt;
+
+static long getcurrenttick()
+{
+    long tick ;
+    struct timeval time_val;
+    gettimeofday(&amp;time_val , NULL);
+    tick = time_val.tv_sec * 1000 + time_val.tv_usec / 1000 ;
+    return tick;
+}
+
+
+int main( )
+{
+    string the_base(1024 * 1024 * 10, &#39;x&#39;);
+    long begin =  getcurrenttick();
+    for( int i = 0 ;i&lt; 100 ;++i ) {
+       string the_copy = the_base ;
+    }
+    fprintf(stdout,&#34;耗时[%d] \n&#34;,getcurrenttick() - begin );
+}
+</pre>
+<p>嗯，一个非常大的字符串，有10M字节的x，并且执行了100此拷贝。编译执行它，非常快，在我的虚拟机甚至不要1个毫秒。</p>
+<p>现在我们来对这个string加点料！</p>
+<pre class="brush:c; highlight:6">int main(void) {
+    string the_base(1024 * 1024 * 10, &#39;x&#39;);
+    long begin =  getcurrenttick();
+    for (int i = 0; i &lt; 100; i++) {
+        string the_copy = the_base;
+        the_copy[0] = &#39;y&#39;;
+    }
+    fprintf(stdout,&#34;耗时[%d] \n&#34;,getcurrenttick() - begin );
+}
+</pre>
+<p>现在我们再编译并执行这断程序，居然需要4~5秒！哇！非常美妙的写时才拷贝技术，性能和功能的完美统一。</p>
+<p>我们再来看看另外一种情况！</p>
+<pre class="brush:c">string original = &#34;hello&#34;;
+char &amp; ref = original[0];
+string clone = original;
+ref = &#39;y&#39;;
+</pre>
+<p>我们生成了一个string，并保留了它首字符的引用，然后复制这个string，修改string中的首字符。因为写操作只是直接的修改了内存中的指定位置，这个string就根本不能感知到有写发生，如果写时才拷贝是不成熟的，那么我们将同时会修改original和clone两个string。那岂不是灾难性的结果？幸好上述问题不会发生。clone的值肯定是没有被修改的。看来COW就是非常的牛！</p>
+<p>以上都证明了我们的COW技术非常牛！</p>
+<p>有太阳就有黑暗，这句说是不是有点耳熟？</p>
+<pre class="brush:c; highlight:3">int main(void) {
+    string the_base(1024 * 1024 * 10, &#39;x&#39;);
+    fprintf(stdout,&#34;the_base&#39;s first char is [%c]\n&#34;,the_base[0] );
+    long begin =  getcurrenttick();
+    for (int i = 0; i &lt; 100; i++) {
+        string the_copy = the_base;
+    }
+    fprintf(stdout,&#34;耗时[%d] \n&#34;,getcurrenttick() - begin );
+}
+</pre>
+<p>啊，居然也是4~5秒！你可能在想，我只是做了一个读，没有写嘛，这到底是怎么回事？难道还有读时也拷贝的技术！。</p>
+<p>不错，为了避免了你通过[]操作符获取string内部指针而直接修改字符串的内容，在你使用了the_base[0]后，这个字符串的写时才拷贝技术就失效了。</p>
+<p>C++标准的确就是这样的，C++标准认为，当你通过迭代器或[]获取到string的内部地址的时候，string并不知道你将是要读还是要写。这是它无法确定，为此，当你获取到内部引用后，为了避免不能捕获你的写操作，它在此时废止了写时才拷贝技术！</p>
+<p>这样看来我们在使用COW的时候，一定要注意，如果你不需要对string的内部进行修改，那你就千万不要使用通过[]操作符和迭代器去获取字符串的内部地址引用，如果你一定要这么做，那么你就必须要付出代价。当然，string还提供了一些使迭代器和引用失效的方法。比如说push_back，等， 你在使用[]之后再使用迭代器之后，引用就有可能失效了。那么你又回到了COW的世界！比如下面的一个例子</p>
+<pre class="brush:c; highlight:7">int main( )
+{
+    struct timeval time_val;
+    string the_base(1024 * 1024 * 10, &#39;x&#39;);
+    long begin = 0 ;
+    fprintf(stdout,&#34;the_base&#39;s first char is [%c]\n&#34;,the_base[0] );
+    the_base.push_back(&#39;y&#39;);
+    begin = getcurrenttick();
+    for( int i = 0 ;i&lt; 100 ;++i ) {
+        string the_copy = the_base ;
+    }
+    fprintf(stdout,&#34;耗时[%d] \n&#34;,getcurrenttick() - begin );
+}
+</pre>
+<p>一切又恢复了正常！如果对[]返回引用进行了操作又会发生情况呢，有兴趣的朋友可以试试！结果非常令人惊讶。</p>
+<p>另外：上述例子是在linux环境下编译的，使用STL是GNU的STL。windows上我用的是vs2003，但是非常明显vs2003一点都不支持COW。</p>
+<p>这篇文章出自<a href="http://ridiculousfish.com/blog/archives/2009/09/17/i-didnt-order-that-so-why-is-it-on-my-bill-episode-2/" target="_blank">http://ridiculousfish.com/blog/archives/2009/09/17/i-didnt-order-that-so-why-is-it-on-my-bill-episode-2/</a> 这里，我使用了它的例子。但是我重新自己组织了内容。</p>
+<p>编写这篇文章的同时，我还参考了耗子的<a href="http://blog.csdn.net/haoel/archive/2004/06/23/24058.aspx">《标准C＋＋类string的Copy-On-Write技术》</a>一文</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 - CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1443-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++的std::string的“读时也拷贝”技术！</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1078" class="comment even thread-even depth-1">
+<article id="div-comment-1078" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e234975a690541c8f1fd8427a1b8c0e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dutor.net" class="url" rel="ugc external nofollow">ivan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1078"><time datetime="2009-09-19T22:02:52+08:00">2009年09月19日 22:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>[]操作符一般会有两个：operator []()和operator[]()const，所以对一个const string对象进行[]时，应该不会COR吧？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1081" class="comment byuser comment-author-haoel odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1081" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1081"><time datetime="2009-09-20T01:08:50+08:00">2009年09月20日 01:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>相当不错的文章，从另一个角度说明了“Copy-On-Write”的另一个缺陷，读时也会发生Copy，哈哈，读时也拷贝，有意思。COW牛是牛，但是因为其不是完美的，而且在多线程中因为内存共享没有锁，会造成更严重重的问题。</p>
+<p>另外，在原文中，不单单只是“引用”，还有“迭代器”也会造成读时才拷贝。原文中也提到过，在C++的标准书中，本来是可以使用const来区别读和写的，从而可以让const方式不发生COW，但C++标准委员会更为注重简单，方便和安全，所以并没有这样做。</p>
+<p>如果按照标准，所有的STL类都会存在COW的问题（或者按LZ所调侃的“读时也拷贝”），但在多线程的今天，这样的设计还应该考虑线程同步或互斥的问题，如果在STL中加上线程同步的问题，那么这无疑会把一个语言范畴问题加入了系统范畴的问题，就算是跨平台了，这种设计也会让STL万劫不复。</p>
+<p>今天，大多数新的STL库都把COW移除了，因为大家知道了安全和稳定这两件事比什么都重要，而这两个事正是C++的短板。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1165" class="comment even thread-even depth-1">
+<article id="div-comment-1165" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1b071771506084fa60eaef71fb17cb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1b071771506084fa60eaef71fb17cb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kimizhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1165"><time datetime="2009-09-26T00:50:36+08:00">2009年09月26日 00:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>COW可能会带来多线程的性能问题吧,而且要用到那么长的字符串,而且又是重复的字符串也没必要非要用string来维护</p>
+</div>
+ </article>
+</li>
+<li id="comment-1361" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1361" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d0d6a76db52bd22b0c0969f0e4f55a68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d0d6a76db52bd22b0c0969f0e4f55a68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oldrev</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1361"><time datetime="2009-10-12T14:08:09+08:00">2009年10月12日 14:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同意2楼，21世纪了，COW 反而是不靠谱的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1542" class="comment even thread-even depth-1">
+<article id="div-comment-1542" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c1529aafc96f9d2d7f4fc3a63ca0dca1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c1529aafc96f9d2d7f4fc3a63ca0dca1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">...</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1542"><time datetime="2009-10-25T02:49:11+08:00">2009年10月25日 02:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>the_copy would be eliminated by DSE.</p>
+<p>Please look into object code before drawing any conclusions..</p>
+</div>
+ </article>
+</li>
+<li id="comment-1685352" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/archives/2430" class="url" rel="ugc external nofollow">C++的std::string的“读时也拷贝”技术！ – 运维部落</a> </div>
+</li>
+<li id="comment-1909433" class="comment even thread-even depth-1">
+<article id="div-comment-1909433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1909433"><time datetime="2016-12-31T13:34:29+08:00">2016年12月31日 13:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>精彩</p>
+</div>
+ </article>
+</li>
+<li id="comment-1909434" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1909434" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1909434"><time datetime="2016-12-31T13:37:31+08:00">2016年12月31日 13:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，vc6.0下cow特性还在，在vc6.0下使用你的例子FreeLibrary后确实crash了，但是同样有cow特性的g++4.8.2 在dlclose后并不会crash，这应该是win平台和linux对于共享库不同处理造成的吧</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1909435" class="comment even depth-2">
+<article id="div-comment-1909435" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1443.html#comment-1909435"><time datetime="2016-12-31T13:38:35+08:00">2016年12月31日 13:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>评论错了，是http://coolshell.cn/articles/12199.html 《C++ STL STRING的COPY-ON-WRITE技术》中的例子</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2041612" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liiukingming.cn/?p=184" class="url" rel="ugc external nofollow">C++_string类 (含理解深浅拷贝) – 刘庆铭的博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

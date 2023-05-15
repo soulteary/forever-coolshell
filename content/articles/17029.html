@@ -1,0 +1,965 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Docker基础技术：Linux Namespace（下） | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17029 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17029" class="post-content post-17029 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem tag-docker tag-linux tag-namespace">
+<header class="entry-header">
+<span class="screen-reader-text">Docker基础技术：Linux Namespace（下）</span>
+<h1 class="entry-title">Docker基础技术：Linux Namespace（下）</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17029.html" title="10:19" rel="bookmark"><time class="entry-date" datetime="2015-04-16T10:19:23+08:00" pubdate="">2015年04月16日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17029.html#comments" class="comments-link">51 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 98,213 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-17084" src="/uploads/2015/04/jail_cell.jpg" alt="jail_cell" width="350" height="252" srcset="" sizes="(max-width: 350px) 100vw, 350px"/>在 <strong><a title="Docker基础技术：Linux Namespace（上）" href="/articles/17010.html" target="_blank" rel="noopener noreferrer">Docker基础技术：Linux Namespace（上篇）</a></strong>中我们了解了，UTD、IPC、PID、Mount 四个namespace，我们模仿Docker做了一个相当相当山寨的镜像。在这一篇中，主要想向大家介绍Linux的User和Network的Namespace。</p>
+<p>好，下面我们就介绍一下还剩下的这两个Namespace。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#User_Namespace" title="User Namespace">User Namespace</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Network_Namespace" title="Network Namespace">Network Namespace</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Namespace%E6%96%87%E4%BB%B6" title="Namespace文件">Namespace文件</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3" title="参考文档">参考文档</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="User_Namespace"></span>User Namespace<span class="ez-toc-section-end"></span></h4>
+<p>User Namespace主要是用了CLONE_NEWUSER的参数。使用了这个参数后，内部看到的UID和GID已经与外部不同了，默认显示为65534。那是因为容器找不到其真正的UID所以，设置上了最大的UID（其设置定义在/proc/sys/kernel/overflowuid）。</p>
+<p>要把容器中的uid和真实系统的uid给映射在一起，需要修改 <strong>/proc/&lt;pid&gt;/uid_map</strong> 和 <strong>/proc/&lt;pid&gt;/gid_map</strong> 这两个文件。这两个文件的格式为：</p>
+<p><code><code></code></code><strong>ID-inside-ns ID-outside-ns length</strong></p>
+<p>其中：</p>
+<p><span id="more-17029"></span></p>
+<ul>
+<li>第一个字段ID-inside-ns表示在容器显示的UID或GID，</li>
+<li>第二个字段ID-outside-ns表示容器外映射的真实的UID或GID。</li>
+<li>第三个字段表示映射的范围，一般填1，表示一一对应。</li>
+</ul>
+<p>比如，把真实的uid=1000映射成容器内的uid=0</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ cat /proc/2465/uid_map
+         0       1000          1</pre>
+<p>再比如下面的示例：表示把namespace内部从0开始的uid映射到外部从0开始的uid，其最大范围是无符号32位整形</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">$ cat /proc/$$/uid_map
+         0          0          4294967295</pre>
+<p>另外，需要注意的是：</p>
+<ul>
+<li>写这两个文件的进程需要这个namespace中的CAP_SETUID (CAP_SETGID)权限（可参看<a href="http://man7.org/linux/man-pages/man7/capabilities.7.html" target="_blank" rel="noopener noreferrer">Capabilities</a>）</li>
+<li>写入的进程必须是此user namespace的父或子的user namespace进程。</li>
+<li>另外需要满如下条件之一：1）父进程将effective uid/gid映射到子进程的user namespace中，2）父进程如果有CAP_SETUID/CAP_SETGID权限，那么它将可以映射到父进程中的任一uid/gid。</li>
+</ul>
+<p>这些规则看着都烦，我们来看程序吧（下面的程序有点长，但是非常简单，如果你读过《Unix网络编程》上卷，你应该可以看懂）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">#define _GNU_SOURCE
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/wait.h&gt;
+#include &lt;sys/mount.h&gt;
+#include &lt;sys/capability.h&gt;
+#include &lt;stdio.h&gt;
+#include &lt;sched.h&gt;
+#include &lt;signal.h&gt;
+#include &lt;unistd.h&gt;
+
+#define STACK_SIZE (1024 * 1024)
+
+static char container_stack[STACK_SIZE];
+char* const container_args[] = {
+    &#34;/bin/bash&#34;,
+    NULL
+};
+
+int pipefd[2];
+
+void set_map(char* file, int inside_id, int outside_id, int len) {
+    FILE* mapfd = fopen(file, &#34;w&#34;);
+    if (NULL == mapfd) {
+        perror(&#34;open file error&#34;);
+        return;
+    }
+    fprintf(mapfd, &#34;%d %d %d&#34;, inside_id, outside_id, len);
+    fclose(mapfd);
+}
+
+void set_uid_map(pid_t pid, int inside_id, int outside_id, int len) {
+    char file[256];
+    sprintf(file, &#34;/proc/%d/uid_map&#34;, pid);
+    set_map(file, inside_id, outside_id, len);
+}
+
+void set_gid_map(pid_t pid, int inside_id, int outside_id, int len) {
+    char file[256];
+    sprintf(file, &#34;/proc/%d/gid_map&#34;, pid);
+    set_map(file, inside_id, outside_id, len);
+}
+
+int container_main(void* arg)
+{
+
+    printf(&#34;Container [%5d] - inside the container!\n&#34;, getpid());
+
+    printf(&#34;Container: eUID = %ld;  eGID = %ld, UID=%ld, GID=%ld\n&#34;,
+            (long) geteuid(), (long) getegid(), (long) getuid(), (long) getgid());
+
+    /* 等待父进程通知后再往下执行（进程间的同步） */
+    char ch;
+    close(pipefd[1]);
+    read(pipefd[0], &amp;ch, 1);
+
+    printf(&#34;Container [%5d] - setup hostname!\n&#34;, getpid());
+    //set hostname
+    sethostname(&#34;container&#34;,10);
+
+    //remount &#34;/proc&#34; to make sure the &#34;top&#34; and &#34;ps&#34; show container&#39;s information
+    mount(&#34;proc&#34;, &#34;/proc&#34;, &#34;proc&#34;, 0, NULL);
+
+    execv(container_args[0], container_args);
+    printf(&#34;Something&#39;s wrong!\n&#34;);
+    return 1;
+}
+
+int main()
+{
+    const int gid=getgid(), uid=getuid();
+
+    printf(&#34;Parent: eUID = %ld;  eGID = %ld, UID=%ld, GID=%ld\n&#34;,
+            (long) geteuid(), (long) getegid(), (long) getuid(), (long) getgid());
+
+    pipe(pipefd);
+ 
+    printf(&#34;Parent [%5d] - start a container!\n&#34;, getpid());
+
+    int container_pid = clone(container_main, container_stack+STACK_SIZE, 
+            CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWUSER | SIGCHLD, NULL);
+
+    
+    printf(&#34;Parent [%5d] - Container [%5d]!\n&#34;, getpid(), container_pid);
+
+    //To map the uid/gid, 
+    //   we need edit the /proc/PID/uid_map (or /proc/PID/gid_map) in parent
+    //The file format is
+    //   ID-inside-ns   ID-outside-ns   length
+    //if no mapping, 
+    //   the uid will be taken from /proc/sys/kernel/overflowuid
+    //   the gid will be taken from /proc/sys/kernel/overflowgid
+    set_uid_map(container_pid, 0, uid, 1);
+    set_gid_map(container_pid, 0, gid, 1);
+
+    printf(&#34;Parent [%5d] - user/group mapping done!\n&#34;, getpid());
+
+    /* 通知子进程 */
+    close(pipefd[1]);
+
+    waitpid(container_pid, NULL, 0);
+    printf(&#34;Parent - container stopped!\n&#34;);
+    return 0;
+}</pre>
+<p>上面的程序，我们用了一个pipe来对父子进程进行同步，为什么要这样做？因为子进程中有一个execv的系统调用，这个系统调用会把当前子进程的进程空间给全部覆盖掉，我们希望在execv之前就做好user namespace的uid/gid的映射，这样，execv运行的/bin/bash就会因为我们设置了uid为0的inside-uid而变成#号的提示符。</p>
+<p>整个程序的运行效果如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3d555e5558537d485f48534948">[email protected]</a>:~$ id
+uid=1000(hchen) gid=1000(hchen) groups=1000(hchen)
+
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="cba3a8a3aea58bbea9bea5bfbe">[email protected]</a>:~$ ./user #&lt;--以hchen用户运行
+Parent: eUID = 1000;  eGID = 1000, UID=1000, GID=1000 
+Parent [ 3262] - start a container!
+Parent [ 3262] - Container [ 3263]!
+Parent [ 3262] - user/group mapping done!
+Container [    1] - inside the container!
+Container: eUID = 0;  eGID = 0, UID=0, GID=0 #&lt;---Container里的UID/GID都为0了
+Container [    1] - setup hostname!
+
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="71031e1e0531121e1f0510181f1403">[email protected]</a>:~# id #&lt;----我们可以看到容器里的用户和命令行提示符是root用户了
+uid=0(root) gid=0(root) groups=0(root),65534(nogroup)</pre>
+<p>虽然容器里是root，但其实这个容器的/bin/bash进程是以一个普通用户hchen来运行的。这样一来，我们容器的安全性会得到提高。</p>
+<p>我们注意到，User Namespace是以普通用户运行，但是别的Namespace需要root权限，那么，如果我要同时使用多个Namespace，该怎么办呢？一般来说，我们先用一般用户创建User Namespace，然后把这个一般用户映射成root，在容器内用root来创建其它的Namesapce。</p>
+<h4><span class="ez-toc-section" id="Network_Namespace"></span>Network Namespace<span class="ez-toc-section-end"></span></h4>
+<p>Network的Namespace比较啰嗦。在Linux下，我们一般用ip命令创建Network Namespace（Docker的源码中，它没有用ip命令，而是自己实现了ip命令内的一些功能——是用了Raw Socket发些“奇怪”的数据，呵呵）。这里，我还是用ip命令讲解一下。</p>
+<p>首先，我们先看个图，下面这个图基本上就是Docker在宿主机上的网络示意图（其中的物理网卡并不准确，因为docker可能会运行在一个VM中，所以，这里所谓的“物理网卡”其实也就是一个有可以路由的IP的网卡）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17040" src="/uploads/2015/04/network.namespace.jpg" alt="network.namespace" width="407" height="300" srcset="" sizes="(max-width: 407px) 100vw, 407px"/></p>
+<p>上图中，Docker使用了一个私有网段，172.40.1.0，docker还可能会使用10.0.0.0和192.168.0.0这两个私有网段，关键看你的路由表中是否配置了，如果没有配置，就会使用，如果你的路由表配置了所有私有网段，那么docker启动时就会出错了。</p>
+<p>当你启动一个Docker容器后，你可以使用ip link show或ip addr show来查看当前宿主机的网络情况（我们可以看到有一个docker0，还有一个veth22a38e6的虚拟网卡——给容器用的）：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c" data-enlighter-highlight="6,8"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="85ede6ede0ebc5f0e7f0ebf1f0">[email protected]</a>:~$ ip link show
+1: lo: &lt;LOOPBACK,UP,LOWER_UP&gt; mtu 65536 qdisc noqueue state ... 
+    link/loopback 00:00:00:00:00:00 brd 00:00:00:00:00:00
+2: eth0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 qdisc ...
+    link/ether 00:0c:29:b7:67:7d brd ff:ff:ff:ff:ff:ff
+3: docker0: &lt;BROADCAST,MULTICAST,UP,LOWER_UP&gt; mtu 1500 ...
+    link/ether 56:84:7a:fe:97:99 brd ff:ff:ff:ff:ff:ff
+5: veth22a38e6: &lt;BROADCAST,UP,LOWER_UP&gt; mtu 1500 qdisc ...
+    link/ether 8e:30:2a:ac:8c:d1 brd ff:ff:ff:ff:ff:ff</pre>
+<p>那么，要做成这个样子应该怎么办呢？我们来看一组命令：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">## 首先，我们先增加一个网桥lxcbr0，模仿docker0
+brctl addbr lxcbr0
+brctl stp lxcbr0 off
+ifconfig lxcbr0 192.168.10.1/24 up #为网桥设置IP地址
+
+## 接下来，我们要创建一个network namespace - ns1
+
+# 增加一个namesapce 命令为 ns1 （使用ip netns add命令）
+ip netns add ns1 
+
+# 激活namespace中的loopback，即127.0.0.1（使用ip netns exec ns1来操作ns1中的命令）
+ip netns exec ns1   ip link set dev lo up 
+
+## 然后，我们需要增加一对虚拟网卡
+
+# 增加一个pair虚拟网卡，注意其中的veth类型，其中一个网卡要按进容器中
+ip link add veth-ns1 type veth peer name lxcbr0.1
+
+# 把 veth-ns1 按到namespace ns1中，这样容器中就会有一个新的网卡了
+ip link set veth-ns1 netns ns1
+
+# 把容器里的 veth-ns1改名为 eth0 （容器外会冲突，容器内就不会了）
+ip netns exec ns1  ip link set dev veth-ns1 name eth0 
+
+# 为容器中的网卡分配一个IP地址，并激活它
+ip netns exec ns1 ifconfig eth0 192.168.10.11/24 up
+
+
+# 上面我们把veth-ns1这个网卡按到了容器中，然后我们要把lxcbr0.1添加上网桥上
+brctl addif lxcbr0 lxcbr0.1
+
+# 为容器增加一个路由规则，让容器可以访问外面的网络
+ip netns exec ns1     ip route add default via 192.168.10.1
+
+# 在/etc/netns下创建network namespce名称为ns1的目录，
+# 然后为这个namespace设置resolv.conf，这样，容器内就可以访问域名了
+mkdir -p /etc/netns/ns1
+echo &#34;nameserver 8.8.8.8&#34; &gt; /etc/netns/ns1/resolv.conf</pre>
+<p>上面基本上就是docker网络的原理了，只不过，</p>
+<ul>
+<li>Docker的resolv.conf没有用这样的方式，而是用了<a title="Docker基础技术：Linux Namespace（上）" href="/articles/17010.html" target="_blank" rel="noopener noreferrer">上篇中的Mount Namesapce的那种方式</a></li>
+<li>另外，docker是用进程的PID来做Network Namespace的名称的。</li>
+</ul>
+<p>了解了这些后，你甚至可以为正在运行的docker容器增加一个新的网卡：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell">ip link add peerA type veth peer name peerB 
+brctl addif docker0 peerA 
+ip link set peerA up 
+ip link set peerB netns ${container-pid} 
+ip netns exec ${container-pid} ip link set dev peerB name eth1 
+ip netns exec ${container-pid} ip link set eth1 up ; 
+ip netns exec ${container-pid} ip addr add ${ROUTEABLE_IP} dev eth1 ;</pre>
+<p>上面的示例是我们为正在运行的docker容器，增加一个eth1的网卡，并给了一个静态的可被外部访问到的IP地址。</p>
+<p>这个需要把外部的“物理网卡”配置成混杂模式，这样这个eth1网卡就会向外通过ARP协议发送自己的Mac地址，然后外部的交换机就会把到这个IP地址的包转到“物理网卡”上，因为是混杂模式，所以eth1就能收到相关的数据，一看，是自己的，那么就收到。这样，Docker容器的网络就和外部通了。</p>
+<p>当然，无论是Docker的NAT方式，还是混杂模式都会有性能上的问题，NAT不用说了，存在一个转发的开销，混杂模式呢，网卡上收到的负载都会完全交给所有的虚拟网卡上，于是就算一个网卡上没有数据，但也会被其它网卡上的数据所影响。</p>
+<p>这两种方式都不够完美，我们知道，真正解决这种网络问题需要使用VLAN技术，于是Google的同学们为Linux内核实现了一个<a href="https://lwn.net/Articles/620087/" target="_blank" rel="noopener noreferrer">IPVLAN的驱动</a>，这基本上就是为Docker量身定制的。</p>
+<h4><span class="ez-toc-section" id="Namespace%E6%96%87%E4%BB%B6"></span>Namespace文件<span class="ez-toc-section-end"></span></h4>
+<p>上面就是目前Linux Namespace的玩法。 现在，我来看一下其它的相关东西。</p>
+<p>让我们运行一下上篇中的那个pid.mnt的程序（也就是PID Namespace中那个mount proc的程序），然后不要退出。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">$ sudo ./pid.mnt 
+[sudo] password for hchen: 
+Parent [ 4599] - start a container!
+Container [    1] - inside the container!</pre>
+<p>我们到另一个shell中查看一下父子进程的PID：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ec848f848982ac998e99829899">[email protected]</a>:~$ pstree -p 4599
+pid.mnt(4599)───bash(4600)</pre>
+<p>我们可以到proc下（/proc//ns）查看进程的各个namespace的id（内核版本需要3.8以上）。</p>
+<p>下面是父进程的：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c5ada6ada0ab85b0a7b0abb1b0">[email protected]</a>:~$ sudo ls -l /proc/4599/ns
+total 0
+lrwxrwxrwx 1 root root 0  4月  7 22:01 ipc -&gt; ipc:[4026531839]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 mnt -&gt; mnt:[4026531840]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 net -&gt; net:[4026531956]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 pid -&gt; pid:[4026531836]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 user -&gt; user:[4026531837]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 uts -&gt; uts:[4026531838]</pre>
+<p>下面是子进程的：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="shell"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3e565d565b507e4b5c4b504a4b">[email protected]</a>:~$ sudo ls -l /proc/4600/ns
+total 0
+lrwxrwxrwx 1 root root 0  4月  7 22:01 ipc -&gt; ipc:[4026531839]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 mnt -&gt; mnt:[4026532520]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 net -&gt; net:[4026531956]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 pid -&gt; pid:[4026532522]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 user -&gt; user:[4026531837]
+lrwxrwxrwx 1 root root 0  4月  7 22:01 uts -&gt; uts:[4026532521]</pre>
+<p>我们可以看到，其中的ipc，net，user是同一个ID，而mnt,pid,uts都是不一样的。如果两个进程指向的namespace编号相同，就说明他们在同一个namespace下，否则则在不同namespace里面。</p>
+<p>这些文件还有另一个作用，那就是，一旦这些文件被打开，只要其fd被占用着，那么就算PID所属的所有进程都已经结束，创建的namespace也会一直存在。比如：我们可以通过：mount –bind /proc/4600/ns/uts ~/uts 来hold这个namespace。</p>
+<p>另外，我们在上篇中讲过一个setns的系统调用，其函数声明如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int setns(int fd, int nstype);</pre>
+<p>其中第一个参数就是一个fd，也就是一个open()系统调用打开了上述文件后返回的fd，比如：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">fd = open(&#34;/proc/4600/ns/nts&#34;, O_RDONLY);  // 获取namespace文件描述符
+setns(fd, 0); // 加入新的namespace</pre>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E6%96%87%E6%A1%A3"></span>参考文档<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li style="list-style-type: none;">
+<ul>
+<li><a href="http://lwn.net/Articles/531114/" target="_blank" rel="noopener noreferrer">Namespaces in operation</a></li>
+<li><a href="http://man7.org/linux/man-pages/man7/namespaces.7.html" target="_blank" rel="noopener noreferrer">Linux Namespace Man Page</a></li>
+<li><a href="http://crosbymichael.com/creating-containers-part-1.html" target="_blank" rel="noopener noreferrer">Creat Containers – Part 1</a></li>
+<li><a href="https://blog.jtlebi.fr/2013/12/22/introduction-to-linux-namespaces-part-1-uts/" target="_blank" rel="noopener noreferrer">Introduction to Linux namespaces</a></li>
+</ul>
+</li>
+</ul>
+<p>（应网友card323加入）</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17029-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Docker</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Namespace</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Docker基础技术：Linux Namespace（下）</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1691289" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1691289" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/86fa56c86a8456afad28b6773063cc54?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/86fa56c86a8456afad28b6773063cc54?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">robolwq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691289"><time datetime="2015-04-16T11:32:18+08:00">2015年04月16日 11:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子老师，你好。拜读您这个系列的文章，就我目前所知，Docker是基于了namespace和cgroup，能讲一下cgroup与namespace的关系么？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1691295" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-1691295" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691295"><time datetime="2015-04-16T11:57:12+08:00">2015年04月16日 11:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>会有一系列的文章的。请期待。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1691294" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1691294" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/47c1f8e9fc63056df3e0d243028884e0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/47c1f8e9fc63056df3e0d243028884e0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://jackyyf.com" class="url" rel="ugc external nofollow">jackyyf</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691294"><time datetime="2015-04-16T11:48:21+08:00">2015年04月16日 11:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>172.40.1.0/24不是一个私有网段吧……B类私有段是172.16.0.0/12，到172.31.255.255就结束了……whois 172.40.1.0也显示这个网段属于T-Mobile。</p>
+<p><a href="https://en.wikipedia.org/wiki/Reserved_IP_addresses" rel="nofollow ugc">http://en.wikipedia.org/wiki/Reserved_IP_addresses</a> 这里有所有的保留ip段……</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1691296" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-1691296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691296"><time datetime="2015-04-16T11:57:29+08:00">2015年04月16日 11:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是我脑子秀逗了。Sorry</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1691306" class="comment even thread-even depth-1">
+<article id="div-comment-1691306" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d8ef671d425fd557455217d5414bd102?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d8ef671d425fd557455217d5414bd102?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://google.weibodangan.com/" class="url" rel="ugc external nofollow">Google搜索代理</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691306"><time datetime="2015-04-16T12:41:05+08:00">2015年04月16日 12:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我们公司正在使用docker做开发环境，博主这篇文章帮助我了解了docker一些原理，了解了原理，使用起来更顺手。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1691337" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1691337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9353ba172b61dce6554a84462c8b463a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9353ba172b61dce6554a84462c8b463a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">card323</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691337"><time datetime="2015-04-16T15:42:03+08:00">2015年04月16日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有几个地方看着有点眼熟，参考文档里是不是漏了一个<br/>
+<a href="https://blog.jtlebi.fr/2013/12/22/introduction-to-linux-namespaces-part-1-uts/" rel="nofollow ugc">https://blog.jtlebi.fr/2013/12/22/introduction-to-linux-namespaces-part-1-uts/</a></p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1691343" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-1691343" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691343"><time datetime="2015-04-16T16:17:26+08:00">2015年04月16日 16:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你给的这个文章不错啊，不过我还真没看过。没事我补充进去。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1691361" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1691361" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cff45c9802f87dd7017e7ee7324dbee5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cff45c9802f87dd7017e7ee7324dbee5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">danezhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691361"><time datetime="2015-04-16T17:46:01+08:00">2015年04月16日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>期待一系列的后续文章。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1691829" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1691829" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d32a503d551c955c43e496724cebba26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d32a503d551c955c43e496724cebba26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://memoryboxes.github.io/" class="url" rel="ugc external nofollow">memorybox</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1691829"><time datetime="2015-04-17T08:09:25+08:00">2015年04月17日 08:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>讲的非常清楚，但是网络部分还有一些扩展资料:<br/>
+<a href="http://blog.oddbit.com/2014/08/11/four-ways-to-connect-a-docker/" rel="nofollow ugc">http://blog.oddbit.com/2014/08/11/four-ways-to-connect-a-docker/</a></p>
+<p>我也总结过一次:<br/>
+<a href="http://memoryboxes.github.io/blog/2014/12/08/dockerzhong-de-wang-luo/" rel="nofollow ugc">http://memoryboxes.github.io/blog/2014/12/08/dockerzhong-de-wang-luo/</a></p>
+<p>原理相同，具体讲了一下docker中如何使用网络。</p>
+<p>其实真实场景下，不考虑安全性的话，为容器添加一个虚拟网卡，配置一个静态IP的话，还是很方便的，这样就可以启动一个类似于”真正虚拟机”的container了。但是貌似这种用法一直被视作”邪道”，但我觉得用来搭建测试环境真的挺方便的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1692046" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1692046" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4f643319822e87e2965f84585dd41282?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4f643319822e87e2965f84585dd41282?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liwei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1692046"><time datetime="2015-04-17T16:11:14+08:00">2015年04月17日 16:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“Docker的源码中，它没有用ip命令，而是自己实现了ip命令内的一些功能——是用了Raw Socket发些“奇怪”的数据，呵呵”</p>
+<p>是指使用netlink socket向内核发送netlink消息么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1692233" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1057" class="url" rel="ugc external nofollow">Docker基础技术：Linux CGroup | 星达红</a> </div>
+</li>
+<li id="comment-1693425" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1693425" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a37d513e1f96141c93e90c5aee46ee6b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a37d513e1f96141c93e90c5aee46ee6b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dimu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1693425"><time datetime="2015-04-19T10:56:08+08:00">2015年04月19日 10:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1691337" rel="nofollow">@card323 </a><br/>
+我还以为又多了一篇汉语翻译呢.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1695737" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1695737" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/57c75d98be4e3a942b97cf33021208fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/57c75d98be4e3a942b97cf33021208fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xplusplus.cn/u/30" class="url" rel="ugc external nofollow">paco</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1695737"><time datetime="2015-04-23T15:09:13+08:00">2015年04月23日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>陈老师，我的centos7，内核版本3.10，貌似不支持CLONE_NEWUSER，</p>
+<p>只要clone函数加了这个选项，就会返回-1，报Invalid argument</p>
+</div>
+ </article>
+</li>
+<li id="comment-1697563" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.lizhaozhong.info/archives/1326" class="url" rel="ugc external nofollow">手动创建类docker环境 » JasonLe&#39;s TechBlog</a> </div>
+</li>
+<li id="comment-1697641" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1697641" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/57c75d98be4e3a942b97cf33021208fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/57c75d98be4e3a942b97cf33021208fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xplusplus.cn/u/30" class="url" rel="ugc external nofollow">paco</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1697641"><time datetime="2015-04-28T15:03:04+08:00">2015年04月28日 15:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1695737" rel="nofollow">@paco </a><br/>
+升级内核版本到4.0，解决了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1698270" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1698270" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d036064501d3aba768c16b4cd0626de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d036064501d3aba768c16b4cd0626de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ayalastrike</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1698270"><time datetime="2015-04-29T14:42:42+08:00">2015年04月29日 14:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我本地是CentOS 6.3， kernel是2.6.32-279，没有，无法创建uid_map, gid_map，报错fopen error for /proc/15061/uid_map: No such file or directory<br/>
+fopen error for /proc/15061/gid_map: No such file or directory，如何解决？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1700928" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1700928" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/07000a014e332b2b5f3e90d95fe6de5b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/07000a014e332b2b5f3e90d95fe6de5b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://llllllll.net" class="url" rel="ugc external nofollow">llllllll</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1700928"><time datetime="2015-05-04T16:00:03+08:00">2015年05月04日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1691289" rel="nofollow">@robolwq </a> </p>
+<p><a href="https://blog.jtlebi.fr/2013/12/22/introduction-to-linux-namespaces-part-1-uts/" rel="nofollow ugc">https://blog.jtlebi.fr/2013/12/22/introduction-to-linux-namespaces-part-1-uts/</a><br/>
+里面没讲这一块，估计陈老师得自己brainstorm啦</p>
+</div>
+ </article>
+</li>
+<li id="comment-1703115" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1703115" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fc425b40c07dc1eeba80fa4e5bfdfd2e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fc425b40c07dc1eeba80fa4e5bfdfd2e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">对对对</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1703115"><time datetime="2015-05-07T18:13:57+08:00">2015年05月07日 18:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1691289"><p>
+<strong><a href="#comment-1691289" rel="nofollow">robolwq</a> :</strong><br/>
+耗子老师，你好。拜读您这个系列的文章，就我目前所知，Docker是基于了namespace和cgroup，能讲一下cgroup与namespace的关系么？
+</p></blockquote>
+</div>
+ </article>
+</li>
+<li id="comment-1703399" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tinylab.org/tiny-salon-phase-ii-virtualization-technology/" class="url" rel="ugc external nofollow">泰晓沙龙 第二期：Linux 虚拟化技术 | 泰晓科技</a> </div>
+</li>
+<li id="comment-1704087" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1704087" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/adca29ffb5ab8a07826a7e6b8e1e011b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/adca29ffb5ab8a07826a7e6b8e1e011b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://vinllen.com" class="url" rel="ugc external nofollow">vinllen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1704087"><time datetime="2015-05-10T01:01:05+08:00">2015年05月10日 01:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>求教，clone创建的namespace应该是没有名字的，而且无法在ip netns list中显示。但是在network namespace中，用ip netns add创建的namespace是有名字的，如何给一个clone出来的namespace加上名字</p>
+</div>
+ </article>
+</li>
+<li id="comment-1707683" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1707683" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e0b3922ccba83b7b12e7032d996a534?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hetiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1707683"><time datetime="2015-05-15T18:30:46+08:00">2015年05月15日 18:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老师您好，我在自己的机器上测试User Namespace，报“open file error”，发现即使是root用户也无法在/proc下创建文件，请问是怎么回事？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1710488" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iteaer.com/?p=434" class="url" rel="ugc external nofollow">Docker基础技术：Linux CGroup | IT茶人---茗香燕归来</a> </div>
+</li>
+<li id="comment-1713602" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1713602" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0cf1818edf03afc7189dfb54971019c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0cf1818edf03afc7189dfb54971019c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">嘉鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1713602"><time datetime="2015-05-25T11:24:51+08:00">2015年05月25日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1704087" rel="nofollow">@vinllen </a><br/>
+老师您好，关于net namespace，我照您的方法尝试了，但是在namespace里我只能ping通本机eth0的ip地址，而无法无外部的主机连接，用终端firefox也是拒绝连接。我已经将网卡设置成了混杂模式，ifconfig eth0 primisc ，但是我用ifconfig查看的时候，lxcbr0.1的inet地址没有识别。请问我应该在哪里作出修改才能使namespace与外部通信呢？<br/>
+留下我的邮箱<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="177b7e6e6e487864576476657e397674397479">[email protected]</a> ,如您看到，希望您能抽空给我解答。期待您的回复。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1713604" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1713604" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0cf1818edf03afc7189dfb54971019c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0cf1818edf03afc7189dfb54971019c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">嘉鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1713604"><time datetime="2015-05-25T11:26:47+08:00">2015年05月25日 11:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1704087" rel="nofollow">@vinllen </a><br/>
+经clone出的namespace的名字即是其子进程的pid。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1735346" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yanjingge.com/archives/156725" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace（上）</a> </div>
+</li>
+<li id="comment-1735958" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17049.html" class="url" rel="ugc">Docker基础技术：Linux CGroup | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1744665" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.unclekevin.org/?p=1434" class="url" rel="ugc external nofollow">软件沙箱技术3 – Linux LXC | 凯文叔叔的网志</a> </div>
+</li>
+<li id="comment-1755459" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.17stack.com/archives/161.html" class="url" rel="ugc external nofollow">推荐： OpenStack网络迷宫：Neutron以及LBaaS - 17Stack</a> </div>
+</li>
+<li id="comment-1805013" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/04/16/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9alinux-namespace%ef%bc%88%e4%b8%8a%ef%bc%89/" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace（上） - 大耳门</a> </div>
+</li>
+<li id="comment-1807043" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1807043" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/15714820d58a24a6e141ed0df50ab971?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/15714820d58a24a6e141ed0df50ab971?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://NULL" class="url" rel="ugc external nofollow">Helloween</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1807043"><time datetime="2016-01-18T16:02:20+08:00">2016年01月18日 16:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔，做这个User Namespace实验的时候，uid_map文件可以生效，但是gid_map文件无法生效，里面内容为空，您知道有哪些可能性出现这个问题吗？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1941433" class="comment even depth-2">
+<article id="div-comment-1941433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f7a575e443553802f7ca649df526d8ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f7a575e443553802f7ca649df526d8ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jianwen Ji</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1941433"><time datetime="2018-09-20T11:07:48+08:00">2018年09月20日 11:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请参考http://man7.org/linux/man-pages/man7/user_namespaces.7.html</p>
+<p>Linux 3.19 made a change in the handling of setgroups(2) and the ‘gid_map’ file to address a security issue. The issue allowed <em>unprivileged</em> users to employ user namespaces in order to drop The upshot of the 3.19 changes is that in order to update the ‘gid_maps’ file, use of the setgroups() system call in this user namespace must first be disabled by writing “deny” to one of the /proc/PID/setgroups files for this namespace. That is the purpose of the following function.</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1816167" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xuxiaobo.com/?p=987" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace（上） 酷壳 – CoolShell.cn | 酷 壳 – CoolShell.cn – <span class="__cf_email__" data-cfemail="b7fbd8d0f7ef99ef99f5">[email protected]</span></a> </div>
+</li>
+<li id="comment-1818786" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kryptosx.info/archives/1425.html" class="url" rel="ugc external nofollow">Linux Namespace机制简介 | 旅途@KryptosX</a> </div>
+</li>
+<li id="comment-1824181" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jingyuyun.com/article/7796.html" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace【下】-鲸鱼云</a> </div>
+</li>
+<li id="comment-1909813" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1909813" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8be44e73420f4812ba1b267bd6672fae?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8be44e73420f4812ba1b267bd6672fae?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杨凤人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1909813"><time datetime="2017-01-03T17:31:24+08:00">2017年01月03日 17:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>hi,<br/>
+内核版本：4.4.0-21-generic<br/>
+运行你的代码，可以映射uid，无法映射gid，具体如下：<br/>
+——————————————————————————–<br/>
+$ id<br/>
+uid=1000(thebeeman) gid=1000(thebeeman) groups=1000(thebeeman),4(adm),24(cdrom),27(sudo),30(dip),46(plugdev),113(lpadmin),128(sambashare)<br/>
+Parent: eUID = 1000; eGID = 1000, UID=1000, GID=1000<br/>
+Parent [ 8420] – start a container!<br/>
+Parent [ 8420] – Container [ 8421]!<br/>
+Parent [ 8420] – user/group mapping done!<br/>
+Container [ 1] – inside the container!<br/>
+Container: eUID = 0; eGID = 65534, UID=0, GID=65534<br/>
+Container [ 1] – setup hostname!<br/>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3e4c51514a7e5d51504a5f57505b4c">[email protected]</a>: # id<br/>
+uid=0(root) gid=65534(nogroup) groups=65534(nogroup)<br/>
+——————————————————————————<br/>
+如何解决？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1910719" class="comment odd alt depth-2 parent">
+<article id="div-comment-1910719" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d83a829159d6831d6b005d6db2606dd9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d83a829159d6831d6b005d6db2606dd9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">朱明</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1910719"><time datetime="2017-01-12T10:54:39+08:00">2017年01月12日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以root权限运行程序，为什么我现在也不知道~正在查</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1941434" class="comment even depth-3">
+<article id="div-comment-1941434" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f7a575e443553802f7ca649df526d8ad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f7a575e443553802f7ca649df526d8ad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jianwen Ji</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1941434"><time datetime="2018-09-20T11:08:34+08:00">2018年09月20日 11:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请参考http://man7.org/linux/man-pages/man7/user_namespaces.7.html</p>
+<p>Linux 3.19 made a change in the handling of setgroups(2) and the ‘gid_map’ file to address a security issue. The issue allowed unprivileged users to employ user namespaces in order to drop The upshot of the 3.19 changes is that in order to update the ‘gid_maps’ file, use of the setgroups() system call in this user namespace must first be disabled by writing “deny” to one of the /proc/PID/setgroups files for this namespace. That is the purpose of the following function.</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1941503" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1941503" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/39999b3ae32c863e6bf08bad4cf4298c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/39999b3ae32c863e6bf08bad4cf4298c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sunny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1941503"><time datetime="2018-09-21T09:21:21+08:00">2018年09月21日 09:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>namesapce 的kind中主机名和域名的隔离策略是叫UTS不是UTD，作者可以改下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1946981" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.itwest.cn/archives/13977.html" class="url" rel="ugc external nofollow">记一次Kubernetes/Docker网络排障 – 西部IT科技</a> </div>
+</li>
+<li id="comment-1946985" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/18654.html" class="url" rel="ugc">记一次Kubernetes/Docker网络排障 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1951705" class="comment even thread-even depth-1">
+<article id="div-comment-1951705" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c544cefbc40f59dd0fc81ba7679149cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c544cefbc40f59dd0fc81ba7679149cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">arion liu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-1951705"><time datetime="2019-01-16T21:56:17+08:00">2019年01月16日 21:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉网卡的混杂模式有点像集线器一样，把收到的数据包给所有连在上面的设备都转交一份，由设备（这里是虚拟网卡）自己去选择接受与否。而ipvlan就有点像交换机了，定点转交。不同的是，ipvlan是根据ip定点转交，工作在第三层；交换机是根据mac来定点转交数据包，工作在第二层。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1979336" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/03/21/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e6%89%93%e9%80%a0%e9%ab%98%e6%95%88%e7%9a%84%e5%b7%a5%e4%bd%9c%e7%8e%af%e5%a2%83-shell-%e7%af%87/" class="url" rel="ugc external nofollow">【酷壳】 打造高效的工作环境 – Shell 篇 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2034163" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://sunflower.keda.io/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 可達書院</a> </div>
+</li>
+<li id="comment-2043941" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.saomahuodong.com/130787.html" class="url" rel="ugc external nofollow">记一次Kubernetes/Docker网络排障 - 扫码活动网!</a> </div>
+</li>
+<li id="comment-2087391" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.myway5.com/index.php/2020/04/05/kubernetes-%e7%9a%84%e6%8c%82%e8%bd%bd%e4%bc%a0%e6%92%admount-propagation%e6%9c%ba%e5%88%b6/" class="url" rel="ugc external nofollow">kubernetes 的挂载传播(mount propagation)机制 – 一只安静的猫</a> </div>
+</li>
+<li id="comment-2108419" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaozixun.com/46571.html" class="url" rel="ugc external nofollow">Go语言、Docker 和新技术 - 微信红包网</a> </div>
+</li>
+<li id="comment-2128553" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17010.html" class="url" rel="ugc">Docker基础技术：Linux Namespace（上） | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2238854" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2238854" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d111e66ef1e31bf5f377bec7678abb8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d111e66ef1e31bf5f377bec7678abb8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-2238854"><time datetime="2021-04-28T09:52:15+08:00">2021年04月28日 09:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#define _GNU_SOURCE<br/>
+#include &lt;stdio.h&gt;<br/>
+#include &lt;stdlib.h&gt;<br/>
+#include &lt;sys/types.h&gt;<br/>
+#include &lt;sys/wait.h&gt;<br/>
+#include &lt;sys/mount.h&gt;<br/>
+//#include &lt;sys/capability.h&gt;<br/>
+#include &lt;stdio.h&gt;<br/>
+#include &lt;sched.h&gt;<br/>
+#include &lt;signal.h&gt;<br/>
+#include &lt;unistd.h&gt;</p>
+<p>char* const container_args[] = {<br/>
+“/bin/bash”,<br/>
+NULL<br/>
+};<br/>
+char* const container_envp[] = {<br/>
+“PATH=/bin”,<br/>
+“TERM=console”,<br/>
+“HOME=/root”,<br/>
+NULL<br/>
+};</p>
+<p>void set_groups(char* file, char* value) {<br/>
+FILE* groupfd = fopen(file, “w”);<br/>
+if (NULL == groupfd) {<br/>
+perror(“open file error”);<br/>
+return;<br/>
+}<br/>
+fprintf(groupfd, “%s”, value);<br/>
+fclose(groupfd);<br/>
+}<br/>
+void set_map(char* file, int inside_id, int outside_id, int len) {<br/>
+FILE* mapfd = fopen(file, “w”);<br/>
+if (NULL == mapfd) {<br/>
+perror(“open file error”);<br/>
+return;<br/>
+}<br/>
+fprintf(mapfd, “%d %d %d”, inside_id, outside_id, len);<br/>
+fclose(mapfd);<br/>
+}</p>
+<p>int container_main(void* arg)<br/>
+{</p>
+<p><code>printf(&#34;Container [%5d] - inside the container!\n&#34;, getpid());</code></p><code>
+<p>printf(&#34;Container: eUID = %ld; eGID = %ld, UID=%ld, GID=%ld\n&#34;,<br/>
+(long) geteuid(), (long) getegid(), (long) getuid(), (long) getgid());</p>
+<p>printf(&#34;Container [%5d] - setup hostname!\n&#34;, getpid());<br/>
+//set hostname<br/>
+sethostname(&#34;container&#34;,10);</p>
+<p>//set root directory<br/>
+chroot(&#34;rootfs&#34;);</p>
+<p>//change to `/`<br/>
+chdir(&#34;/&#34;);</p>
+<p>//remount &#34;/proc&#34; to make sure the &#34;top&#34; and &#34;ps&#34; show container&#39;s information<br/>
+mount(&#34;proc&#34;, &#34;/proc&#34;, &#34;proc&#34;, 0, NULL);</p>
+</code><p><code>execvpe(container_args[0], container_args, container_envp);<br/>
+printf(&#34;Something&#39;s wrong!\n&#34;);<br/>
+return 1;<br/>
+</code></p>
+<p>}</p>
+<p>int main()<br/>
+{<br/>
+const int gid=getegid(), uid=geteuid();</p>
+<p><code>printf(&#34;Parent: eUID = %ld; eGID = %ld, UID=%ld, GID=%ld\n&#34;,<br/>
+(long) geteuid(), (long) getegid(), (long) getuid(), (long) getgid());</code></p><code>
+<p>printf(&#34;Parent [%5d] - start a container!\n&#34;, getpid());</p>
+<p>unshare(CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWUSER);</p>
+<p>pid_t container_pid = fork();</p>
+<p>if (!container_pid) {<br/>
+/* since Linux 3.19 unprivileged writing of /proc/self/gid_map<br/>
+* has s been disabled unless /proc/self/setgroups is written<br/>
+* first to permanently disable the ability to call setgroups<br/>
+* in that user namespace. */<br/>
+set_groups(&#34;/proc/self/setgroups&#34;, &#34;deny&#34;);<br/>
+//To map the uid/gid,<br/>
+// we need edit the /proc/PID/uid_map (or /proc/PID/gid_map) in parent<br/>
+//The file format is<br/>
+// ID-inside-ns ID-outside-ns length<br/>
+//if no mapping,<br/>
+// the uid will be taken from /proc/sys/kernel/overflowuid<br/>
+// the gid will be taken from /proc/sys/kernel/overflowgid<br/>
+set_map(&#34;/proc/self/uid_map&#34;, 0, uid, 1);<br/>
+set_map(&#34;/proc/self/gid_map&#34;, 0, gid, 1);</p>
+<p> return container_main(NULL);<br/>
+}</p>
+<p>printf(&#34;Parent [%5d] - Container [%5d]!\n&#34;, getpid(), container_pid);</p>
+</code><p><code>waitpid(container_pid, NULL, 0);<br/>
+printf(&#34;Parent [%5d] - container stopped!\n&#34;, getpid());<br/>
+return 0;<br/>
+</code></p>
+<p>}</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2238855" class="comment even depth-2">
+<article id="div-comment-2238855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d111e66ef1e31bf5f377bec7678abb8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d111e66ef1e31bf5f377bec7678abb8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17029.html#comment-2238855"><time datetime="2021-04-28T09:53:53+08:00">2021年04月28日 09:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>优化了2处：<br/>
+1，去掉了进程间同步处理<br/>
+2，解决无法改写gid_map映射</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2240217" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.hellozhu.cn/archives/53.html" class="url" rel="ugc external nofollow">docker技术原理学习 – HelloZhu</a> </div>
+</li>
+<li id="comment-2370825" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xdicp.com/76306.html" class="url" rel="ugc external nofollow">linux namespace and cgroup | 编程案例分享</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

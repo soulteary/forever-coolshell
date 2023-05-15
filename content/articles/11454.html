@@ -1,0 +1,652 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>从LongAdder看更高效的无锁实现 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11454 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11454" class="post-content post-11454 post type-post status-publish format-standard hentry category-javadev category-progdesign tag-atomiclong tag-cas tag-java tag-longadder tag-performance">
+<header class="entry-header">
+<span class="screen-reader-text">从LongAdder看更高效的无锁实现</span>
+<h1 class="entry-title">从LongAdder看更高效的无锁实现</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11454.html" title="23:11" rel="bookmark"><time class="entry-date" datetime="2014-04-17T23:11:40+08:00" pubdate="">2014年04月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/liuinsect" title="View all posts by liuinsect" rel="author">liuinsect</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11454.html#comments" class="comments-link">35 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 47,365 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 <a href="http://weibo.com/liuinsect" target="_blank">@jd刘锟洋</a> 投稿，更多文章参看他的博客：<a href="http://www.liuinsect.com/" target="_blank">码梦为生</a>）</strong></p>
+<p><strong>原文链接</strong>：《<a href="http://www.liuinsect.com/2014/04/15/%E6%AF%94atomiclong%E8%BF%98%E9%AB%98%E6%95%88%E7%9A%84longadder-%E6%BA%90%E7%A0%81%E8%A7%A3%E6%9E%90/" target="_blank">比AtomicLong还高效的LongAdder 源码解析</a>》</p>
+<p>接触到AtomicLong的原因是在看guava的LoadingCache相关代码时，关于LoadingCache，其实思路也非常简单清晰：用模板模式解决了缓存不命中时获取数据的逻辑，这个思路我早前也正好在项目中使用到。</p>
+<p>言归正传，为什么说LongAdder引起了我的注意，原因有二：</p>
+<ol>
+<li>作者是Doug lea ，地位实在举足轻重。</li>
+<li>他说这个比AtomicLong高效。</li>
+</ol>
+<p>我们知道，AtomicLong已经是非常好的解决方案了，涉及并发的地方都是使用CAS操作，在硬件层次上去做 compare and set操作。效率非常高。</p>
+<p>因此，我决定研究下，为什么LongAdder比AtomicLong高效。</p>
+<p>首先，看LongAdder的继承树：</p>
+<p><img decoding="async" class="alignnone size-full wp-image-209 aligncenter" alt="la1" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la1.png" width="431" height="104"/></p>
+<p>继承自Striped64，这个类包装了一些很重要的内部类和操作。稍候会看到。</p>
+<p><span id="more-11454"></span></p>
+<p><strong>正式开始前，强调下，我们知道，AtomicLong的实现方式是内部有个value 变量，当多线程并发自增，自减时，均通过CAS 指令从机器指令级别操作保证并发的原子性。</strong></p>
+<p>再看看LongAdder的方法：</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-210 aligncenter" alt="la2" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la2.png" width="472" height="436"/><br/>
+怪不得可以和AtomicLong作比较，连API都这么像。我们随便挑一个API入手分析，这个API通了，其他API都大同小异，因此，我选择了add这个方法。事实上,其他API也都依赖这个方法。</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-211 aligncenter" alt="la3" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la3.png" width="701" height="281"/><br/>
+LongAdder中包含了一个Cell 数组，Cell是Striped64的一个内部类，顾名思义，Cell 代表了一个最小单元，这个单元有什么用，稍候会说道。先看定义：</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-212 aligncenter" alt="la4" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la4.png" width="686" height="649"/><br/>
+Cell内部有一个非常重要的value变量，并且提供了一个CAS更新其值的方法。</p>
+<p>回到add方法：</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-211 aligncenter" alt="la3" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la3.png" width="701" height="281"/></p>
+<p>这里，我有个疑问，AtomicLong已经使用CAS指令，非常高效了（比起各种锁），LongAdder如果还是用CAS指令更新值，怎么可能比AtomicLong高效了？ 何况内部还这么多判断！！！</p>
+<p>这是我开始时最大的疑问，所以，我猜想，难道有比CAS指令更高效的方式出现了？ 带着这个疑问，继续。</p>
+<p>第一if 判断，第一次调用的时候cells数组肯定为null,因此，进入casBase方法：</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-213 aligncenter" alt="la5" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la5.png" width="772" height="81"/><br/>
+原子更新base没啥好说的，如果更新成功，本地调用开始返回，否则进入分支内部。</p>
+<p>什么时候会更新失败？ 没错，并发的时候，好戏开始了，AtomicLong的处理方式是死循环尝试更新，直到成功才返回，而LongAdder则是进入这个分支。</p>
+<p>分支内部，通过一个Threadlocal变量threadHashCode 获取一个HashCode对象，该HashCode对象依然是Striped64类的内部类，看定义：</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-214 aligncenter" alt="la6" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la6.png" width="734" height="203"/><br/>
+有个code变量，保存了一个非0的随机数随机值。</p>
+<p>回到add方法：</p>
+<p><img decoding="async" loading="lazy" class="alignnone size-full wp-image-211 aligncenter" alt="la3" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la3.png" width="701" height="281"/></p>
+<p>拿到该线程相关的HashCode对象后，获取它的code变量，as[(n-1)&amp;h] 这句话相当于对h取模，只不过比起取模，因为是 与 的运算所以效率更高。</p>
+<p>计算出一个在Cells 数组中当先线程的HashCode对应的 索引位置，并将该位置的Cell 对象拿出来用CAS更新它的value值。</p>
+<p>当然，如果as 为null 并且更新失败，才会进入retryUpdate方法。</p>
+<p>看到这里我想应该有很多人明白为什么LongAdder会比AtomicLong更高效了，没错，唯一会制约AtomicLong高效的原因是高并发，高并发意味着CAS的失败几率更高， 重试次数更多，越多线程重试，CAS失败几率又越高，变成恶性循环，AtomicLong效率降低。 那怎么解决？<strong> LongAdder给了我们一个非常容易想到的解决方案：减少并发，将单一value的更新压力分担到多个value中去，降低单个value的 “热度”，分段更新！！！</strong></p>
+<p>这样，线程数再多也会分担到多个value上去更新，只需要增加value就可以降低 value的 “热度”  AtomicLong中的 恶性循环不就解决了吗？ cells 就是这个 “段” cell中的value 就是存放更新值的， 这样，<strong>当我需要总数时，把cells 中的value都累加一下不就可以了么！！</strong></p>
+<p><strong>当然，聪明之处远远不仅仅这里，在看看add方法中的代码，casBase方法可不可以不要，直接分段更新,上来就计算 索引位置，然后更新value？</strong></p>
+<p>答案是不好，不是不行，因为，casBase操作等价于AtomicLong中的CAS操作，要知道，LongAdder这样的处理方式是有坏处的，分段操作必然带来空间上的浪费，可以空间换时间，但是，<strong>能不换就不换，看空间时间都节约~！</strong> 所以，<strong>casBase操作保证了在低并发时，不会立即进入分支做分段更新操作</strong>，因为低并发时，casBase操作基本都会成功，只有并发高到一定程度了，才会进入分支，所以，Doug Lea对该类的说明是：<strong> 低并发时LongAdder和AtomicLong性能差不多，高并发时LongAdder更高效！</strong></p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class=" wp-image-215 aligncenter" alt="la7" src="http://www.liuinsect.com/wp-content/uploads/2014/04/la7.png" width="750" height="331"/></p>
+<p>但是，Doung Lea 还是没这么简单，聪明之处还没有结束……</p>
+<p>如此，retryUpdate中做了什么事，也基本略知一二了，因为cell中的value都更新失败(说明该索引到这个cell的线程也很多，并发也很高时) 或者cells数组为空时才会调用retryUpdate,</p>
+<p>因此，<strong>retryUpdate里面应该会做两件事：</strong></p>
+<ol>
+<li><strong>扩容，将cells数组扩大</strong>，降低每个cell的并发量，同样，这也意味着cells数组的rehash动作。</li>
+<li> <strong>给空的cells变量赋一个新的Cell数组</strong>。</li>
+</ol>
+<p>是不是这样呢？ 继续看代码：</p>
+<p>代码比较长，变成文本看看，为了方便大家看if else 分支，对应的  { } 我用相同的颜色标注出来。可以看到，这个时候Doug Lea才愿意使用死循环保证更新成功~！</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">  final void retryUpdate(long x, HashCode hc, boolean wasUncontended) {
+        int h = hc.code;
+        boolean collide = false;                // True if last slot nonempty
+        for (;;) {
+            Cell[] as; Cell a; int n; long v;
+            if ((as = cells) != null &amp;&amp; (n = as.length) &gt; 0) {// 分支1
+                if ((a = as[(n - 1) &amp; h]) == null) {
+                    if (busy == 0) {            // Try to attach new Cell
+                        Cell r = new Cell(x);   // Optimistically create
+                        if (busy == 0 &amp;&amp; casBusy()) {
+                            boolean created = false;
+                            try {               // Recheck under lock
+                                Cell[] rs; int m, j;
+                                if ((rs = cells) != null &amp;&amp;
+                                        (m = rs.length) &gt; 0 &amp;&amp;
+                                        rs[j = (m - 1) &amp; h] == null) {
+                                    rs[j] = r;
+                                    created = true;
+                                }
+                            } finally {
+                                busy = 0;
+                            }
+                            if (created)
+                                break;
+                            continue;           // Slot is now non-empty
+                        }
+                    }
+                    collide = false;
+                }
+                else if (!wasUncontended)       // CAS already known to fail
+                    wasUncontended = true;      // Continue after rehash
+                else if (a.cas(v = a.value, fn(v, x)))
+                    break;
+                else if (n &gt;= NCPU || cells != as)
+                    collide = false;            // At max size or stale
+                else if (!collide)
+                    collide = true;
+                else if (busy == 0 &amp;&amp; casBusy()) {
+                    try {
+                        if (cells == as) {      // Expand table unless stale
+                            Cell[] rs = new Cell[n &lt;&lt; 1];
+                            for (int i = 0; i &lt; n; ++i)
+                                rs[i] = as[i];
+                            cells = rs;
+                        }
+                    } finally {
+                        busy = 0;
+                    }
+                    collide = false;
+                    continue;                   // Retry with expanded table
+                }
+                h ^= h &lt;&lt; 13;                   // Rehash  h ^= h &gt;&gt;&gt; 17;
+                h ^= h &lt;&lt; 5;
+            }
+            else if (busy == 0 &amp;&amp; cells == as &amp;&amp; casBusy()) {//分支2
+                boolean init = false;
+                try {                           // Initialize table
+                    if (cells == as) {
+                        Cell[] rs = new Cell[2];
+                        rs[h &amp; 1] = new Cell(x);
+                        cells = rs;
+                        init = true;
+                    }
+                } finally {
+                    busy = 0;
+                }
+                if (init)
+                    break;
+            }
+            else if (casBase(v = base, fn(v, x)))
+                break;                          // Fall back on using base
+        }
+        hc.code = h;                            // Record index for next time
+    }
+
+</pre>
+<p>分支2中，为cells为空的情况，需要new 一个Cell数组。</p>
+<p>分支1分支中，略复杂一点点：</p>
+<p>注意，几个分支中都提到了busy这个方法，这个可以理解为一个CAS实现的锁，只有在需要更新cells数组的时候才会更新该值为1，如果更新失败，则说明当前有线程在更新cells数组，当前线程需要等待。重试。</p>
+<p>回到分支1中，这里首先判断当前cells数组中的索引位置的cell元素是否为空，如果为空，则添加一个cell到数组中。</p>
+<p>否则更新 标示冲突的标志位wasUncontended 为 true ，重试。</p>
+<p>否则，再次更新cell中的value,如果失败，重试。</p>
+<p>。。。。。。。一系列的判断后<span style="line-height: 1.5em;">，如果还是失败，下下下策，reHash,直接将cells数组扩容一倍，并更新当前线程的hash值，保证下次更新能尽可能成功。</span></p>
+<p><strong>可以看到，LongAdder确实用了很多心思减少并发量，并且，每一步都是在”没有更好的办法“的时候才会选择更大开销的操作，从而尽可能的用最最简单的办法去完成操作。追求简单，但是绝对不粗暴。</strong></p>
+<p>———————<strong>陈皓注————————</strong></p>
+<p>最后留给大家思考的两个问题：</p>
+<p style="padding-left: 30px;">1）是不是AtomicLong可以被废了？</p>
+<p style="padding-left: 30px;">2）如果cell被创建后，原来的casBase就不走了，会不会性能更差？</p>
+<p>———————liuinsect<strong>注————————</strong></p>
+<p>昨天和左耳朵耗子简单讨论了下，发现左耳朵耗子,耗哥对读者思维的引导还是非常不错的，在第一次发现这个类后，对里面的实现又提出了更多的问题，引导大家思考，值得学习。</p>
+<p>我们 发现的问题有这么几个（包括以上的问题），自己简单总结下，欢迎大家讨论：</p>
+<p>1. jdk 1.7中是不是有这个类？<br/>
+我确认后，结果如下：    jdk-7u51 版本上还没有  但是jdk-8u20版本上已经有了。代码基本一样 ，增加了对double类型的支持和删除了一些冗余的代码。有兴趣的同学可以去下载下JDK 1.8看看</p>
+<p>2. base有没有参与汇总？<br/>
+base在调用intValue等方法的时候是会汇总的：</p>
+<p><a href="http://www.liuinsect.com/wp-content/uploads/2014/04/LA101.bmp"><img decoding="async" alt="LA10" src="http://www.liuinsect.com/wp-content/uploads/2014/04/LA101.bmp"/></a></p>
+<p>3. 如果cell被创建后，原来的casBase就不走了，会不会性能更差？ base的顺序可不可以调换?<br/>
+<span style="line-height: 1.5em;">    刚开始我想可不可以调换add方法中的判断顺序，比如，先做casBase的判断？ 仔细思考后认为还是 不调换可能更好，调换后每次都要CAS一下，在高并发时，失败几率非常高，并且是恶性循环，比起一次判断，后者的开销明显小很多，还没有副作用（上一个问题，base变量在sum时base是会被统计的，并不会丢掉base的值）。因此，不调换可能会更好。</span></p>
+<p>4. AtomicLong可不可以废掉？<br/>
+我的想法是可以废掉了，因为，虽然LongAdder在空间上占用略大，但是，它的性能已经足以说明一切了,无论是从节约空的角度还是执行效率上，AtomicLong基本没有优势了，具体看这个测试（感谢<a id="commentauthor-1431785" href="http://lianming.info/" rel="external nofollow">Lemon</a>的回复）:http://blog.palominolabs.com/2014/02/10/java-8-performance-improvements-longadder-vs-atomiclong/</p>
+<p style="padding-left: 30px;">
+</p><p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11454-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">AtomicLong</a>, <a href="javascript:void(0)" rel="tag">cas</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">LongAdder</a>, <a href="javascript:void(0)" rel="tag">Performance</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>从LongAdder看更高效的无锁实现</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1429869" class="comment even thread-even depth-1">
+<article id="div-comment-1429869" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f23a5c5b2533079845bca2dae85997c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f23a5c5b2533079845bca2dae85997c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/blueiceq" class="url" rel="ugc external nofollow">BlueIceQ</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1429869"><time datetime="2014-04-17T23:33:00+08:00">2014年04月17日 23:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>沙发！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1431130" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/4843.html" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1431283" class="comment even thread-even depth-1">
+<article id="div-comment-1431283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e98eefac181951e1fbd7624d446eacad?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e98eefac181951e1fbd7624d446eacad?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/killbug/" class="url" rel="ugc external nofollow">hopehack</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1431283"><time datetime="2014-04-18T09:19:52+08:00">2014年04月18日 09:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>收藏一下~ 喜欢看这种文章</p>
+</div>
+ </article>
+</li>
+<li id="comment-1431340" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1431340" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bcd3f36ed03acffec340186459297901?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bcd3f36ed03acffec340186459297901?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cywhoyi.iteye.com/" class="url" rel="ugc external nofollow">IBYoung</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1431340"><time datetime="2014-04-18T09:55:00+08:00">2014年04月18日 09:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然并不全部看得懂，但是我觉得Value降低热度的想法，确实厉害</p>
+</div>
+ </article>
+</li>
+<li id="comment-1431581" class="comment even thread-even depth-1">
+<article id="div-comment-1431581" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/105252873839d532f3c4bd7fcb4d79c9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/105252873839d532f3c4bd7fcb4d79c9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1431581"><time datetime="2014-04-18T11:31:56+08:00">2014年04月18日 11:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我怎么之前看到的longadder版本不太一样，我下载的可是正式版jdk8</p>
+</div>
+ </article>
+</li>
+<li id="comment-1431602" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1431602" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/105252873839d532f3c4bd7fcb4d79c9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/105252873839d532f3c4bd7fcb4d79c9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1431602"><time datetime="2014-04-18T11:37:24+08:00">2014年04月18日 11:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>AtomicLong可不能废弃，longadder的自增和减少都是void的，最后get值时候是去sum计算的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1431785" class="comment even thread-even depth-1">
+<article id="div-comment-1431785" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ea4c37f908f855afb73a65acbcc02da4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ea4c37f908f855afb73a65acbcc02da4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lianming.info" class="url" rel="ugc external nofollow">Lemon</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1431785"><time datetime="2014-04-18T12:39:56+08:00">2014年04月18日 12:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章把原理讲的挺透彻的。推荐老外写的另外一篇关于LongAdder性能测试的文章：http://blog.palominolabs.com/2014/02/10/java-8-performance-improvements-longadder-vs-atomiclong/</p>
+<p>看了性能测试的文章，顺便回答您的第一个问题：AtomicLong还有存在的余地的：大量的低并发场景时，AtomicLong能满足需求还节约空间。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1431949" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1431949" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1df014a53566d070b8ad16701d1be0d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1df014a53566d070b8ad16701d1be0d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ryc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1431949"><time datetime="2014-04-18T13:34:41+08:00">2014年04月18日 13:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图片源的网站: <a href="http://www.liuinsect.com/" rel="nofollow ugc">http://www.liuinsect.com/</a> 被禁了…<br/>
+Blocking reason: BLOCK-MALWARE<br/>
+Web Reputation Score: -6.3</p>
+</div>
+ </article>
+</li>
+<li id="comment-1432431" class="comment even thread-even depth-1">
+<article id="div-comment-1432431" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7d0f7275851df8df5312c37513e60d7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7d0f7275851df8df5312c37513e60d7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liuinsect.com" class="url" rel="ugc external nofollow">liuinsect</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1432431"><time datetime="2014-04-18T15:57:24+08:00">2014年04月18日 15:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1431949" rel="nofollow">@ryc </a><br/>
+你好，可能是网络不稳定的原因，现在已经好了~ 感谢阅读</p>
+</div>
+ </article>
+</li>
+<li id="comment-1432677" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.liuinsect.com/2014/04/15/%e6%af%94atomiclong%e8%bf%98%e9%ab%98%e6%95%88%e7%9a%84longadder-%e6%ba%90%e7%a0%81%e8%a7%a3%e6%9e%90/" class="url" rel="ugc external nofollow">比AtomicLong还高效的LongAdder 源码解析 | 码梦为生 | 刘锟洋</a> </div>
+</li>
+<li id="comment-1433729" class="comment even thread-even depth-1">
+<article id="div-comment-1433729" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6e8f50be1751f1bb1648b0fb473850d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6e8f50be1751f1bb1648b0fb473850d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhouzhenghui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1433729"><time datetime="2014-04-18T22:45:31+08:00">2014年04月18日 22:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我就没搞懂一个简单的递增递减操作哪来那么多的机会冲突，搞java语言性能测试的都是在自己骗自己吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1440358" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1440358" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8e97f1fb2c369690efa5d005e51d07b0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8e97f1fb2c369690efa5d005e51d07b0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">明月</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1440358"><time datetime="2014-04-20T13:48:50+08:00">2014年04月20日 13:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，你的那个“检测到你还在使用百度这个搜索引擎，做为一个程序员，这是一种自暴自弃。”<br/>
+这句话中，“做为”这种用法是错误的，正确的应该是“作为”，这是就人的某种身分或事物的某种性质来说的。本想给你发个私信，不过不知道怎么弄， 就在这留言了， 见谅！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1441807" class="comment even thread-even depth-1">
+<article id="div-comment-1441807" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c2538d4c73924be7a84c29c550d0c91?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c2538d4c73924be7a84c29c550d0c91?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yuntao.org" class="url" rel="ugc external nofollow">coolzyt</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1441807"><time datetime="2014-04-21T09:30:08+08:00">2014年04月21日 09:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很好啊，看完后觉得LongAdder是在高并发写下牺牲读的性能换取写的性能，我觉得应该是预期并发写非常高的情况才要用的一个机制。<br/>
+而AtomicLong是读多写少的时候用比较合适<br/>
+有点像乐观锁和悲观锁的思想</p>
+</div>
+ </article>
+</li>
+<li id="comment-1443810" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1443810" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7175ff9ad5b26ab346f244b28750f371?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7175ff9ad5b26ab346f244b28750f371?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">larryG</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1443810"><time datetime="2014-04-23T10:39:13+08:00">2014年04月23日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>LongAdder并没有提供很好的increatAndGet。我先increate()然后再调用longValue()会不会造成得到的数值不是安全的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1444276" class="comment even thread-even depth-1">
+<article id="div-comment-1444276" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6e8f50be1751f1bb1648b0fb473850d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6e8f50be1751f1bb1648b0fb473850d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhouzhenghui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1444276"><time datetime="2014-04-23T17:04:26+08:00">2014年04月23日 17:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个东西本质上是一个wait-free的加法运算，可以认为是为了加速wait-free过程，引入第一步lock-free过程，在相关论文中被称为fast path slow path方法，从这个角度考虑就非常自然了。因为它只是用于解决一个具体问题的算法，所以不能当作一般性的基础操作来看待。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1444678" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1444678" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e259e22fd5a47ce64cb500f6b8fda367?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e259e22fd5a47ce64cb500f6b8fda367?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">terryice</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1444678"><time datetime="2014-04-24T01:03:09+08:00">2014年04月24日 01:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>AtomicLong 不能废，还有 compareAndSet 一类的 CAS 方法呢，需要精确控制某个值的并发增减的场景都要用 AtomicLong（例如并发 ringbuffer 等数据结构）。</p>
+<p>LongAdder 是对读很少，写非常多的场景有优势，它的类名已经说明了这个事实，就是个累加器。</p>
+<p>建议楼主再参考这篇：http://psy-lob-saw.blogspot.com/2013/06/java-concurrent-counters-by-numbers.html<br/>
+还有比 LongAdder 更快的选择。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1445265" class="comment even thread-even depth-1">
+<article id="div-comment-1445265" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/105252873839d532f3c4bd7fcb4d79c9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/105252873839d532f3c4bd7fcb4d79c9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sq</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1445265"><time datetime="2014-04-24T19:35:30+08:00">2014年04月24日 19:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1431602"><p>
+<strong><a href="#comment-1431602" rel="nofollow">sq</a> :</strong><br/>
+AtomicLong可不能废弃，longadder的自增和减少都是void的，最后get值时候是去sum计算的
+</p></blockquote>
+<blockquote cite="#commentbody-1443810"><p>
+<strong><a href="#comment-1443810" rel="nofollow">larryG</a> :</strong><br/>
+LongAdder并没有提供很好的increatAndGet。我先increate()然后再调用longValue()会不会造成得到的数值不是安全的？
+</p></blockquote>
+<p>是的，就这个</p>
+</div>
+ </article>
+</li>
+<li id="comment-1453606" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1453606" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhangyafeikimi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1453606"><time datetime="2014-05-05T10:34:49+08:00">2014年05月05日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>java的库很丰富, 也有很多坑. 这种优化自己来做会更快, 比如我可以选取一个更合适的Cell数组的初始大小, 更比如我回遇见到用原子操作快, 还是加锁快, 还是这种map-reduce式的累加快.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1479036" class="comment even thread-even depth-1">
+<article id="div-comment-1479036" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ccde690c8ab65ca98bcd6573037d765?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ccde690c8ab65ca98bcd6573037d765?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andrew_show</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1479036"><time datetime="2014-06-10T16:45:26+08:00">2014年06月10日 16:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个代码只能用来提供一种思路，实际的运行环境中一个加法的原子操作不可能有那么多冲突，如果一个算法在实际的运行环境中有那么多冲突，那么说明问题的解法有问题。你要做的是改变解决方案避免让自己陷入这样的境地。<br/>
+好比在操作系统中的使用自旋锁，其中有个隐含的假设就是：冲突的概率相当低。。。<br/>
+如果实际的运行环境中一个原子操作都会有那么多的冲突，那么使用单线程的解决方案都可能比多线程的解决方案要有效率。。。<br/>
+如果实际的运行环境中原子操作没有太多的冲突，那么使用基于CAS的原子操作基本上也能满足要求。<br/>
+。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1482892" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1482892" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2ec4dd5e3dfb3ce6ee00809039524f95?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2ec4dd5e3dfb3ce6ee00809039524f95?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">无知者无畏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1482892"><time datetime="2014-06-17T16:01:30+08:00">2014年06月17日 16:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1433729" rel="nofollow">@zhouzhenghui </a><br/>
+古人说无知者无畏，但你也不能拿无知当真理啊。加1，减1这个在多线程<br/>
+环境中是最经典的非线程安全的用例。不是说他的逻辑有多复杂，而是要<br/>
+保证这种数据操作在任何时候都是数据一致的。这就是Atomic和其他一些<br/>
+线程安全类存在的意义。懂了吗？小白？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1491637" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xiuxiu.1kapp.com/?p=11" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 | 蓝色的思念</a> </div>
+</li>
+<li id="comment-1543093" class="comment byuser comment-author-tczl1992 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1543093" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f494cc3c9d8273f0234053fd9ab21f9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f494cc3c9d8273f0234053fd9ab21f9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">魔鬼肌肉人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1543093"><time datetime="2014-09-22T17:00:02+08:00">2014年09月22日 17:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这是什么软件？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1543095" class="comment byuser comment-author-tczl1992 even thread-even depth-1">
+<article id="div-comment-1543095" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f494cc3c9d8273f0234053fd9ab21f9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f494cc3c9d8273f0234053fd9ab21f9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">魔鬼肌肉人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1543095"><time datetime="2014-09-22T17:01:47+08:00">2014年09月22日 17:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1543093"><p>
+<strong><a href="#comment-1543093" rel="nofollow">魔鬼肌肉人</a> :</strong><br/>
+这是什么软件？
+</p></blockquote>
+<p>这个IDE是叫什么</p>
+</div>
+ </article>
+</li>
+<li id="comment-1572380" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1572380" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/91c21fe6179de07a26fc3b8c14b0115d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/91c21fe6179de07a26fc3b8c14b0115d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xuby</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1572380"><time datetime="2014-10-15T12:05:49+08:00">2014年10月15日 12:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Linux 内核里面有一个循环队列(RingBuffer)的实现，也是非常经典的无锁并发。<br/>
+wiki的说明：http://en.wikipedia.org/wiki/Circular_buffer<br/>
+Linux的实现：http://www.cs.fsu.edu/~baker/devices/lxr/http/source/linux/kernel/kfifo.c</p>
+</div>
+ </article>
+</li>
+<li id="comment-1573484" class="comment even thread-even depth-1">
+<article id="div-comment-1573484" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6e8f50be1751f1bb1648b0fb473850d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6e8f50be1751f1bb1648b0fb473850d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhouzhenghui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1573484"><time datetime="2014-10-16T13:57:56+08:00">2014年10月16日 13:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1482892"><p>
+<strong><a href="#comment-1482892" rel="nofollow">无知者无畏</a> :</strong><br/>
+<a href="#comment-1433729" rel="nofollow">@zhouzhenghui </a><br/>
+古人说无知者无畏，但你也不能拿无知当真理啊。加1，减1这个在多线程<br/>
+环境中是最经典的非线程安全的用例。不是说他的逻辑有多复杂，而是要<br/>
+保证这种数据操作在任何时候都是数据一致的。这就是Atomic和其他一些<br/>
+线程安全类存在的意义。懂了吗？小白？
+</p></blockquote>
+<p>你倒是读懂我的原话再回复不迟，不是起个名字就能唬弄人。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1807103" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1807103" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6f268b7717fdbecd8558f862ceadd91?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6f268b7717fdbecd8558f862ceadd91?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haihai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1807103"><time datetime="2016-01-19T10:05:57+08:00">2016年01月19日 10:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没有提到padd一切是空谈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1807104" class="comment even thread-even depth-1">
+<article id="div-comment-1807104" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e6f268b7717fdbecd8558f862ceadd91?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e6f268b7717fdbecd8558f862ceadd91?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haihai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1807104"><time datetime="2016-01-19T10:06:23+08:00">2016年01月19日 10:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1807103" rel="nofollow">@haihai </a><br/>
+padding<br/>
+cache false share</p>
+</div>
+ </article>
+</li>
+<li id="comment-1840704" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2091" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 – linux运维部落</a> </div>
+</li>
+<li id="comment-1855729" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xuxiaobo.com/?p=1424" class="url" rel="ugc external nofollow">性能测试应该怎么做？ – <span class="__cf_email__" data-cfemail="b9f5d6def9e197e197fb">[email protected]</span></a> </div>
+</li>
+<li id="comment-1898529" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1898529" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9b160ff0282ea24d0632666ce8be52d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9b160ff0282ea24d0632666ce8be52d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xuyue</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-1898529"><time datetime="2016-11-14T22:11:31+08:00">2016年11月14日 22:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1479036" rel="nofollow">@andrew_show </a><br/>
+有的场景是没法解的，比如要统计单机在高并发下的实时qps。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1901919" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.yinli.org/it/java/13172.html" class="url" rel="ugc external nofollow">JDK数则 | New引力</a> </div>
+</li>
+<li id="comment-1908590" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.scienjus.com/armeria-circuit-breaker/" class="url" rel="ugc external nofollow">Armeria 学习笔记之断路器 | Science &amp; Justice</a> </div>
+</li>
+<li id="comment-1914391" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qianpangzi.com/2016/07/05/%e6%80%a7%e8%83%bd%e6%b5%8b%e8%af%95%e5%ba%94%e8%af%a5%e6%80%8e%e4%b9%88%e5%81%9a%ef%bc%9f/" class="url" rel="ugc external nofollow">性能测试应该怎么做？ - 钱胖子</a> </div>
+</li>
+<li id="comment-2128088" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaohuodong.cn/96318.html" class="url" rel="ugc external nofollow">计时攻击 Time Attacks - 红包活动资讯网</a> </div>
+</li>
+<li id="comment-2224551" class="comment even thread-even depth-1">
+<article id="div-comment-2224551" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/71c62aa83782d66844219ba1fc951175?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/71c62aa83782d66844219ba1fc951175?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">machine</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11454.html#comment-2224551"><time datetime="2021-03-29T10:17:48+08:00">2021年03月29日 10:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图已经挂了，网站变成菠菜类的</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

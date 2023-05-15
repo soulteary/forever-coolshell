@@ -1,0 +1,304 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>排序算法 Sleep Sort | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4883 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4883" class="post-content post-4883 post type-post status-publish format-standard hentry category-misc category-progdesign category-story tag-algorithm tag-sleep tag-sort">
+<header class="entry-header">
+<span class="screen-reader-text">排序算法 Sleep Sort</span>
+<h1 class="entry-title">排序算法 Sleep Sort</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4883.html" title="08:43" rel="bookmark"><time class="entry-date" datetime="2011-06-23T08:43:18+08:00" pubdate="">2011年06月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4883.html#comments" class="comments-link">63 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 39,928 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>排序算法好像是程序员学习编程最多的算法，也可能是算法研究者们最喜欢研究的算法了。排序有很多很多的算法，比如，冒泡，插入，选择，堆，快速，归并等等（你可以看看本站以前的那些文章：<a title="可视化的排序过程" href="/articles/3933.html" target="_blank">可视化的排序</a>，<a title="一个排序算法比较的网站" href="/articles/399.html" target="_blank">排序算法比较</a>，<a title="一个显示排序过程的Python脚本" href="/articles/536.html" target="_blank">显示排序过程的python</a>）这里向大家介绍一个“巨NB”的排序算法——Sleep Sort。</p>
+<p>闲言少说，请看下面的代码（用Shell脚本写的）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#!/bin/bash
+function f() {
+    sleep &#34;$1&#34;
+    echo &#34;$1&#34;
+}
+while [ -n &#34;$1&#34; ]
+do
+    f &#34;$1&#34; &amp;
+    shift
+done
+wait</pre>
+<p>用法如下：</p>
+<p style="padding-left: 30px;">./sleepsort.bash 5 3 6 3 6 3 1 4 7</p>
+<p>相信你可以会去试一下这个脚本，也相你你试完后你一定会说——“<strong>我擦，真TMD排序了！</strong>”，我还是不要解释这段代码了，过多的解释会不如代码那么直接，而且解释会影响你对这个排序算法的NB性。只想说——<strong>这是正二八经的多线程、多进程排序啊</strong>。我们的<a title="可视化的排序过程" href="/articles/3933.html" target="_blank">Bogo排序</a>也黯然失色啊。</p>
+<p>下面我们需要对这个算法做一些分析——</p>
+<p><span id="more-4883"></span>1）让我们来分析一个这这个程序的算法复杂度，太简单了，不就是O(最大数的秒数)，呵呵。所以，如果出现这样的数列将是恶梦的——2 1 4 3 2 1 99999999</p>
+<p>2）这个排序好是好，但对于负数或浮点数就有bug了。负数的解决方案是，我们可以这样来：x/2+MaxInt/2（时间可能相当长，不过依然工作）。对于浮点数，看看下面的代码.</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#!/bin/bash
+function f() {
+  sleep $(echo &#34;($2 - 1) + $1 / 10 ^ $2&#34; | bc -l)
+  echo &#34;$1&#34;
+}
+while [ -n &#34;$1&#34; ]
+do
+  f &#34;$1&#34; $(echo -n &#34;$1&#34; | wc -c) &amp;
+  shift
+done
+wait</pre>
+<p>3）我们来看看各种语言版本的实现吧。<br/>
+<strong>Java</strong></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class SleepSort {
+    public static void main(String[] args) {
+        int[] ints = {1,4,7,3,8,9,2,6,5};
+        SortThread[] sortThreads = new SortThread[ints.length];
+        for (int i = 0; i &lt; sortThreads.length; i++) {
+            sortThreads[i] = new SortThread(ints[i]);
+        }
+        for (int i = 0; i &lt; sortThreads.length; i++) {
+            sortThreads[i].start();
+        }
+    }
+}
+class SortThread extends Thread{
+    int ms = 0;
+    public SortThread(int ms){
+        this.ms = ms;
+    }
+    public void run(){
+        try {
+            sleep(ms*10+10);
+        } catch (InterruptedException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        System.out.println(ms);
+    }
+}</pre>
+<p><strong>Javascript</strong></p>
+<p>[javascript]function sleepsort() {<br/>
+for (var i = 0, il = arguments.length; i &lt; il; i++) {<br/>
+(function(args, index) {<br/>
+setTimeout(function() {<br/>
+document.body.innerHTML += args[index] + ‘, ‘;<br/>
+}, args[index]);<br/>
+}(arguments, i));<br/>
+}<br/>
+};<br/>
+[/javascript]</p>
+<p><strong>Brainfuck </strong>(关于这门语言，请<a title="BT雷人的程序语言（大全）" href="/articles/4458.html" target="_blank">参看这篇文章</a>)</p>
+<p><code>,&gt;,&gt;++++++++[&lt;------&lt;------&gt;&gt;-]<br/>
+&lt;&lt;[&gt;[&gt;+&gt;+&lt;&lt;-]&gt;&gt;[&lt;&lt;+,&gt;,&gt;++++++++[&lt;------&lt;------&gt;&gt;-]<br/>
+&lt;&lt;[ ----------[++++++++++&gt;----------]++++++++++<br/>
+&gt;[&gt;+&gt;+&lt;&lt;-]&gt;&gt;[&lt;&lt;+&gt;&gt;-]&lt;&lt;&lt;-] &gt;&gt;&gt;++++++[&lt;++++++++&gt;-]&lt;.&gt;.&gt;&gt;-]&lt;&lt;&lt;-]<br/>
+,----------[----------------------.,----------]<br/>
+,---&lt;&lt;&lt;+&gt;&gt;&gt;-------[----------------------.,----------]<br/>
+&gt;&gt; ----------[++++++++++&gt;----------]++++++++++<br/>
+&gt;++++++[&lt;++++++++&gt;-]&lt; ----------[++++++++++&gt;----------]++++++++++<br/>
+.&gt;. ----------[++++++++++&gt;----------]++++++++++<br/>
+&gt;++&gt;+&lt;&lt;-]&gt;&gt;[&lt;&lt;+&gt;&gt;-]&lt;&lt;&lt;-] &gt;&gt;[&gt;[&gt;+&gt;+&lt;&lt;-]&gt;&gt;[&lt;&lt;----------[++++++++++&gt;----------]++++++++++<br/>
+&gt;++,&gt;,&gt;++++++++[&lt;------&lt;------&gt;&gt;-]<br/>
+&lt;&lt;</code></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4883-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">Sleep</a>, <a href="javascript:void(0)" rel="tag">Sort</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>排序算法 Sleep Sort</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-73911" class="comment even thread-even depth-1">
+<article id="div-comment-73911" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/261f0494020e862879517e113002f382?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/261f0494020e862879517e113002f382?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yangmanman</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-73911"><time datetime="2011-08-15T21:29:17+08:00">2011年08月15日 21:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问选择排序是否稳定？我测试了好多次怎么结果是不稳定。</p>
+</div>
+ </article>
+</li>
+<li id="comment-77153" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-77153" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2956454781117dad04e744a03a4267f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2956454781117dad04e744a03a4267f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">javen.zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-77153"><time datetime="2011-08-26T18:07:26+08:00">2011年08月26日 18:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好变态的算法，要是里边有数10000，岂不是至少要”睡眠“十分钟？</p>
+</div>
+ </article>
+</li>
+<li id="comment-77157" class="comment even thread-even depth-1">
+<article id="div-comment-77157" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2956454781117dad04e744a03a4267f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2956454781117dad04e744a03a4267f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">javen.zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-77157"><time datetime="2011-08-26T18:30:22+08:00">2011年08月26日 18:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还有，就是如果两个数相差非常小的话，这个排序是不准确的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-77196" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-77196" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e82eaa2a6f9d0536dd02fa55a6f1acc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e82eaa2a6f9d0536dd02fa55a6f1acc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dunxp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-77196"><time datetime="2011-08-26T21:39:41+08:00">2011年08月26日 21:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉使用范围有限，很多时候还是不靠谱啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-84605" class="comment even thread-even depth-1">
+<article id="div-comment-84605" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0cd029a656b5ed1ce31360e6cc82234?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0cd029a656b5ed1ce31360e6cc82234?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tangent</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-84605"><time datetime="2011-09-27T21:26:44+08:00">2011年09月27日 21:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>這不就是bead sort嗎….<br/>
+<a href="https://en.wikipedia.org/wiki/Bead_sort" rel="nofollow ugc">http://en.wikipedia.org/wiki/Bead_sort</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-99262" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-99262" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b53725fd0dee3ecda7cab96db0c5fd0b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b53725fd0dee3ecda7cab96db0c5fd0b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/hustlijian" class="url" rel="ugc external nofollow">hustlijian</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-99262"><time datetime="2011-11-19T23:22:59+08:00">2011年11月19日 23:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>funning!</p>
+</div>
+ </article>
+</li>
+<li id="comment-148871" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.pengzhaomeng.net/2012/03/24/469.html" class="url" rel="ugc external nofollow">Shared Items – 03/24/2012 | Zhaomeng Peng&#39;s Blog</a> </div>
+</li>
+<li id="comment-195801" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-195801" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0d13e7eed1edcbb77aa9918a5db3cbbf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0d13e7eed1edcbb77aa9918a5db3cbbf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">random</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-195801"><time datetime="2012-05-28T14:25:29+08:00">2012年05月28日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是啊 你可以把所有的数除以10000，当然前提是你的pc足够强悍。<a href="#comment-77153" rel="nofollow">@javen.zhang </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-201330" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=476" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » Blog Archive » Huffman 编码压缩算法</a> </div>
+</li>
+<li id="comment-202646" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2012/09/k-nearest-neighbor-%e7%ae%97%e6%b3%95/" class="url" rel="ugc external nofollow">Google Reader分享 » K Nearest Neighbor 算法</a> </div>
+</li>
+<li id="comment-584722" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hduzn.eu.ki/wp/?p=312" class="url" rel="ugc external nofollow">Hello, World! » 有意思的排序算法 Sleep Sort</a> </div>
+</li>
+<li id="comment-1508543" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1508543" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96888f315ae300a0b9c316d827348338?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96888f315ae300a0b9c316d827348338?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">测试</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4883.html/comment-page-2#comment-1508543"><time datetime="2014-08-06T18:04:16+08:00">2014年08月06日 18:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一开始的shell没有考虑程序本身遍历数据的时间，数据多的时候，结果会出错的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1804998" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/09/02/cuckoo-filter%ef%bc%9a%e8%ae%be%e8%ae%a1%e4%b8%8e%e5%ae%9e%e7%8e%b0/" class="url" rel="ugc external nofollow">Cuckoo Filter：设计与实现 – 大耳门</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/4883.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/4883.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">4883</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

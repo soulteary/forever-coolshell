@@ -1,0 +1,589 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>AWK 简明教程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9070 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9070" class="post-content post-9070 post type-post status-publish format-standard hentry category-unixlinux category-misc category-tools tag-awk tag-gawk tag-linux tag-shell tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">AWK 简明教程</span>
+<h1 class="entry-title">AWK 简明教程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9070.html" title="08:38" rel="bookmark"><time class="entry-date" datetime="2013-02-17T08:38:29+08:00" pubdate="">2013年02月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9070.html#comments" class="comments-link">260 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 453,076 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-9093" alt="" src="/uploads/2013/02/awk.jpg" width="350" height="279" srcset="" sizes="(max-width: 350px) 100vw, 350px"/>有一些网友看了前两天的《<a title="应该知道的Linux技巧" href="/articles/8883.html" target="_blank">Linux下应该知道的技巧</a>》希望我能教教他们用awk和sed，所以，出现了这篇文章。我估计这些80后的年轻朋友可能对awk/sed这类上古神器有点陌生了，所以需要我这个老家伙来炒炒冷饭。<strong>况且，AWK是贝尔实验室1977年搞出来的文本出现神器，今年是蛇年，是AWK的本命年，而且年纪和我相仿，所以非常有必要为他写篇文章</strong>。</p>
+<p>之所以叫AWK是因为其取了三位创始人 <a title="Alfred Aho" href="https://en.wikipedia.org/wiki/Alfred_Aho">Alfred Aho</a>，<a title="Peter J. Weinberger" href="https://en.wikipedia.org/wiki/Peter_J._Weinberger">Peter Weinberger</a>, 和 <a title="Brian Kernighan" href="https://en.wikipedia.org/wiki/Brian_Kernighan">Brian Kernighan</a> 的Family Name的首字符。要学AWK，就得提一提AWK的一本相当经典的书《<a href="http://plan9.bell-labs.com/cm/cs/awkbook/" rel="nofollow">The AWK Programming Language</a>》，它在<a href="http://book.douban.com/subject/1876898/" target="_blank">豆瓣上的评分</a>是9.4分！在<a href="https://www.amazon.cn/mn/detailApp/?asin=020107981X" target="_blank">亚马逊上居然卖1022.30元</a>。</p>
+<p>我在这里的教程并不想面面俱到，本文和我之前的<a title="Go 语言简介（上）— 语法" href="/articles/8460.html" target="_blank">Go语言简介</a>一样，全是示例，基本无废话。</p>
+<p><strong>我只想达到两个目的：</strong></p>
+<p style="text-align: left; padding-left: 30px;"><strong>1）你可以在乘坐公交地铁上下班，或是在坐马桶拉大便时读完（保证是一泡大便的工夫）。</strong></p>
+<p style="text-align: left; padding-left: 30px;"><strong>2）我只想让这篇博文像一个火辣的脱衣舞女挑起你的兴趣，然后还要你自己去下工夫去撸。</strong></p>
+<p>废话少说，我们开始脱吧（注：这里只是topless）。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E8%B5%B7%E6%AD%A5%E4%B8%8A%E5%8F%B0" title="起步上台">起步上台</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E8%84%B1%E6%8E%89%E5%A4%96%E5%A5%97" title="脱掉外套">脱掉外套</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E8%BF%87%E6%BB%A4%E8%AE%B0%E5%BD%95" title="过滤记录">过滤记录</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%86%85%E5%BB%BA%E5%8F%98%E9%87%8F" title="内建变量">内建变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%8C%87%E5%AE%9A%E5%88%86%E9%9A%94%E7%AC%A6" title="指定分隔符">指定分隔符</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E8%84%B1%E6%8E%89%E8%A1%AC%E8%A1%AB" title="脱掉衬衫">脱掉衬衫</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%8C%B9%E9%85%8D" title="字符串匹配">字符串匹配</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E7%BB%9F%E8%AE%A1" title="统计">统计</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E8%84%B1%E6%8E%89%E5%86%85%E8%A1%A3" title="脱掉内衣">脱掉内衣</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-10" href="#awk%E8%84%9A%E6%9C%AC" title="awk脚本">awk脚本</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-11" href="#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F" title="环境变量">环境变量</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-12" href="#%E5%87%A0%E4%B8%AA%E8%8A%B1%E6%B4%BB" title="几个花活">几个花活</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-13" href="#%E8%87%AA%E5%B7%B1%E6%92%B8%E5%90%A7" title="自己撸吧">自己撸吧</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E8%B5%B7%E6%AD%A5%E4%B8%8A%E5%8F%B0"></span>起步上台<span class="ez-toc-section-end"></span></h4>
+<p>我从netstat命令中提取了如下信息作为用例：</p>
+<p><span id="more-9070"></span></p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat netstat.txt
+Proto Recv-Q Send-Q Local-Address          Foreign-Address             State
+tcp        0      0 0.0.0.0:3306           0.0.0.0:*                   LISTEN
+tcp        0      0 0.0.0.0:80             0.0.0.0:*                   LISTEN
+tcp        0      0 127.0.0.1:9000         0.0.0.0:*                   LISTEN
+tcp        0      0 coolshell.cn:80        124.205.5.146:18245         TIME_WAIT
+tcp        0      0 coolshell.cn:80        61.140.101.185:37538        FIN_WAIT2
+tcp        0      0 coolshell.cn:80        110.194.134.189:1032        ESTABLISHED
+tcp        0      0 coolshell.cn:80        123.169.124.111:49809       ESTABLISHED
+tcp        0      0 coolshell.cn:80        116.234.127.77:11502        FIN_WAIT2
+tcp        0      0 coolshell.cn:80        123.169.124.111:49829       ESTABLISHED
+tcp        0      0 coolshell.cn:80        183.60.215.36:36970         TIME_WAIT
+tcp        0   4166 coolshell.cn:80        61.148.242.38:30901         ESTABLISHED
+tcp        0      1 coolshell.cn:80        124.152.181.209:26825       FIN_WAIT1
+tcp        0      0 coolshell.cn:80        110.194.134.189:4796        ESTABLISHED
+tcp        0      0 coolshell.cn:80        183.60.212.163:51082        TIME_WAIT
+tcp        0      1 coolshell.cn:80        208.115.113.92:50601        LAST_ACK
+tcp        0      0 coolshell.cn:80        123.169.124.111:49840       ESTABLISHED
+tcp        0      0 coolshell.cn:80        117.136.20.85:50025         FIN_WAIT2
+tcp        0      0 :::22                  :::*                        LISTEN
+</pre>
+<p>下面是最简单最常用的awk示例，其输出第1列和第4例，</p>
+<ul>
+<li>其中单引号中的被大括号括着的就是awk的语句，注意，其只能被单引号包含。</li>
+<li>其中的$1..$n表示第几例。注：$0表示整个行。</li>
+</ul>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;{print $1, $4}&#39; netstat.txt
+Proto Local-Address
+tcp 0.0.0.0:3306
+tcp 0.0.0.0:80
+tcp 127.0.0.1:9000
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp coolshell.cn:80
+tcp :::22</pre>
+<p>我们再来看看awk的格式化输出，和C语言的printf没什么两样：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;{printf &#34;%-8s %-8s %-8s %-18s %-22s %-15s\n&#34;,$1,$2,$3,$4,$5,$6}&#39; netstat.txt
+Proto    Recv-Q   Send-Q   Local-Address      Foreign-Address        State
+tcp      0        0        0.0.0.0:3306       0.0.0.0:*              LISTEN
+tcp      0        0        0.0.0.0:80         0.0.0.0:*              LISTEN
+tcp      0        0        127.0.0.1:9000     0.0.0.0:*              LISTEN
+tcp      0        0        coolshell.cn:80    124.205.5.146:18245    TIME_WAIT
+tcp      0        0        coolshell.cn:80    61.140.101.185:37538   FIN_WAIT2
+tcp      0        0        coolshell.cn:80    110.194.134.189:1032   ESTABLISHED
+tcp      0        0        coolshell.cn:80    123.169.124.111:49809  ESTABLISHED
+tcp      0        0        coolshell.cn:80    116.234.127.77:11502   FIN_WAIT2
+tcp      0        0        coolshell.cn:80    123.169.124.111:49829  ESTABLISHED
+tcp      0        0        coolshell.cn:80    183.60.215.36:36970    TIME_WAIT
+tcp      0        4166     coolshell.cn:80    61.148.242.38:30901    ESTABLISHED
+tcp      0        1        coolshell.cn:80    124.152.181.209:26825  FIN_WAIT1
+tcp      0        0        coolshell.cn:80    110.194.134.189:4796   ESTABLISHED
+tcp      0        0        coolshell.cn:80    183.60.212.163:51082   TIME_WAIT
+tcp      0        1        coolshell.cn:80    208.115.113.92:50601   LAST_ACK
+tcp      0        0        coolshell.cn:80    123.169.124.111:49840  ESTABLISHED
+tcp      0        0        coolshell.cn:80    117.136.20.85:50025    FIN_WAIT2
+tcp      0        0        :::22              :::*                   LISTEN</pre>
+<h4><span class="ez-toc-section" id="%E8%84%B1%E6%8E%89%E5%A4%96%E5%A5%97"></span>脱掉外套<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="%E8%BF%87%E6%BB%A4%E8%AE%B0%E5%BD%95"></span>过滤记录<span class="ez-toc-section-end"></span></h5>
+<p>我们再来看看如何过滤记录（下面过滤条件为：第三列的值为0 &amp;&amp; 第6列的值为LISTEN）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;$3==0 &amp;&amp; $6==&#34;LISTEN&#34; &#39; netstat.txt
+tcp        0      0 0.0.0.0:3306               0.0.0.0:*              LISTEN
+tcp        0      0 0.0.0.0:80                 0.0.0.0:*              LISTEN
+tcp        0      0 127.0.0.1:9000             0.0.0.0:*              LISTEN
+tcp        0      0 :::22                      :::*                   LISTEN</pre>
+<p>其中的“==”为比较运算符。其他比较运算符：!=, &gt;, &lt;, &gt;=, &lt;=</p>
+<p>我们来看看各种过滤记录的方式：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39; $3&gt;0 {print $0}&#39; netstat.txt
+Proto Recv-Q Send-Q Local-Address          Foreign-Address             State
+tcp        0   4166 coolshell.cn:80        61.148.242.38:30901         ESTABLISHED
+tcp        0      1 coolshell.cn:80        124.152.181.209:26825       FIN_WAIT1
+tcp        0      1 coolshell.cn:80        208.115.113.92:50601        LAST_ACK</pre>
+<p>如果我们需要表头的话，我们可以引入内建变量NR：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;$3==0 &amp;&amp; $6==&#34;LISTEN&#34; || NR==1 &#39; netstat.txt
+Proto Recv-Q Send-Q Local-Address          Foreign-Address             State
+tcp        0      0 0.0.0.0:3306           0.0.0.0:*                   LISTEN
+tcp        0      0 0.0.0.0:80             0.0.0.0:*                   LISTEN
+tcp        0      0 127.0.0.1:9000         0.0.0.0:*                   LISTEN
+tcp        0      0 :::22                  :::*                        LISTEN</pre>
+<p>再加上格式化输出：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;$3==0 &amp;&amp; $6==&#34;LISTEN&#34; || NR==1 {printf &#34;%-20s %-20s %s\n&#34;,$4,$5,$6}&#39; netstat.txt
+Local-Address        Foreign-Address      State
+0.0.0.0:3306         0.0.0.0:*            LISTEN
+0.0.0.0:80           0.0.0.0:*            LISTEN
+127.0.0.1:9000       0.0.0.0:*            LISTEN
+:::22                :::*                 LISTEN</pre>
+<h5><span class="ez-toc-section" id="%E5%86%85%E5%BB%BA%E5%8F%98%E9%87%8F"></span><strong>内建变量</strong><span class="ez-toc-section-end"></span></h5>
+<p>说到了内建变量，我们可以来看看awk的一些内建变量：</p>
+<table border="0" cellspacing="1" cellpadding="4">
+<tbody>
+<tr>
+<td bgcolor="#ffffff">$0</td>
+<td bgcolor="#ffffff">当前记录（这个变量中存放着整个行的内容）</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">$1~$n</td>
+<td bgcolor="#ffffff">当前记录的第n个字段，字段间由FS分隔</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">FS</td>
+<td bgcolor="#ffffff">输入字段分隔符 默认是空格或Tab</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">NF</td>
+<td bgcolor="#ffffff">当前记录中的字段个数，就是有多少列</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">NR</td>
+<td bgcolor="#ffffff">已经读出的记录数，就是行号，从1开始，如果有多个文件话，这个值也是不断累加中。</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">FNR</td>
+<td bgcolor="#ffffff">当前记录数，与NR不同的是，这个值会是各个文件自己的行号</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">RS</td>
+<td bgcolor="#ffffff">输入的记录分隔符， 默认为换行符</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">OFS</td>
+<td bgcolor="#ffffff">输出字段分隔符， 默认也是空格</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">ORS</td>
+<td bgcolor="#ffffff">输出的记录分隔符，默认为换行符</td>
+</tr>
+<tr>
+<td bgcolor="#ffffff">FILENAME</td>
+<td bgcolor="#ffffff">当前输入文件的名字</td>
+</tr>
+</tbody>
+</table>
+<p>怎么使用呢，比如：我们如果要输出行号：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;$3==0 &amp;&amp; $6==&#34;ESTABLISHED&#34; || NR==1 {printf &#34;%02s %s %-20s %-20s %s\n&#34;,NR, FNR, $4,$5,$6}&#39; netstat.txt
+01 1 Local-Address        Foreign-Address      State
+07 7 coolshell.cn:80      110.194.134.189:1032 ESTABLISHED
+08 8 coolshell.cn:80      123.169.124.111:49809 ESTABLISHED
+10 10 coolshell.cn:80      123.169.124.111:49829 ESTABLISHED
+14 14 coolshell.cn:80      110.194.134.189:4796 ESTABLISHED
+17 17 coolshell.cn:80      123.169.124.111:49840 ESTABLISHED</pre>
+<h5><span class="ez-toc-section" id="%E6%8C%87%E5%AE%9A%E5%88%86%E9%9A%94%E7%AC%A6"></span><strong>指定分隔符</strong><span class="ez-toc-section-end"></span></h5>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$  awk  &#39;BEGIN{FS=&#34;:&#34;} {print $1,$3,$6}&#39; /etc/passwd
+root 0 /root
+bin 1 /bin
+daemon 2 /sbin
+adm 3 /var/adm
+lp 4 /var/spool/lpd
+sync 5 /sbin
+shutdown 6 /sbin
+halt 7 /sbin</pre>
+<p>上面的命令也等价于：（-F的意思就是指定分隔符）</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">$ awk -F: &#39;{print $1,$3,$6}&#39; /etc/passwd</code></p>
+<p>注：如果你要指定多个分隔符，你可以这样来：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">awk -F &#39;[;:]&#39;</code></p>
+<p>再来看一个以\t作为分隔符输出的例子（下面使用了/etc/passwd文件，这个文件是以:分隔的）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk  -F: &#39;{print $1,$3,$6}&#39; OFS=&#34;\t&#34; /etc/passwd
+root    0       /root
+bin     1       /bin
+daemon  2       /sbin
+adm     3       /var/adm
+lp      4       /var/spool/lpd
+sync    5       /sbin</pre>
+<h4><span class="ez-toc-section" id="%E8%84%B1%E6%8E%89%E8%A1%AC%E8%A1%AB"></span>脱掉衬衫<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="%E5%AD%97%E7%AC%A6%E4%B8%B2%E5%8C%B9%E9%85%8D"></span>字符串匹配<span class="ez-toc-section-end"></span></h5>
+<p>我们再来看几个字符串匹配的示例：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1,8">$ awk &#39;$6 ~ /FIN/ || NR==1 {print NR,$4,$5,$6}&#39; OFS=&#34;\t&#34; netstat.txt
+1       Local-Address   Foreign-Address State
+6       coolshell.cn:80 61.140.101.185:37538    FIN_WAIT2
+9       coolshell.cn:80 116.234.127.77:11502    FIN_WAIT2
+13      coolshell.cn:80 124.152.181.209:26825   FIN_WAIT1
+18      coolshell.cn:80 117.136.20.85:50025     FIN_WAIT2
+
+$ $ awk &#39;$6 ~ /WAIT/ || NR==1 {print NR,$4,$5,$6}&#39; OFS=&#34;\t&#34; netstat.txt
+1       Local-Address   Foreign-Address State
+5       coolshell.cn:80 124.205.5.146:18245     TIME_WAIT
+6       coolshell.cn:80 61.140.101.185:37538    FIN_WAIT2
+9       coolshell.cn:80 116.234.127.77:11502    FIN_WAIT2
+11      coolshell.cn:80 183.60.215.36:36970     TIME_WAIT
+13      coolshell.cn:80 124.152.181.209:26825   FIN_WAIT1
+15      coolshell.cn:80 183.60.212.163:51082    TIME_WAIT
+18      coolshell.cn:80 117.136.20.85:50025     FIN_WAIT2</pre>
+<p>上面的第一个示例匹配FIN状态， 第二个示例匹配WAIT字样的状态。其实 ~ 表示模式开始。/ /中是模式。这就是一个正则表达式的匹配。</p>
+<p>其实awk可以像grep一样的去匹配第一行，就像这样：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;/LISTEN/&#39; netstat.txt
+tcp        0      0 0.0.0.0:3306            0.0.0.0:*               LISTEN
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN
+tcp        0      0 127.0.0.1:9000          0.0.0.0:*               LISTEN
+tcp        0      0 :::22                   :::*                    LISTEN</pre>
+<p>我们可以使用 “/FIN|TIME/” 来匹配 FIN 或者 TIME :</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;$6 ~ /FIN|TIME/ || NR==1 {print NR,$4,$5,$6}&#39; OFS=&#34;\t&#34; netstat.txt
+1       Local-Address   Foreign-Address State
+5       coolshell.cn:80 124.205.5.146:18245     TIME_WAIT
+6       coolshell.cn:80 61.140.101.185:37538    FIN_WAIT2
+9       coolshell.cn:80 116.234.127.77:11502    FIN_WAIT2
+11      coolshell.cn:80 183.60.215.36:36970     TIME_WAIT
+13      coolshell.cn:80 124.152.181.209:26825   FIN_WAIT1
+15      coolshell.cn:80 183.60.212.163:51082    TIME_WAIT
+18      coolshell.cn:80 117.136.20.85:50025     FIN_WAIT2</pre>
+<p>再来看看模式取反的例子：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;$6 !~ /WAIT/ || NR==1 {print NR,$4,$5,$6}&#39; OFS=&#34;\t&#34; netstat.txt
+1       Local-Address   Foreign-Address State
+2       0.0.0.0:3306    0.0.0.0:*       LISTEN
+3       0.0.0.0:80      0.0.0.0:*       LISTEN
+4       127.0.0.1:9000  0.0.0.0:*       LISTEN
+7       coolshell.cn:80 110.194.134.189:1032    ESTABLISHED
+8       coolshell.cn:80 123.169.124.111:49809   ESTABLISHED
+10      coolshell.cn:80 123.169.124.111:49829   ESTABLISHED
+12      coolshell.cn:80 61.148.242.38:30901     ESTABLISHED
+14      coolshell.cn:80 110.194.134.189:4796    ESTABLISHED
+16      coolshell.cn:80 208.115.113.92:50601    LAST_ACK
+17      coolshell.cn:80 123.169.124.111:49840   ESTABLISHED
+19      :::22   :::*    LISTEN</pre>
+<p>或是：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">awk &#39;!/WAIT/&#39; netstat.txt</code></p>
+<p><strong>折分文件</strong></p>
+<p>awk拆分文件很简单，使用重定向就好了。下面这个例子，是按第6例分隔文件，相当的简单（其中的NR!=1表示不处理表头）。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;NR!=1{print &gt; $6}&#39; netstat.txt
+
+$ ls
+ESTABLISHED  FIN_WAIT1  FIN_WAIT2  LAST_ACK  LISTEN  netstat.txt  TIME_WAIT
+
+$ cat ESTABLISHED
+tcp        0      0 coolshell.cn:80        110.194.134.189:1032        ESTABLISHED
+tcp        0      0 coolshell.cn:80        123.169.124.111:49809       ESTABLISHED
+tcp        0      0 coolshell.cn:80        123.169.124.111:49829       ESTABLISHED
+tcp        0   4166 coolshell.cn:80        61.148.242.38:30901         ESTABLISHED
+tcp        0      0 coolshell.cn:80        110.194.134.189:4796        ESTABLISHED
+tcp        0      0 coolshell.cn:80        123.169.124.111:49840       ESTABLISHED
+
+$ cat FIN_WAIT1
+tcp        0      1 coolshell.cn:80        124.152.181.209:26825       FIN_WAIT1
+
+$ cat FIN_WAIT2
+tcp        0      0 coolshell.cn:80        61.140.101.185:37538        FIN_WAIT2
+tcp        0      0 coolshell.cn:80        116.234.127.77:11502        FIN_WAIT2
+tcp        0      0 coolshell.cn:80        117.136.20.85:50025         FIN_WAIT2
+
+$ cat LAST_ACK
+tcp        0      1 coolshell.cn:80        208.115.113.92:50601        LAST_ACK
+
+$ cat LISTEN
+tcp        0      0 0.0.0.0:3306           0.0.0.0:*                   LISTEN
+tcp        0      0 0.0.0.0:80             0.0.0.0:*                   LISTEN
+tcp        0      0 127.0.0.1:9000         0.0.0.0:*                   LISTEN
+tcp        0      0 :::22                  :::*                        LISTEN
+
+$ cat TIME_WAIT
+tcp        0      0 coolshell.cn:80        124.205.5.146:18245         TIME_WAIT
+tcp        0      0 coolshell.cn:80        183.60.215.36:36970         TIME_WAIT
+tcp        0      0 coolshell.cn:80        183.60.212.163:51082        TIME_WAIT</pre>
+<p>你也可以把指定的列输出到文件：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">awk &#39;NR!=1{print $4,$5 &gt; $6}&#39; netstat.txt</code></p>
+<p>再复杂一点：（注意其中的if-else-if语句，可见awk其实是个脚本解释器）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1,2,3">$ awk &#39;NR!=1{if($6 ~ /TIME|ESTABLISHED/) print &gt; &#34;1.txt&#34;;
+else if($6 ~ /LISTEN/) print &gt; &#34;2.txt&#34;;
+else print &gt; &#34;3.txt&#34; }&#39; netstat.txt
+
+$ ls ?.txt
+1.txt  2.txt  3.txt
+
+$ cat 1.txt
+tcp        0      0 coolshell.cn:80        124.205.5.146:18245         TIME_WAIT
+tcp        0      0 coolshell.cn:80        110.194.134.189:1032        ESTABLISHED
+tcp        0      0 coolshell.cn:80        123.169.124.111:49809       ESTABLISHED
+tcp        0      0 coolshell.cn:80        123.169.124.111:49829       ESTABLISHED
+tcp        0      0 coolshell.cn:80        183.60.215.36:36970         TIME_WAIT
+tcp        0   4166 coolshell.cn:80        61.148.242.38:30901         ESTABLISHED
+tcp        0      0 coolshell.cn:80        110.194.134.189:4796        ESTABLISHED
+tcp        0      0 coolshell.cn:80        183.60.212.163:51082        TIME_WAIT
+tcp        0      0 coolshell.cn:80        123.169.124.111:49840       ESTABLISHED
+
+$ cat 2.txt
+tcp        0      0 0.0.0.0:3306           0.0.0.0:*                   LISTEN
+tcp        0      0 0.0.0.0:80             0.0.0.0:*                   LISTEN
+tcp        0      0 127.0.0.1:9000         0.0.0.0:*                   LISTEN
+tcp        0      0 :::22                  :::*                        LISTEN
+
+$ cat 3.txt
+tcp        0      0 coolshell.cn:80        61.140.101.185:37538        FIN_WAIT2
+tcp        0      0 coolshell.cn:80        116.234.127.77:11502        FIN_WAIT2
+tcp        0      1 coolshell.cn:80        124.152.181.209:26825       FIN_WAIT1
+tcp        0      1 coolshell.cn:80        208.115.113.92:50601        LAST_ACK
+tcp        0      0 coolshell.cn:80        117.136.20.85:50025         FIN_WAIT2</pre>
+<h5><span class="ez-toc-section" id="%E7%BB%9F%E8%AE%A1"></span>统计<span class="ez-toc-section-end"></span></h5>
+<p>下面的命令计算所有的C文件，CPP文件和H文件的文件大小总和。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ ls -l  *.cpp *.c *.h | awk &#39;{sum+=$5} END {print sum}&#39;
+2511401</pre>
+<p>我们再来看一个统计各个connection状态的用法：（我们可以看到一些编程的影子了，大家都是程序员我就不解释了。注意其中的数组的用法）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ awk &#39;NR!=1{a[$6]++;} END {for (i in a) print i &#34;, &#34; a[i];}&#39; netstat.txt
+TIME_WAIT, 3
+FIN_WAIT1, 1
+ESTABLISHED, 6
+FIN_WAIT2, 3
+LAST_ACK, 1
+LISTEN, 4</pre>
+<p>再来看看统计每个用户的进程的占了多少内存（注：sum的RSS那一列）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="1">$ ps aux | awk &#39;NR!=1{a[$1]+=$6;} END { for(i in a) print i &#34;, &#34; a[i]&#34;KB&#34;;}&#39;
+dbus, 540KB
+mysql, 99928KB
+www, 3264924KB
+root, 63644KB
+hchen, 6020KB</pre>
+<h4><span class="ez-toc-section" id="%E8%84%B1%E6%8E%89%E5%86%85%E8%A1%A3"></span>脱掉内衣<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="awk%E8%84%9A%E6%9C%AC"></span>awk脚本<span class="ez-toc-section-end"></span></h5>
+<p>在上面我们可以看到一个END关键字。END的意思是“处理完所有的行的标识”，即然说到了END就有必要介绍一下BEGIN，这两个关键字意味着执行前和执行后的意思，语法如下：</p>
+<ul>
+<li>BEGIN{ 这里面放的是执行前的语句 }</li>
+<li>END {这里面放的是处理完所有的行后要执行的语句 }</li>
+<li>{这里面放的是处理每一行时要执行的语句}</li>
+</ul>
+<p>为了说清楚这个事，我们来看看下面的示例：</p>
+<p>假设有这么一个文件（学生成绩表）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat score.txt
+Marry   2143 78 84 77
+Jack    2321 66 78 45
+Tom     2122 48 77 71
+Mike    2537 87 97 95
+Bob     2415 40 57 62</pre>
+<p>我们的awk脚本如下（我没有写有命令行上是因为命令行上不易读，另外也在介绍另一种用法）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ cat cal.awk
+#!/bin/awk -f
+#运行前
+BEGIN {
+    math = 0
+    english = 0
+    computer = 0
+
+    printf &#34;NAME    NO.   MATH  ENGLISH  COMPUTER   TOTAL\n&#34;
+    printf &#34;---------------------------------------------\n&#34;
+}
+#运行中
+{
+    math+=$3
+    english+=$4
+    computer+=$5
+    printf &#34;%-6s %-6s %4d %8d %8d %8d\n&#34;, $1, $2, $3,$4,$5, $3+$4+$5
+}
+#运行后
+END {
+    printf &#34;---------------------------------------------\n&#34;
+    printf &#34;  TOTAL:%10d %8d %8d \n&#34;, math, english, computer
+    printf &#34;AVERAGE:%10.2f %8.2f %8.2f\n&#34;, math/NR, english/NR, computer/NR
+}</pre>
+<p>我们来看一下执行结果：（也可以这样运行 ./cal.awk score.txt）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ awk -f cal.awk score.txt
+NAME    NO.   MATH  ENGLISH  COMPUTER   TOTAL
+---------------------------------------------
+Marry  2143     78       84       77      239
+Jack   2321     66       78       45      189
+Tom    2122     48       77       71      196
+Mike   2537     87       97       95      279
+Bob    2415     40       57       62      159
+---------------------------------------------
+  TOTAL:       319      393      350
+AVERAGE:     63.80    78.60    70.00</pre>
+<h5><span class="ez-toc-section" id="%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"></span>环境变量<span class="ez-toc-section-end"></span></h5>
+<p>即然说到了脚本，我们来看看怎么和环境变量交互：（使用-v参数和ENVIRON，使用ENVIRON的环境变量需要export）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW" data-enlighter-highlight="9">$ x=5
+
+$ y=10
+$ export y
+
+$ echo $x $y
+5 10
+
+$ awk -v val=$x &#39;{print $1, $2, $3, $4+val, $5+ENVIRON[&#34;y&#34;]}&#39; OFS=&#34;\t&#34; score.txt
+Marry   2143    78      89      87
+Jack    2321    66      83      55
+Tom     2122    48      82      81
+Mike    2537    87      102     105
+Bob     2415    40      62      72
+</pre>
+<h4><span class="ez-toc-section" id="%E5%87%A0%E4%B8%AA%E8%8A%B1%E6%B4%BB"></span>几个花活<span class="ez-toc-section-end"></span></h4>
+<p>最后，我们再来看几个小例子：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#从file文件中找出长度大于80的行
+awk &#39;length&gt;80&#39; file
+
+#按连接数查看客户端IP
+netstat -ntu | awk &#39;{print $5}&#39; | cut -d: -f1 | sort | uniq -c | sort -nr
+
+#打印99乘法表
+seq 9 | sed &#39;H;g&#39; | awk -v RS=&#39;&#39; &#39;{for(i=1;i&lt;=NF;i++)printf(&#34;%dx%d=%d%s&#34;, i, NR, i*NR, i==NR?&#34;\n&#34;:&#34;\t&#34;)}&#39; </pre>
+<h4><span class="ez-toc-section" id="%E8%87%AA%E5%B7%B1%E6%92%B8%E5%90%A7"></span>自己撸吧<span class="ez-toc-section-end"></span></h4>
+<p>关于其中的一些知识点可以参看<a href="http://www.gnu.org/software/gawk/manual/gawk.html" target="_blank">gawk的手册</a>：</p>
+<ul>
+<li>内建变量，参看：<a href="http://www.gnu.org/software/gawk/manual/gawk.html#Built_002din-Variables" target="_blank">http://www.gnu.org/software/gawk/manual/gawk.html#Built_002din-Variables</a></li>
+<li>流控方面，参看：<a href="http://www.gnu.org/software/gawk/manual/gawk.html#Statements" target="_blank">http://www.gnu.org/software/gawk/manual/gawk.html#Statements</a></li>
+<li>内建函数，参看：<a href="http://www.gnu.org/software/gawk/manual/gawk.html#Built_002din" target="_blank">http://www.gnu.org/software/gawk/manual/gawk.html#Built_002din</a></li>
+<li>正则表达式，参看：<a href="http://www.gnu.org/software/gawk/manual/gawk.html#Regexp" target="_blank">http://www.gnu.org/software/gawk/manual/gawk.html#Regexp</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9070-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程工具</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">awk</a>, <a href="javascript:void(0)" rel="tag">gawk</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">Shell</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>AWK 简明教程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2190917" class="comment even thread-even depth-1">
+<article id="div-comment-2190917" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c7945545865f7339f4b38e7cf84fa1ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c7945545865f7339f4b38e7cf84fa1ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9070.html/comment-page-6#comment-2190917"><time datetime="2021-01-04T10:29:42+08:00">2021年01月04日 10:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>下面是最简单最常用的awk示例，其输出第1列和第4例，应该是第四列吧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2198646" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2198646" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2e993b18c8b40c7a11eef6f53cd07fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2e993b18c8b40c7a11eef6f53cd07fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Peter Zhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9070.html/comment-page-6#comment-2198646"><time datetime="2021-01-26T10:52:35+08:00">2021年01月26日 10:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>80后年轻朋友^^</p>
+</div>
+ </article>
+</li>
+<li id="comment-2231637" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.maiyewang.com/archives/117332" class="url" rel="ugc external nofollow">awk实现类sql的join操作 – Programming language</a> </div>
+</li>
+<li id="comment-2261433" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2261433" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e499f1ca5800a0c0af5659ddf63f44f3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e499f1ca5800a0c0af5659ddf63f44f3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qew</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9070.html/comment-page-6#comment-2261433"><time datetime="2021-06-10T05:07:51+08:00">2021年06月10日 05:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>强迫症看到这么多错别字有点难受。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2318127" class="comment even thread-even depth-1">
+<article id="div-comment-2318127" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c510febb9bed68b5cc4a09f076701e0f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c510febb9bed68b5cc4a09f076701e0f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">anon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9070.html/comment-page-6#comment-2318127"><time datetime="2021-10-11T12:57:54+08:00">2021年10月11日 12:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有热心网友把 The AWK Programming Language 翻译成了中文, <a href="https://github.com/wuzhouhui/awk" rel="nofollow ugc">https://github.com/wuzhouhui/awk</a>, 可以看看</p>
+</div>
+ </article>
+</li>
+<li id="comment-2360748" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://javaforall.cn/116880.html" class="url" rel="ugc external nofollow">Linux 常用命令解析和Bash Shell使用示例脚本演示 - 全栈程序员必看</a> </div>
+</li>
+<li id="comment-2370734" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/311455.html" class="url" rel="ugc external nofollow">研发技能表 – 源码巴士</a> </div>
+</li>
+<li id="comment-2371032" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.05vt.com/xtyw/1589.html" class="url" rel="ugc external nofollow">Linux运维基础技能： 脚本编程与Linux命令 - 吾爱分享</a> </div>
+</li>
+<li id="comment-2371057" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/40743.html" class="url" rel="ugc external nofollow">Awk学习笔记 - 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9070.html/comment-page-5#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9070.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/9070.html/comment-page-4#comments">4</a>
+<a class="page-numbers" href="/articles/9070.html/comment-page-5#comments">5</a>
+<span aria-current="page" class="page-numbers current">6</span> <span id="cp_post_id">9070</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

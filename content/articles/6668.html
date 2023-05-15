@@ -1,0 +1,366 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>再谈javascript面向对象编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6668 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6668" class="post-content post-6668 post type-post status-publish format-standard hentry category-webdev category-proglanguage tag-ecmascript tag-javascript tag-oop">
+<header class="entry-header">
+<span class="screen-reader-text">再谈javascript面向对象编程</span>
+<h1 class="entry-title">再谈javascript面向对象编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6668.html" title="08:25" rel="bookmark"><time class="entry-date" datetime="2012-02-27T08:25:13+08:00" pubdate="">2012年02月27日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6668.html#comments" class="comments-link">77 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 52,777 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>前言:</strong>虽有陈皓<a href="/articles/6441.html">《Javascript 面向对象编程》</a>珠玉在前，但是我还是忍不住再画蛇添足的补上一篇文章，主要是因为javascript这门语言魅力。另外这篇文章是一篇入门文章，我也是才开始学习Javascript，有一点心得，才想写一篇这样文章，文章中难免有错误的地方，还请各位不吝吐槽指正</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%90%90%E6%A7%BDJavascript" title="吐槽Javascript">吐槽Javascript</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#_proto_%E6%88%90%E5%91%98" title="__proto__成员">__proto__成员</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%87%BD%E6%95%B0%E5%AF%B9%E8%B1%A1prototype%E6%88%90%E5%91%98" title="函数对象prototype成员">函数对象prototype成员</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#new_%E6%93%8D%E4%BD%9C%E7%AC%A6" title="new 操作符">new 操作符</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#Pseudoclassical_%E7%BB%A7%E6%89%BF" title="Pseudoclassical 继承">Pseudoclassical 继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Prototypal%E7%BB%A7%E6%89%BF" title="Prototypal继承">Prototypal继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%82%E8%80%83" title="参考:">参考:</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E9%A2%98%E5%A4%96%E8%AF%9D%EF%BC%9A" title="题外话：">题外话：</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%90%90%E6%A7%BDJavascript"></span><strong><span style="color: #008000">吐槽Javascript</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>初次接触Javascript，这门语言的确会让很多正规军感到诸多的不适，这种不适来自于Javascript的语法的简练和不严谨，这种不适也来自Javascript这个悲催的名称，我在想网景公司的Javascript设计者在给他起名称那天一定是脑壳进水了,让Javascript这么多年来受了这么多不白之冤，人们都认为他是Java的附属物，一个WEB玩具语言。因此才会有些人会对Javascript不屑，认为Javascript不是一门真正的语言，但是这此他们真的错了。Javascript不仅是一门语言，是一门真真正正的语言，而且他还是一门里程碑式的语言，他独创多种新的编程模式原型继承，闭包（<strong>作者注：闭包不是JS首创，应该Scheme首创，prototypal inheritance 和 dynamic objects 是self语言首创，Javascript的首创并不精彩,谢谢网友的指正。</strong>），对后来的动态语言产生了巨大的影响。做为当今最流行的语言（没有之一），看看git上提交的最多的语言类型就能明白。随着HTML5的登场，浏览器将在个人电脑上将大显身手，完全有替换OS的趋势的时候，Javascript做为浏览器上的一门唯一真真的语言，如同C之于 unix/linux，java之于JVM，Cobol之于MainFrame，我们也需要来重新的认真地认识和审视这门语言。另外Javascript的正式名称是：ECMAScript，这个名字明显比Javascript帅太多了！<br/>
+<span id="more-6668"></span><br/>
+言归正传，我们切入主题——Javascript的面向对象编程。要谈Javascript的面向对象编程，我们第一步要做的事情就是忘记我们所学的面向对象编程。传统C++或Java的面向对象思维来学习Javascript的面向对象会给你带来不少困惑，让我们先忘记我们所学的，从新开始学习这门特殊的面向对象编程。既然是OO编程，要如何来理解OO编程呢，记得以前学C++，学了很久都不入门，后来有幸读了《Inside The C++ Object Model》这本大作，顿时豁然开朗，因此本文也将以对象模型的方式来探讨的Javascript的OO编程。因为Javascript 对象模型的特殊性，所以使得Javascript的继承和传统的继承非常不一样，同时也因为Javascript里面没有类，这意味着Javascript里面没有extends,implements。那么Javascript到底是如何来实现OO编程的呢？好吧，让我们开始吧，一起在Javascript的OO世界里来一次漫游</p>
+<p>首先，我们需要先看看Javascript如何定义一个对象。下面是我们的一个对象定义：</p>
+<p>[javascript]<br/>
+var o = {};<br/>
+[/javascript]</p>
+<p>还可以这样定义一个对象</p>
+<p>[javascript]<br/>
+function f() {<br/>
+}<br/>
+[/javascript]</p>
+<p>对，你们没有看错，在Javascript里面，函数也是对象。<br/>
+当然还可以</p>
+<p>[javascript]<br/>
+var array1= [ 1,2,3];<br/>
+[/javascript]</p>
+<p>数组也是一个对象。<br/>
+其他关于对象的基本的概念的描述，还是请各位亲们参见陈皓<a href="/articles/6441.html">《Javascript 面向对象编程》</a>文章。<br/>
+对象都有了，唯一没有的就是class，因为在Javascript里面是没有class关键字的，算好还有function，function的存在让我们可以变通的定义类，在扩展这个主题前，我们还需要了解一个Javascript对象最重要的属性，<strong>__proto__</strong>成员。</p>
+<h4><span class="ez-toc-section" id="_proto_%E6%88%90%E5%91%98"></span><strong><span style="color: #008000">__proto__成员</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>严格的说这个成员不应该叫这个名字，__proto__是Firefox中的称呼，__proto__只有在Firefox浏览器中才能被访问到。<strong>做为一个对象，当你访问其中的一个成员或方法的时候，如果这个对象中没有这个方法或成员，那么Javascript引擎将会访问这个对象的__proto__成员所指向的另外的一个对象，并在那个对象中查找指定的方法或成员，如果不能找到，那就会继续通过那个对象的__proto__成员指向的对象进行递归查找，直到这个链表结束</strong>。<br/>
+好了，让我们举一个例子。<br/>
+比如上上面定义的数组对象array1。当我们创建出array1这个对象的时候，array1实际在Javascript引擎中的对象模型如下：<br/>
+<img decoding="async" class="aligncenter size-full wp-image-6675" src="/uploads/2012/02/joo_1.png" alt="" width="416" height="208" srcset="" sizes="(max-width: 416px) 100vw, 416px"/><br/>
+array1对象具有一个length属性值为3，但是我们可以通过如下的方法来为array1增加元素：</p>
+<p>[javascript]<br/>
+array1.push(4);<br/>
+[/javascript]</p>
+<p>push这个方法来自于array1的__proto__成员指向对象的一个方法(Array.prototye.push())。正是因为所有的数组对象（通过[]来创建的）都包含有一个指向同一个具有push,reverse等方法对象(Array.prototype)的__proto__成员，才使得这些数组对象可以使用push,reverse等方法。</p>
+<p>那么这个__proto__这个属性就相当于面向对象中的”has a”关系，这样的的话，只要我们有一个模板对象比如Array.prototype这个对象，然后把其他的对象__proto__属性指向这个对象的话就完成了一种继承的模式。不错！我们完全可以这么干。但是别高兴的太早，这个属性只在FireFox中有效，其他的浏览器虽然也有属性，但是不能通过__proto__来访问，只能通过getPrototypeOf方法进行访问，而且这个属性是只读的。看来我们要在Javascript实现继承并不是很容易的事情啊。</p>
+<h4><span class="ez-toc-section" id="%E5%87%BD%E6%95%B0%E5%AF%B9%E8%B1%A1prototype%E6%88%90%E5%91%98"></span><strong><span style="color: #008000">函数对象prototype成员</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>首先我们先来看一段函数prototype成员的定义，</p>
+<blockquote><p><strong>When a function object is created, it is given a prototype member which is an object containing a constructor member which is a reference to the function object</strong><br/>
+当一个函数对象被创建时，这个函数对象就具有一个prototype成员，这个成员是一个对象，这个对象包含了一个构造子成员，这个构造子成员会指向这个函数对象。</p></blockquote>
+<p>例如：</p>
+<p>[javascript]<br/>
+function Base() {<br/>
+this.id = &#34;base&#34;<br/>
+}<br/>
+[/javascript]</p>
+<p>Base这个函数对象就具有一个prototype成员，关于构造子其实Base函数对象自身，为什么我们将这类函数称为构造子呢？原因是因为这类函数设计来和new 操作符一起使用的。为了和一般的函数对象有所区别，这类函数的首字母一般都大写。构造子的主要作用就是来创建一类相似的对象。</p>
+<p>上面这段代码在Javascript引擎的对象模型是这样的<br/>
+<img decoding="async" loading="lazy" class="aligncenter size-full wp-image-6678" src="/uploads/2012/02/joo_2.png" alt="" width="382" height="190" srcset="" sizes="(max-width: 382px) 100vw, 382px"/></p>
+<h4><span class="ez-toc-section" id="new_%E6%93%8D%E4%BD%9C%E7%AC%A6"></span><strong><span style="color: #008000">new 操作符</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>在有上面的基础概念的介绍之后，在加上new操作符，我们就能完成传统面向对象的class + new的方式创建对象，在Javascript中，我们将这类方式成为Pseudoclassical。<br/>
+基于上面的例子，我们执行如下代码</p>
+<p>[javascript]<br/>
+var obj = new Base();<br/>
+[/javascript]</p>
+<p>这样代码的结果是什么，我们在Javascript引擎中看到的对象模型是：<br/>
+<img decoding="async" loading="lazy" class="aligncenter size-full wp-image-6680" src="/uploads/2012/02/joo_3.png" alt="" width="403" height="207" srcset="" sizes="(max-width: 403px) 100vw, 403px"/></p>
+<p>new操作符具体干了什么呢?其实很简单，就干了三件事情。</p>
+<p>[javascript]<br/>
+var obj = {};<br/>
+obj.__proto__ = Base.prototype;<br/>
+Base.call(obj);<br/>
+[/javascript]</p>
+<p>第一行，我们创建了一个空对象obj<br/>
+第二行，我们将这个空对象的__proto__成员指向了Base函数对象prototype成员对象<br/>
+第三行，我们将Base函数对象的this指针替换成obj，然后再调用Base函数，于是我们就给obj对象赋值了一个id成员变量，这个成员变量的值是”base”，关于call函数的用法，请参看陈皓<a href="/articles/6441.html">《Javascript 面向对象编程》</a>文章<br/>
+如果我们给Base.prototype的对象添加一些函数会有什么效果呢？<br/>
+例如代码如下：</p>
+<p>[javascript]<br/>
+Base.prototype.toString = function() {<br/>
+return this.id;<br/>
+}<br/>
+[/javascript]</p>
+<p>那么当我们使用new创建一个新对象的时候，根据__proto__的特性，toString这个方法也可以做新对象的方法被访问到。于是我们看到了：<br/>
+<strong>构造子中，我们来设置‘类’的成员变量（例如：例子中的id），构造子对象prototype中我们来设置‘类’的公共方法。于是通过函数对象和Javascript特有的__proto__与prototype成员及new操作符，模拟出类和类实例化的效果。</strong></p>
+<h4><span class="ez-toc-section" id="Pseudoclassical_%E7%BB%A7%E6%89%BF"></span><strong><span style="color: #008000">Pseudoclassical 继承</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>我们模拟类，那么继承又该怎么做呢？其实很简单，我们只要将构造子的prototype指向父类即可。例如我们设计一个Derive 类。如下</p>
+<p>[javascript]<br/>
+function Derive(id) {<br/>
+this.id = id;<br/>
+}<br/>
+Derive.prototype = new Base();<br/>
+Derive.prototype.test = function(id){<br/>
+return this.id === id;<br/>
+}<br/>
+var newObj = new Derive(&#34;derive&#34;);<br/>
+[/javascript]</p>
+<p>这段代码执行后的对象模型又是怎么样的呢？根据之前的推导，应该是如下的对象模型<br/>
+<img decoding="async" loading="lazy" class="aligncenter size-full wp-image-6686" src="/uploads/2012/02/joo_4.png" alt="" width="645" height="216" srcset="" sizes="(max-width: 645px) 100vw, 645px"/><br/>
+这样我们的newObj也继承了基类Base的toString方法，并且具有自身的成员id。关于这个对象模型是如何被推导出来的就留给各位同学了，参照前面的描述，推导这个对象模型应该不难。<br/>
+Pseudoclassical继承会让学过C++/Java的同学略微的感受到一点舒服，特别是new关键字，看到都特亲切，不过两者虽然相似，但是机理完全不同。当然不关什么样继承都是不能离不开__proto__成员的。</p>
+<h4><span class="ez-toc-section" id="Prototypal%E7%BB%A7%E6%89%BF"></span><strong><span style="color: #008000">Prototypal继承</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>这是Javascript的另外一种继承方式，这个继承也就是之前陈皓文章《Javascript 面向对象编程》中create函数，非常可惜的是这个是ECMAScript V5的标准，支持V5的浏览器目前看来也就是IE9，Chrome最新版本和Firefox。虽然看着多，但是做为IE6的重灾区的中国，我建议各位还是避免使用create函数。好在没有create函数之前，Javascript的使用者已经设计出了等同于这个函数的。例如：我们看看Douglas Crockford的object函数。</p>
+<p>[javascript]<br/>
+function object(old) {<br/>
+function F() {};<br/>
+F.prototype = old;<br/>
+return new F();<br/>
+}<br/>
+var newObj = object(oldObject);<br/>
+[/javascript]</p>
+<p>例如如下代码段</p>
+<p>[javascript]<br/>
+var base ={<br/>
+id:&#34;base&#34;,<br/>
+toString:function(){<br/>
+return this.id;<br/>
+}<br/>
+};<br/>
+var derive = object(base);<br/>
+[/javascript]</p>
+<p>上面函数的执行后的对象模型是：<br/>
+<img decoding="async" loading="lazy" class="aligncenter size-full wp-image-6688" src="/uploads/2012/02/joo_5.png" alt="" width="451" height="230" srcset="" sizes="(max-width: 451px) 100vw, 451px"/><br/>
+如何形成这样的对象模型，原理也很简单，只要把object这个函数扩展一下，就能画出这个模型，怎么画留给读者自己去画吧。<br/>
+这样的继承方式被称为原型继承。相对来说要比Pseudoclassical继承来的简单方便。ECMAScript V5正是因为这原因也才增加create函数，让开发者可以快速的实现原型继承。<br/>
+上述两种继承方式是Javascript中最常用的继承方式。通过本文的讲解，你应该对Javascript的OO编程有了一些‘原理’级的了解了吧</p>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83"></span><strong><span style="color: #008000">参考:</span></strong><span class="ez-toc-section-end"></span></h4>
+<p><a href="http://msdn.microsoft.com/en-us/scriptjunkie/ff852808">《Prototypes and Inheritance in JavaScript Prototypes and Inheritance in JavaScript》</a><br/>
+<a href="http://yuiblog.com/blog/2006/11/27/video-crockford-advjs/" target="_blank">Advance Javascript</a> （Douglas Crockford 大神的视频，一定要看啊）</p>
+<h4><span class="ez-toc-section" id="%E9%A2%98%E5%A4%96%E8%AF%9D%EF%BC%9A"></span><strong><span style="color: #008000">题外话：</span></strong><span class="ez-toc-section-end"></span></h4>
+<p>web2.0后，web应用可谓飞速发展，如今在HTML5发布之际，浏览器的功能被大大强化，我感觉Browser远远在不是一个Browser那么简单了。记得C++之父曾经这样说过JAVA，JAVA不是跨平台，JAVA本身就是一个平台。如今的Browser也本身就是一个平台了，好在这个平台是基于标准的。如果Browser是平台，由于Browser安全沙箱的限制，个人电脑的资源被使用的很少，感觉Browser就是一个NC（Network Computer）？我们居然又回到了Sun最初提出的构想，Sun是不是太强大了些？</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6668-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ECMAScript</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">OOP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>再谈javascript面向对象编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-193991" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ppxu.net/archives/382" class="url" rel="ugc external nofollow">JavaScript原型和继承 | 最前端的寂寞</a> </div>
+</li>
+<li id="comment-194016" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-194016" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0c987d94d37f5d19f5b6c4fedff65e0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0c987d94d37f5d19f5b6c4fedff65e0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/and1coder" class="url" rel="ugc external nofollow">三桂</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6668.html/comment-page-2#comment-194016"><time datetime="2012-05-21T16:38:03+08:00">2012年05月21日 16:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文,收获不少…</p>
+</div>
+ </article>
+</li>
+<li id="comment-195819" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://webshuo.com/2012/05/30/javascript%e5%8e%9f%e5%9e%8b%e5%92%8c%e7%bb%a7%e6%89%bf/" class="url" rel="ugc external nofollow">编码者说 » Blog Archive » JavaScript原型和继承 - 为web开发者而建</a> </div>
+</li>
+<li id="comment-197471" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-197471" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c2d70f49ec04ce98f7d532dc4e6ee910?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c2d70f49ec04ce98f7d532dc4e6ee910?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小白</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6668.html/comment-page-2#comment-197471"><time datetime="2012-06-25T10:14:29+08:00">2012年06月25日 10:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章不太严谨 有点失望</p>
+</div>
+ </article>
+</li>
+<li id="comment-199740" class="comment even thread-even depth-1">
+<article id="div-comment-199740" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4c15fb56a95c3e7ec4abdfbfc64de49?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4c15fb56a95c3e7ec4abdfbfc64de49?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Lin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6668.html/comment-page-2#comment-199740"><time datetime="2012-07-25T11:33:28+08:00">2012年07月25日 11:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你好，我是一家用人单位（非猎头），我们正在寻找一名高级JS开发工程师。看过你的文章觉得你对JS有比较深入的理解和自己的分析，符合我们的招聘需求。如果你最近有换工作的考虑，请与我联系，email：<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1d756f5d78707c7e7178337e7270">[email protected]</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-240965" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-240965" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/569efe4ad5282a002cfacae0c02f772a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/569efe4ad5282a002cfacae0c02f772a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">探索者西瓜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6668.html/comment-page-2#comment-240965"><time datetime="2012-12-18T09:37:44+08:00">2012年12月18日 09:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-141297" rel="nofollow">@刘学政博客 </a><br/>
+是啊，我差不多也就停留在蜻蜓点水的阶段，会些简单的应用，未有深究啊……</p>
+</div>
+ </article>
+</li>
+<li id="comment-307106" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liudongxiao.cn/?p=33" class="url" rel="ugc external nofollow">javascript面向对象 | 个人小站</a> </div>
+</li>
+<li id="comment-375919" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cavabiao.com/2013/05/js%e5%8e%9f%e5%9e%8b%e3%80%81%e7%bb%a7%e6%89%bf/" class="url" rel="ugc external nofollow">js原型、继承 | Cavabiao</a> </div>
+</li>
+<li id="comment-482624" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jida.sinaapp.com/?p=74" class="url" rel="ugc external nofollow">再谈JavaScript面向对象编程 – 集大博客</a> </div>
+</li>
+<li id="comment-707279" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1908" class="url" rel="ugc external nofollow">Technology of Heartbeat #14 | Steve Guan</a> </div>
+</li>
+<li id="comment-824014" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cavabiao.com/prototype-and-inherit-of-javascript/" class="url" rel="ugc external nofollow">js原型、继承 | Cavabiao</a> </div>
+</li>
+<li id="comment-1111273" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/10822.html" class="url" rel="ugc">函数式编程 | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1112207" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=298" class="url" rel="ugc external nofollow">函数式编程 | zengine</a> </div>
+</li>
+<li id="comment-1112973" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=511" class="url" rel="ugc external nofollow">函数式编程 | 星达红</a> </div>
+</li>
+<li id="comment-1117072" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://gaobo.name/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">【酷壳】 函数式编程 - 小博博客</a> </div>
+</li>
+<li id="comment-1167634" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jsbyz.cn/20140111/%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">函数式编程 | 技术不要宅</a> </div>
+</li>
+<li id="comment-1477605" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10258.html" class="url" rel="ugc external nofollow">函数式编程 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1491812" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/29587.html" class="url" rel="ugc external nofollow">函数式编程 – 马开东博客</a> </div>
+</li>
+<li id="comment-1535735" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.jsbyz.cn/2014/09/16/%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">函数式编程 – 技术不要宅</a> </div>
+</li>
+<li id="comment-1689254" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://haku8.com/?p=221" class="url" rel="ugc external nofollow">函数式编程（Functional Programming） | haku8.com</a> </div>
+</li>
+<li id="comment-1698835" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hao.jser.com/archive/7733/" class="url" rel="ugc external nofollow">你真的弄明白new了吗 — 好JSER</a> </div>
+</li>
+<li id="comment-1754432" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fedte.cc/p/151" class="url" rel="ugc external nofollow">JavaScript原型和继承 – Falost的小窝</a> </div>
+</li>
+<li id="comment-1820013" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog-oxnz.rhcloud.com/2014/04/30/%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b/" class="url" rel="ugc external nofollow">函数式编程 – TechStack</a> </div>
+</li>
+<li id="comment-1825093" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e5%87%bd%e6%95%b0%e5%bc%8f%e7%bc%96%e7%a8%8b-codeba-cc.html" class="url" rel="ugc external nofollow">函数式编程 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-2128270" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/10822.html" class="url" rel="ugc">函数式编程 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2299761" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1099195" class="url" rel="ugc external nofollow">什么是函数式编程？ - 算法网</a> </div>
+</li>
+<li id="comment-2360910" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2121817" class="url" rel="ugc external nofollow">什么是函数式编程？ | 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6668.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6668.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">6668</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,486 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>深入理解C语言 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5761 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5761" class="post-content post-5761 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c tag-dennis-ritchie">
+<header class="entry-header">
+<span class="screen-reader-text">深入理解C语言</span>
+<h1 class="entry-title">深入理解C语言</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5761.html" title="08:26" rel="bookmark"><time class="entry-date" datetime="2011-11-01T08:26:38+08:00" pubdate="">2011年11月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5761.html#comments" class="comments-link">190 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 169,385 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>Dennis Ritchie  过世了，他发明了C语言，一个影响深远并彻底改变世界的计算机语言。一门经历40多年的到今天还长盛不衰的语言，今天很多语言都受到C的影响，C++，Java，C#，Perl， PHP， Javascript， 等等。但是，你对C了解吗？相信你看过本站的《<a title="C语言的谜题" href="/articles/945.html" target="_blank">C语言的谜题</a>》还有《<a title="谁说C语言很简单？" href="/articles/873.html" target="_blank">谁说C语言很简单？</a>》，这里，我再写一篇关于深入理解C语言的文章，一方面是缅怀Dennis，另一方面是告诉大家应该如何学好一门语言。（顺便注明一下，下面的一些例子来源于<a href="http://www.slideshare.net/olvemaudal/deep-c" target="_blank">这个slides</a>）</p>
+<p>首先，我们先来看下面这个经典的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main()
+{
+    int a = 42;
+    printf(“%d\n”, a);
+}</pre>
+<p>从这段代码里你看到了什么问题？我们都知道，这段程序里少了一个#include &lt;stdio.h&gt; 还少了一个return 0;的返回语句。</p>
+<p>不过，让我们来深入的学习一下，</p>
+<ul>
+<li>这段代码在C++下无法编译，因为C++需要明确声明函数</li>
+<li>这段代码在C的编译器下会编译通过，因为在编译期，编译器会生成一个printf的函数定义，并生成.o文件，链接时，会找到标准的链接库，所以能编译通过。</li>
+<li> 但是，你知道这段程序的退出码吗？在ANSI-C下，退出码是一些未定义的垃圾数。但在C89下，退出码是3，因为其取了printf的返回值。为什么printf函数返回3呢？因为其输出了’4′, ‘2’,’\n’ 三个字符。而在C99下，其会返回0，也就是成功地运行了这段程序。你可以使用gcc的 -std=c89或是-std=c99来编译上面的程序看结果。</li>
+<li>另外，我们还要注意main()，在C标准下，如果一个函数不要参数，应该声明成main(void)，而main()其实相当于main(…)，也就是说其可以有任意多的参数。</li>
+</ul>
+<p>我们再来看一段代码：</p>
+<p><span id="more-5761"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+void f(void)
+{
+   static int a = 3;
+   static int b;
+   int c;
+   ++a; ++b; ++c;
+   printf(&#34;a=%d\n&#34;, a);
+   printf(&#34;b=%d\n&#34;, b);
+   printf(&#34;c=%d\n&#34;, c);
+}
+int main(void)
+{
+   f();
+   f();
+   f();
+}</pre>
+<p>这个程序会输出什么？</p>
+<ul>
+<li>我相信你对a的输出相当有把握，就分别是4，5，6，因为那个静态变量。</li>
+<li>对于c呢，你应该也比较肯定，那是一堆乱数。</li>
+<li>但是你可能不知道b的输出会是什么？答案是1，2，3。为什么和c不一样呢？因为，如果要初始化，每次调用函数里，编译器都要初始化函数栈空间，这太费性能了。但是c的编译器会初始化静态变量为0，因为这只是在启动程序时的动作。</li>
+<li>全局变量同样会被初始化。</li>
+</ul>
+<p>说到全局变量，你知道 静态全局变量和一般全局变量的差别吗？是的，对于static 的全局变量，其对链接器不可以见，也就是说，这个变量只能在当前文件中使用。</p>
+<p>我们再来看一个例子：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+void foo(void)
+{
+    int a;
+    printf(&#34;%d\n&#34;, a);
+}
+void bar(void)
+{
+    int a = 42;
+}
+int main(void)
+{
+    bar();
+    foo();
+}
+</pre>
+<p>你知道这段代码会输出什么吗？A) 一个随机值，B) 42。A 和 B都对（在“<a title="在函数外存取局部变量的一个比喻" href="/articles/4907.html" target="_blank">在函数外存取局部变量的一个比喻</a>”文中的最后给过这个例子），不过，你知道为什么吗？</p>
+<ul>
+<li>如果你使用一般的编译，会输出42，因为我们的编译器优化了函数的调用栈（重用了之前的栈），为的是更快，这没有什么副作用。反正你不初始化，他就是随机值，既然是随机值，什么都无所谓。</li>
+<li>但是，如果你的编译打开了代码优化的开关，-O，这意味着，foo()函数的代码会被优化成main()里的一个inline函数，也就是说没有函数调用，就像宏定义一样。于是你会看到一个随机的垃圾数。</li>
+</ul>
+<p>下面，我们再来看一个示例：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int b(void) { printf(“3”); return 3; }
+int c(void) { printf(“4”); return 4; }
+int main(void)
+{
+   int a = b() + c();
+   printf(“%d\n”, a);
+}</pre>
+<p>这段程序会输出什么？，你会说是，3，4，7。但是我想告诉你，这也有可能输出，4，3，7。为什么呢？ 这是因为，在C/C++中，表达的评估次序是没有标准定义的。编译器可以正着来，也可以反着来，所以，不同的编译器会有不同的输出。你知道这个特性以后，你就知道这样的程序是没有可移植性的。</p>
+<p>我们再来看看下面的这堆代码，他们分别输出什么呢？</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">int a=41; a++; printf(&#34;%d\n&#34;, a);</code><br/>
+<code data-enlighter-language="c" class="EnlighterJSRAW">int a=41; a++ &amp; printf(&#34;%d\n&#34;, a);</code><br/>
+<code data-enlighter-language="c" class="EnlighterJSRAW">int a=41; a++ &amp;&amp; printf(&#34;%d\n&#34;, a);</code><br/>
+<code data-enlighter-language="c" class="EnlighterJSRAW">int a=41; if (a++ &lt; 42) printf(&#34;%d\n&#34;, a);</code><br/>
+<code data-enlighter-language="c" class="EnlighterJSRAW">int a=41; a = a++; printf(&#34;%d\n&#34;, a);</code></p>
+<p>只有示例一，示例三，示例四输出42，而示例二和五的行为则是未定义的。关于这种未定义的东西是因为Sequence Points的影响（Sequence Points是一种规则，也就是程序执行的序列点，在两点之间的表达式只能对变量有一次修改），因为这会让编译器不知道在一个表达式顺列上如何存取变量的值。比如a = a++，a + a++，不过，在C中，这样的情况很少。</p>
+<p>下面，再看一段代码：（假设int为4字节，char为1字节）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct X { int a; char b; int c; };
+printf(&#34;%d,&#34;, sizeof(struct X));
+struct Y { int a; char b; int c; char d};
+printf(&#34;%d\n&#34;, sizeof(struct Y));</pre>
+<p>这个代码会输出什么?</p>
+<p style="padding-left: 30px;">a) 9，10<br/>
+b)12, 12<br/>
+c)12, 16</p>
+<p>答案是C，我想，你一定知道字节对齐，是向4的倍数对齐。</p>
+<ul>
+<li>但是，你知道为什么要字节对齐吗？还是因为性能。因为这些东西都在内存里，如果不对齐的话，我们的编译器就要向内存一个字节一个字节的取，这样一来，struct X，就需要取9次，太浪费性能了，而如果我一次取4个字节，那么我三次就搞定了。所以，这是为了性能的原因。</li>
+<li>但是，为什么struct Y不向12 对齐，却要向16对齐，因为char d; 被加在了最后，当编译器计算一个结构体的尺寸时，是边计算，边对齐的。也就是说，编译器先看到了int，很好，4字节，然后是 char，一个字节，而后面的int又不能填上还剩的3个字节，不爽，把char b对齐成4，于是计算到d时，就是13 个字节，于是就是16啦。但是如果换一下d和c的声明位置，就是12了。</li>
+</ul>
+<p>另外，再提一下，上述程序的printf中的%d并不好，因为，在64位下，sizeof的size_t是unsigned long，而32位下是 unsigned int，所以，C99引入了一个专门给size_t用的%zu。这点需要注意。在64位平台下，C/C++ 的编译需要注意很多事。你可以参看《<a title="64位平台C/C++开发注意事项" href="/articles/3512.html" target="_blank">64位平台C/C++开发注意事项</a>》。</p>
+<p>下面，我们再说说编译器的Warning，请看代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main(void)
+{
+    int a;
+    printf(&#34;%d\n&#34;, a);
+}</pre>
+<p>考虑下面两种编译代码的方式 ：</p>
+<ul>
+<li>cc -Wall a.c</li>
+<li>cc -Wall -O a.c</li>
+</ul>
+<p>前一种是不会编译出a未初化的警告信息的，而只有在-O的情况下，才会有未初始化的警告信息。这点就是为什么我们在makefile里的CFLAGS上总是需要-Wall和 -O。</p>
+<p>最后，我们再来看一个指针问题，你看下面的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main(void)
+{
+    int a[5];
+    printf(&#34;%x\n&#34;, a);
+    printf(&#34;%x\n&#34;, a+1);
+    printf(&#34;%x\n&#34;, &amp;a);
+    printf(&#34;%x\n&#34;, &amp;a+1);
+}</pre>
+<p>假如我们的a的地址是：0Xbfe2e100, 而且是32位机，那么这个程序会输出什么？</p>
+<ul>
+<li>第一条printf语句应该没有问题，就是 bfe2e100</li>
+<li>第二条printf语句你可能会以为是bfe2e101。那就错了，a+1，编译器会编译成 a+ 1*sizeof(int)，int在32位下是4字节，所以是加4，也就是bfe2e104</li>
+<li>第三条printf语句可能是你最头疼的，我们怎么知道a的地址？我不知道吗？可不就是bfe2e100。那岂不成了a==&amp;a啦？这怎么可能？自己存自己的？也许很多人会觉得指针和数组是一回事，那么你就错了。如果是 int *a，那么没有问题，因为a是指针，所以 &amp;a 是指针的地址，a 和 &amp;a不一样。但是这是数组啊a[]，所以&amp;a其实是被编译成了 &amp;a[0]。</li>
+<li>第四条printf语句就很自然了，就是bfe2e104。还是不对，因为是&amp;a是数组，被看成int(*)[5]，所以sizeof(a)是5，也就是5*sizeof(int)，也就是bfe2e114。</li>
+</ul>
+<p>看过这么多，你可能会觉得C语言设计得真扯淡啊。不过我要告诉下面几点Dennis当初设计C语言的初衷：</p>
+<p style="padding-left: 30px;"><strong>1）相信程序员，不阻止程序员做他们想做的事。</strong></p>
+<p style="padding-left: 30px;"><strong>2）保持语言的简洁，以及概念上的简单。</strong></p>
+<p style="padding-left: 30px;"><strong>3）保证性能，就算牺牲移植性。</strong></p>
+<p>今天很多语言进化得很高级了，语法也越来越复杂和强大，但是C语言依然光芒四射，Dennis离世了，但是C语言的这些设计思路将永远不朽。</p>
+<p><strong>（请勿用于商业用途，转载时请注明作者和出处）</strong></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5761-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Dennis Ritchie</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>深入理解C语言</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1411251" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gushifei.com/2014/04/01/c%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 - 故事狒</a> </div>
+</li>
+<li id="comment-1411397" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=931" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | zengine</a> </div>
+</li>
+<li id="comment-1411479" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ueshell.com/?p=138" class="url" rel="ugc external nofollow">dayu博客 » C语言结构体里的成员数组和指针</a> </div>
+</li>
+<li id="comment-1412208" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/4261.html" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1413120" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yvtu.wordpress.com/2014/04/02/%e5%8f%91%e5%b8%83%e5%88%b0yvtu-wp-04032014/" class="url" rel="ugc external nofollow">发布到yvtu.WP 04/03/2014 | 御荼|Flip side of AL</a> </div>
+</li>
+<li id="comment-1414309" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1414309" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ebdd4cafc5cf26f4d123fe4d7a78033d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ebdd4cafc5cf26f4d123fe4d7a78033d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yongsean</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1414309"><time datetime="2014-04-04T13:09:52+08:00">2014年04月04日 13:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>地址和地址的地址会一样吗？<a href="#comment-91022" rel="nofollow">@rat </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1422418" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=976" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | 星达红</a> </div>
+</li>
+<li id="comment-1422582" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1422582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cea5366538dc7bcc65c4b36926882e7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cale</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1422582"><time datetime="2014-04-13T23:09:11+08:00">2014年04月13日 23:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因为，如果要初始化，每次调用函数里，编译器都要初始化函数栈空间，这太费性能了</p>
+<p>静态变量只会初始化一次。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1448752" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://c.iustudio.cc/?p=220" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | C/C++小组</a> </div>
+</li>
+<li id="comment-1450485" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://c.iustudio.cc/archives/220" class="url" rel="ugc external nofollow">C/C++小组 » C语言结构体里的成员数组和指针</a> </div>
+</li>
+<li id="comment-1513297" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30437.html" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 – 马开东博客</a> </div>
+</li>
+<li id="comment-1575098" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1575098" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/234f8650fb035f5b39e5c4aedef17def?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/234f8650fb035f5b39e5c4aedef17def?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JIm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1575098"><time datetime="2014-10-17T18:10:43+08:00">2014年10月17日 18:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是滴呀，大学老师只会忽悠人<a href="#comment-126047" rel="nofollow">@aa </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1628277" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.veapon.com/?p=393" class="url" rel="ugc external nofollow">小内存环境下使用PHP Composer | 星期三</a> </div>
+</li>
+<li id="comment-1645855" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1645855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de5be69d9b9baf9221728e66202c8e36?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de5be69d9b9baf9221728e66202c8e36?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dcfans.com.cn" class="url" rel="ugc external nofollow">单车</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1645855"><time datetime="2015-01-17T11:20:24+08:00">2015年01月17日 11:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>单车：www.dcfans.com.cn</p>
+</div>
+ </article>
+</li>
+<li id="comment-1655086" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.arecoders.cn/?p=345" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 - C/C++ - AreCoders为序网</a> </div>
+</li>
+<li id="comment-1677066" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://clog.sinaapp.com/?p=15" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | 多啦A梦</a> </div>
+</li>
+<li id="comment-1679472" class="comment even thread-even depth-1">
+<article id="div-comment-1679472" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7e8138c32baa3846875f49b0b59cfd9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7e8138c32baa3846875f49b0b59cfd9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">BXZZ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1679472"><time datetime="2015-03-24T10:32:43+08:00">2015年03月24日 10:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个说成深入理解C语言不太合适啊。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1680262" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://youngershen.com/2015/03/25/c%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88.html" class="url" rel="ugc external nofollow">Coding in a deep » C语言结构体里的成员数组和指针</a> </div>
+</li>
+<li id="comment-1702246" class="comment even thread-even depth-1">
+<article id="div-comment-1702246" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Coffee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1702246"><time datetime="2015-05-06T16:27:47+08:00">2015年05月06日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>到处是坑！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1714964" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1714964" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/817dce1d9aa9d8b1cc99ce2b40eebbe4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/817dce1d9aa9d8b1cc99ce2b40eebbe4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1714964"><time datetime="2015-05-28T23:06:16+08:00">2015年05月28日 23:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一段代码在哪个C语言的编译器下编译通过了?我用GCC v4.8.3不行啊<br/>
+还有奇怪的错误.</p>
+<p>sh-4.3# gcc -o main *.c<br/>
+main.c: In function ‘main’:<br/>
+main.c:4:5: warning: incompatible implicit declaration of built-in function ‘printf’<br/>
+printf(“%d\n”, a);<br/>
+^<br/>
+main.c:4:5: error: stray ‘\342’ in program<br/>
+main.c:4:5: error: stray ‘\200’ in program<br/>
+main.c:4:5: error: stray ‘\234’ in program<br/>
+main.c:4:15: error: expected expression before ‘%’ token<br/>
+printf(“%d\n”, a);<br/>
+^<br/>
+main.c:4:15: error: stray ‘\’ in program<br/>
+main.c:4:15: error: stray ‘\342’ in program<br/>
+main.c:4:15: error: stray ‘\200’ in program<br/>
+main.c:4:15: error: stray ‘\235’ in program</p>
+</div>
+ </article>
+</li>
+<li id="comment-1714965" class="comment even thread-even depth-1">
+<article id="div-comment-1714965" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/817dce1d9aa9d8b1cc99ce2b40eebbe4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/817dce1d9aa9d8b1cc99ce2b40eebbe4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1714965"><time datetime="2015-05-28T23:10:51+08:00">2015年05月28日 23:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对不起我错了, 直接粘贴了皓叔的代码<br/>
+皓叔代码的引号不是普通的引号….</p>
+<p>这个链接:<a href="http://stackoverflow.com/questions/2340930/stray-342-in-c-program" rel="nofollow ugc">http://stackoverflow.com/questions/2340930/stray-342-in-c-program</a></p>
+<p>The symbol ” is not “. Those are called ‘smart quotes’ and are usually found in rich documents or blogs.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754078" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1754078" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/491f440ff0d878047bc2f137a1bbccf6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/491f440ff0d878047bc2f137a1bbccf6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">男小北</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1754078"><time datetime="2015-09-06T15:42:27+08:00">2015年09月06日 15:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天调试stm32遇到结构体 对齐问题 读此文章 受益匪浅</p>
+</div>
+ </article>
+</li>
+<li id="comment-1801030" class="comment even thread-even depth-1">
+<article id="div-comment-1801030" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8e94b219e4b3d9b1bdb94fd52274bb78?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8e94b219e4b3d9b1bdb94fd52274bb78?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张鸣筝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1801030"><time datetime="2015-12-15T15:37:38+08:00">2015年12月15日 15:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>思想很重要，学习了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825101" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/c%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88-codeba-cc.html" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1839181" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2096" class="url" rel="ugc external nofollow">C语言结构体里的成员数组和指针 – linux运维部落</a> </div>
+</li>
+<li id="comment-1851255" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1851255" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/876945896b8368b3014f27da377a54ff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/876945896b8368b3014f27da377a54ff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">walkingskeleton</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1851255"><time datetime="2016-06-23T16:53:06+08:00">2016年06月23日 16:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这段代码 引号是全角的，所以不管是 C 或 C++下都编译不过</p>
+</div>
+ </article>
+</li>
+<li id="comment-1910109" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yang.lol/2017/01/06/c-%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C 语言结构体里的成员数组和指针 – lol</a> </div>
+</li>
+<li id="comment-1914311" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1914311" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a55103a1276b543785356c2bcf8b739c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a55103a1276b543785356c2bcf8b739c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">朝雾</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-1914311"><time datetime="2017-06-12T15:02:17+08:00">2017年06月12日 15:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第四条printf语句就很自然了，就是bfe2e104。还是不对，因为是&amp;a是数组，被看成int(*)[5]，所以sizeof(a)是5，也就是5*sizeof(int)，也就是bfe2e114。</p>
+<p>对于这一点，我不是特别理解其逻辑：&amp;a被解释成数组，这和sizeof(a)有什么关系；还有，sizeof(a)，我实际运行计算结果是20；</p>
+</div>
+ </article>
+</li>
+<li id="comment-1915741" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ixyzero.com/blog/archives/3461.html" class="url" rel="ugc external nofollow">源码编译中configure&amp;&amp;make&amp;&amp;make install背后的魔力 | ASPIRE</a> </div>
+</li>
+<li id="comment-2119827" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2119827" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ffcbfa456006b3491f8adff9b551697?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ffcbfa456006b3491f8adff9b551697?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ygsea.com" class="url" rel="ugc external nofollow">阳光之海</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5761.html/comment-page-4#comment-2119827"><time datetime="2020-06-15T19:06:09+08:00">2020年06月15日 19:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>前来学习</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/5761.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/5761.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/5761.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/5761.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">5761</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

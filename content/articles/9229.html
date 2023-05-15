@@ -1,0 +1,773 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>实例分析Java Class的文件结构 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9229 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9229" class="post-content post-9229 post type-post status-publish format-standard hentry category-javadev tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">实例分析Java Class的文件结构</span>
+<h1 class="entry-title">实例分析Java Class的文件结构</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9229.html" title="23:28" rel="bookmark"><time class="entry-date" datetime="2013-03-05T23:28:51+08:00" pubdate="">2013年03月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/tiger-zhou" title="View all posts by tiger.zhou" rel="author">tiger.zhou</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9229.html#comments" class="comments-link">48 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 51,892 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>【感谢网友 @<a title="Krq_Tiger" href="http://weibo.com/xmuzyq" target="_blank">Krq_Tiger</a> 投稿】</strong></p>
+<p>今天把之前在Evernote中的笔记重新整理了一下，发上来供对java class 文件结构的有兴趣的同学参考一下。</p>
+<p>学习Java的朋友应该都知道Java从刚开始的时候就打着平台无关性的旗号，说“一次编写，到处运行”，其实说到无关性，Java平台还有另外一个无关 性那就是语言无关性，要实现语言无关性，那么Java体系中的class的文件结构或者说是字节码就显得相当重要了，其实Java从刚开始的时候就有两套 规范，一个是Java语言规范，另外一个是Java虚拟机规范，Java语言规范只是规定了Java语言相关的约束以及规则，而虚拟机规范则才是真正从跨 平台的角度去设计的。今天我们就以一个实际的例子来看看，到底Java中一个Class文件对应的字节码应该是什么样子。 这篇文章将首先总体上阐述一下Class到底由哪些内容构成，然后再用一个实际的Java类入手去分析class的文件结构。</p>
+<p>在继续之前，我们首先需要明确如下几点：</p>
+<p style="padding-left: 30px;">1）Class文件是有8个字节为基础的字节流构成的，这些字节流之间都严格按照规定的顺序排列，并且字节之间不存在任何空隙，对于超过8个字节的数据，将按 照Big-Endian的顺序存储的，也就是说高位字节存储在低的地址上面，而低位字节存储到高地址上面，其实这也是class文件要跨平台的关键，因为 PowerPC架构的处理采用Big-Endian的存储顺序，而x86系列的处理器则采用Little-Endian的存储顺序，因此为了Class文 件在各中处理器架构下保持统一的存储顺序，虚拟机规范必须对起进行统一。</p>
+<p style="padding-left: 30px;">2） Class文件结构采用类似C语言的结构体来存储数据的，主要有两类数据项，无符号数和表，无符号数用来表述数字，索引引用以及字符串等，比如 u1,u2,u4,u8分别代表1个字节，2个字节，4个字节，8个字节的无符号数，而表是有多个无符号数以及其它的表组成的复合结构。可能大家看到这里 对无符号数和表到底是上面也不是很清楚，不过不要紧，等下面实例的时候，我会再以实例来解释。</p>
+<p>明确了上面的两点以后，我们接下来后来看看Class文件中按照严格的顺序排列的字节流都具体包含些什么数据：</p>
+<p><span id="more-9229"></span></p>
+<p style="text-align: center;"><img decoding="async" class="aligncenter" title="点击查看原始大小图片" alt="" src="/uploads/2013/03/1.png" width="700" height="399" srcset=""/></p>
+<p style="text-align: center;">（上图来自The Java Virtual Machine Specification Java SE 7 Edition)</p>
+<p>在看上图的时候，有一点我们需要注意，比如cp_info，cp_info表示常量池，上图中用 constant_pool[constant_pool_count-1]的方式来表示常量池有constant_pool_count-1个常量，它 这里是采用数组的表现形式，但是大家不要误以为所有的常量池的常量长度都是一样的，其实这个地方只是为了方便描述采用了数组的方式，但是这里并不像编程语 言那里，一个int型的数组，每个int长度都一样。明确了这一点以后，我们在回过头来看看上图中每一项都具体代表了什么含义。</p>
+<p>1）u4 magic 表示魔数，并且魔数占用了4个字节，魔数到底是做什么的呢？它其实就是表示一下这个文件的类型是一个Class文件，而不是一张JPG图片，或者AVI的电影。而Class文件对应的魔数是0xCAFEBABE.</p>
+<p>2）u2 minor_version 表示Class文件的次版本号，并且此版本号是u2类型的无符号数表示。</p>
+<p>3） u2 major_version 表示Class文件的主版本号，并且主版本号是u2类型的无符号数表示。major_version和minor_version主要用来表示当前的虚拟 机是否接受当前这种版本的Class文件。不同版本的Java编译器编译的Class文件对应的版本是不一样的。高版本的虚拟机支持低版本的编译器编译的 Class文件结构。比如Java SE 6.0对应的虚拟机支持Java SE 5.0的编译器编译的Class文件结构，反之则不行。</p>
+<p>4） u2 constant_pool_count 表示常量池的数量。这里我们需要重点来说一下常量池是什么东西，请大家不要与Jvm内存模型中的运行时常量池混淆了，Class文件中常量池主要存储了字 面量以及符号引用，其中字面量主要包括字符串，final常量的值或者某个属性的初始值等等，而符号引用主要存储类和接口的全限定名称，字段的名称以及描 述符，方法的名称以及描述符，这里名称可能大家都容易理解，至于描述符的概念，放到下面说字段表以及方法表的时候再说。另外大家都知道Jvm的内存模型中 有堆，栈，方法区，程序计数器构成，而方法区中又存在一块区域叫运行时常量池，运行时常量池中存放的东西其实也就是编译器长生的各种字面量以及符号引用， 只不过运行时常量池具有动态性，它可以在运行的时候向其中增加其它的常量进去，最具代表性的就是String的intern方法。</p>
+<p>5）cp_info 表示常量池，这里面就存在了上面说的各种各样的字面量和符号引用。放到常量池的中数据项在The Java Virtual Machine Specification Java SE 7 Edition 中一共有14个常量，每一种常量都是一个表，并且每种常量都用一个公共的部分tag来表示是哪种类型的常量。</p>
+<p>下面分别简单描述一下具体细节等到后面的实例 中我们再细化。</p>
+<ul>
+<li>CONSTANT_Utf8_info      tag标志位为1,   UTF-8编码的字符串</li>
+<li>CONSTANT_Integer_info  tag标志位为3， 整形字面量</li>
+<li>CONSTANT_Float_info     tag标志位为4， 浮点型字面量</li>
+<li>CONSTANT_Long_info     tag标志位为5， 长整形字面量</li>
+<li>CONSTANT_Double_info  tag标志位为6， 双精度字面量</li>
+<li>CONSTANT_Class_info    tag标志位为7， 类或接口的符号引用</li>
+<li>CONSTANT_String_info    tag标志位为8，字符串类型的字面量</li>
+<li>CONSTANT_Fieldref_info  tag标志位为9,  字段的符号引用</li>
+<li>CONSTANT_Methodref_info  tag标志位为10，类中方法的符号引用</li>
+<li>CONSTANT_InterfaceMethodref_info tag标志位为11, 接口中方法的符号引用</li>
+<li>CONSTANT_NameAndType_info tag 标志位为12，字段和方法的名称以及类型的符号引用</li>
+</ul>
+<p style="text-align: center;">6） u2 access_flags 表示类或者接口的访问信息，具体如下图所示：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" title="点击查看原始大小图片" alt="" src="/uploads/2013/03/2.png" width="700" height="421" srcset=""/></p>
+<p>7）u2 this_class 表示类的常量池索引，指向常量池中CONSTANT_Class_info的常量</p>
+<p>8）u2 super_class 表示超类的索引，指向常量池中CONSTANT_Class_info的常量</p>
+<p>9）u2 interface_counts 表示接口的数量</p>
+<p>10）u2 interface[interface_counts]表示接口表，它里面每一项都指向常量池中CONSTANT_Class_info常量</p>
+<p>11）u2 fields_count 表示类的实例变量和类变量的数量</p>
+<p>12） field_info fields[fields_count]表示字段表的信息，其中字段表的结构如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/3.png" width="581" height="159" srcset=""/></p>
+<p>上图中access_flags表示字段的访问表示，比如字段是public,private，protect 等，name_index表示字段名 称，指向常量池中类型是CONSTANT_UTF8_info的常量，descriptor_index表示字段的描述符，它也指向常量池中类型为 CONSTANT_UTF8_info的常量，attributes_count表示字段表中的属性表的数量，而属性表是则是一种用与描述字段，方法以及 类的属性的可扩展的结构，不同版本的Java虚拟机所支持的属性表的数量是不同的。</p>
+<p>13） u2 methods_count表示方法表的数量</p>
+<p>14）method_info 表示方法表，方法表的具体结构如下图所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/4.png" width="550" height="157" srcset=""/><br/>
+其中access_flags表示方法的访问表示，name_index表示名称的索引，descriptor_index表示方法的描述 符，attributes_count以及attribute_info类似字段表中的属性表，只不过字段表和方法表中属性表中的属性是不同的，比如方法 表中就Code属性，表示方法的代码，而字段表中就没有Code属性。其中具体Class中到底有多少种属性，等到Class文件结构中的属性表的时候再 说说。</p>
+<p>15） attribute_count表示属性表的数量，说到属性表，我们需要明确以下几点：</p>
+<ul>
+<li>属性表存在于Class文件结构的最后，字段表，方法表以及Code属性中，也就是说属性表中也可以存在属性表</li>
+<li>属性表的长度是不固定的，不同的属性，属性表的长度是不同的</li>
+</ul>
+<p>上面说完了Class文件结构中每一项的构成以后，我们以一个实际的例子来解释以下上面所说的内容。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">package com.ejushang.TestClass;
+
+public class TestClass implements Super{
+
+private static final int staticVar = 0;
+
+private int instanceVar=0;
+
+public int instanceMethod(int param){
+ return param+1;
+ }
+
+}
+
+interface Super{ }</pre>
+<p>通过jdk1.6.0_37的javac 编译后的TestClass.java对应的TestClass.class的二进制结构如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/5.png" width="658" height="400" srcset=""/></p>
+<p>下面我们就根据前面所说的Class的文件结构来解析以下上图中字节流。</p>
+<p><strong>1）魔数</strong><br/>
+从Class的文件结构我们知道，刚开始的4个字节是魔数，上图中从地址00000000h-00000003h的内容就是魔数，从上图可知Class的文件的魔数是0xCAFEBABE。</p>
+<p><strong> 2）主次版本号</strong><br/>
+接下来的4个字节是主次版本号，有上图可知从00000004h-00000005h对应的是0x0000,因此Class的minor_version 为0x0000,从00000006h-00000007h对应的内容为0x0032,因此Class文件的major_version版本为 0x0032,这正好就是jdk1.6.0不带target参数编译后的Class对应的主次版本。</p>
+<p><strong> 3）常量池的数量</strong><br/>
+接下来的2个字节从00000008h-00000009h表示常量池的数量，由上图可以知道其值为0x0018，十进制为24个,但是对于常量池的数量 需要明确一点，常量池的数量是constant_pool_count-1，为什么减一，是因为索引0表示class中的数据项不引用任何常量池中的常 量。</p>
+<p><strong> 4）常量池</strong><br/>
+我们上面说了常量池中有不同类型的常量，下面就来看看TestClass.class的第一个常量，我们知道每个常量都有一个u1类型的tag标识来表示 常量的类型，上图中0000000ah处的内容为0x0A，转换成二级制是10，有上面的关于常量类型的描述可知tag为10的常量是Constant_Methodref_info,而Constant_Methodref_info的结够如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/6.png" width="342" height="120" srcset=""/></p>
+<p>其中class_index指向常量池中类型为CONSTANT_Class_info的常量，从TestClass的二进制文件结构中可以看出 class_index的值为0x0004（地址为0000000bh-0000000ch)，也就是说指向第四个常量。</p>
+<p>name_and_type_index指向常量池中类型为CONSTANT_NameAndType_info常量。从上图可以看出name_and_type_index的值为0x0013，表示指向常量池中的第19个常量。</p>
+<p>接下来又可以通过同样的方法来找到常量池中的所有常量。不过JDK提供了一个方便的工具可以让我们查看常量池中所包含的常量。通过javap -verbose TestClass 即可得到所有常量池中的常量，截图如下：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/7.png" width="689" height="372" srcset=""/></p>
+<p>从上图我们可以清楚的看到，TestClass中常量池有24个常量，不要忘记了第0个常量，因为第0个常量被用来表示 Class中的数据项不引用任何常量池中的常量。从上面的分析中我们得知TestClass的第一个常量表示方法，其中class_index指向的第四 个常量为java/lang/Object，name_and_type_index指向的第19个常量值为&lt;init&gt;:()V,从这里可 以看出第一个表示方法的常量表示的是java编译器生成的实例构造器方法。通过同样的方法可以分析常量池的其它常量。OK，分析完常量池，我们接下来再分 析下access_flags。<br/>
+<strong>5）u2 access_flags</strong> 表示类或者接口方面的访问信息，比如Class表示的是类还是接口，是否为public,static，final等。具体访问标示的含义之前已经说过 了，下面我们就来看看TestClass的访问标示。Class的访问标示是从0000010dh-0000010e，期值为0x0021，根据前面说的 各种访问标示的标志位，我们可以知道：0x0021=0x0001|0x0020 也即ACC_PUBLIC 和 ACC_SUPER为真，其中ACC_PUBLIC大家好理解，ACC_SUPER是jdk1.2之后编译的类都会带有的标志。</p>
+<p><strong>6）u2 this_class</strong> 表示类的索引值，用来表示类的全限定名称，类的索引值如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/8.png" width="671" height="396" srcset=""/></p>
+<p>从上图可以清楚到看到，类索引值为0x0003，对应常量池的第三个常量，通过javap的结果，我们知道第三个常量为 CONSTANT_Class_info类型的常量，通过它可以知道类的全限定名称为：com/ejushang/TestClass /TestClass</p>
+<p><strong> 7）u2 super_class</strong> 表示当前类的父类的索引值，索引值所指向的常量池中类型为CONSTANT_Class_info的常量，父类的索引值如下图所示，其值为0x0004, 查看常量池的第四个常量，可知TestClass的父类的全限定名称为：java/lang/Object</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/9.png" width="670" height="395" srcset=""/></p>
+<p><strong>8）interfaces_count和  interfaces[interfaces_count]</strong>表示接口数量以及具体的每一个接口，TestClass的接口数量以及接口如下图所示，其中 0x0001表示接口数量为1，而0x0005表示接口在常量池的索引值，找到常量池的第五个常量，其类型为CONSTANT_Class_info，其 值为：com/ejushang/TestClass/Super</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/10.png" width="674" height="400" srcset=""/></p>
+<p style="text-align: center;"><strong>9）fields_count 和 field_info</strong>, fields_count表示类中field_info表的数量，而field_info表示类的实例变量和类变量，这里需要注意的是 field_info不包含从父类继承过来的字段，field_info的结构如下图所示：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/11.png" width="581" height="159" srcset=""/></p>
+<p style="text-align: center;">其中access_flags表示字段的访问标示，比如public,private,protected，static,final等，access_flags的取值如下图所示：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" title="点击查看原始大小图片" alt="" src="/uploads/2013/03/12.png" width="700" height="484" srcset=""/></p>
+<p style="text-align: left;">其中name_index 和 descriptor_index都是常量池的索引值，分别表示字段的名称和字段的描述符，字段的名称容易理解，但是字段的描述符如何理解呢？其实在JVM 规范中，对于字段的描述符规定如下图所示：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" title="点击查看原始大小图片" alt="" src="/uploads/2013/03/13.png" width="700" height="408" srcset=""/><br/>
+其中大家需要关注一下上图最后一行，它表示的是对一维数组的描述符，对于String[][]的描述符将是[[ Ljava/lang/String,而对于int[][]的描述符为[[I。接下来的attributes_count以及 attribute_info分别表示属性表的数量以及属性表。下面我们还是以上面的TestClass为例，来看看TestClass的字段表吧。</p>
+<p>首先我们来看一下字段的数量，TestClass的字段的数量如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/14.png" width="669" height="395" srcset=""/></p>
+<p>从上图中可以看出TestClass有两个字段，查看TestClass的源代码可知，确实也只有两个字段，接下来我们看看第一个字段，我们知道第一个字段应该为private int staticVar,它在Class文件中的二进制表示如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/15.png" width="669" height="402" srcset=""/><br/>
+其中0x001A表示访问标示，通过查看access_flags表可知，其为ACC_PRIVATE,ACC_STATIC,ACC_FINAL,接下 来0x0006和0x0007分别表示常量池中第6和第7个常量，通过查看常量池可知，其值分别为：staticVar和I，其中staticVar为字 段名称，而I为字段的描述符，通过上面对描述符的解释，I所描述的是int类型的变量，接下来0x0001表示staticVar这个字段表中的属性表的 数量，从上图可以staticVar字段对应的属性表有1个，0x0008表示常量池中的第8个常量，查看常量池可以得知此属性为 ConstantValue属性，而ConstantValue属性的格式如下图所示：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/16.png" width="351" height="140" srcset=""/></p>
+<p>其中attribute_name_index表述属性名的常量池索引，本例中为ConstantValue，而ConstantValue的 attribute_length固定长度为2，而constantValue_index表示常量池中的引用，本例中，其中为0x0009，查看第9个 常量可以知道，它表示一个类型为CONSTANT_Integer_info的常量，其值为0。</p>
+<p>上面说完了private static final int staticVar=0，下面我们接着说一下TestClass的private int instanceVar=0,在本例中对instanceVar的二进制表示如下图所示：</p>
+<p style="text-align: left;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/17.png" width="680" height="397" srcset=""/><br/>
+其中0x0002表示访问标示为ACC_PRIVATE,0x000A表示字段的名称，它指向常量池中的第10个常量，查看常量池可以知道字段名称为 instanceVar，而0x0007表示字段的描述符，它指向常量池中的第7个常量，查看常量池可以知道第7个常量为I，表示类型为 instanceVar的类型为I，最后0x0000表示属性表的数量为0.</p>
+<p><strong> 10）methods_count 和 method_info</strong> ，其中methods_count表示方法的数量，而method_info表示的方法表，其中方法表的结构如下图所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/18.png" width="550" height="157" srcset=""/></p>
+<p style="text-align: left;">从上图可以看出method_info和field_info的结构是很类似的，方法表的access_flag的所有标志位以及取值如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" title="点击查看原始大小图片" alt="" src="/uploads/2013/03/19.png" width="700" height="484" srcset=""/></p>
+<p>其中name_index和descriptor_index表示的是方法的名称和描述符，他们分别是指向常量池的索引。这里需要结解释一下方法的描述 符，方法的描述符的结构为：（参数列表）返回值，比如public int instanceMethod(int param)的描述符为：（I）I，表示带有一个int类型参数且返回值也为int类型的方法，接下来就是属性数量以及属性表了，方法表和字段表虽然都有 属性数量和属性表，但是他们里面所包含的属性是不同。接下来我们就以TestClass来看一下方法表的二进制表示。首先来看一下方法表数量，截图如下：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/20.png" width="665" height="394" srcset=""/><br/>
+从上图可以看出方法表的数量为0x0002表示有两个方法，接下来我们来分析第一个方法，我们首先来看一下TestClass的第一个方法的access_flag，name_index,descriptor_index，截图如下：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/21.png" width="671" height="396" srcset=""/><br/>
+从上图可以知道access_flags为0x0001，从上面对access_flags标志位的描述，可知方法的access_flags的取值为 ACC_PUBLIC,name_index为0x000B，查看常量池中的第11个常量，知道方法的名称为&lt;init&gt;，0x000C表示 descriptor_index表示常量池中的第12常量，其值为()V,表示&lt;init&gt;方法没有参数和返回值，其实这是编译器自动生成 的实例构造器方法。接下来的0x0001表示&lt;init&gt;方法的方法表有1个属性，属性截图如下：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/22.png" width="679" height="396" srcset=""/><br/>
+从上图可以看出0x000D对应的常量池中的常量为Code,表示的方法的Code属性，所以到这里大家应该明白方法的那些代码是存储在Class文件方法表中的属性表中的Code属性中。接下来我们在分析一下Code属性，Code属性的结构如下图所示：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/23.png" width="607" height="344" srcset=""/></p>
+<p>其中attribute_name_index指向常量池中值为Code的常量，attribute_length的长度表示Code属性表的长度（这里 需要注意的时候长度不包括attribute_name_index和attribute_length的6个字节的长度）。</p>
+<p>max_stack表示最大栈深度，虚拟机在运行时根据这个值来分配栈帧中操作数的深度，而max_locals代表了局部变量表的存储空间。</p>
+<p>max_locals的单位为slot，slot是虚拟机为局部变量分配内存的最小单元，在运行时，对于不超过32位类型的数据类型，比如 byte,char,int等占用1个slot，而double和Long这种64位的数据类型则需要分配2个slot，另外max_locals的值并 不是所有局部变量所需要的内存数量之和，因为slot是可以重用的，当局部变量超过了它的作用域以后，局部变量所占用的slot就会被重用。</p>
+<p>code_length代表了字节码指令的数量，而code表示的时候字节码指令，从上图可以知道code的类型为u1,一个u1类型的取值为0x00-0xFF,对应的十进制为0-255，目前虚拟机规范已经定义了200多条指令。</p>
+<p>exception_table_length以及exception_table分别代表方法对应的异常信息。</p>
+<p>attributes_count和attribute_info分别表示了Code属性中的属性数量和属性表，从这里可以看出Class的文件结构中，属性表是很灵活的，它可以存在于Class文件，方法表，字段表以及Code属性中。</p>
+<p>接下来我们继续以上面的例子来分析一下，从上面init方法的Code属性的截图中可以看出，属性表的长度为0x00000026,max_stack的 值为0x0002,max_locals的取值为0x0001,code_length的长度为0x0000000A，那么00000149h- 00000152h为字节码，接下来exception_table_length的长度为0x0000，而attribute_count的值为 0x0001，00000157h-00000158h的值为0x000E,它表示常量池中属性的名称，查看常量池得知第14个常量的值为 LineNumberTable，LineNumberTable用于描述java源代码的行号和字节码行号的对应关系，它不是运行时必需的属性，如果通 过-g:none的编译器参数来取消生成这项信息的话，最大的影响就是异常发生的时候，堆栈中不能显示出出错的行号，调试的时候也不能按照源代码来设置断 点，接下来我们再看一下LineNumberTable的结构如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/24.png" width="566" height="184" srcset=""/></p>
+<p>其中attribute_name_index上面已经提到过，表示常量池的索引，attribute_length表示属性长度，而start_pc和 line_number分表表示字节码的行号和源代码的行号。本例中LineNumberTable属性的字节流如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/25.png" width="675" height="395" srcset=""/></p>
+<p>上面分析完了TestClass的第一个方法，通过同样的方式我们可以分析出TestClass的第二个方法，截图如下：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/26.png" width="671" height="395" srcset=""/></p>
+<p>其中access_flags为0x0001,name_index为0x000F,descriptor_index为0x0010，通过查看常量池可 以知道此方法为public int instanceMethod(int param)方法。通过和上面类似的方法我们可以知道instanceMethod的Code属性为下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/27.png" width="670" height="397" srcset=""/></p>
+<p>最后我们来分析一下，Class文件的属性，从00000191h-00000199h为Class文件中的属性表，其中0x0011表示属性的名称，查看常量池可以知道属性名称为SourceFile，我们再来看看SourceFile的结构如下图所示：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/28.png" width="338" height="118" srcset=""/></p>
+<p>其中attribute_length为属性的长度，sourcefile_index指向常量池中值为源代码文件名称的常量，在本例中SourceFile属性截图如下：</p>
+<p style="text-align: left;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/03/29.png" width="681" height="395" srcset=""/><br/>
+其中attribute_length为0x00000002表示长度为2个字节，而soucefile_index的值为0x0012,查看常量池的第18个常量可以知道源代码文件的名称为TestClass.java</p>
+<p>最后，希望对技术感兴趣的朋友多交流。个人微博：（<a href="http://weibo.com/xmuzyq" target="_blank">http://weibo.com/xmuzyq</a>)</p>
+<div id="xunlei_com_thunder_helper_plugin_d462f475-c18e-46be-bd10-327458d045bd">(全文完)</div>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9229-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>实例分析Java Class的文件结构</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-304370" class="comment even thread-even depth-1">
+<article id="div-comment-304370" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a3c119f7c5a1d021320be6620b65c5e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a3c119f7c5a1d021320be6620b65c5e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chanlion</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304370"><time datetime="2013-03-05T23:50:39+08:00">2013年03月05日 23:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图片看不到呀，能不能检查下图片，谢谢，很希望能够通过作者的这篇文章来加深对Java底层的了解。</p>
+</div>
+ </article>
+</li>
+<li id="comment-304382" class="comment byuser comment-author-tiger-zhou bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-304382" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/80695ffc8afc90667bb292139686239b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/80695ffc8afc90667bb292139686239b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tiger.zhou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304382"><time datetime="2013-03-06T00:02:40+08:00">2013年03月06日 00:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-304370" rel="nofollow">@chanlion </a><br/>
+文章之前是发在我blog上的，今天投稿到coolshell的，可以看看，我evernote 分享的连接：@https://www.evernote.com/shard/s188/sh/e963f3f8-1bf9-402f-b56a-7d30e5220bc7/f5824384705ed0dacd0eb2b88a6dafe4</p>
+</div>
+ </article>
+</li>
+<li id="comment-304390" class="comment even thread-even depth-1">
+<article id="div-comment-304390" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ac.net.blog.163.com/" class="url" rel="ugc external nofollow">Atry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304390"><time datetime="2013-03-06T00:10:31+08:00">2013年03月06日 00:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>每次看到Java的类格式就像吐槽，世界上能有比这更二的字节码格式吗？跪求甲骨文官方放弃Java字节码，改用.dex格式吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-304391" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-304391" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cc6b0abf49e4efad3b8b7dba0ff588a9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cc6b0abf49e4efad3b8b7dba0ff588a9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">FreedomKnight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304391"><time datetime="2013-03-06T00:11:12+08:00">2013年03月06日 00:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我對這篇文章超感興趣，但圖片看不到<br/>
+我還以為是台灣這裡無法收看</p>
+</div>
+ </article>
+</li>
+<li id="comment-304399" class="comment byuser comment-author-haoel even thread-even depth-1">
+<article id="div-comment-304399" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304399"><time datetime="2013-03-06T00:22:03+08:00">2013年03月06日 00:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-304391" rel="nofollow">@FreedomKnight </a><br/>
+现在应该好了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-304407" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-304407" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5b3c5026fee43baef3b15d7fef166a7e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ac.net.blog.163.com/" class="url" rel="ugc external nofollow">Atry</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304407"><time datetime="2013-03-06T00:32:15+08:00">2013年03月06日 00:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>.class文件的常量池是不共享的，蛋疼的程度无与伦比。<br/>
+jar包虽然能压缩，但这得为每个class分开压缩，对于Scala产生的海量小class压缩率近乎于零。<br/>
+每次类加载都会搞出一堆随机磁盘访问，启动奇慢无比。</p>
+</div>
+ </article>
+</li>
+<li id="comment-304845" class="comment even thread-even depth-1">
+<article id="div-comment-304845" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ff9f17d025b8999b80bda70214dbf98?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ff9f17d025b8999b80bda70214dbf98?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">路过</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304845"><time datetime="2013-03-06T09:54:20+08:00">2013年03月06日 09:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大哥你在抵制百度吗？ 从搜索过来还不让进</p>
+</div>
+ </article>
+</li>
+<li id="comment-304886" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-304886" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/167e1082a6a3c329a3f617f180bd4520?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/167e1082a6a3c329a3f617f180bd4520?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fish</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-304886"><time datetime="2013-03-06T10:56:21+08:00">2013年03月06日 10:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈，这难道就是缘分吗？最近要弄一个java class文件反编译工具，结果就看到这个文章了，话说刚刚还在看java的虚拟机规范，哈哈哈。。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-305399" class="comment even thread-even depth-1">
+<article id="div-comment-305399" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7d429c5b62eeb403a8f3f6fdd8312074?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7d429c5b62eeb403a8f3f6fdd8312074?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">thelONE</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-305399"><time datetime="2013-03-06T22:52:07+08:00">2013年03月06日 22:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>搞这些研究的目的是什么呢? 用来搞java的反向工程么</p>
+</div>
+ </article>
+</li>
+<li id="comment-305409" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-305409" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xmuzyq.iteye.com" class="url" rel="ugc external nofollow">tiger.zhou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-305409"><time datetime="2013-03-06T23:09:36+08:00">2013年03月06日 23:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-305399" rel="nofollow">@thelONE </a><br/>
+class的文件结构对于理解class的类加载过程，虚拟机如何执行代码，以及目前虚拟机的动态优化都是有帮助的。从某种意义上来说对于写出更高质量的java代码也是有帮助的。哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-305923" class="comment even thread-even depth-1">
+<article id="div-comment-305923" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9dc54ac36329abc6d8cdbf8b15e30a84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9dc54ac36329abc6d8cdbf8b15e30a84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vavio99</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-305923"><time datetime="2013-03-07T14:25:00+08:00">2013年03月07日 14:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个问题,请问博主你的javap是widowns版本的 jdk1.6.0_37\bin\javap ?<br/>
+我本地生成的字节码和你途中的不一样;我的常量池长度为28.<br/>
+D:\code\tools\develop environment\workspace\zMavenTest\target\classes&gt;”C:\Progra<br/>
+m Files\Java\jdk1.6.0_37\bin\javap” -verbose com.ejushang.TestClass.TestClass<br/>
+Compiled from “TestClass.java”<br/>
+public class com.ejushang.TestClass.TestClass extends java.lang.Object implement<br/>
+s com.ejushang.TestClass.Super<br/>
+SourceFile: “TestClass.java”<br/>
+minor version: 0<br/>
+major version: 50<br/>
+Constant pool:<br/>
+const #1 = class #2; // com/ejushang/TestClass/TestClass</p>
+</div>
+ </article>
+</li>
+<li id="comment-305974" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-305974" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xmuzyq.iteye.com" class="url" rel="ugc external nofollow">tiger.zhou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-305974"><time datetime="2013-03-07T15:49:09+08:00">2013年03月07日 15:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-305923"><p>
+<strong><a href="#comment-305923" rel="nofollow">vavio99</a> :</strong><br/>
+有个问题,请问博主你的javap是widowns版本的 jdk1.6.0_37\bin\javap ?<br/>
+我本地生成的字节码和你途中的不一样;我的常量池长度为28.<br/>
+D:\code\tools\develop environment\workspace\zMavenTest\target\classes&gt;”C:\Progra<br/>
+m Files\Java\jdk1.6.0_37\bin\javap” -verbose com.ejushang.TestClass.TestClass<br/>
+Compiled from “TestClass.java”<br/>
+public class com.ejushang.TestClass.TestClass extends java.lang.Object implement<br/>
+s com.ejushang.TestClass.Super<br/>
+SourceFile: “TestClass.java”<br/>
+minor version: 0<br/>
+major version: 50<br/>
+Constant pool:<br/>
+const #1 = class #2; // com/ejushang/TestClass/TestClass
+</p></blockquote>
+<p>你好，我用的Mac 版本的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-305992" class="comment even thread-even depth-1">
+<article id="div-comment-305992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9dc54ac36329abc6d8cdbf8b15e30a84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9dc54ac36329abc6d8cdbf8b15e30a84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vavio99</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-305992"><time datetime="2013-03-07T16:17:55+08:00">2013年03月07日 16:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-305974" rel="nofollow">@tiger.zhou </a><br/>
+可否上传下class文件,现在身边不方便用mac版本的jdk.谢谢.</p>
+</div>
+ </article>
+</li>
+<li id="comment-306155" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-306155" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xmuzyq.iteye.com" class="url" rel="ugc external nofollow">tiger.zhou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306155"><time datetime="2013-03-07T19:19:54+08:00">2013年03月07日 19:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-305992"><p>
+<strong><a href="#comment-305992" rel="nofollow">vavio99</a> :</strong><br/>
+<a href="#comment-305974" rel="nofollow">@tiger.zhou </a><br/>
+可否上传下class文件,现在身边不方便用mac版本的jdk.谢谢.
+</p></blockquote>
+<p>我没有权限上传，其实class文件的结构是很有规律的，都是严格按照顺序存储的，不同的JDK版本或者不同平台的JDK版本，可能会存在常量池中的常量顺序或者数量不一样的情况。</p>
+</div>
+ </article>
+</li>
+<li id="comment-306168" class="comment even thread-even depth-1">
+<article id="div-comment-306168" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a3c119f7c5a1d021320be6620b65c5e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a3c119f7c5a1d021320be6620b65c5e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chanlion</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306168"><time datetime="2013-03-07T19:36:34+08:00">2013年03月07日 19:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好的，谢谢你呀<a href="#comment-304382" rel="nofollow">@tiger.zhou </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-306169" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-306169" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a4c7c7ac7da7f45794594da145591ef6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a4c7c7ac7da7f45794594da145591ef6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chentao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306169"><time datetime="2013-03-07T19:36:35+08:00">2013年03月07日 19:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢啦！真伟大！</p>
+</div>
+ </article>
+</li>
+<li id="comment-306215" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.coderli.com/java-class-compile-code" class="url" rel="ugc external nofollow">实例分析Java Class的文件结构 | OneCoder</a> </div>
+</li>
+<li id="comment-306249" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-306249" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b536a577fe29fde8d20b6ca6a12054dd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b536a577fe29fde8d20b6ca6a12054dd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xianda</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306249"><time datetime="2013-03-07T23:21:38+08:00">2013年03月07日 23:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该是8位（bit）字节流，而不是8字节的字节流～</p>
+</div>
+ </article>
+</li>
+<li id="comment-306283" class="comment even thread-even depth-1">
+<article id="div-comment-306283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xmuzyq.iteye.com" class="url" rel="ugc external nofollow">tiger.zhou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306283"><time datetime="2013-03-08T01:03:31+08:00">2013年03月08日 01:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-306249"><p>
+<strong><a href="#comment-306249" rel="nofollow">xianda</a> :</strong><br/>
+应该是8位（bit）字节流，而不是8字节的字节流～
+</p></blockquote>
+<p>对，应该是8位字节流，笔误。多谢指出。</p>
+</div>
+ </article>
+</li>
+<li id="comment-306576" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-306576" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bdec199b4b6d0217c0cc506b28057a99?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bdec199b4b6d0217c0cc506b28057a99?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">flyneil</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306576"><time datetime="2013-03-08T13:38:59+08:00">2013年03月08日 13:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>建议作者可以连带介绍下字节码分析工具，如ASM、Javassist等，当需要用程序来分析class文件的时候，这些工具很有用。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-306635" class="comment even thread-even depth-1">
+<article id="div-comment-306635" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/03ec79001b70a7dc41d51c1db4db4baa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/03ec79001b70a7dc41d51c1db4db4baa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">预流</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-306635"><time datetime="2013-03-08T16:29:24+08:00">2013年03月08日 16:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>《深入java虚拟机》里介绍比这篇文章更详细。</p>
+</div>
+ </article>
+</li>
+<li id="comment-308555" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-308555" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87c78c813ad267bf78afdec489db267c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87c78c813ad267bf78afdec489db267c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/yikebocai" class="url" rel="ugc external nofollow">波菜</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-308555"><time datetime="2013-03-11T18:53:11+08:00">2013年03月11日 18:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习Class文件结构的最好方式就是自己写个反编译器，之前也看过但很快就忘的差不多了，这周末花时间写反编译器虽然还没完工，但这样感觉理解深入了很多，源码参见https://github.com/yikebocai/jvm</p>
+</div>
+ </article>
+</li>
+<li id="comment-310697" class="comment even thread-even depth-1">
+<article id="div-comment-310697" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a7fb06ff9b47454a5f76f5d54e52465?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a7fb06ff9b47454a5f76f5d54e52465?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://oslog.cn" class="url" rel="ugc external nofollow">疯了的蚊子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-310697"><time datetime="2013-03-15T12:46:27+08:00">2013年03月15日 12:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写这么一篇文章要花点时间。</p>
+</div>
+ </article>
+</li>
+<li id="comment-310800" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-310800" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20c6ce471fd9a1e40c49a4c91d5b72cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20c6ce471fd9a1e40c49a4c91d5b72cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">NoImagination</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-310800"><time datetime="2013-03-15T17:44:02+08:00">2013年03月15日 17:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>scala 是不是就是利用了所谓的“语言无关性”自制了一个从 scala 到 .class 的转换器？我没用过 java。随便抛块砖。</p>
+</div>
+ </article>
+</li>
+<li id="comment-311655" class="comment even thread-even depth-1">
+<article id="div-comment-311655" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4698496cb9582d68feb1e3380bad313?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4698496cb9582d68feb1e3380bad313?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Kyrios</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-311655"><time datetime="2013-03-17T17:52:54+08:00">2013年03月17日 17:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不容易啊！写这么长。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-312761" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-312761" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a4318f615a5efcc6aff400426dc549a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a4318f615a5efcc6aff400426dc549a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.godiscoder.com" class="url" rel="ugc external nofollow">godiscoder</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-312761"><time datetime="2013-03-19T23:05:02+08:00">2013年03月19日 23:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-310800" rel="nofollow">@NoImagination </a><br/>
+是的，本质上说，java只是语言的外在表现，内在还是 .class ，只不过使用javac 把 java源文件编译成为满足jvm规范的二进制文件 .class ，如果你牛逼，你可以定义语法，把一个xml文件直接编译成为一个 .class文件也可以。</p>
+</div>
+ </article>
+</li>
+<li id="comment-314308" class="comment even thread-even depth-1">
+<article id="div-comment-314308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e7e6b0ccaf96fea73c76a1bd6ad49894?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xmuzyq.iteye.com" class="url" rel="ugc external nofollow">tiger.zhou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-314308"><time datetime="2013-03-22T09:48:46+08:00">2013年03月22日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-310697" rel="nofollow">@疯了的蚊子 </a><br/>
+呵呵，文章都是在晚上和媳妇边视频边写的，也忘记写了多久了呵呵。</p>
+</div>
+ </article>
+</li>
+<li id="comment-317353" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-317353" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b0ca38e6a74e2ebbf1a279afb6a24ae9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b0ca38e6a74e2ebbf1a279afb6a24ae9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">旁观者</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-317353"><time datetime="2013-03-26T17:39:13+08:00">2013年03月26日 17:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说一句：你说你个人博客发表什么投稿？真把自己当做媒体运营了？叫嚣乎百度，难道没有一点私心。我去。</p>
+</div>
+ </article>
+</li>
+<li id="comment-370862" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/842.html" class="url" rel="ugc external nofollow">并发框架Disruptor译文 | 午后小憩</a> </div>
+</li>
+<li id="comment-379202" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-379202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f878a00d6bc3bbd69aac1062b765b89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f878a00d6bc3bbd69aac1062b765b89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://rongmayisheng.com" class="url" rel="ugc external nofollow">weager</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-379202"><time datetime="2013-05-03T22:19:09+08:00">2013年05月03日 22:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉下载一个jclasslib，然后直接调试里面的源代码，就可以比较清晰的看到字节码的结构</p>
+</div>
+ </article>
+</li>
+<li id="comment-602698" class="comment even thread-even depth-1">
+<article id="div-comment-602698" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27fe2b73c62540d1fd5926d5e7d472a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27fe2b73c62540d1fd5926d5e7d472a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">o2</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-602698"><time datetime="2013-07-21T23:24:15+08:00">2013年07月21日 23:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-314308" rel="nofollow">@tiger.zhou </a><br/>
+有个明显的错误，类的全限定名称其实是以;（分号）结尾的，文章中显然把;（分号）都忽略了</p>
+</div>
+ </article>
+</li>
+<li id="comment-623021" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-623021" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/deae7ed471a804313b9fb2da30734556?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/deae7ed471a804313b9fb2da30734556?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pangxiezhou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-623021"><time datetime="2013-07-31T16:28:30+08:00">2013年07月31日 16:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益匪浅，谢谢博主的好文章</p>
+</div>
+ </article>
+</li>
+<li id="comment-817504" class="comment even thread-even depth-1">
+<article id="div-comment-817504" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3fc887c50e8b64d7b41bfa8c38dcf62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3fc887c50e8b64d7b41bfa8c38dcf62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kenneth</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-817504"><time datetime="2013-10-16T13:04:15+08:00">2013年10月16日 13:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的不错，支持！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1513595" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30567.html" class="url" rel="ugc external nofollow">从LongAdder看更高效的无锁实现 – 马开东博客</a> </div>
+</li>
+<li id="comment-1613456" class="comment even thread-even depth-1">
+<article id="div-comment-1613456" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f25cab87ac9bf1e76b1e91167d855b3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f25cab87ac9bf1e76b1e91167d855b3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hety</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-1613456"><time datetime="2014-11-25T12:00:35+08:00">2014年11月25日 12:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不明觉厉</p>
+</div>
+ </article>
+</li>
+<li id="comment-1614489" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1614489" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ddb1295b4b2b0a51a6ddff7b56fb6ca8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ddb1295b4b2b0a51a6ddff7b56fb6ca8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">无名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-1614489"><time datetime="2014-11-26T16:50:43+08:00">2014年11月26日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>上图中0000000ah处的内容为0x0A，转换成二级制是10.这里应该错了，是转成十进制的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1665779" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jkeabc.com/p/497911.html" class="url" rel="ugc external nofollow">Java Class文件详解 – 剑客|关注科技互联网</a> </div>
+</li>
+<li id="comment-1665781" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=20256" class="url" rel="ugc external nofollow">Java Class文件详解 | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1720421" class="comment even thread-even depth-1">
+<article id="div-comment-1720421" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a352fed9f5cdb7f71eaaece5d1a932fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a352fed9f5cdb7f71eaaece5d1a932fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">TracyZhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-1720421"><time datetime="2015-06-11T14:57:32+08:00">2015年06月11日 14:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>深入理解jvm，然而没有什么毛勇</p>
+</div>
+ </article>
+</li>
+<li id="comment-1820147" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1820147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b64b1e1574d8d06f4be70181a6fe69c5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b64b1e1574d8d06f4be70181a6fe69c5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">幽山新竹</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9229.html#comment-1820147"><time datetime="2016-04-20T16:19:32+08:00">2016年04月20日 16:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>错别字挺多的。处女座不能忍啊。作者没有做好校验吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1998508" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jikewenku.com/talks/24585.html" class="url" rel="ugc external nofollow">阿里面试真题:谈谈Java类文件结构 – 极客文库</a> </div>
+</li>
+<li id="comment-2005127" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.go2live.cn/nocate/spring-%e6%b3%a8%e8%a7%a3%e7%bc%96%e7%a8%8b%e4%b9%8b-annotationmetadata.html" class="url" rel="ugc external nofollow">Spring 注解编程之 AnnotationMetadata | 演道网</a> </div>
+</li>
+<li id="comment-2010048" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/375606/" class="url" rel="ugc external nofollow">Spring 注解编程之 AnnotationMetadata - 算法网</a> </div>
+</li>
+<li id="comment-2018356" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.maiyewang.com/2019/09/06/spring-%e6%b3%a8%e8%a7%a3%e7%bc%96%e7%a8%8b%e4%b9%8b-annotationmetadata/" class="url" rel="ugc external nofollow">Spring 注解编程之 AnnotationMetadata – 麦叶</a> </div>
+</li>
+<li id="comment-2049318" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ea-ydmaz-wp-2p5.azurewebsites.net/%e3%80%90%e6%90%9e%e5%ae%9ajvm%e9%9d%a2%e8%af%95%e3%80%91-%e9%9d%a2%e8%af%95%e5%ae%98%ef%bc%9a%e8%b0%88%e8%b0%88-jvm-%e7%b1%bb%e6%96%87%e4%bb%b6%e7%bb%93%e6%9" class="url" rel="ugc external nofollow">【搞定Jvm面试】 面试官：谈谈 JVM 类文件结构的认识 – Hello World 免費世界資訊觸手可及 2p5.com</a> </div>
+</li>
+<li id="comment-2050116" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.go2live.cn/nocate/%e3%80%90%e6%90%9e%e5%ae%9ajvm%e9%9d%a2%e8%af%95%e3%80%91-%e9%9d%a2%e8%af%95%e5%ae%98%ef%bc%9a%e8%b0%88%e8%b0%88-jvm-%e7%b1%bb%e6%96%87%e4%bb%b6%e7%bb%93%e6%9e%84%e7%9a%8" class="url" rel="ugc external nofollow">【搞定Jvm面试】 面试官：谈谈 JVM 类文件结构的认识 | 演道网</a> </div>
+</li>
+<li id="comment-2120943" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/72057.html" class="url" rel="ugc external nofollow">【搞定Jvm面试】 面试官：谈谈 JVM 类文件结构的认识 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-2262151" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.icoding168.xyz/archives/3958" class="url" rel="ugc external nofollow">[转载]类文件结构 - icoding168</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,609 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>[转]TDD到底美还是不美？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3766 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3766" class="post-content post-3766 post type-post status-publish format-standard hentry category-process tag-agile tag-tdd">
+<header class="entry-header">
+<span class="screen-reader-text">[转]TDD到底美还是不美？</span>
+<h1 class="entry-title">[转]TDD到底美还是不美？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3766.html" title="15:41" rel="bookmark"><time class="entry-date" datetime="2011-02-24T15:41:24+08:00" pubdate="">2011年02月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3766.html#comments" class="comments-link">34 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 14,130 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<div id="body_66167">
+<p><span id="quote_66167"> </span></p>
+<p><span style="font-size: 11pt;"><strong>下面的文章转自Todd Wei 的《<a href="http://www.cnblogs.com/weidagang2046/archive/2011/02/23/1963277.html" target="_blank">TDD到底美还是不美？</a>》，对于这篇文章，我个人能过透过作者的观点感受到他的项目中使用TDD的难点，同样可以感受到作者内心的纠结。不管怎么样，我能够感到作者Todd Wei在独立思考，独立思考总是好的，因为那是走向成熟的必要条件。(<span style="color: #800000;">另，大家可以移步过去看看相关的评论，挺有意思的</span>)</strong></span></p>
+<p>————————————————————————————————————</p>
+<p><span style="font-size: 10pt;">最近CoolShell上的一篇</span><a title="TDD并不是看上去的那么美" href="/articles/3649.html"><span style="font-size: 10pt;">《TDD并不是看上去的那么美》</span></a><span style="font-size: 10pt;">引起了敏捷社区的高度关注和激励辩论。今天，InfoQ甚至专门举行了一个“虚拟座谈会”</span><a title="《TDD有多美》" href="http://www.infoq.com/cn/articles/virtual-panel-tdd"><span style="font-size: 10pt;">《TDD有多美？》</span></a><span style="font-size: 10pt;">，几位国内敏捷社区的名人专门就此问题展开了深入地讨论。不论结果如何，这个纯技术的探讨精神还是非常值得赞赏的。事件实际上可以简单地归纳为“一个有一定影响力的开发人员质疑TDD，一群敏捷社区名人对TDD进行解释和辩护”。现在，就让我坚定地站在CoolShell一边，为对TDD的质疑和批判添砖加瓦吧！</span></p>
+</div>
+<p><span style="font-size: 10pt;">TDD的核心理念是什么呢？第一是Specification by Example，即把测试用例作为表达需求的一种方式。传统的需求表达方式包括文档，Use Case等，而TDD强调通过测试用例来表达需求。另外，TDD的测试用例是黑盒的基于外部接口的，所以，它实际上又是对外部接口的设计。如何看待测试用例是TDD与传统测试的一个重要区别。“不把测试用例单纯地视为测试，而从需求和设计的角度来看测试用例”的理念本身是好的。另外，TDD的第二个理念是Test First，强调测试对于实现的驱动作用，先写测试用例，再实现和重构。在Specification by Example的理念下，Test First的实质是“先理解清楚需求，并做好外部接口设计，把它转化为测试用例，然后再来实现和重构”。 </span></p>
+<p><span style="font-size: 10pt;">我认为，Specification by Example是不错的，因为测试用例作具有精确性，容易自动化的优点，这是传统的文档和Use Case在表达需求时所欠缺的地方。但</span><strong>Test First理念本身则有很大的问题</strong>，尤其“在没有测试用例失败之前，不要写任何一行代码”的极端方式则更是极端的错误。<br/>
+<span id="more-3766"></span></p>
+<p><span id="quote_66167" style="font-size: 10pt;">如果测试用例是需求和设计，那么为什么不能先写出测试用例（即理解清楚需求做好外部接口设计）再来实现呢？这不是我们最熟悉的先需求再设计再编码吗？答案是：</span><span id="quote_66167" style="font-size: 10pt;"><strong>不能执行的测试用例（Test First）和能执行的测试用例有着天壤之别</strong>。不能执行的测试用例和写在纸上的文档相比对实现的指导意义不见得能好到哪里去！除非是一些很简单的情况下，在实际的软件开发中，你很难在没有执行测试用例的情况下写出真正符合最终需求的测试用例来。比如：你做一个页面，页面的效果需求和设计通常会在真正可以运行之后不断调整。如果片面强调测试对实现的驱动作用，那么实际上隐含了“需求可以在实现之前固定下来”的假设，这是非常不敏捷的和不现实的！我认为要做到真正的敏捷必须承认<strong>“需求无法在用户真正能运行看到效果之前明确下来“</strong>。由此可见，Test First和瀑布式思想没有区别，都强调需求先于实现，而忽略了软件需求的产生是一个在实际运行中不断调整探索完善的过程。TDD无非是把需求分析的结果用测试用例表达，替代传统用文档表达需求，但从宏观上看，TDD和瀑布比是换汤不换药。除了简单情况，不存在脱离实现的需求，你能够在明确了需求之后就实现出一套linux系统吗？既然你根本无法实现一套linux系统，那么这样所谓的需求又有多大的意义呢？所以，能提出什么样的需求不能脱离你的实现能力。<strong>需求和实现之间不是简单的谁驱动谁，而是一种相互反馈的关系</strong>，这与需求用什么方式表达没有关系。到目前为主，我推崇的方式是快速实现，在实际运行中体验效果，不断优化探索和明确需求，当需求达到一个比较稳定的程度才编写测试用例将需求固化下来。</span></p>
+<div>
+<p><span id="quote_66167" style="font-size: 10pt;">上面的论述主要针对贴近用户的外部需求（如ATDD），下面我会进一步解释即使是在内部的单元测试级别TDD仍然有问题。我们还是首先从需求入手，思考一下单元的需求是哪里来的呢？答案是：需求来自于设计， 也就是说高层模块的内部设计产生了低层模块的需求。而这种内部设计具有很大的不稳定性，带有很多假设的成分，在没有进行集成测试的情况下，很难讲这种内部设计是否合理。实际项目开发通常会在集成运行之后不断调整内部的设计，即影响单元的需求。那么，如果是按测试驱动，首先按不成熟的内部设计把一个个单元需求编写成单元测试再来实现，实际上大大推迟了能进行集成测试的时间， 对于真正快速弄清需求稳定设计反而是不利的。假设最终还是所有单元都完成，然后开始运行集成或验收测试，这时候有两种可能：1.用户看到实际效果，决定调整需求；2.发现未集成前的很多假设不成立。不论是哪一种情况发生，以前所写的单元测试都面临着被废弃或必须修改的命运。实际上，多数与业务相关的单元测试用例比起集成或验收测试用例更加不稳定，因为它会受到所有其上层模块的需求和设计变动的影响。由于我们在不稳定的单元测试上浪费了大量的时间（按我的经验编写单元测试比编写实现更耗时），这就导致了迟迟无法进行集成看到实际效果，也没有办法敏捷地应对需求的调整。也就是说具有讽刺意味的，</span><span id="quote_66167" style="font-size: 10pt;"><strong>Test First理念居然是和敏捷理念矛盾的！</strong></span></p>
+<p>所以，我认为TDD的理念Specification by Example没错，但Test First即“在实现之前把需求和外部接口设计转化成测试用例”的理念错了。真正符合实际开发情况的理念是“需求是在实际运行过程中根据效果不断探索调整得来的，不可能脱离实际运行写出真正符合最终需求的测试用例来”。所以，<strong>我们真正应该做的是尽快看到实际运行的效果</strong>，而测试作为固化的需求和设计是在看到效果之后。<strong>过度的TDD只会导致迟迟看不到实际运行效果，看到效果需要调整需求又会废掉或改掉一大堆的测试用例。</strong>实际上，越是外部的需求其变更带来的影响和代价越大，越是需要尽早明确。从宏观上看，<strong>TDD所谓的快速反馈实际上是加快内部反馈，延迟了外部反馈，这无异于本末倒置</strong>。而大量需要修改或作废的测试用例其实是一种很大的浪费，这和消除浪费的精益思想也是矛盾的！</p>
+<div>
+<p><span id="quote_66167"> </span></p>
+<div><img decoding="async" src="http://images.cnblogs.com/cnblogs_com/weidagang2046/feedback_cycle.jpg" border="0" alt="" width="564" height="436"/></div>
+</div>
+</div>
+<p><span id="quote_66167" style="font-size: 10pt;">上面这幅cost/length_of_feedback_cycle图是我们常见的用于说明敏捷方法比传统方法具有更短的反馈周期，更小代价的应对变化。从图中我们可以清晰的看到在验收测试中发现的需求错误导致的代价是最高的。如果验收测试往后推迟一点，发现错误的代价将按非线性地增长。上面我们已经论述了，任何方法都不可能消除验收测试后对需求的调整，因为这是需求产生的正常过程。我们唯一可以做的是尽可能地缩短验收测试的反馈周期，但是很不幸TDD大量的内部测试只会导致推迟验收测试的时间，从而大大增加代价。<br/>
+</span></p>
+<div>
+<div><span style="font-size: 10pt;">下面这段话来自于InfoQ文章</span><a title="《Mock不是测试的银弹》" href="http://www.infoq.com/cn/articles/thoughtworks-practice-partvi"><span style="font-size: 10pt;">《Mock不是测试的银弹》</span></a><span style="font-size: 10pt;">：“在使用JMock框架后测试编写起来更容易，运行速度更快，也更稳定，然而出乎意料的是产品质量并没有如我们所预期的随着不断添加 的测试而变得愈加健壮，虽然产品代码的单元测试覆盖率超过了80%，然而在发布前进行全面测试时，常常发现严重的功能缺陷而不得不一轮轮的修复缺陷、回归 测试。为什么编写了大量的测试还会频繁出现这些问题呢？ ”这描述的情况和我在实践中遇到的情况类似，不过很可惜文章并没有找到问题真正的原因。真正的原因不是什么Mock不Mock，而是TDD的单元测试是基于开发人员的假设，这些假设的测试即使全部通过代码覆盖率100%，到了集成测试发现假设根本不成立又怎能保证高质量？</span></div>
+</div>
+<p><span id="quote_66167" style="font-size: 10pt;">当然，我不是全盘否定TDD。TDD在某些需求特别固定的场合是适用的，尤其是与具体业务关系不大的需求，比如：写一个通用的数据结构，实现一个通用算法。TDD的先关注需求和思考外部接口设计的理念也对促进开发人员的抽象思维有很大益处。另外，TDD通常也具有较高的代码覆盖率。本文的主要观点在于：实际项目中，不要期望可以在实现之前完全明确需求，需求是在实际运行看到效果之后才逐步明确的；我们的开发过程必须能够敏捷地适应需求的变化，而TDD的Test First理念恰好与之矛盾。所以，对于TDD不了解的朋友，我建议应该学习和实践TDD，从而获得其益处；同时我也提醒TDD存在理论上的缺陷，这是在实践中需要特别留意的。</span></p>
+<p><span style="font-size: 10pt;">(全文完)</span></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3766-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">流程方法</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">agile</a>, <a href="javascript:void(0)" rel="tag">TDD</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>[转]TDD到底美还是不美？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-31938" class="comment even thread-even depth-1">
+<article id="div-comment-31938" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92762f5a6a2faeb45690fda617794759?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92762f5a6a2faeb45690fda617794759?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://null" class="url" rel="ugc external nofollow">lazybug</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-31938"><time datetime="2011-02-24T16:47:04+08:00">2011年02月24日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有经验的人一眼就可以看出这些理论是多么的不堪一击。陈皓和Todd Wei苦口婆心地解释这些给那些实践者。这是值得表扬的。陈先生给ThoughtWorks泼了冷水，也让他们醒一醒。可能中国市场是ThoughtWorks的摇钱树，导致他们如此敏感，所以年轻的（我是说毛孩子）咨询师们就火了，“TW红卫兵”们也火了。最后，大家还是都受益了，我想。</p>
+<p>在中国本科生教本科生，专科院校随便就变成大学都不稀奇，何况TW的咨询师没经验就忽悠了。不过，不说话的程序员们都还是清醒的，我猜。</p>
+<p>迷恋某个教条，哪儿都有。例如微软迷恋MBA来做项目经理，Google迷恋算法，Apple迷恋设计。但没有听说过他们的软件产品和项目都遵循了什么，赶时髦的这些名词只是忽悠闲着没事的人和入门者。</p>
+<p>最后大家好好儿活着吧，银弹是找不到的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-31956" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-31956" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2950985c007f4a45b0d4c6d2efd2405e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2950985c007f4a45b0d4c6d2efd2405e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘志雨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-31956"><time datetime="2011-02-24T18:13:11+08:00">2011年02月24日 18:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>略有所感，应用TDD首先就要回答两个问题：</p>
+<p>1. TDD中测试的对象到底是什么？<br/>
+2. TDD在开发过程的哪个阶段引入？</p>
+<p>在我看来，这两个问题的答案都是一样的，就是“单元”。以OO为例，这个单元就是类。TDD的测试对象是类，TDD只应该在设计类时的引入。</p>
+<p>在实际的开发过程中，我们应该有这样的体会，虽然项目整体的需求在不断变化，但是在类这个层面，可能会添加、可能会删除、可能会扩展、可能会继承，但是已有API的修改是很小的，通常都是添加和删除，这是因为好的类设计，其权责必然是清晰简洁的，因此受整体需求变化的影响也是较小的。</p>
+<p>因此在类的设计阶段引入TDD，对功能单元的划分，类/方法权责的明确，减少类的依赖耦合，都会有很大的帮助。另外，开发人员的一个普遍问题就是在设计时总是从实现者的角度来做设计，而黑盒测试用例，实际上就是被测对象的使用者，因此，TDD测试先行的概念，可以让开发人员可以更多的从使用者角度看问题。</p>
+<p>TDD应该是一种”单元“开发时的方法，它能够帮助设计更好的”代码单元“，能够检验”代码单元“的设计是否够好，也只有在”代码单元“的设计够好的时候才能有用武之地。</p>
+</div>
+ </article>
+</li>
+<li id="comment-31963" class="comment even thread-even depth-1">
+<article id="div-comment-31963" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fc62970b59aef10fe9342508bb9be367?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fc62970b59aef10fe9342508bb9be367?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sjinny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-31963"><time datetime="2011-02-24T18:25:40+08:00">2011年02月24日 18:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我在一本python书中看到说，在编写实现代码前先运行单元测试并确保它能够失败，因为总是能够通过的测试是没有意义的。实际上这是对测试代码的测试。而测试代码的编写过程测试了接口的设计质量。</p>
+</div>
+ </article>
+</li>
+<li id="comment-31966" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-31966" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-31966"><time datetime="2011-02-24T18:55:24+08:00">2011年02月24日 18:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“我们真正应该做的是尽快看到实际运行的效果，而测试作为固化的需求和设计是在看到效果之后。”<br/>
+确实是应该尽快让代码运行并得到结果。但是问题是如何去“看”这个结果？如果你的函数仅仅是返回一个int，你或许可以用print直接打印出来“看”，稍微复杂一些的如：字符串，URL，或者浮点数，“看”起来就费力多了。这个时候我们可能会想到使用assertion，测试本身不就是assertion吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-31969" class="comment even thread-even depth-1">
+<article id="div-comment-31969" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-31969"><time datetime="2011-02-24T19:11:31+08:00">2011年02月24日 19:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“过度的TDD只会导致迟迟看不到实际运行效果，看到效果需要调整需求又会废掉或改掉一大堆的测试用例”<br/>
+TDD加了过度，也就不是一个好的实践，就像钱多过度也未必是好事。<br/>
+没有测试用例，需求调整的时候是不是会更轻松些？这个值得商榷。在需求调整的时候，测试用例往往会帮助你发现一些你疏忽掉的应该改动的代码。<br/>
+删除不再需要的测试用例是必要的，没必要心疼，需求调整和代码重构都会导致一些测试不再有效，测试的作用之一就是让我们不再惧怕需求的调整，鼓励我们去不断优化和重构代码，同时保证功能的正确。如果将写测试当作一种时间上的浪费的话，这个观念不转变，很难在进一步接受TDD了。出来混总是要还的，就算你现在不写，你在某个时候还是要测试，还是要花时间，但是成本可能会大不一样。</p>
+</div>
+ </article>
+</li>
+<li id="comment-31975" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-31975" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-31975"><time datetime="2011-02-24T19:30:42+08:00">2011年02月24日 19:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得在“TDD到底美还是不美”这样一个标题下来讨论似乎没有意义，TDD别人说美，对我没用，我照样不用，别人说丑，但是对我有用，我也一样笑纳。<br/>
+探索合适自己的方法如果找老婆一样，也许在别人看来近乎完美的女人并不适合娶来做老婆，相反自己觉得好的女人别人也未必欣赏，鞋子舒不舒服只有脚知道。<br/>
+只是希望多交流脚的经验，舒服的和不舒服的都行，至于鞋子是Nike还是阿迪，似乎没那么重要。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32007" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-32007" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32007"><time datetime="2011-02-24T21:51:55+08:00">2011年02月24日 21:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ThoughtWorks中国公司首席咨询师熊节都说了——<br/>
+”能学会的人他不需要看这些文字，不能学会的人他看了也是白看”。</p>
+<p>TW中国咨询师们有很多类可以说这样强大的评语，基本上是佛挡杀佛，魔挡杀魔！</p>
+<p>jnj同学更信这样的人？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32017" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32017" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32017"><time datetime="2011-02-24T22:29:27+08:00">2011年02月24日 22:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32007" rel="nofollow">@陈皓 </a><br/>
+我是就Todd Wei的一些观点表达不同的看法，不代表我支持TW中国。TW中国我不太了解，但是从陈皓的描述中，我觉得他们和我见过的TW有很大区别。也许还是钱钟书说得对，任何东西到了中国都会变味。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32045" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-32045" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32045"><time datetime="2011-02-25T01:02:20+08:00">2011年02月25日 01:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32017" rel="nofollow">@jnj </a> 不管是我还是Todd Wei 都没说测试是不好的，甚至都推崇Unit Test等自动化测试，只是不赞成盲目的先写没有用的test case。InfoQ那篇文章除了那有宗教情节的咨询师外，其他人的论点基本上只能证明auto test 是好的，跟我的还是Todd Wei 没有抵触。</p>
+<p>头脑清楚的人，做过事的人，才知道我和Todd Wei在说什么，只有没做过事，靠理论忽悠的人，有宗教信仰的人才会把我和Todd Wei 认为成异教徒！</p>
+</div>
+ </article>
+</li>
+<li id="comment-32139" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32139" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32139"><time datetime="2011-02-25T08:50:46+08:00">2011年02月25日 08:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认真地看了Todd Wei的文章，有些观点同意，有些不敢苟同。所以我引用他的原话再加上我的观点。</p>
+<p>很想问Todd Wei，他是否在实际工作中按照文章中的思路来写测试，即运行结果满意后，需求相对固化后，开始写测试用例。我的几个问题：</p>
+<p>1、这样的测试是否很好地覆盖应该测试的代码？在系统正常运行后，是不是需要重新检查已经写好的代码，然后为它们写测试？这样做需要花多少时间？开发人员愿不愿意为已经工作的代码来补写测试？<br/>
+2、如果需求变更，是不是置已有的测试不顾，先更改代码，让系统再次成功运行，然后再来处理那些因需求变更导致失败的测试，和添加新的测试？<br/>
+2、是否在实践中取得了良好的效果？如果确实行之有效，我也很有兴趣尝试。</p>
+<p>再次重申，这只是就事论事，就话说话，没有把人归类的意思，不要动辄就把讨论提高到宗教信仰和异教徒之类。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32144" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-32144" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32144"><time datetime="2011-02-25T09:17:04+08:00">2011年02月25日 09:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32139" rel="nofollow">@jnj </a> 你并没有理解我和Todd Wei在说的那些实践中的难题。另外，你的提问还是在误解我们对测试的看法。可能你经历的项目并不是太复杂，所以你可能很难理解。举个例子吧，你可以试想一下，如果让你做一个像WoW这样的网游系统，我很想看看你一开始的test case该写成什么样。你怎么用TDD来做？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32153" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32153" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32153"><time datetime="2011-02-25T09:55:30+08:00">2011年02月25日 09:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32144" rel="nofollow">@陈皓 </a> </p>
+<p>也许我的经历并没有二位丰富，我经历过最大的项目也只是30个人分布在3个城市，预算500万澳元的项目。</p>
+<p>就你的例子来说，开发一个WoW这样的网游，从程序员的角度来说大部分时间不是在跟整个WoW打交道，而是在和细化后的模块打交道，是不是这样？就如同无论一个物体有多大，它的总是由分子或原子组成的一个道理。为组件写test case应该是大家都熟知的事情。我尽量避免提TDD，无论是test first还是test after，我也想问清楚test after有什么优缺点。</p>
+<p>另，我也很想请教你对开发WoW这样的网游的思路？因为你做过的大型项目比我多很多，如果有很好的方法，我很愿意学习。</p>
+<p>让我们再将例子细化，比如实现一个战士类：Warrior，再进一步细化，实现它的移动功能move()。</p>
+<p>class Warrior {<br/>
+void move(Direction direction) {…} //移动，可以将方向作为参数传入<br/>
+Coordinate getCoordinate() {…} //获得当前坐标<br/>
+}</p>
+<p>我先写测试:<br/>
+a_warrior_should_be_able_to_move_left_and_his_coordinate_changes_as_a_result() {<br/>
+Warrior warrior = new Warrior();<br/>
+assertThat(warrior.getCoordinate(), equalsTo(default coordinate));<br/>
+warrior.move(left);<br/>
+assertThat(warrior.getCoordinate(), equalsTo(new coordinate));<br/>
+}</p>
+<p>在没有实现move()之前，第二个assertion会失败，因为缺省坐标在move()后没有变化，我们可以依据这个failing test来实现move()功能。</p>
+<p>我很有兴趣知道你的做法，或者是用Todd Wei的先实现move()，然后写测试的方法如何来做，起码我需要一个方法来验证我的Coordinate是否正确。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32162" class="comment even thread-even depth-1">
+<article id="div-comment-32162" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/92762f5a6a2faeb45690fda617794759?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/92762f5a6a2faeb45690fda617794759?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://null" class="url" rel="ugc external nofollow">lazybug</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32162"><time datetime="2011-02-25T10:46:34+08:00">2011年02月25日 10:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>jnj，我想实现move,可是你的direction 实例封装的信息够用吗？不管几维，除了Direction还需要一个位移，如果这个位移在更高一层给出，那么你把不该解耦的给分开了。我猜你的例子是凭空想的。那也好。如果需求变了，左移遇到障碍没有移过去呢，你会删掉或修改a_warrior_should_be_able_to_move_left_and_his_coordinate_changes_as_a_result。</p>
+<p>谁也不知道你的这个类的抽象层，所以我说只是单元测试，你就说这是对需求和设计的测试（TDD说的那样），反过来也可以说。</p>
+<p>所以需求稳定了，你可以这样写，甚至可以有条理地瀑布化。需求不稳定呢，你也需要拆掉什么和再加点儿什么。先写Move后写测试也好不了哪儿去，只是你不会漏掉移动需要的先决条件罢了。</p>
+<p>还是那句话，灵活点儿，好好活着，没有银弹的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32168" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32168" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/weidagang2046" class="url" rel="ugc external nofollow">Todd Wei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32168"><time datetime="2011-02-25T10:54:31+08:00">2011年02月25日 10:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32153" rel="nofollow">@jnj </a><br/>
+我的做法是先把class Warrior实现，然后交给用到Warrior的上层模块Game集成。<br/>
+（Game模块不一定是整个产品，而是说会影响Warrior设计的上层模块；对于通用数据结构来讲，直接单元测试就行，单元测试本身就是集成）</p>
+<p>我会对Game模块进行集成测试，发现Warrior不仅需要move方法，还需要一个jump方法，然后我就为Warrior实现一个jump，然后集成；然后我发现getCoordinate（）考虑不周全，应该由其他类来提供它的坐标，这时我会把getCoordinate（）拿到，放到其他类，再集成；然后我发现Warrior有一个小bug，可能在某些情况下move抛异常，我会fix掉这个bug，再集成。这样，当我基本满意Game的集成效果，Warrior的设计就算基本稳定了，然后我就会为Warrior添加单元测试用例，单元测试用例应该至少包括集成中发现的bug。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32169" class="comment even thread-even depth-1">
+<article id="div-comment-32169" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32169"><time datetime="2011-02-25T10:57:22+08:00">2011年02月25日 10:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32162" rel="nofollow">@lazybug </a><br/>
+我正在担心有的人会认为这个例子过于简单，设计得一点都不周全。我是想用一个简单的例子来看看大家都使用什么步骤来实现？例子本身不重要，希望大家都发表下自己的做法，而不是诟病例子本身。当然如果你有更适合的例子，也可以拿出来，我们以它展开讨论。也许最理想的情况就是做一个东西出来，而不是写一小片代码，但是这样现实吗？<br/>
+所以，我是想抛砖引玉，看看lazybug你是如何实现这个功能的，如果你觉得这个例子太虚幻，不值得考虑，你等于什么也没说，也没人知道你是再用什么方法，你的思路是什么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32171" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32171" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32171"><time datetime="2011-02-25T11:08:15+08:00">2011年02月25日 11:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32168" rel="nofollow">@Todd Wei </a><br/>
+非常详细，这下我明白了你的思路。对Game模块的集成测试是不是大概下面象这样的？</p>
+<p>game_is_able_to_make_a_warrior_move() {<br/>
+Game game = new Game();<br/>
+Warrior warrior = new Warrior();</p>
+<p> game.goMove(warrior);<br/>
+assertThat(warrior.getCoordinate(), equalsTo(expected coordinate));<br/>
+}</p>
+<p>这些测试是不是在实现Warrior和Game的过程中写好的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32174" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-32174" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32174"><time datetime="2011-02-25T11:39:54+08:00">2011年02月25日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32153" rel="nofollow">@jnj </a> 几点回复：<br/>
+1）看似不错的一个教学案例，不过，Wow并没有这么简单。我说的是一个系统，并不只是一个战士和一个UI，还有更多的东西，测试也不是那么简单的。</p>
+<p>2）这就是我一开始在文中提到的。如果你一开始写那么细的话，那么未来的需求变更可以改动就会让你需要修改所有的测试代码。</p>
+<p>3）对于你这个测试，等到你继续往下做的时候，随着你了解需求深入了，你会发现除Warrior，你还要写各种各样的别的角色，比如：巫师，猎人、精灵，……， 还有大量的怪和NPC。于是，发现需要一个超类了，此时，你需要重构的不仅仅是你的warriro代码，还有相应的test cases。（<b>因为你一开始就没有理解清楚，原来这个游戏中还有那么多的角色</b>）</p>
+<p>4）等你再继续做下去的时候，解决任务系统，于是按你的思路，你会加上任务的test case，有领任务的，有给任务的。看似不错，你继续做下去，你会发现问题又来了，任务完成时会触发系统给一些bouns，或是一些新的场景的开启，或是下一个场景。你会发现对象间有太多的耦合了，你得不停来重构（<b>因为你一开始关test case去了，也就是用户的需求，你一开始没有花时间考虑对象间的关系就去实现Warrior了</b>）</p>
+<p>…… ……货币系统，等级系统，场景系统，副本，地图，……<br/>
+…… ……（有的人叫苦——要做的东西太多了，重构量太大了，我能不能不写test case了？很boring啊）</p>
+<p>5）这个时候，你快要完成了。一个新的问题出现了——“性能问题”，你的后台服务器只能支持1000在线个玩家，你的注册的玩家超过了10万，你的后台数据库查询变慢。为了应对高并发，高性能，你需要把你的数据分布，你需要用异步的方式，你需要减少系统中的锁来提高性能。于是，你发现，你需要重构，应该是重新架构。你需要彻底修改所有的代码包括所有的测试。（<b>因为你一开始去关注功能性需求了，没有关注非功能性需求</b>）</p>
+<p>6）对于大并发和高负载的需求，你开始写test case。你会发现你不知道怎么写。一是因为你很难模拟出那样的环境。二是因为这样的test case的难度太大。<b>对于这些需要很深的技术功底的需求，程序员牛不牛就体现出来了，整天喊着TDD等方法论的程序员一点办法都没有。而天天在专研技术专研各种架构的程序员的优势就出来了</b>。（最终，整个项目组里解决性能难题的的程序员受到了同事和领导的尊敬，而鼓吹TDD的程序员还在那里鼓吹TDD）</p>
+<p>这只是一个示例，对于这样的系统，有效的做法是，认真的分析需求，功能性的，非功能性的，然后进行架构设计，对于需求分析和系统架构设计，当然，你还一定要去写一些POC式的代码去做一些尝试和验证。等你边分析，边设计，边尝试一段时间后，你对整个系统有了一个比较稳固的了解后，你才能真正开始去做一些详细设计和实现。看上去很像waterfall吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32186" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32186" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32186"><time datetime="2011-02-25T12:18:45+08:00">2011年02月25日 12:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32174" rel="nofollow">@陈皓 </a><br/>
+这次是你没有理解我的意图，我的案例讲的是假设你的前提都是成立的，总有一天你要坐到电脑前去实现这个类的时候，你怎么做？让我们抛开那些复杂的前提，因为那样会偏离重点，这里也重申一下我不是否定那些不重要，但是如果要讨论那些的话，完全可以另外开设主题。因为你讲了这么多我还是不知道你实现它的方法，我知道之前要做详细的设计，构架等等，但是它们超出了我要讨论的范围。让我们直奔主题不好吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32190" class="comment even thread-even depth-1">
+<article id="div-comment-32190" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32190"><time datetime="2011-02-25T12:39:01+08:00">2011年02月25日 12:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我还意识到，可能有人理解TDD就是接到任务后不设计，立即着手写测试用例，那误会就大了。一般来说第一次迭代都是不编码的，都是给需求分析和设计留出时间，后续的每一次迭代中需求分析和设计都是先于编码的，每一次迭代都是小的瀑布，这个是毫无疑问的（http://coolshell.cn/articles/3609.html/comment-page-1#comment-26419）</p>
+</div>
+ </article>
+</li>
+<li id="comment-32193" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32193" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32193"><time datetime="2011-02-25T12:58:03+08:00">2011年02月25日 12:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32186" rel="nofollow">@jnj </a> 你说的TDD的范围只是UT吗？如果这样的话，TDD那头的人要骂你了。主题是coding还是开发软件？如果只是coding的这个范围的话，那就直接说UT了。那我们全部人的确都跑题了。（另外，<b>你说“要抛开复杂的前提”，那就成了纸上谈兵了，就成了理论家了，真正挑战理论的就是实际中这些各种各样的复杂性啊</b>）</p>
+<p><a href="#comment-32190" rel="nofollow">@jnj </a> “ 接到任务后应该先去设计。每一次迭代都是小的瀑布，这个是毫无疑问的！” 这个我要同意你了，我同意你的不是你的方法，而是因为你在用自己的方式做事，非常好！另外，看到你这样的想法，<b>我觉得你和Todd Wei应该站在同一边太对啊</b>，这正是我和Todd Wei所说的，适当地去TDD。（注：你那句“每一次迭代都是小的瀑布”是会被真正的敏捷信徒们所嘲笑的）</p>
+</div>
+ </article>
+</li>
+<li id="comment-32202" class="comment even thread-even depth-1">
+<article id="div-comment-32202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b0de2dc68a71cd0422a4ff66c5c36e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jnj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32202"><time datetime="2011-02-25T13:17:19+08:00">2011年02月25日 13:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32193" rel="nofollow">@陈皓 </a><br/>
+我个人确实以Unit Test为主（90%），但是也是用过Integration Test和Functional Test来做TDD。现实中因为Integration Test和Functional Test的反馈速度比Unit Test慢很多，并且涉及的模块和系统也更多，所以完全依赖它们来驱动开发的我个人没见过，但也很希望看到这样的实例。</p>
+<p>Todd Wei的思路我初步了解了，很有兴趣继续深入了解。我没有听到过将敏捷和瀑布截然对立的言论，如果有的话，请陈皓同学提供，我很乐意一探究竟。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32207" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32207"><time datetime="2011-02-25T13:37:44+08:00">2011年02月25日 13:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32202" rel="nofollow">@jnj </a><br/>
+Unit Test没有人反对啊，这么重要的UT啊，我每年都要出去给好多公司讲UT的培训，CppUnit, PurifyPlus，Code Analyzer…… 一堆单元测试的工具。还有如何做automation test。但这些都不是TDD啊。</p>
+<p>敏捷和瀑布对立不是我搞出来的，是TW搞出来的，你要用迭代来玩瀑布，他们会嘲笑你的不懂敏捷的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32271" class="comment even thread-even depth-1">
+<article id="div-comment-32271" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/afc72b0a91363931c13f5b07c143a6a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/afc72b0a91363931c13f5b07c143a6a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yuyijq.cnblogs.com" class="url" rel="ugc external nofollow">横刀天笑</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32271"><time datetime="2011-02-25T18:39:22+08:00">2011年02月25日 18:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>仔细的阅读着大家的讨论，受益匪浅。如果都能回归到纯学术的讨论上去我想对所有人都是非常有益的。<br/>
+只是我对楼主某些对ThoughtWorks的看法和不实的言论颇有微辞，不知道能不能说说。</p>
+<p>1、楼主说ThoughtWorks的咨询师都是加入公司后，经过很短时间的培训（1－2年）然后贯上高级咨询师的头衔。实际上ThoughtWorks中国咨询师总共就没有多少，能冠以高级咨询师的人更是没有几个。大部分的我们还是以编写代码开发为主。比如我们项目中，工作年限最少的比如我，也入行有四五个年头，我从来没敢说我是咨询师，我的Title是Application Developer。每天就是编码编码。<br/>
+2、你说ThoughtWorks中国的咨询师喜欢写博客。这个我承认，就像楼主你，也非常喜欢分享，不是吗。还有，说博客里不写代码，这个我就不承认了。在你说了这之后，我查看了一些同事的博客，大部分人的博客还是以代码为主，我的博客上也只有两三篇讨论敏捷的文章，其他所有的文章几乎都是分享具体的技术（当然，也可能不入你的法眼）。不过有一点是，有的咨询师博客上确实没有代码，因为咨询分很多种，有的咨询师就不是出去做代码实践的咨询的，你也让他写代码么？<br/>
+3、我不知道楼主您在哪儿感受到ThoughtWorks中国的咨询师容忍不了不同的观点，我想或许我们就是跟楼主一样，喜欢讨论而已，喜欢发表自己的意见。而且，在公司我们都忌谈敏捷不敏捷，我们认为只要能我们交付软件能力的方法就是好的，不管它属不属于敏捷。<br/>
+4、我不知道出去的咨询师怎么样，但是在公司内部我们强烈反对对某一件事情下绝对的定论，反对所谓的标准答案。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32283" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32283"><time datetime="2011-02-25T19:50:39+08:00">2011年02月25日 19:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32271" rel="nofollow">@横刀天笑 </a><br/>
+嗯，对于做外包软件的TW，需要有你这样的认识。</p>
+<p>从你的回复和Blog看得出来你是玩技术的，不是玩嘴皮子的，你和我一样都是work-the-work的人，不是那些talk-the-talk 甚至 work-the-talk的人。所以，不难看出你和回复和其它TW咨询师的回复不一样。我很喜欢你说的——“我们认为只要能我们交付软件能力的方法就是好的，不管它属不属于敏捷”。不过，当我提到TDD的困难之处时，你们的咨询师就说我炒作，说我可笑，说我不懂，说我是菜鸟，你觉得呢？</p>
+<p>我还是那句话，我抵制的是以方法论为中心和教条主义，你们TW的咨询师太有这个倾向了。</p>
+<p>我是很想举很多例子，我也很想分享一些别人和我分享的对你们TW的事。不过那都要点名到姓的，我觉得有些话点到为此就好了，如果你知道的话，私下可以和你说。你们现任两个高级咨询师（至少我在媒体上看到的是这个title）加入TW的年头都在两年左右。还有一个title叫首席咨询师的年轻人是傲慢，自大，看不起人，谈的东西越来越假大空。</p>
+<p>不过，我还是说，TW咨询师的是TW公司管理的问题，对于TW公司的东西，你在内部你应该也清楚。如果你不清楚的话，我可以和你说说——</p>
+<p>1）公司定位不清楚。连你们上层都没有搞清是要做咨询，还是做外包（中关村软件园中有很多外包公司，做得都比你们大）。</p>
+<p>2）你们咨询的策略是，通过培训和鼓吹，得到机会到用户那里当coach，最终能得到外包的机会。</p>
+<p>3）你们的外包项目虽然多，大多来自北美，但是都是比较小的，以Web为主。有那么一两个比较大的项目都被明星核心员工垄断了。其它人很难有机会。</p>
+<p>4）你们公司有一个核心圈子，有点像长老会，也就是权威，他们正在开始变得自大和傲慢。这个圈子周围是第二层圈子，是能被长老会认可以的人。其他们可能很难有话语权（敏捷中有一条就是反对权威，但你们公司内部正在形成这个东西）</p>
+<p>5）你们公司内的职业生涯理论上有几条，但实际上只有咨询一条。走经理路线走不了，因为只有一个经理，走技术路线又没有业务和大型项目，只能走咨询路线。</p>
+<p>6）咨询师其实就是Developer，但是你们觉得咨询师这个title比程序员更牛。你们走咨询师通常有三条路，一是靠媒体炒作自己，通过翻译书，写blog，出席媒体活动等（CSDN过来的那几个深谙此道），二是靠嘴皮子，但是太年轻了，到了客户那边，客户懂的都比你多，忽悠不动，三是靠扎扎实实的技术，这需要实实在在的能力和经验。后两条路太难了，所以，都去走第一条路了。</p>
+<p>7）能给别的公司做咨询的人对我来说，一般有要么是技术底子很强项目经验很丰富的人，要么就是对用户的行业业务相当了解的的人，要么就是管理方面的（公司组织架构调整）。你们TW显然很有创造性，玩了一个即不技术也不业务更不管理的咨询——方法论。所以，脱离了具体的业务，技术和公司管理，你们最终说出来的话也只有空洞了。</p>
+<p>综上所述，这也许可以回答你的那些问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32732" class="comment even thread-even depth-1">
+<article id="div-comment-32732" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49089e81fcbf2832eb9d220da1f6fe5d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49089e81fcbf2832eb9d220da1f6fe5d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://Ivony.cnblogs.com/" class="url" rel="ugc external nofollow">Ivony</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32732"><time datetime="2011-02-27T16:20:47+08:00">2011年02月27日 16:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>刀刀说这边的讨论很精彩，我也就过来瞅瞅。其实看完后发现怎么变味了，原文提出的问题是TDD是不是敏捷的。下面的讨论则成了某公司咨询师、某阵营狂热信仰者所拥簇的TDD是不是一个靠谱的玩意儿。</p>
+<p>相信大家也都有这样的觉悟：方法无好坏，关键用在哪里。敏捷也不是软件开发的银弹。如果我们去讨论一个被偏激的观点狭隘和妖魔化的TDD，这结论又有什么意义呢？TDD是一个很好的实践但不代表非TDD就不是一个很好的实践，更没有必要舍本求末去追求形式。</p>
+</div>
+ </article>
+</li>
+<li id="comment-32737" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32737" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-32737"><time datetime="2011-02-27T16:59:23+08:00">2011年02月27日 16:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-32732" rel="nofollow">@Ivony </a><br/>
+我本来就是针对TW咨询师们的炒作和教条主义行为的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-61619" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/4891.html" class="url" rel="ugc">Bob大叔和Jim Coplien对TDD的论战 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-63622" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63622" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/57e45392df42f272ba45cdbe19c37cb3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/57e45392df42f272ba45cdbe19c37cb3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Lucifer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-63622"><time datetime="2011-07-06T22:09:10+08:00">2011年07月06日 22:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>敏捷本身讲的是如何实现价值，TDD通常大家都认可价值观之上的一种实践。敏捷中没有必须采用的实践，不同的项目和背景也可以有不同的价值观。我感觉作者对这个问题的理解有点像以前经常听说的敏捷就是不写文档一样。</p>
+<p>jnj的几个说法我很赞同，既然作者说了要验证快速开发的系统，那么用什么来验证呢？测试可以很完整，自动化，可重复的不断完成系统的验证。另外，只要写代码，就会犯错误，先测试和先让测试失败再写代码在很大程度上保证了测试用例的正确性。所谓的TDD是黑盒也值得商榷，简单化本身就保证了测试不需要的，也就是需求不需要的实现，为什么要写？如果所有的代码都是为了满足测试，那么再去讨论这些测试用例是黑盒还是白盒有什么意义？</p>
+<p>作者说了很多不测试而进行快速开发验证，但是没有给出一个具体的实践，只是泛泛而谈。如果真的是很好的实践，可以写出来大家分析分析是如何满足项目的价值的（我做过的项目的价值是高质量的实现客户需求，而不是仅仅完成代码开发），让更多的人受益。</p>
+</div>
+ </article>
+</li>
+<li id="comment-64521" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://99dzh.com/index.php/2011/07/11/17/" class="url" rel="ugc external nofollow">Bob大叔和Jim Coplien对TDD的论战 » 99大杂烩</a> </div>
+</li>
+<li id="comment-68154" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-68154" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ec3fb3087e9581c48efcdfe8082312ea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ec3fb3087e9581c48efcdfe8082312ea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mayao11</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-68154"><time datetime="2011-07-25T22:52:06+08:00">2011年07月25日 22:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我经验里。看到“30个人分布在3个城市，预算500万澳元的项目”这种话时会赶紧关网页。不知道为什么，还真是常遇到（包括各种变种）。</p>
+<p>要我说的话，上面那段移动代码差不多白写了，和实际需求完全没有联系，嘿嘿。<br/>
+这篇文章在我看来，是腔调了“曳光弹”编程的作用。文章所倡导一种可能性——对于需求不完全清晰的系统，尽量增加“曳光弹”的时间和亮度，直到过程进展到尽在掌握的程度。因为很多情况下，这样最快~~</p>
+</div>
+ </article>
+</li>
+<li id="comment-78788" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cnsst.com/wordpress/?p=72" class="url" rel="ugc external nofollow">在新浪微博上关于敏捷的一些讨论 | 零度领域的博客-我的一米阳光</a> </div>
+</li>
+<li id="comment-202330" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/unit-testing-to-be-done-how-fine.html" class="url" rel="ugc external nofollow">Definite Digest » “单元测试要做多细？”</a> </div>
+</li>
+<li id="comment-311719" class="comment even thread-even depth-1">
+<article id="div-comment-311719" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59a0a8ffce9118a0bba91c478eccd72d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59a0a8ffce9118a0bba91c478eccd72d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.avdxdqlagous.org" class="url" rel="ugc external nofollow">fqnyqrzeewpw</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-311719"><time datetime="2013-03-17T22:07:20+08:00">2013年03月17日 22:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>teedwoohrgas</p>
+</div>
+ </article>
+</li>
+<li id="comment-1822768" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1822768" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/104879cc33cb1e10b3391cf69593f9c7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/104879cc33cb1e10b3391cf69593f9c7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yavix.ru/" class="url" rel="ugc external nofollow">(&gt;褋邪泄褌[&gt;http:鈺扁暠zh.wikipedia.org鈺眞iki鈺辨潨鏂囩</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3766.html#comment-1822768"><time datetime="2016-04-29T21:36:28+08:00">2016年04月29日 21:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>让客户100%的满意，那就是我们的原则。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

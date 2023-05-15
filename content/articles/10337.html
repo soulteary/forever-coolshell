@@ -1,0 +1,583 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>数据即代码：元驱动编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10337 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10337" class="post-content post-10337 post type-post status-publish format-standard hentry category-cplusplus category-rubydev category-misc category-proglanguage tag-c tag-javascript tag-lisp tag-ruby">
+<header class="entry-header">
+<span class="screen-reader-text">数据即代码：元驱动编程</span>
+<h1 class="entry-title">数据即代码：元驱动编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10337.html" title="10:18" rel="bookmark"><time class="entry-date" datetime="2013-08-09T10:18:31+08:00" pubdate="">2013年08月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10337.html#comments" class="comments-link">77 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 58,621 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 <a href="http://weibo.com/weidagang" target="_blank">@文艺复兴记</a>（todd） 投递此文）</strong></p>
+<p>几个小伙伴在考虑下面这个各个语言都会遇到的问题：</p>
+<p><strong>问题：设计一个命令行参数解析API</strong></p>
+<p>一个好的命令行参数解析库一般涉及到这几个常见的方面：</p>
+<p>1) 支持方便地生成帮助信息</p>
+<p>2) 支持子命令，比如：git包含了push, pull, commit等多种子命令</p>
+<p>3) 支持单字符选项、多字符选项、标志选项、参数选项等多种选项和位置参数</p>
+<p>4) 支持选项默认值，比如：–port选项若未指定认为5037</p>
+<p>5) 支持使用模式，比如：tar命令的-c和-x是互斥选项，属于不同的使用模式</p>
+<p>经过一番考察，小伙伴们发现了这个几个有代表性的API设计：</p>
+<p><strong>1. getopt()：</strong></p>
+<p><a href="http://www.gnu.org/software/libc/manual/html_node/Getopt.html">getopt()</a>是libc的标准函数，很多语言中都能找到它的移植版本。</p>
+<p><span id="more-10337"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C
+while ((c = getopt(argc, argv, &#34;ac:d:&#34;)) != -1) {
+    int this_option_optind = optind ? optind : 1;
+    switch (c) {
+    case &#39;a&#39;:
+        printf (&#34;option a&#34;);
+        aopt = 1;
+        break;
+    case &#39;c&#39;:
+        printf (&#34;option c with value &#39;%s&#39;&#34;, optarg);
+        copt = optarg;
+        break;
+    case &#39;d&#39;:
+        printf (&#34;option d with value &#39;%s&#39;&#34;, optarg);
+        dopt = optarg;
+        break;
+    case &#39;?&#39;:
+        break;
+    default:
+        printf (&#34;?? getopt returned character code 0%o ??&#34;, c);
+    }
+}
+</pre>
+<p>getopt()的核心是一个类似printf的格式字符串的命令行参数描述串，如上面的”ac:d:”定义了”a”, “c”，”d”3个命令行参数，其中，a是一个标志符不需要参数，”c”和”d”需要跟参数。getopt()功能非常弱，只支持单个字符的标志选项和参数选项。如果按上面的5点来比对，基本上只能说是勉强支持第3点，其他几项只能靠程序自己来实现了，所以，想直接基于getopt()实现一个像git这样复杂的命令行参数是不可能的，只有自己来做很多的解析工作。小伙伴们看过getopt()之后一致的评价是:图样图森破。</p>
+<p><strong>2. Google gflags</strong></p>
+<p>接着，小伙伴们又发现了<a href="https://code.google.com/p/gflags/">gflags</a>这个Google出品C++命令行参数解析库。</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">//C++
+DEFINE_bool(memory_pool, false, &#34;If use memory pool&#34;);
+DEFINE_bool(daemon, true, &#34;If started as daemon&#34;);
+DEFINE_string(module_id, &#34;&#34;, &#34;Server module id&#34;);
+DEFINE_int32(http_port, 80, &#34;HTTP listen port&#34;);
+DEFINE_int32(https_port, 443, &#34;HTTPS listen port&#34;);
+
+int main(int argc, char** argv) {
+    ::google::ParseCommandLineFlags(&amp;argc, &amp;argv, true);
+
+    printf(&#34;Server module id: %s&#34;, FLAGS_module_id.c_str());
+
+    if (FLAGS_daemon) {
+      printf(&#34;Run as daemon: %d&#34;, FLAGS_daemon);
+    }
+    if (FLAGS_memory_pool) {
+      printf(&#34;Use memory pool: %d&#34;, FLAGS_daemon);
+    }
+
+    Server server;
+
+    return 0;
+}
+</pre>
+<p>小伙伴们看了后不由得感叹“真心好用啊”！的确，gflags简单地通过几个宏就定义了命令行选项，基本上很好的支持了上面提到的1，3，4这几项，比起getopt()来强多了。对于类似cp这样的小命令，gflags应该是够用了，但要达到git这种级别就显得有些单薄了。</p>
+<p><strong>3. Ruby Commander</strong></p>
+<p>接下来小伙伴们又发现了Ruby Commander库：</p>
+<pre data-enlighter-language="ruby" class="EnlighterJSRAW">//Ruby
+# :name is optional, otherwise uses the basename of this executable
+program :name, &#39;Foo Bar&#39;
+program :version, &#39;1.0.0&#39;
+program :description, &#39;Stupid command that prints foo or bar.&#39;
+command :bar do |c|
+  c.syntax = &#39;foobar bar [options]&#39;
+  c.description = &#39;Display bar with optional prefix and suffix&#39;
+  c.option &#39;--prefix STRING&#39;, String, &#39;Adds a prefix to bar&#39;
+  c.option &#39;--suffix STRING&#39;, String, &#39;Adds a suffix to bar&#39;
+  c.action do |args, options|
+    options.default :prefix =&gt; &#39;(&#39;, :suffix =&gt; &#39;)&#39;
+    say &#34;#{options.prefix}bar#{options.suffix}&#34;
+  end
+end
+$ foobar bar
+# =&gt; (bar)
+$ foobar bar --suffix &#39;}&#39; --prefix &#39;{&#39;
+# =&gt; {bar}
+</pre>
+<p>Commander库利用Ruby酷炫的语法定义了一种描述命令行参数的内部DSL，看起来相当高端大气上档次。除了上面的第5项之外，其他几项都有很好的支持，可以说Commander库的设计基本达到了git这种级别命令行参数解析的要求。只是，要搞懂Ruby这么炫的语法和这个库的使用方法恐怕就不如getopt()和gflags容易了。有小伙伴当场表示想要学习Ruby，但是也有小伙伴表示再看看其他库再说。</p>
+<p><strong>4. Lisp cmdline库</strong></p>
+<p>接下来，小伙伴们发现了Lisp方言Racket的<a href="http://docs.racket-lang.org/reference/Command-Line_Parsing.html">cmdline库</a>。</p>
+<pre data-enlighter-language="ruby" class="EnlighterJSRAW">//Lisp
+(parse-command-line &#34;compile&#34; (current-command-line-arguments)
+  `((once-each
+     [(&#34;-v&#34; &#34;--verbose&#34;)
+      ,(lambda (flag) (verbose-mode #t))
+      (&#34;Compile with verbose messages&#34;)]
+     [(&#34;-p&#34; &#34;--profile&#34;)
+      ,(lambda (flag) (profiling-on #t))
+      (&#34;Compile with profiling&#34;)])
+    (once-any
+     [(&#34;-o&#34; &#34;--optimize-1&#34;)
+      ,(lambda (flag) (optimize-level 1))
+      (&#34;Compile with optimization level 1&#34;)]
+     [(&#34;--optimize-2&#34;)
+      ,(lambda (flag) (optimize-level 2))
+      ((&#34;Compile with optimization level 2,&#34;
+        &#34;which implies all optimizations of level 1&#34;))])
+    (multi
+     [(&#34;-l&#34; &#34;--link-flags&#34;)
+      ,(lambda (flag lf) (link-flags (cons lf (link-flags))))
+      (&#34;Add a flag &lt;lf&gt; for the linker&#34; &#34;lf&#34;)]))
+   (lambda (flag-accum file) file)
+   &#39;(&#34;filename&#34;))
+</pre>
+<p>这是神马浮云啊?括号套括号，看起来很厉害的样子，但又不是很明白。看到这样的设计，有的小伙伴连评价都懒得评价了，但也有的小伙伴对Lisp越发崇拜，表示Lisp就是所谓的终极语言了，没有哪门语言能写出这么不明觉历的代码来！小伙伴们正准备打完收工，突然…</p>
+<p><strong>5. Node.js的LineParser库</strong></p>
+<p>发现了Node.js的<a href="https://github.com/weidagang/line-parser-js">LineParser库</a>:</p>
+<p>[javascript]<br/>
+//JavaScript<br/>
+var meta = {<br/>
+program : ‘adb’,<br/>
+name : ‘Android Debug Bridge’,<br/>
+version : ‘1.0.3’,<br/>
+subcommands : [ ‘connect’, ‘disconnect’, ‘install’ ],<br/>
+options : {<br/>
+flags : [<br/>
+[ ‘h’, ‘help’, ‘print program usage’ ],<br/>
+[ ‘r’, ‘reinstall’, ‘reinstall package’ ],<br/>
+[ ‘l’, ‘localhost’, ‘localhost’ ]<br/>
+],<br/>
+parameters : [<br/>
+[ null, ‘host’, ‘adb server hostname or IP address’, null ],<br/>
+[ ‘p’, ‘port’, ‘adb server port’, 5037 ]<br/>
+]<br/>
+},<br/>
+usages : [<br/>
+[ ‘connect’, [‘host’, ‘[port]’], null, ‘connect to adb server’, adb_connect ],<br/>
+[ ‘connect’, [ ‘l’ ], null, ‘connect to the local adb server’, adb_connect ],<br/>
+[ ‘disconnect’, null, null, ‘disconnect from adb server’, adb_disconnect ],<br/>
+[ ‘install’, [‘r’], [‘package’], ‘install package’, adb_install ],<br/>
+[ null, [‘h’], null, ‘help’, adb_help ],<br/>
+]<br/>
+};</p>
+<p>try {<br/>
+var lineparser = require(‘lineparser’);<br/>
+var parser = lineparser.init(meta);<br/>
+// adb_install will be invoked<br/>
+parser.parse([‘install’, ‘-r’, ‘/pkgs/bird.apk’]);<br/>
+}<br/>
+catch (e) {<br/>
+console.error(e);<br/>
+}<br/>
+[/javascript]</p>
+<p>天啊！？这是什么？我和小伙伴们彻底惊呆了！短短十几行代码就获得了上面5点的全面支持，重要的是小伙伴们居然一下子就看懂了，没有任何的遮遮掩掩和故弄玄虚。本来以为Ruby和Lisp很酷，小伙伴们都想马上去学Ruby和Lisp了，看到这个代码之后怎么感觉前面全是在装呢？有个小伙伴居然激动得哭着表示：我写代码多年，以为再也没有什么代码可以让我感动，没想到这段代码如此精妙，我不由得要赞叹了，实在是太漂亮了！</p>
+<p>小伙伴们的故事讲完了，您看懂了吗？如果没有看懂的话，正题开始了：</p>
+<p>在绝大多数语言中数据和代码可以说是泾渭分明，习惯C++、Java等主流语言的程序员很少去思考数据和代码之间的关系。与多数语言不同的是Lisp以“数据即代码，代码即数据”著称，Lisp用S表达式统一了数据和代码的形式而独树一帜。Lisp奇怪的S表达式和复杂的宏系统让许多人都感到Lisp很神秘，而多数Lisp教程要么强调函数式编程，要么鼓吹宏如何强大，反而掩盖了Lisp真正本质的东西，为此我曾写过一篇<a href="http://www.cnblogs.com/weidagang2046/archive/2012/06/03/tao_of_lisp.html">《Lisp的永恒之道》</a>介绍Lisp思想。</p>
+<p>设计思想和具体技术的区别在于前者往往可以在不同的环境中以不同的形式展现出来。比如，熟悉函数式编程的程序员在理解了纯函数的优点后即使是用C语言也会更倾向于写出无副作用的函数来，这就是函数式思想在命令式环境的应用。所以，理解Lisp思想一定要能在非Lisp环境应用，才算是融汇贯通。</p>
+<p>如果真正理解了Lisp的本质，那所谓的“数据即代码，代码即数据”一点儿也不神秘，这不就是我们每天打交道的配置文件吗！？如果你还不是很理解的话，我们通过下面几个问题慢慢分析：</p>
+<p>1) 配置的本质是什么？为什么要在程序中使用配置文件？</p>
+<p>不知道你是否意识到了，我们每天都在使用的各种各样的<strong>配置本质上是一种元数据也是一种DSL</strong>，这和Lisp基于S表达式的“数据即代码，代码即数据”没有本质区别。在C++、Java等程序中引入配置文件的目的正是用DSL弥补通用语言表达能力和灵活性的不足。我知道不少人喜欢从计算的角度来看到程序和语言，似乎只有图灵完备的语言如C++、Java、Python等才叫程序设计语言，而类似CSS和HTML这样的东西根本不能叫做程序设计语言。其实，在我看来这种观点过于狭隘，<strong>程序的本质是语义的表达</strong>，而语义表达不一定要是计算。</p>
+<p>2) 配置是数据还是代码？</p>
+<p>很明显，Both!说配置是数据，因为它是声明式的描述，能方便地修改和传输；说配置是代码，因为它在表达逻辑，你的程序实际上就是配置的解释器。</p>
+<p>3) 配置的格式是什么？</p>
+<p>配置的格式是任意的，可以自己定义语法，只要配以相应的解释器就行。不过更简单通用的做法是基于XML、JSON、或S表达式等标准结构，在此之上进一步定义schema。甚至完全不必是文件，在我们的项目中配置经常是放到用关系数据库中的。另外，下面我们还会看到用语言的Literal数据作为配置。</p>
+<p>4) 业务逻辑都可以放到配置中吗？</p>
+<p>这个问题的答案显然是：Yes！我没有遇到过不可以放入配置的逻辑，只是问题在于这样做是否值得，能达到什么效果。对于需要灵活变化，重复出现，有复用价值的东西放入作为配置是明智的选择。这篇文章的主要目的就在于介绍把<strong>主要业务逻辑都放到配置中，再通过程序解释执行配置的设计方法，我称之为：元驱动编程(Meta Driven Programming)</strong>。</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10337-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Ruby</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">Lisp</a>, <a href="javascript:void(0)" rel="tag">Ruby</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>数据即代码：元驱动编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-722556" class="comment even thread-even depth-1">
+<article id="div-comment-722556" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc097ea93d8fe5377f8e738c847334cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc097ea93d8fe5377f8e738c847334cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-722556"><time datetime="2013-09-07T21:28:58+08:00">2013年09月07日 21:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么不直接传个object进去?<br/>
+比如这样<br/>
+find -name “*.txt” | my-prog “{cmd:\”sort\”, comp:function(a,b){strcmp(a,b);}}”</p>
+</div>
+ </article>
+</li>
+<li id="comment-725214" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-725214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/10329a4a87894116ca77d124b2316510?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/10329a4a87894116ca77d124b2316510?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">snn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-725214"><time datetime="2013-09-09T13:14:45+08:00">2013年09月09日 13:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看过一篇文章，说是plan9中也有这么一个轮子</p>
+</div>
+ </article>
+</li>
+<li id="comment-725461" class="comment even thread-even depth-1">
+<article id="div-comment-725461" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f846909b5bd2454ee7adb81debdffabd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f846909b5bd2454ee7adb81debdffabd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.asuwill.info" class="url" rel="ugc external nofollow">asuwill</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-725461"><time datetime="2013-09-09T16:13:11+08:00">2013年09月09日 16:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>指出一个小小的错误<br/>
+讲解gflags的时候，里面有行代码：printf(“Use memory pool: %d”, FLAGS_daemon);<br/>
+这里的FLAGS_daemon 应该是：FLAGS_memory_pool</p>
+</div>
+ </article>
+</li>
+<li id="comment-749399" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-749399" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d197dbfcfa7f4f60e612a1453b797486?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d197dbfcfa7f4f60e612a1453b797486?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaoqiang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-749399"><time datetime="2013-09-21T15:33:33+08:00">2013年09月21日 15:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作者在这里，对语言理解的很深。把元驱动编程讲的很到位。当然在我没看这篇文章之前，我也不知道，什么是元驱动编程。虽然我之前经常会用到。<br/>
+但在实际应用中，我还是更愿意把 数据提出来让数据结构去管理他。可是每次，都很难分干净。让我很苦劳。</p>
+</div>
+ </article>
+</li>
+<li id="comment-752162" class="comment even thread-even depth-1">
+<article id="div-comment-752162" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60824ace73fb891a2309b27d0df8975f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60824ace73fb891a2309b27d0df8975f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.weaoo.com/cn_shanghai/shanghai.html" class="url" rel="ugc external nofollow">围观天气</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-752162"><time datetime="2013-09-22T16:27:12+08:00">2013年09月22日 16:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>高端</p>
+</div>
+ </article>
+</li>
+<li id="comment-756046" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-756046" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ca2f3e9f3c982b29aa2208d450af84e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ca2f3e9f3c982b29aa2208d450af84e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://wuleiblog.cn/" class="url" rel="ugc external nofollow">唳天飞鹰</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-756046"><time datetime="2013-09-24T09:07:03+08:00">2013年09月24日 09:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>高端！支持酷壳，也向酷壳学习，我的网站仿的越越来越像酷壳了（除了内容），嘿嘿！<a rel="nofollow">到我的小窝去逛逛！</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-762656" class="comment even thread-even depth-1">
+<article id="div-comment-762656" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/61550a024e297c62d2287453f19be8fb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/61550a024e297c62d2287453f19be8fb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Sorra</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-762656"><time datetime="2013-09-26T17:46:03+08:00">2013年09月26日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种配置用YAML表达挺好的。文中是这几个库的设计问题，跟编程语言无关啦。</p>
+</div>
+ </article>
+</li>
+<li id="comment-775214" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-775214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4c36dcf4ec25652449c0a9f25928a997?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4c36dcf4ec25652449c0a9f25928a997?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">popil1987</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-775214"><time datetime="2013-09-30T16:37:54+08:00">2013年09月30日 16:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Lisp cmdline库<br/>
+这段中，“不明觉历”应为“不明觉厉”</p>
+</div>
+ </article>
+</li>
+<li id="comment-785667" class="comment even thread-even depth-1">
+<article id="div-comment-785667" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2da5bee033c7e1fb56a25a0ec8be2d3b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2da5bee033c7e1fb56a25a0ec8be2d3b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">凉拌茶叶</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-785667"><time datetime="2013-10-05T11:35:24+08:00">2013年10月05日 11:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Lisp的配置文件最欢快了，直接把源码里面那些“配置”抠出来写在一个单独的lisp文件里面就行了</p>
+</div>
+ </article>
+</li>
+<li id="comment-793286" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-793286" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f60e45ed35e007b3c0b41e8fa346918e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f60e45ed35e007b3c0b41e8fa346918e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xchinastudio.com" class="url" rel="ugc external nofollow">vizhen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-793286"><time datetime="2013-10-08T15:30:58+08:00">2013年10月08日 15:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近在看《程序员修炼之道：从小工到专家》刚好也有讲到“使用元数据”与“领域语言”，再加深一点理解</p>
+</div>
+ </article>
+</li>
+<li id="comment-802521" class="comment even thread-even depth-1">
+<article id="div-comment-802521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab349fc6273558b00e0a76a03be6d74b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab349fc6273558b00e0a76a03be6d74b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">雪丰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-802521"><time datetime="2013-10-11T14:11:13+08:00">2013年10月11日 14:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>git也是表驱动的：<br/>
+git.c:<br/>
+static void handle_internal_command(int argc, const char **argv)<br/>
+{<br/>
+const char *cmd = argv[0];<br/>
+static struct cmd_struct commands[] = {<br/>
+{ “add”, cmd_add, RUN_SETUP | NEED_WORK_TREE },<br/>
+{ “annotate”, cmd_annotate, RUN_SETUP },<br/>
+{ “apply”, cmd_apply, RUN_SETUP_GENTLY },<br/>
+{ “archive”, cmd_archive },<br/>
+……………………..<br/>
+for (i = 0; i cmd, cmd))<br/>
+continue;<br/>
+exit(run_builtin(p, argc, argv));<br/>
+}<br/>
+………………….</p>
+</div>
+ </article>
+</li>
+<li id="comment-852550" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=32" class="url" rel="ugc external nofollow">C++11的Lambda使用一例：华容道求解 | zengine</a> </div>
+</li>
+<li id="comment-868209" class="comment even thread-even depth-1">
+<article id="div-comment-868209" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23d67ad5d52828d7912bfc3b34948b18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23d67ad5d52828d7912bfc3b34948b18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://biergaizi.info" class="url" rel="ugc external nofollow">比尔盖子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-868209"><time datetime="2013-11-01T12:22:54+08:00">2013年11月01日 12:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-785667" rel="nofollow">@凉拌茶叶 </a><br/>
+茶叶兄也在这里啊……</p>
+</div>
+ </article>
+</li>
+<li id="comment-873127" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-873127" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/160ec049fd6827fa7a1c71a6c556fa67?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/160ec049fd6827fa7a1c71a6c556fa67?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mayfly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-873127"><time datetime="2013-11-02T20:39:42+08:00">2013年11月02日 20:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有没有发现 在虚拟的层层之上，程序语言越来越像自然语言</p>
+</div>
+ </article>
+</li>
+<li id="comment-909922" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.xuehuar.com/?p=73" class="url" rel="ugc external nofollow">自主做事最精彩 « 雪中望春</a> </div>
+</li>
+<li id="comment-1013642" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1013642" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c0a39616894d683cb009b2461953e181?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://gcd0318.wordpress.com" class="url" rel="ugc external nofollow">gcd0318</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1013642"><time datetime="2013-12-02T14:30:24+08:00">2013年12月02日 14:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天才知道，小时候我自己瞎琢磨出来的的组织参数的方法，还有个专门的名字，长见识了，以后再也不用觉得这么写很无赖很流氓很“脏”了，原来这也是挺高大上的一条路子呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1019826" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=186" class="url" rel="ugc external nofollow">Lua简明教程 | zengine</a> </div>
+</li>
+<li id="comment-1053759" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1053759" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6e84db4382e3611021243a62602e82b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6e84db4382e3611021243a62602e82b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.reyoung.me" class="url" rel="ugc external nofollow">reyoung</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1053759"><time datetime="2013-12-11T01:21:45+08:00">2013年12月11日 01:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看看python的docopt，要比这些库都好用。不过思路是一样的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1155572" class="comment even thread-even depth-1">
+<article id="div-comment-1155572" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/86203df8c8193ab4894bd4cee5a4f154?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/86203df8c8193ab4894bd4cee5a4f154?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hax.iteye.com/" class="url" rel="ugc external nofollow">hax</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1155572"><time datetime="2014-01-08T16:55:09+08:00">2014年01月08日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这文章就是一软文，吹捧的LineParser其实是这文章作者自己的项目。写软文可以，写成这样就有点过了。</p>
+<p>说起来，命令行解析，node下有好几个非常不错的，比如在npm依赖排行榜上第四位的optimist（https://github.com/substack/node-optimist）和排名第六位的commander（https://github.com/visionmedia/commander.js），作者分别是神人substack和神人visionmedia。</p>
+<p>我喵了一眼，这LineParser的api比起上面两个那真是弱爆了，作者还是不理解什么才是好API。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1218370" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://gebospace.sinaapp.com/?p=62" class="url" rel="ugc external nofollow">数据即代码：元驱动编程 | GEBO的个人空间</a> </div>
+</li>
+<li id="comment-1395688" class="comment even thread-even depth-1">
+<article id="div-comment-1395688" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/584868b0059ed69f089a99c3a392e2ed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/584868b0059ed69f089a99c3a392e2ed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">qixinkui</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1395688"><time datetime="2014-03-19T14:33:42+08:00">2014年03月19日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>提到元编程或者数据驱动，除了作为配置的微语言或者DSL，至少还应该提到 代码生成技术 或者 generative programming吧。足够简单的代码和足够复杂的数据的界限确是十分模糊的。策略与机制分离，机制用代码实现，策略以数据表述，本质上是声明式编程在两个方向上的分化。有些时候希望模糊代码与数据的界限，有些时候却要特别分清楚。否则的话为什么不用 SExpression（SXML）代替 XML + XML family 语族呢?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1470895" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1470895" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4f95bd2b608fb7d47174f79e2b51f142?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4f95bd2b608fb7d47174f79e2b51f142?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">manyou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1470895"><time datetime="2014-05-28T09:31:18+08:00">2014年05月28日 09:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真不知道你们怎么想的, ,为什么我完全没有注意到你们吐槽的词… 也就评论里面的’小伙伴’最多了..</p>
+</div>
+ </article>
+</li>
+<li id="comment-1524880" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gshangpin.com/segment/?p=5640" class="url" rel="ugc external nofollow">关于bash执行命令的时候，带的一些参数的疑问 | segment-解决方案</a> </div>
+</li>
+<li id="comment-1573579" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1573579" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cde51bf5ac77265e1dd7696d6e90fac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cde51bf5ac77265e1dd7696d6e90fac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://shoucangta.com" class="url" rel="ugc external nofollow">butyou</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1573579"><time datetime="2014-10-16T16:12:23+08:00">2014年10月16日 16:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在我刚学会编程的第一年,某一天,我也想到了这个意思:“你的程序实际上就是配置的解释器。”<a href="#comment-653703" rel="nofollow">@shuiren </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1584060" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.xiaoheqingting.com/?p=73" class="url" rel="ugc external nofollow">自主做事最精彩 – 小荷蜻蜓</a> </div>
+</li>
+<li id="comment-1811462" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1811462" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75c45467c0b16cf239cc10d996d13fd4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75c45467c0b16cf239cc10d996d13fd4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">abao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1811462"><time datetime="2016-03-06T00:45:25+08:00">2016年03月06日 00:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-749399" rel="nofollow">@xiaoqiang </a><br/>
+额，感觉文章提到的数据，更可能指的是程序的配置数据，将程序的某些逻辑需要根据业务变化，或者其他原因做到灵活配置，甚至动态配置。但是程序本身处理的是业务数据，业务数据如何影响到程序的运行呢？这个感觉形容在神经网络更适合（神经网络整个运行系统，不是指神经网络具体某个实现代码）。神经网络不就是处理业务数据的同时升级自身处理逻辑吗？这个逻辑也是以数据存在，虽然可能不为人理解。而本文指的形式需要人involve进这个过程，根据业务需要改变配置数据。业务数据到配置数据环节需要人的参与。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1949305" class="comment even thread-even depth-1">
+<article id="div-comment-1949305" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/784c92ce8f261ac575c52f5d494f562a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/784c92ce8f261ac575c52f5d494f562a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘子龙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10337.html/comment-page-2#comment-1949305"><time datetime="2018-12-26T08:57:19+08:00">2018年12月26日 08:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我是一个外行。在这眼花缭乱编程语言的背后，应该存在一个终极的元驱动编程，作者的思索令我钦佩，可称得起大师级的人物，但还不足，因为元驱编程早已存在于大自然当中，我们所作的一切努力都只不过是在更进一步地接近它而已。我真诚的希望作者能够跨上更高一级的台阶。</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10337.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10337.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">10337</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

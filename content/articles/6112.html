@@ -1,0 +1,753 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>由一个问题到 Resin ClassLoader 的学习 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6112 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6112" class="post-content post-6112 post type-post status-publish format-standard hentry category-javadev tag-classloader tag-getresource tag-getresourceasstream tag-java tag-resin">
+<header class="entry-header">
+<span class="screen-reader-text">由一个问题到 Resin ClassLoader 的学习</span>
+<h1 class="entry-title">由一个问题到 Resin ClassLoader 的学习</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6112.html" title="12:22" rel="bookmark"><time class="entry-date" datetime="2011-12-28T12:22:55+08:00" pubdate="">2011年12月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/liuxiaori" title="View all posts by liuxiaori" rel="author">liuxiaori</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6112.html#comments" class="comments-link">30 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 19,581 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（<span style="color: #cc0000;">感谢网友 liuxiaori 分享其经历</span>）<br/>
+</strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E8%83%8C%E6%99%AF" title="背景">背景</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%8F%91%E5%B1%95" title="发展">发展</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%BB%93%E8%AE%BA" title="结论">结论</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%96%91%E9%97%AE" title="疑问">疑问</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#Resin%E4%B8%AD%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8" title="Resin中类加载器">Resin中类加载器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E9%A1%BA%E5%BA%8F" title="类加载器顺序">类加载器顺序</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E8%83%8C%E6%99%AF"></span>背景<span class="ez-toc-section-end"></span></h4>
+<p>某日临近下班，一个同事欲取任何类中获取项目绝对路径，不通过Request方式获取，可是始终获取不到预想的路径。于是晚上回家google了一下，误以为是System.getProperty(“java.class.path”)-未实际进行测试，早上来和同事沟通，提出了使用这个内置方法，结果人家早已验证过，该方法是打印出CLASSPATH环境变量的值。</p>
+<p>于是乎，继续google，找到了Class的getResource与getResourceAsStream两个方法。这两个方法会委托给ClassLoader对应的同名方法。以为这样就可以搞定(实际上确实可以搞定)，但验证过程中却发生了奇怪的事情。</p>
+<p>软件环境：Windows XP、Resin 3、Tomcat6.0、Myeclipse、JDK1.5</p>
+<h4><span class="ez-toc-section" id="%E5%8F%91%E5%B1%95"></span>发展<span class="ez-toc-section-end"></span></h4>
+<p>我的验证思路是这样的：</p>
+<ol>
+<li>定义一个Servlet，然后在该Servlet中调用Path类的getPath方法，getPath方法返回工程classpath的绝对路径，显示在jsp中。</li>
+<li>另外在Path类中，通过Class的getResourceAsStream读取当前工程classpath路径中的a.txt文件，写入到getResource路径下的b.txt。</li>
+</ol>
+<p>由于时间匆忙，代码没有好好去组织。大致能看出上述两个功能，很简单不做解释。</p>
+<p><span id="more-6112"></span></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Path {
+    public String getPath() throws IOException
+    {
+        InputStream is = this.getClass().getResourceAsStream(&#34;/a.txt&#34;);
+        File file = new File(Path.class.getResource(&#34;/&#34;).getPath()+&#34;/b.txt&#34;);
+        OutputStream os = new FileOutputStream(file);
+        int bytesRead = 0;
+        byte[] buffer = new byte[8192];
+        while ((bytesRead = is.read(buffer, 0, 8192)) != -1) {
+            os.write(buffer, 0, bytesRead);
+        }
+        os.close();
+        is.close();
+        return this.getClass().getResource(&#34;/&#34;).getPath();
+    }
+}
+</pre>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class PathServlet extends HttpServlet {
+    private static final long serialVersionUID = 4443655831011903288L;
+    public void doGet(HttpServletRequest request, HttpServletResponse response)
+        throws ServletException, IOException
+    {
+        Path path = new Path();
+        request.setAttribute(&#34;path&#34;, path.getPath());
+        PrintWriter out = response.getWriter();
+        out.println(&#34;Class.getResource(&#39;/&#39;).getPath():&#34; + path.getPath());
+    }
+
+    public void doPost(HttpServletRequest request, HttpServletResponse response)
+        throws ServletException, IOException
+    {
+        doGet(request, response);
+    }
+}</pre>
+<p>在此之前使用main函数测试Path.class.getResource(“/”).getPath()打印出预想的路径为：/D:/work/project/EhCacheTestAnnotation/WebRoot/WEB-INF/classes/</p>
+<p>于是将WEB应用部署到Resin下，运行定义好的Servlet，出乎意料的结果是：/D:/work/resin-3.0.23/webapps/WEB-INF/classes/ 。特别奇怪，怎么会丢掉项目名称：EhCacheTestAnnotation呢？</p>
+<p>还有一点值得注意，getPath方法中使用getResourceAsStream(“/a.txt”)却正常的读到了位于下图的a.txt。<br/>
+<img decoding="async" class="aligncenter size-full wp-image-6280" title="resin01" src="/uploads/2011/12/resin01.png" alt="" width="547" height="154" srcset="" sizes="(max-width: 547px) 100vw, 547px"/></p>
+<p style="text-align: center;">然后写到了如下图的b.txt中。代码中是这样实现的：File file = new File(Path.class.getResource(“/”).getPath()+”/b.txt”);本意是想在a.txt文件目录下入b.txt。结果却和料想的不一样。<br/>
+<img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2011/12/resin02.png" alt="" width="430" height="119" srcset=""/></p>
+<p>请注意，区别还是丢掉了项目名称。</p>
+<p>写的比较乱，稍微总结下：</p>
+<p>程序中使用ClassLoader的两个方法：getResourceAsStream和getResource。但是事实证明在WEB应用的场景下却得到了不同的结果。大家别误会啊，看名字他们两个方法肯定不一样，这个我知道，但是getResourceAsStream总会获取指定路径下的文件吧，示例中的参数为”/a.txt”，正确读取“/D:/work/resin-3.0.23/webapps/EhCacheTestAnnotation/WEB-INF/classes/ ”下的a.txt，可是将文件写到getResource方法的getPath返回路径的b.txt文件。两个位置的差别在项目名称(EhCacheTestAnnotation)。</p>
+<p>这样我暂且得出一个结论：通过getResourceAsStream和getResource两个方法获取的路径是不同的。但是为什么呢？</p>
+<p>于是查看了ClassLoader的源码，贴出getResource和getResourceAsStream的源码。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public URL getResource(String name) {
+    URL url;
+    if (parent != null) {
+        url = parent.getResource(name);
+    } else {
+        url = getBootstrapResource(name);
+    }
+
+    if (url == null) {
+        url = findResource(name);
+    }
+    return url;
+}
+
+public InputStream getResourceAsStream(String name) {
+    URL url = getResource(name);
+    try {
+        return url != null ? url.openStream() : null;
+    } catch (IOException e) {
+        return null;
+    }
+}</pre>
+<p>从代码中看，getResourceAsStream将获取URL委托给了getResource方法。天啊，这是怎么回事儿？由此我彻底迷茫了，百思不得其解。</p>
+<p>但是没有因此就放弃，继续回想了一遍整个过程：</p>
+<ol>
+<li>在main函数中，测试getResource与getResourceAsStream是完全相同的，正确的。</li>
+<li>将其部署到Resin下，导致了getResource与getResourceAsStream获取的路径不一致。</li>
+</ol>
+<p>一个闪光点，是不是与web容器有关啊，于是换成Tomcat6.0。OMG，“奇迹”出现了，真的是这样子啊，换成Tomcat就一样了啊！和预想的一致。</p>
+<p style="text-align: center;">在Tomcat下运行结果如下图：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2011/12/resin03.png" alt="" width="554" height="107" srcset=""/></p>
+<p>对，这就是我想要的。</p>
+<p>因此我对Resin产生了厌恶感，之前也因为在Resin下程序报错，在Tomcat下正常运行而纠结了好久。记得看《松本行弘的程序世界》中对C++中的多继承是这样评价的(大概意思)：多重继承带来的负面影响多数是由于使用不当造成的。是不是因为对Resin使用不得当才使得和Tomcat下得到不同的结果。</p>
+<p>最终，在查阅Resin配置文件resin.conf时候在&lt;host-default&gt;标签下发现了这样一段：</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">&lt;class-loader&gt;
+&lt;compiling-loader path=&#34;webapps/WEB-INF/classes&#34;/&gt;
+&lt;library-loader path=&#34;webapps/WEB-INF/lib&#34;/&gt;
+&lt;/class-loader&gt;</pre>
+<p>其中的compiling-loader很可能与之有关，遂将其注释掉，一切正常。担心是错觉，于是将compiling-loader的path属性改成：webapps/WEB-INF/classes1，然后运行pathServlet，b.txt位置如下图：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2011/12/resin04.png" alt="" width="483" height="93" srcset=""/></p>
+<p>确实与compiling-loader有关。</p>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E8%AE%BA"></span>结论<span class="ez-toc-section-end"></span></h4>
+<p>终于通过将&lt;class-loader&gt;标签注释掉，同样可以在Resin中获取“预想”的路径。验证了的确是使用Resin的人出了问题。</p>
+<h4><span class="ez-toc-section" id="%E7%96%91%E9%97%AE"></span>疑问<span class="ez-toc-section-end"></span></h4>
+<div>
+<p>但是没有这样就结束，我继续对getResource的源码进行了跟进，由于能力有限，没有弄清楚getResource的原理。</p>
+<p>最终留下了两个疑问：</p>
+<p>1、如果追踪到getResource方法的最底层(也许是JVM层面)，它实现的原理是什么？</p>
+<p>2、为何Resin中&lt;class-loader&gt;的配置会对getResource产生影响，但是对getResourceAsStream毫无影响(getResourceAsStream可是将获取路径委托给getResource的啊)。还是这里我理解或者使用错误了？</p>
+<p>本来文章到这里就结束了，本来是想问问牛人的，但是这个问题引起了很多的好奇心，于是我又花了一两周做了下面的调查。</p>
+<h4><span class="ez-toc-section" id="Resin%E4%B8%AD%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8"></span>Resin中类加载器<span class="ez-toc-section-end"></span></h4>
+<p>在我了解的<span style="font-family: &#39;Times New Roman&#39;;">ClassLoader</span><span style="font-family: 宋体;">是在</span>com.caucho.loader包下，结构请看下图：<br/>
+<img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2011/12/resin05.png" alt="图1" width="390" height="810" srcset=""/><br/>
+图1<br/>
+<a href="https://coolshell.cn/wp-content/uploads/2011/12/resin06.png"><img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2011/12/resin06.png" alt="图2 （点击看大图）" width="677" height="354" srcset=""/></a><br/>
+图2</p>
+<p>从上面两幅图中可以看出，图1是与Jdk有关联的，继承自java.net.URLClassLoader。DynamicClassLoader的注释是这样的：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">/**
+* Class	loader which checks for changes in class files and automatically
+* picks up new jars.
+*
+* DynamicClassLoaders can be chained creating one virtual class loader.
+* From the perspective of the JDK, it&#39;s all one classloader.  Internally,
+* the class loader chain searches like a classpath.
+*/
+</pre>
+<p>EnvironmentClassLoader又继承了DynamicClassLoader<span style="font-family: 宋体;">。</span></p>
+<p>图<span style="font-family: &#39;Times New Roman&#39;;">2</span><span style="font-family: 宋体;">应该是</span><span style="font-family: &#39;Times New Roman&#39;;">Resin</span><span style="font-family: 宋体;">本身的</span><span style="font-family: &#39;Times New Roman&#39;;">ClassLoader</span><span style="font-family: 宋体;">，其中</span><span style="font-family: &#39;Times New Roman&#39;;">Loader</span><span style="font-family: 宋体;">是一个抽象类，包含了各种子类类加载器。</span></p>
+<p>从两幅图中是看不出<span style="font-family: &#39;Times New Roman&#39;;">Resin</span><span style="font-family: 宋体;">自身的</span><span style="font-family: &#39;Times New Roman&#39;;">Loader</span><span style="font-family: 宋体;">体系与继承自</span><span style="font-family: &#39;Times New Roman&#39;;">JVM</span><span style="font-family: 宋体;">的类加载器存在关系，那是不是他们就不存在某种关联呢？其实不是这样子的。请看下面</span><span style="font-family: &#39;Times New Roman&#39;;">DynamicClassLoader</span><span style="font-family: 宋体;">源码的片段：</span></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// List of resource loaders
+private ArrayList _loaders = new ArrayList();
+private JarLoader _jarLoader;
+private PathLoader _pathLoader;
+</pre>
+<p>清楚了吧，这两个Loader<span style="font-family: 宋体;">分支通过组合的方式协作。</span></p>
+<h4><span class="ez-toc-section" id="%E7%B1%BB%E5%8A%A0%E8%BD%BD%E5%99%A8%E9%A1%BA%E5%BA%8F"></span>类加载器顺序<span class="ez-toc-section-end"></span></h4>
+<p>既然<span style="font-family: &#39;Times New Roman&#39;;">Resin</span><span style="font-family: 宋体;">标准的</span><span style="font-family: &#39;Times New Roman&#39;;">Loader</span><span style="font-family: 宋体;">及其子类以组合的方式嵌入到</span><span style="font-family: &#39;Times New Roman&#39;;">DynamicClassLoader</span><span style="font-family: 宋体;">中，那么在加载一个“资源”时，</span><span style="font-family: &#39;Times New Roman&#39;;">Loader</span><span style="font-family: 宋体;">分支和</span><span style="font-family: &#39;Times New Roman&#39;;">java.net.URLClassLoader</span><span style="font-family: 宋体;">分支的先后顺序是什么样子的呢？</span></p>
+<p>首先使用下面这段代码，将类加载器名称打印到控制台：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">ClassLoader loader = PathServlet.class.getClassLoader();
+while (loader != null) {
+    System.out.println(loader.toString());
+    loader = loader.getParent();
+}
+</pre>
+<p>输出的结果为：</p>
+<blockquote><p><em>EnvironmentClassLoader[web-app:http://localhost:8080/Test]</em></p>
+<p><em><em>EnvironmentClassLoader[web-app:http://localhost:8080]</em></em></p>
+<p><em>EnvironmentClassLoader[cluster ]</em></p>
+<p><em><em>EnvironmentClassLoader[]</em></em></p>
+<p><em><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a6d5d3c888cbcfd5c588eac7d3c8c5cec3d482e7d6d6e5cac7d5d5eac9c7c2c3d4e6c5c7c594909e">[email protected]</a></em></p>
+<p><em><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="681b1d064605011b0b4624091d060b000d1a4c2d101c2b04091b1b2407090c0d1a285909595e505e51">[email protected]</a></em></p></blockquote>
+<p>额，没有任何一个Resin<span style="font-family: 宋体;">的</span><span style="font-family: &#39;Courier New&#39;;">Loader</span><span style="font-family: 宋体;">被打印出来啊，对头，有就错了。下面就让我们看看</span><span style="font-family: &#39;Courier New&#39;;">DynamicClassLoader</span><span style="font-family: 宋体;">中</span><span style="font-family: &#39;Courier New&#39;;">getResource</span><span style="font-family: 宋体;">的源码来解答。</span></p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">/**
+* Gets the named resource
+*
+* @param name name of the resource
+*/
+
+public URL getResource(String name)
+{
+    if (_resourceCache == null) {
+        long expireInterval = getDependencyCheckInterval();
+        _resourceCache = new TimedCache(256, expireInterval);
+    }
+
+    URL url = _resourceCache.get(name);
+    if (url == NULL_URL)
+        return null;
+    else if (url != null)
+        return url;
+
+    boolean isNormalJdkOrder = isNormalJdkOrder(name);
+
+    if (isNormalJdkOrder) {
+    url = getParentResource(name);
+    if (url != null)
+        return url;
+    }
+
+    ArrayList loaders = _loaders;
+    for (int i = 0; loaders != null &amp;&amp; i &lt; loaders.size(); i++) {
+        Loader loader = loaders.get(i);
+        url = loader.getResource(name);
+
+        if (url != null) {
+            _resourceCache.put(name, url);
+            return url;
+        }
+
+    }
+
+    if (! isNormalJdkOrder) {
+        url = getParentResource(name);
+        if (url != null)
+            return url;
+    }
+
+    _resourceCache.put(name, NULL_URL);
+    return null;
+}
+
+</pre>
+<p>代码不难懂，我画了一张流程图，不规范，凑合看下。<br/>
+<img decoding="async" loading="lazy" class="aligncenter size-full wp-image-6286" title="resin07" src="/uploads/2011/12/resin07.png" alt="" width="326" height="601" srcset="" sizes="(max-width: 326px) 100vw, 326px"/></p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">boolean isNormalJdkOrder = isNormalJdkOrder(name);
+</pre>
+<p>这行代码控制着Resin<span style="font-family: 宋体;">类加载的顺序，如果是常规的类加载顺序</span><span style="font-family: &#39;Courier New&#39;;">(</span><span style="font-family: 宋体;">向上代理，原文：</span>Returns true if the class loader should use the normal order, i.e. looking at the parents first.)<span style="font-family: 宋体;">，则先</span>url = getParentResource(name)，后遍历_loaders。否则是按照先遍历_loaders<span style="font-family: 宋体;">再</span>url = getParentResource(name)向上代理。</p>
+<p>在我的调试经历中，一直都是先向上代理，后遍历_loaders<span style="font-family: 宋体;">的顺序，未遇到第二种方式。</span></p>
+<p>文字对先向上代理，后遍历的顺序做点儿说明：</p>
+<ol>
+<li>首先使用“最上层”的<em><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="285b5d460645415b4b0664495d464b404d5a0c6d505c6b44495b5b6447494c4d5a681949191e101e11">[email protected]</a></em>加载name<span style="font-family: 宋体;">资源，如果找到就返回</span><span style="font-family: &#39;Courier New&#39;;">URL</span><span style="font-family: 宋体;">否则返回</span><span style="font-family: &#39;Courier New&#39;;">null</span></li>
+<li>程序返回到<em><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="1261677c3c7f7b61713c5e73677c717a776036536262517e7361615e7d737677605271737120242a">[email protected]</a></em>，首先判断父类加载器返回的<span style="font-family: &#39;Courier New&#39;;">url</span><span style="font-family: 宋体;">是否为</span><span style="font-family: &#39;Courier New&#39;;">null</span><span style="font-family: 宋体;">，如果不为</span><span style="font-family: &#39;Courier New&#39;;">null</span><span style="font-family: 宋体;">则返回</span><span style="font-family: &#39;Courier New&#39;;">url</span><span style="font-family: 宋体;">，返回</span><span style="font-family: &#39;Courier New&#39;;">null</span><span style="font-family: 宋体;">。</span></li>
+<li><span style="font-family: 宋体;"><em><em><em>EnvironmentClassLoader[]</em></em></em></span></li>
+<li>程序返回到<em>EnvironmentClassLoader[cluster ]</em>的getParentResource<span style="font-family: 宋体;">，再返回到</span><span style="font-family: &#39;Courier New&#39;;">getResource</span><span style="font-family: 宋体;">，如果</span><span style="font-family: &#39;Courier New&#39;;">url</span><span style="font-family: 宋体;">不为</span><span style="font-family: &#39;Courier New&#39;;">null</span><span style="font-family: 宋体;">，则直接返回，否则遍历</span>ArrayList&lt;Loader&gt; loaders = _loaders;从各个loader<span style="font-family: 宋体;">中加载</span><span style="font-family: &#39;Courier New&#39;;">name</span><span style="font-family: 宋体;">，如果加载成功，即不为</span><span style="font-family: &#39;Courier New&#39;;">null</span><span style="font-family: 宋体;">，则返回，否则继续遍历，直至遍历完成。</span></li>
+<li><em><em>EnvironmentClassLoader[web-app:http://localhost:8080]</em></em>同4</li>
+<li><em>EnvironmentClassLoader[web-app:http://localhost:8080/Test]</em>同4</li>
+</ol>
+<p>OK<span style="font-family: 宋体;">，完事儿，后续还有，准备好好写几篇。</span></p>
+<p>本文同时发布于：</p>
+<ul>
+<li><a href="http://www.oschina.net/question/129471_34225">http://www.oschina.net/question/129471_34225</a>。</li>
+<li><a href="http://www.oschina.net/question/129471_35231#AnchorAnswer143898">http://www.oschina.net/question/129471_35231#AnchorAnswer143898</a></li>
+</ul>
+</div>
+<p style="text-align: left;">（全文完）</p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6112-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ClassLoader</a>, <a href="javascript:void(0)" rel="tag">getResource</a>, <a href="javascript:void(0)" rel="tag">getResourceAsStream</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">Resin</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>由一个问题到 Resin ClassLoader 的学习</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-117420" class="comment even thread-even depth-1">
+<article id="div-comment-117420" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d5aa9bea3ff3966be2739aa7e1861471?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d5aa9bea3ff3966be2739aa7e1861471?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zhangyuchang.com" class="url" rel="ugc external nofollow">不纯粹文人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117420"><time datetime="2011-12-28T12:31:33+08:00">2011年12月28日 12:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然这些我还不能看懂，但学习的精神值得欣赏。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117432" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117432" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb5e39fb09eda5d2dfa5c02729ca96b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb5e39fb09eda5d2dfa5c02729ca96b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaoguang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117432"><time datetime="2011-12-28T12:56:30+08:00">2011年12月28日 12:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不断深挖，这才是真正的学习。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117436" class="comment even thread-even depth-1">
+<article id="div-comment-117436" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fb4a1a40ae3297bb3017b7ec5d98e773?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fb4a1a40ae3297bb3017b7ec5d98e773?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://beyondme.info" class="url" rel="ugc external nofollow">beyondme37</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117436"><time datetime="2011-12-28T13:05:01+08:00">2011年12月28日 13:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很专业啊！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-117441" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117441" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb47186dd2736e99bec17d608de99e6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb47186dd2736e99bec17d608de99e6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="#" class="url" rel="ugc external nofollow">gqjjqg</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117441"><time datetime="2011-12-28T13:14:53+08:00">2011年12月28日 13:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>像深度历险，喜欢看也喜欢做这样的事。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117444" class="comment even thread-even depth-1">
+<article id="div-comment-117444" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e6497023263f2a1851ec49194ddfab6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e6497023263f2a1851ec49194ddfab6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chihz.diandian.com" class="url" rel="ugc external nofollow">chihz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117444"><time datetime="2011-12-28T13:21:22+08:00">2011年12月28日 13:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个类加载规则叫做双亲委派模型，JVM使用类加载器加载类的时候，不会首先去尝试自己去加载这个类，而是先委派给父类加载器去加载，每一层次都是向上委派，只有当父加载器反馈自己无法加载这个类的时候，子加载器才会自己去加载，因为JVM中标识类是用类的全限定名跟加载器一起标识的，双亲委派模型的工作过程保证了Java类和加载它的类加载器之间的层次关系，要不就会出现多个类加载器加载的java.lang.Object了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117447" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117447" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ecc9ea88a57071512dcf8ee7aed0e6be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ecc9ea88a57071512dcf8ee7aed0e6be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">运斤成风</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117447"><time datetime="2011-12-28T13:29:17+08:00">2011年12月28日 13:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>建议他了解下类加载的机制就好了</p>
+</div>
+ </article>
+</li>
+<li id="comment-117449" class="comment byuser comment-author-liuxiaori bypostauthor even thread-even depth-1">
+<article id="div-comment-117449" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117449"><time datetime="2011-12-28T13:32:03+08:00">2011年12月28日 13:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-117447"><p>
+<strong><a href="#comment-117447" rel="nofollow">运斤成风</a> :</strong><br/>
+建议他了解下类加载的机制就好了
+</p></blockquote>
+<p>谢谢，会得。嘿嘿。见谅。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117450" class="comment byuser comment-author-liuxiaori bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117450" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117450"><time datetime="2011-12-28T13:33:17+08:00">2011年12月28日 13:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-117444" rel="nofollow">@chihz </a><br/>
+谢谢了，以后注意了，用词不专业。惭愧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117458" class="comment even thread-even depth-1">
+<article id="div-comment-117458" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a43e5b25199e1782a99c9b52874cb315?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a43e5b25199e1782a99c9b52874cb315?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.nanjingui.com" class="url" rel="ugc external nofollow">nanjingui</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117458"><time datetime="2011-12-28T13:44:26+08:00">2011年12月28日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇不像coolshell的风格啊，怎么谈起这么细节未节的东西了</p>
+</div>
+ </article>
+</li>
+<li id="comment-117476" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117476" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2550d0b6de0cb2dd834ca441e1ca6c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2550d0b6de0cb2dd834ca441e1ca6c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ryanchou1991</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117476"><time datetime="2011-12-28T14:32:20+08:00">2011年12月28日 14:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>作者从发现问题，发掘问题，再到解决问题，由浅入深，由点及面的学习思路才是整篇文章的精华所在，有时候一个细微的问题往往能够提升自己对底层原理更深入的认知能力。这也是成为优秀程序员所应当具备的优秀素质之一，底层知识扎实，对整个流程实现原理有清晰的认识，才能够写出高质量的程序。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117501" class="comment even thread-even depth-1">
+<article id="div-comment-117501" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e847c2977895cd6da10b0d7a9d0b91b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e847c2977895cd6da10b0d7a9d0b91b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">我不在乎csdn的秘密，csdn也不在乎，你呢？</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117501"><time datetime="2011-12-28T15:56:08+08:00">2011年12月28日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>xprogrammer 飘过</p>
+</div>
+ </article>
+</li>
+<li id="comment-117623" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117623" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/74a418e530444e70f0d4871de215c8b2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/74a418e530444e70f0d4871de215c8b2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">匿名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117623"><time datetime="2011-12-28T22:01:17+08:00">2011年12月28日 22:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>精神可嘉 称职的程序员必须得有往底层挖到本能</p>
+</div>
+ </article>
+</li>
+<li id="comment-117635" class="comment even thread-even depth-1">
+<article id="div-comment-117635" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d540a2463b5ae4b061d6bdd156bd79cd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d540a2463b5ae4b061d6bdd156bd79cd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">runanli</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117635"><time datetime="2011-12-28T22:15:06+08:00">2011年12月28日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天在项目里想着用这个东东获取绝对路径呢。结果发现hibernate里提供了一个很好用的方法。ConfigHelper.getConfigStream(String path)。后来看了看源码，发现其首先是利用URL机制去处理，在发生异常MalformedURLException的时候会采用ClassLoader的机制去做。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117865" class="comment byuser comment-author-liuxiaori bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-117865" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117865"><time datetime="2011-12-29T10:02:13+08:00">2011年12月29日 10:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-117635"><p>
+<strong><a href="#comment-117635" rel="nofollow">runanli</a> :</strong><br/>
+今天在项目里想着用这个东东获取绝对路径呢。结果发现hibernate里提供了一个很好用的方法。ConfigHelper.getConfigStream(String path)。后来看了看源码，发现其首先是利用URL机制去处理，在发生异常MalformedURLException的时候会采用ClassLoader的机制去做。
+</p></blockquote>
+<p>恩，我查了下你说的方式，先new URL(path),在这里包含了很多验证，还有异常处理，抛出异常再走ClassLoader。不过还没动手实践。谢谢了。nice！<br/>
+另外，有网友提供了这种方式：T.class.getProtectionDomain().getCodeSource().getLocation().getPath()，经验证，不会出现文中的问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-117915" class="comment even thread-even depth-1">
+<article id="div-comment-117915" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff4cfc16858b5a53efdcfdc730bd2567?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff4cfc16858b5a53efdcfdc730bd2567?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oytz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-117915"><time datetime="2011-12-29T11:59:50+08:00">2011年12月29日 11:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>直接调试下不就知道代码走到哪里了. 需要这么麻烦?</p>
+</div>
+ </article>
+</li>
+<li id="comment-118042" class="comment byuser comment-author-liuxiaori bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-118042" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118042"><time datetime="2011-12-29T17:32:40+08:00">2011年12月29日 17:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-117915"><p>
+<strong><a href="#comment-117915" rel="nofollow">oytz</a> :</strong><br/>
+直接调试下不就知道代码走到哪里了. 需要这么麻烦?
+</p></blockquote>
+<p>这就是调试后总结的，敢问你调试的时候遇到URLPath的时候怎么处理的？直接跳过？</p>
+</div>
+ </article>
+</li>
+<li id="comment-118363" class="comment byuser comment-author-liuxiaori bypostauthor even thread-even depth-1">
+<article id="div-comment-118363" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118363"><time datetime="2011-12-30T09:06:43+08:00">2011年12月30日 09:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-118042"><p>
+<strong><a href="#comment-118042" rel="nofollow">liuxiaori</a> :</strong></p>
+<blockquote cite="#commentbody-117915"><p>
+<strong><a href="#comment-117915" rel="nofollow">oytz</a> :</strong><br/>
+直接调试下不就知道代码走到哪里了. 需要这么麻烦?
+</p></blockquote>
+<p>这就是调试后总结的，敢问你调试的时候遇到URLPath的时候怎么处理的？直接跳过？
+</p></blockquote>
+<p>sorry,是URLClassPath。真心求教。</p>
+</div>
+ </article>
+</li>
+<li id="comment-118390" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-118390" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20bc8269421b6a2999ecf8f81c842229?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20bc8269421b6a2999ecf8f81c842229?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">煲仔饭</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118390"><time datetime="2011-12-30T10:28:34+08:00">2011年12月30日 10:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>LZ 解决了这个问题了吗：为何Resin中的配置会对getResource产生影响，但是对getResourceAsStream毫无影响(getResourceAsStream可是将获取路径委托给getResource的啊)。还是这里我理解或者使用错误了？<br/>
+为何我看了这么久，还是没有头绪啊，恕我愚昧，类是向上代理的，但是getResourceAsStream里边回去的URL确实是<br/>
+getResource里边的url，难道是url.openStream()这里的问题？<br/>
+我尝试着这么理解： url.openStream() 也是类似的相同的加载机制，在父类中直接get到stream？<br/>
+求解释</p>
+</div>
+ </article>
+</li>
+<li id="comment-118418" class="comment byuser comment-author-liuxiaori bypostauthor even thread-even depth-1">
+<article id="div-comment-118418" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118418"><time datetime="2011-12-30T11:11:32+08:00">2011年12月30日 11:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-118390"><p>
+<strong><a href="#comment-118390" rel="nofollow">煲仔饭</a> :</strong><br/>
+LZ 解决了这个问题了吗：为何Resin中的配置会对getResource产生影响，但是对getResourceAsStream毫无影响(getResourceAsStream可是将获取路径委托给getResource的啊)。还是这里我理解或者使用错误了？<br/>
+为何我看了这么久，还是没有头绪啊，恕我愚昧，类是向上代理的，但是getResourceAsStream里边回去的URL确实是<br/>
+getResource里边的url，难道是url.openStream()这里的问题？<br/>
+我尝试着这么理解： url.openStream() 也是类似的相同的加载机制，在父类中直接get到stream？<br/>
+求解释
+</p></blockquote>
+<p>嘿嘿，被你看破了，兄弟莫着急，已经着手再写一篇来解释这个问题。<br/>
+证据我已找到，要花点儿时间写出来。元旦应该可以搞定。<br/>
+最后，谢谢你细致的阅读。</p>
+</div>
+ </article>
+</li>
+<li id="comment-118421" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-118421" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a24d6120e9f5de2f9224947a0c362d7c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a24d6120e9f5de2f9224947a0c362d7c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118421"><time datetime="2011-12-30T11:17:40+08:00">2011年12月30日 11:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我以前是这样取绝对路径的：</p>
+<blockquote>
+<p> private static String getRootPath(){<br/>
+URL url = RequestRepository.class.getResource(“/request”);<br/>
+String path = url.getFile();<br/>
+Logger.log(“Configure file root path : ” + path);<br/>
+return path;<br/>
+}</p>
+</blockquote>
+</div>
+ </article>
+</li>
+<li id="comment-118438" class="comment byuser comment-author-liuxiaori bypostauthor even thread-even depth-1">
+<article id="div-comment-118438" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118438"><time datetime="2011-12-30T11:38:28+08:00">2011年12月30日 11:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-118421"><p>
+<strong><a href="#comment-118421" rel="nofollow">kino</a> :</strong><br/>
+我以前是这样取绝对路径的：</p>
+<blockquote><p>
+private static String getRootPath(){<br/>
+URL url = RequestRepository.class.getResource(“/request”);<br/>
+String path = url.getFile();<br/>
+Logger.log(“Configure file root path : ” + path);<br/>
+return path;<br/>
+}
+</p></blockquote>
+</blockquote>
+<p>我改造了一下，测试了。代码：<br/>
+URL url = Path.class.getResource(“/test”);<br/>
+return url.getFile();<br/>
+输出：/D:/work_other/project/EhCacheTestAnnotation/WebRoot/WEB-INF/classes/test<br/>
+和文中的做法的原理没有什么不同，这种方式获取的是包test的绝对路径。<br/>
+如果有说的不对的地方，麻烦指出。谢谢啦。</p>
+</div>
+ </article>
+</li>
+<li id="comment-118463" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-118463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a24d6120e9f5de2f9224947a0c362d7c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a24d6120e9f5de2f9224947a0c362d7c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kino</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-118463"><time datetime="2011-12-30T12:26:02+08:00">2011年12月30日 12:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><strong><a href="#comment-118438" rel="nofollow">＠liuxiaori</a> :</strong><br/>
+是的，和文中的做法原理是一样。只是以前看了api就这么用了，并没有像作者这样深入研究过。</p>
+</div>
+ </article>
+</li>
+<li id="comment-121573" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/6335.html" class="url" rel="ugc">Resin服务器getResource揭秘 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-132470" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-132470" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8eaf732295db3457877aef0fff6e49cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8eaf732295db3457877aef0fff6e49cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">码农</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-132470"><time datetime="2012-01-31T10:33:22+08:00">2012年01月31日 10:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在Servlet中获取某资源文件(比如数据库信息)个人一般在初始化的时候(init(ServletConfig config))调用<br/>
+config.getServletContext().getRealPath(“/WEB-INF/classes/jdbc.properties”);<br/>
+然后用util包中的Properties去load这个文件然后读这个文件<br/>
+这样与web服务器无关</p>
+</div>
+ </article>
+</li>
+<li id="comment-201258" class="comment even thread-even depth-1">
+<article id="div-comment-201258" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9e7527cd800f80c055d1204f674c2167?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9e7527cd800f80c055d1204f674c2167?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/vikid_triplekill" class="url" rel="ugc external nofollow">Vikid_TK</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-201258"><time datetime="2012-08-08T00:49:31+08:00">2012年08月08日 00:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>后来我试着用util包了 代码变短了 赞一个JDK作者的强悍 我对比了sina neteasy renren的资源加载办法 最后还是sun的代码写得简单高效美观</p>
+<p>import java.util.ResourceBundle;</p>
+<p>public class Cherry_Note_Book {<br/>
+private static final ResourceBundle BUNDLE_RESOURCES = ResourceBundle.getBundle(“MY_RESOURCES.config_ch”); //src.zip下有更好的api说明<br/>
+public static String getValure(String key){<br/>
+StringBuffer op = new StringBuffer(BUNDLE_RESOURCES.getString(key));<br/>
+String foo = “\n===================================”;<br/>
+//optimize it<br/>
+for(int i = 0 ; (i+=foo.length()/1.5) &lt; op.length(); )<br/>
+op.insert(i, &#34;\n–&#34;);<br/>
+op.append(foo);<br/>
+op.insert(0,foo+&#34;\n&#34;);<br/>
+return op.toString();<br/>
+} </p>
+<p>}<br/>
+sina是这样写的：<br/>
+private static Properties props = new Properties();<br/>
+props.load(Thread.currentThread().getContextClassLoader().getResourceAsStream(&#34;config.properties&#34;));</p>
+</div>
+ </article>
+</li>
+<li id="comment-1419083" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.marksaas.com/2014/04/tomcat%e4%b8%8b%e8%8e%b7%e5%8f%96%e9%a1%b9%e7%9b%ae%e7%bb%9d%e5%af%b9%e8%b7%af%e5%be%84%e9%97%ae%e9%a2%98.html" class="url" rel="ugc external nofollow">Tomcat下获取项目绝对路径问题 | 王奎的博客</a> </div>
+</li>
+<li id="comment-1481185" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10543.html" class="url" rel="ugc external nofollow">Java中的CopyOnWrite容器 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1819458" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1819458" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a3f4c3783b240d957f15d4908411890?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a3f4c3783b240d957f15d4908411890?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hosea</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-1819458"><time datetime="2016-04-13T19:05:43+08:00">2016年04月13日 19:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>测试一下看看能不能看见头像。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1819460" class="comment even thread-even depth-1">
+<article id="div-comment-1819460" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6a3f4c3783b240d957f15d4908411890?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6a3f4c3783b240d957f15d4908411890?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hosea</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6112.html#comment-1819460"><time datetime="2016-04-13T19:06:40+08:00">2016年04月13日 19:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1819458" rel="nofollow">@hosea </a><br/>
+为什么一楼、三楼有头像？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1829958" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/resin%e6%9c%8d%e5%8a%a1%e5%99%a8getresource%e6%8f%ad%e7%a7%98.html" class="url" rel="ugc external nofollow">Resin服务器getResource揭秘 | | Codeba</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

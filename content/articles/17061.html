@@ -1,0 +1,626 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Docker基础技术：AUFS | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17061 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17061" class="post-content post-17061 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-misc tag-aufs tag-docker tag-linux tag-unionfs">
+<header class="entry-header">
+<span class="screen-reader-text">Docker基础技术：AUFS</span>
+<h1 class="entry-title">Docker基础技术：AUFS</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17061.html" title="08:01" rel="bookmark"><time class="entry-date" datetime="2015-08-24T08:01:13+08:00" pubdate="">2015年08月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17061.html#comments" class="comments-link">42 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 92,536 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://coolshell.cn/wp-content/uploads/2015/08/docker-filesystems-busyboxrw.png"><img decoding="async" class="alignright size-medium wp-image-17194" src="/uploads/2015/08/docker-filesystems-busyboxrw-300x225.png" alt="docker-filesystems-busyboxrw" width="300" height="225" srcset="" sizes="(max-width: 300px) 100vw, 300px"/></a>AUFS是一种Union File System，所谓UnionFS就是把不同物理位置的目录合并mount到同一个目录中。UnionFS的一个最主要的应用是，把一张CD/DVD和一个硬盘目录给联合 mount在一起，然后，你就可以对这个只读的CD/DVD上的文件进行修改（当然，修改的文件存于硬盘上的目录里）。</p>
+<p>AUFS又叫Another UnionFS，后来叫Alternative UnionFS，后来可能觉得不够霸气，叫成Advance UnionFS。是个叫Junjiro Okajima（岡島順治郎）在2006年开发的，AUFS完全重写了早期的UnionFS 1.x，其主要目的是为了可靠性和性能，并且引入了一些新的功能，比如可写分支的负载均衡。AUFS在使用上全兼容UnionFS，而且比之前的UnionFS在稳定性和性能上都要好很多，后来的UnionFS 2.x开始抄AUFS中的功能。但是他居然没有进到Linux主干里，就是因为Linus不让，基本上是因为代码量比较多，而且写得烂（相对于只有3000行的union mount和10000行的UnionFS，以及其它平均下来只有6000行代码左右的VFS，AUFS居然有30000行代码），所以，岡島不断地改进代码质量，不断地提交，不断地被Linus拒掉，所以，到今天AUFS都还进不了Linux主干（今天你可以看到AUFS的代码其实还好了，比起OpenSSL好N倍，要么就是Linus对代码的质量要求非常高，要么就是Linus就是不喜欢AUFS）。</p>
+<p>不过，好在有很多发行版都用了AUFS，比如：Ubuntu 10.04，Debian6.0, Gentoo Live CD支持AUFS，所以，也OK了。</p>
+<p>好了，扯完这些闲话，我们还是看一个示例吧（环境：Ubuntu 14.04）</p>
+<p><span id="more-17061"></span></p>
+<p>首先，我们建上两个目录（水果和蔬菜），并在这两个目录中放上一些文件，水果中有苹果和蕃茄，蔬菜有胡萝卜和蕃茄。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ tree
+.
+├── fruits
+│   ├── apple
+│   └── tomato
+└── vegetables
+    ├── carrots
+    └── tomato
+
+</pre>
+<p>然后，我们输入以下命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># 创建一个mount目录
+$ mkdir mnt
+
+# 把水果目录和蔬菜目录union mount到 ./mnt目录中
+$ sudo mount -t aufs -o dirs=./fruits:./vegetables none ./mnt
+
+#  查看./mnt目录
+$ tree ./mnt
+./mnt
+├── apple
+├── carrots
+└── tomato</pre>
+<p>我们可以看到在./mnt目录下有三个文件，苹果apple、胡萝卜carrots和蕃茄tomato。水果和蔬菜的目录被union到了./mnt目录下了。</p>
+<p>我们来修改一下其中的文件内容：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ echo mnt &gt; ./mnt/apple
+$ cat ./mnt/apple
+mnt
+$ cat ./fruits/apple
+mnt</pre>
+<p>上面的示例，我们可以看到./mnt/apple的内容改了，./fruits/apple的内容也改了。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ echo mnt_carrots &gt; ./mnt/carrots
+$ cat ./vegetables/carrots 
+
+$ cat ./fruits/carrots
+mnt_carrots
+</pre>
+<p>上面的示例，我们可以看到，我们修改了./mnt/carrots的文件内容，./vegetables/carrots并没有变化，反而是./fruits/carrots的目录中出现了carrots文件，其内容是我们在./mnt/carrots里的内容。</p>
+<p>也就是说，我们在mount aufs命令中，我们没有指它vegetables和fruits的目录权限，默认上来说，命令行上第一个（最左边）的目录是可读可写的，后面的全都是只读的。（一般来说，最前面的目录应该是可写的，而后面的都应该是只读的）</p>
+<p>所以，如果我们像下面这样指定权限来mount aufs，你就会发现有不一样的效果（记得先把上面./fruits/carrots的文件删除了）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sudo mount -t aufs -o dirs=./fruits=rw:./vegetables=rw none ./mnt
+
+$ echo &#34;mnt_carrots&#34; &gt; ./mnt/carrots 
+
+$ cat ./vegetables/carrots
+mnt_carrots
+
+$ cat ./fruits/carrots
+cat: ./fruits/carrots: No such file or directory</pre>
+<p>现在，在这情况下，如果我们要修改./mnt/tomato这个文件，那么究竟是哪个文件会被改写？</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ echo &#34;mnt_tomato&#34; &gt; ./mnt/tomato 
+
+$ cat ./fruits/tomato
+mnt_tomato
+
+$ cat ./vegetables/tomato
+I am a vegetable</pre>
+<p>可见，如果有重复的文件名，在mount命令行上，越往前的就优先级越高。</p>
+<p>你可以用这个例子做一些各种各样的试验，我这里主要是给大家一个感性认识，就不展开试验下去了。</p>
+<p>那么，这种UnionFS有什么用？</p>
+<p>历史上，有一个叫<a href="https://zh.wikipedia.org/wiki/Knoppix" target="_blank">Knoppix的Linux发行版</a>，其主要用于Linux演示、光盘教学、系统急救，以及商业产品的演示，不需要硬盘安装，直接把CD/DVD上的image运行在一个可写的存储设备上（比如一个U盘上），其实，也就是把CD/DVD这个文件系统和USB这个可写的系统给联合mount起来，这样你对CD/DVD上的image做的任何改动都会在被应用在U盘上，于是乎，你可以对CD/DVD上的内容进行任意的修改，因为改动都在U盘上，所以你改不坏原来的东西。</p>
+<p>我们可以再发挥一下想像力，你也可以把一个目录，比如你的源代码，作为一个只读的template，和另一个你的working directory给union在一起，然后你就可以做各种修改而不用害怕会把源代码改坏了。有点像一个ad hoc snapshot。</p>
+<p>Docker把UnionFS的想像力发挥到了容器的镜像。你是否还记得我在<a title="Docker基础技术：Linux Namespace（上）" href="/articles/17010.html" target="_blank">介绍Linux Namespace上篇</a>中用mount namespace和chroot山寨了一镜像。现在当你看过了这个UnionFS的技术后，你是不是就明白了，你完全可以用UnionFS这样的技术做出分层的镜像来。</p>
+<p>下图来自Docker的官方文档<a href="http://docs.docker.com/terms/layer/" target="_blank">Layer</a>，其很好的展示了Docker用UnionFS搭建的分层镜像。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17064" src="/uploads/2015/04/docker-filesystems-multilayer.png" alt="docker-filesystems-multilayer" width="500" height="375" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>关于docker的分层镜像，除了aufs，docker还支持btrfs, devicemapper和vfs，你可以使用 -s 或 –storage-driver= 选项来指定相关的镜像存储。在Ubuntu 14.04下，docker默认Ubuntu的 aufs（在CentOS7下，用的是devicemapper，关于devicemapper，我会以以后的文章中讲解）你可以在下面的目录中查看相关的每个层的镜像：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">/var/lib/docker/aufs/diff/&lt;id&gt; </code></p>
+<p>在docker执行起来后（比如：docker run -it ubuntu /bin/bash ），你可以从/sys/fs/aufs/si_[id]目录下查看aufs的mount的情况，下面是个示例：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">#ls /sys/fs/aufs/si_b71b209f85ff8e75/
+br0      br2      br4      br6      brid1    brid3    brid5    xi_path
+br1      br3      br5      brid0    brid2    brid4    brid6 
+
+# cat /sys/fs/aufs/si_b71b209f85ff8e75/*
+/var/lib/docker/aufs/diff/87315f1367e5703f599168d1e17528a0500bd2e2df7d2fe2aaf9595f3697dbd7=rw
+/var/lib/docker/aufs/diff/87315f1367e5703f599168d1e17528a0500bd2e2df7d2fe2aaf9595f3697dbd7-init=ro+wh
+/var/lib/docker/aufs/diff/d0955f21bf24f5bfffd32d2d0bb669d0564701c271bc3dfc64cfc5adfdec2d07=ro+wh
+/var/lib/docker/aufs/diff/9fec74352904baf5ab5237caa39a84b0af5c593dc7cc08839e2ba65193024507=ro+wh
+/var/lib/docker/aufs/diff/a1a958a248181c9aa6413848cd67646e5afb9797f1a3da5995c7a636f050f537=ro+wh
+/var/lib/docker/aufs/diff/f3c84ac3a0533f691c9fea4cc2ceaaf43baec22bf8d6a479e069f6d814be9b86=ro+wh
+/var/lib/docker/aufs/diff/511136ea3c5a64f264b78b5433614aec563103b4d4702f3ba7d4d2698e22c158=ro+wh
+64
+65
+66
+67
+68
+69
+70
+/run/shm/aufs.xino</pre>
+<p>你会看到只有最顶上的层（branch）是rw权限，其它的都是ro+wh权限只读的。</p>
+<p>关于docker的aufs的配置，你可以在/var/lib/docker/repositories-aufs这个文件中看到。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#AUFS%E7%9A%84%E4%B8%80%E4%BA%9B%E7%89%B9%E6%80%A7" title="AUFS的一些特性">AUFS的一些特性</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%9B%B8%E5%85%B3%E6%9C%AF%E8%AF%AD" title="相关术语">相关术语</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98" title="相关问题">相关问题</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#AUFS%E7%9A%84%E6%80%A7%E8%83%BD" title="AUFS的性能">AUFS的性能</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB" title="延伸阅读">延伸阅读</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="AUFS%E7%9A%84%E4%B8%80%E4%BA%9B%E7%89%B9%E6%80%A7"></span>AUFS的一些特性<span class="ez-toc-section-end"></span></h4>
+<p>AUFS有所有Union FS的特性，把多个目录，合并成同一个目录，并可以为每个需要合并的目录指定相应的权限，实时的添加、删除、修改已经被mount好的目录。而且，他还能在多个可写的branch/dir间进行负载均衡。</p>
+<p>上面的例子，我们已经看到AUFS的mount的示例了。下面我们来看一看被union的目录（分支）的相关权限：</p>
+<ul>
+<li>rw表示可写可读read-write。</li>
+<li>ro表示read-only，如果你不指权限，那么除了第一个外ro是默认值，对于ro分支，其永远不会收到写操作，也不会收到查找whiteout的操作。</li>
+<li>rr表示real-read-only，与read-only不同的是，rr标记的是天生就是只读的分支，这样，AUFS可以提高性能，比如不再设置inotify来检查文件变动通知。</li>
+</ul>
+<p>权限中，我们看到了一个术语：whiteout，下面我来解释一下这个术语。</p>
+<p>一般来说ro的分支都会有wh的属性，比如 “[dir]=ro+wh”。所谓whiteout的意思，如果在union中删除的某个文件，实际上是位于一个readonly的分支（目录）上，那么，在mount的union这个目录中你将看不到这个文件，但是read-only这个层上我们无法做任何的修改，所以，我们就需要对这个readonly目录里的文件作whiteout。AUFS的whiteout的实现是通过在上层的可写的目录下建立对应的whiteout隐藏文件来实现的。</p>
+<p>看个例子：</p>
+<p>假设我们有三个目录和文件如下所示（test是个空目录）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># tree
+.
+├── fruits
+│   ├── apple
+│   └── tomato
+├── test
+└── vegetables
+    ├── carrots
+    └── tomato</pre>
+<p>我们如下mount：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"># mkdir mnt
+
+# mount -t aufs -o dirs=./test=rw:./fruits=ro:./vegetables=ro none ./mnt
+
+# # ls ./mnt/
+apple  carrots  tomato </pre>
+<p>现在我们在权限为rw的test目录下建个whiteout的隐藏文件.wh.apple，你就会发现./mnt/apple这个文件就消失了:</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"> # touch ./test/.wh.apple
+
+# ls ./mnt
+carrots  tomato</pre>
+<p>上面这个操作和 rm ./mnt/apple是一样的。</p>
+<h5><span class="ez-toc-section" id="%E7%9B%B8%E5%85%B3%E6%9C%AF%E8%AF%AD"></span>相关术语<span class="ez-toc-section-end"></span></h5>
+<p><b>Branch</b> – 就是各个要被union起来的目录（就是我在上面使用的dirs的命令行参数）</p>
+<ul>
+<li>Branch根据被union的顺序形成一个stack，一般来说最上面的是可写的，下面的都是只读的。</li>
+<li>Branch的stack可以在被mount后进行修改，比如：修改顺序，加入新的branch，或是删除其中的branch，或是直接修改branch的权限</li>
+</ul>
+<p><b>Whiteout</b> 和 <b>Opaque</b></p>
+<ul>
+<li>如果UnionFS中的某个目录被删除了，那么就应该不可见了，就算是在底层的branch中还有这个目录，那也应该不可见了。</li>
+</ul>
+<ul>
+<li>Whiteout就是某个上层目录覆盖了下层的相同名字的目录。用于隐藏低层分支的文件，也用于阻止readdir进入低层分支。</li>
+</ul>
+<ul>
+<li>Opaque的意思就是不允许任何下层的某个目录显示出来。</li>
+</ul>
+<ul>
+<li>在隐藏低层档的情况下，whiteout的名字是’.wh.&lt;filename&gt;’。</li>
+</ul>
+<ul>
+<li>在阻止readdir的情况下，名字是’.wh..wh..opq’或者 ’.wh.__dir_opaque’。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E7%9B%B8%E5%85%B3%E9%97%AE%E9%A2%98"></span>相关问题<span class="ez-toc-section-end"></span></h5>
+<p>看到上面这些，你一定会有几个问题：</p>
+<p><strong>其一、你可能会问，要有文件在原来的地方被修改了会怎么样？</strong>mount的目录会一起改变吗？答案是会的，也可以是不会的。因为你可以指定一个叫udba的参数（全称：User’s Direct Branch Access），这个参数有三个取值：</p>
+<ul>
+<li><strong>udba=none</strong> – 设置上这个参数后，AUFS会运转的更快，因为那些不在mount目录里发生的修改，aufs不会同步过来了，所以会有数据出错的问题。</li>
+<li><strong>udba=reval</strong> – 设置上这个参数后，AUFS会去查文件有没有被更新，如果有的话，就会把修改拉到mount目录内。</li>
+<li><strong>udba=notify</strong> – 这个参数会让AUFS为所有的branch注册inotify，这样可以让AUFS在更新文件修改的性能更高一些。</li>
+</ul>
+<p><strong>其二、如果有多个rw的branch（目录）被union起来了，那么，当我创建文件的时候，aufs会创建在哪里呢？</strong> aufs提供了一个叫create的参数可以供你来配置相当的创建策略，下面有几个例子。</p>
+<p><strong>create=rr | round−robin</strong> 轮询。下面的示例可以看到，新创建的文件轮流写到三个目录中</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">hchen$ sudo mount -t aufs  -o dirs=./1=rw:./2=rw:./3=rw -o create=rr none ./mnt
+hchen$ touch ./mnt/a ./mnt/b ./mnt/c
+hchen$ tree
+.
+├── 1
+│   └── a
+├── 2
+│   └── c
+└── 3
+    └── b</pre>
+<p><strong>create=mfs[:second] | most−free−space[:second]</strong> 选一个可用空间最好的分支。可以指定一个检查可用磁盘空间的时间。</p>
+<p><strong>create=mfsrr:low[:second]</strong> 选一个空间大于low的branch，如果空间小于low了，那么aufs会使用 round-robin 方式。</p>
+<p>更多的关于AUFS的细节使用参数，大家可以直接在Ubuntu 14.04下通过<a href="http://aufs.sourceforge.net/aufs3/man.html" target="_blank"> man aufs </a>来看一下其中的各种参数和命令。</p>
+<h4><span class="ez-toc-section" id="AUFS%E7%9A%84%E6%80%A7%E8%83%BD"></span>AUFS的性能<span class="ez-toc-section-end"></span></h4>
+<p>AUFS的性能慢吗？也慢也不慢。因为AUFS会把所有的分支mount起来，所以，在查找文件上是比较慢了。因为它要遍历所有的branch。是个O(n)的算法（很明显，这个算法有很大的改进空间的）所以，branch越多，查找文件的性能也就越慢。但是，一旦AUFS找到了这个文件的inode，那后以后的读写和操作原文件基本上是一样的。</p>
+<p>所以，如果你的程序跑在在AUFS下，open和stat操作会有明显的性能下降，branch越多，性能越差，但是在write/read操作上，性能没有什么变化。</p>
+<p>IBM的研究中心对Docker的性能给了一份非常不错的性能报告（PDF）《<a href="http://domino.research.ibm.com/library/cyberdig.nsf/papers/0929052195DD819C85257D2300681E7B/$File/rc25482.pdf" target="_blank">An Updated Performance Comparison of Virtual Machinesand Linux Containers</a>》</p>
+<p>我截了两张图出来，第一张是顺序读写，第二张是随机读写。基本没有什么性能损失的问题。而KVM在随机读写的情况也就有点慢了（但是，如果硬盘是SSD的呢？）</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2015/08/docker.seq_.jpg"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17191" src="/uploads/2015/08/docker.seq_.jpg" alt="" width="368" height="256" srcset="" sizes="(max-width: 368px) 100vw, 368px"/></a></p>
+<p> </p>
+<p style="text-align: center;"><strong>顺序读写</strong></p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2015/08/docker.rand_.jpg"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17190" src="/uploads/2015/08/docker.rand_.jpg" alt="" width="363" height="236" srcset="" sizes="(max-width: 363px) 100vw, 363px"/></a></p>
+<p> </p>
+<p style="text-align: center;"><strong>随机读写</strong></p>
+<h4><span class="ez-toc-section" id="%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"></span>延伸阅读<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><a href="http://www.linuxjournal.com/article/7714" target="_blank">Introduce UnionFS</a></li>
+<li><a href="http://lwn.net/Articles/325369/" target="_blank">Union file systems: Implementations, part I</a></li>
+<li><a href="http://lwn.net/Articles/327738/" target="_blank">Union file systems: Implementations, part 2</a></li>
+<li><a href="http://lwn.net/Articles/403012/" target="_blank">Another union filesystem approach</a></li>
+<li><a href="http://lwn.net/Articles/324291/" target="_blank">Unioning file systems: Architecture, features, and design choices</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17061-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">AUFS</a>, <a href="javascript:void(0)" rel="tag">Docker</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">UnionFS</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Docker基础技术：AUFS</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1749654" class="comment even thread-even depth-1">
+<article id="div-comment-1749654" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e541b8d5f6353a23ea149896c0e4a6d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e541b8d5f6353a23ea149896c0e4a6d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tech-wonderland.net/" class="url" rel="ugc external nofollow">Sigmainfy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1749654"><time datetime="2015-08-24T08:27:28+08:00">2015年08月24日 08:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>赞!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749657" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1749657" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/567103d76573a2d167c44033cf906150?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/567103d76573a2d167c44033cf906150?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kmxz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1749657"><time datetime="2015-08-24T09:14:41+08:00">2015年08月24日 09:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>总感觉 OverlayFS 因为是 kernel 钦定的所以更有前途……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749674" class="comment even thread-even depth-1">
+<article id="div-comment-1749674" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f662c04f31a41a56f6580bc1b8f90788?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f662c04f31a41a56f6580bc1b8f90788?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhuang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1749674"><time datetime="2015-08-24T12:10:28+08:00">2015年08月24日 12:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果不出意外，docker 也会由 aufs 转向 overlay（overlayfs 合并到内核的名字不包含 fs 两个字母了）。</p>
+<p>LiveCD 用 aufs 是实际需要，但实际安装的内核默认不包含 aufs 支持。</p>
+<p>overlay 和 aufs 只有很小的差别，overlay 只支持两层分支，但每层分支可以是另一个 overlay。但是 overlay 的代码简单很多，所以在 3.18 合并到了内核中。</p>
+<p>overlay 比 aufs 性能稍微好那么一点点，特别是内存占用方面。</p>
+<p>overlay 的问题是原始文件加两层分支会占用三倍的 inodes，在 ext3/4 分区上使用要预先规划好 inodes 数量。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749678" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1749678" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6040c5ab02ff9d8499f9b22bceb2b6ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6040c5ab02ff9d8499f9b22bceb2b6ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.robotshell.org" class="url" rel="ugc external nofollow">Hexcles</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1749678"><time datetime="2015-08-24T12:29:10+08:00">2015年08月24日 12:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>AUFS 其实存在很多问题，比如多层 overlay 不支持、 xino 文件的性能问题等等。 OverlayFS 即使单从技术上来看也更优秀。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749695" class="comment even thread-even depth-1">
+<article id="div-comment-1749695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.catscarlet.com" class="url" rel="ugc external nofollow">石樱灯笼</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1749695"><time datetime="2015-08-24T15:26:38+08:00">2015年08月24日 15:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉有点像一个静态 (只读)快照，加上一个可写区域。感觉这技术在虚拟化上或者移动终端应该有用，但是日常可能用不到。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749711" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://mybeibei.net/2015/08/24/%e4%b8%80%e5%91%a8%e4%bf%a1%e6%81%af%e5%ae%89%e5%85%a8%e5%b9%b2%e8%b4%a7%e5%88%86%e4%ba%ab%ef%bc%88%e7%ac%ac38%e6%9c%9f%ef%bc%89/" class="url" rel="ugc external nofollow">一周信息安全干货分享（第38期）</a> </div>
+</li>
+<li id="comment-1749723" class="comment even thread-even depth-1">
+<article id="div-comment-1749723" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ea2520bebb65f5f3658583ae9cbdd34f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ea2520bebb65f5f3658583ae9cbdd34f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">roby</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1749723"><time datetime="2015-08-24T18:43:23+08:00">2015年08月24日 18:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>推荐 <a href="http://blog.daocloud.io/toolbox/" rel="nofollow ugc">http://blog.daocloud.io/toolbox/</a> DaoCloud 的工具箱包含了 Docker 加速器的升级版「Docker 超速器」。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750152" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1750152" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ffe7345870f369704f1f0c888ea814dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ffe7345870f369704f1f0c888ea814dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">baixiangcpp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1750152"><time datetime="2015-08-25T18:24:55+08:00">2015年08月25日 18:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习中！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750323" class="comment even thread-even depth-1">
+<article id="div-comment-1750323" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e15bb3b7293d6fb4325ded30cf844924?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e15bb3b7293d6fb4325ded30cf844924?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">JimmyZ</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1750323"><time datetime="2015-08-25T21:20:08+08:00">2015年08月25日 21:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感觉正文完全不提OverlayFS有点厉害, 果然回复里有人提到了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750436" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17200.html" class="url" rel="ugc">Docker基础技术：DeviceMapper | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1750520" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1074" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper | 星达红</a> </div>
+</li>
+<li id="comment-1750521" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1750521" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/19f3df6104bcca9cb8681aff9881a7ab?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/19f3df6104bcca9cb8681aff9881a7ab?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Sail</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1750521"><time datetime="2015-08-26T14:56:58+08:00">2015年08月26日 14:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在Docker中放数据库，磁盘IO需要注意AUFS等的问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1750542" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.littlebill.me/2013/04/technology.html" class="url" rel="ugc external nofollow">【转载】大牛文章 | LittleBill</a> </div>
+</li>
+<li id="comment-1751132" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1751132" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2dcbffd8e3aaff2d6bb5d48a8fc324fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2dcbffd8e3aaff2d6bb5d48a8fc324fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://espush.cn" class="url" rel="ugc external nofollow">Sunday</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1751132"><time datetime="2015-08-28T10:34:15+08:00">2015年08月28日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很早很早以前研究slax发行版的时候研究过这玩意儿，第一次看到惊为天人，还可以这样玩~~~以及后来看到docker，感觉真是旧瓶旧酒~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1761532" class="comment even thread-even depth-1">
+<article id="div-comment-1761532" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1778b9800d122236ee84f7a61b28cce4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1778b9800d122236ee84f7a61b28cce4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zhongguohelanwang.com/" class="url" rel="ugc external nofollow">荷兰网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1761532"><time datetime="2015-09-23T08:47:03+08:00">2015年09月23日 08:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章，内容妙趣横生.禁止此消息：<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="94fafbf8fdfafffbffd4a5a2a7baf7fbf9">[email protected]</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1770200" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1770200" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/88afb34e413446445b7f32ebfc977a55?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/88afb34e413446445b7f32ebfc977a55?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yingyun001</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1770200"><time datetime="2015-10-08T16:44:56+08:00">2015年10月08日 16:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如何知道我的操作系统是否支持 aufs 呢？谢谢～</p>
+</div>
+ </article>
+</li>
+<li id="comment-1795131" class="comment even thread-even depth-1">
+<article id="div-comment-1795131" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nswcfd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1795131"><time datetime="2015-11-26T18:22:32+08:00">2015年11月26日 18:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1749678" rel="nofollow">@Hexcles </a><br/>
+同意，稳定性是个问题，不知道现在改进的怎么样了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1804999" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/08/26/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper/" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 大耳门</a> </div>
+</li>
+<li id="comment-1805006" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/04/17/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9alinux-cgroup/" class="url" rel="ugc external nofollow">Docker基础技术：Linux CGroup – 大耳门</a> </div>
+</li>
+<li id="comment-1805016" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/04/16/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9alinux-namespace%ef%bc%88%e4%b8%8b%ef%bc%89/" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace（下） | 大耳门</a> </div>
+</li>
+<li id="comment-1812315" class="comment even thread-even depth-1">
+<article id="div-comment-1812315" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dfb9d927e5bef609476abee29a61f2ff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dfb9d927e5bef609476abee29a61f2ff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://abcde.im" class="url" rel="ugc external nofollow">Yangbo</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1812315"><time datetime="2016-03-14T19:44:03+08:00">2016年03月14日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人认为，在读的情况下一会又性能影响。</p>
+<p>如果需要读取的数据串中。</p>
+<p>在A layer中，有一部分，</p>
+<p>在B Layer中，有一部分。</p>
+<p>在C Layer中，有一部分，</p>
+<p>需要多次读取node。然后再是Block。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825089" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper-codeba-cc.html" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1866206" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.adocker.cn/archives/653" class="url" rel="ugc external nofollow">Docker Notes - docker基础|未分类 - Adocker</a> </div>
+</li>
+<li id="comment-1867218" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jingyuyun.com/article/11970.html" class="url" rel="ugc external nofollow">docker入门概览-鲸鱼云</a> </div>
+</li>
+<li id="comment-1890597" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dabaiw.cn/it/29570.html" class="url" rel="ugc external nofollow">理解Docker（7）：Docker 存储 – AUFS - 大白网</a> </div>
+</li>
+<li id="comment-1899618" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wentianjin.com/?p=8" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 山中名人</a> </div>
+</li>
+<li id="comment-1906800" class="comment even thread-even depth-1">
+<article id="div-comment-1906800" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a57dd73bc095bf66d8e67daf7c560f37?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a57dd73bc095bf66d8e67daf7c560f37?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">灌水</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1906800"><time datetime="2016-12-13T13:07:31+08:00">2016年12月13日 13:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>灌水灌水灌水灌水</p>
+</div>
+ </article>
+</li>
+<li id="comment-1907121" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1907121" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc73525b6b65a438568f8164fad30c44?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc73525b6b65a438568f8164fad30c44?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jason</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1907121"><time datetime="2016-12-15T15:46:17+08:00">2016年12月15日 15:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章不错：）<br/>
+<a href="http://dockone.io/article/1513" rel="nofollow ugc">http://dockone.io/article/1513</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1917019" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://0x1024.com/?p=110" class="url" rel="ugc external nofollow">Linux PID 1 和 Systemd – IT青年文摘</a> </div>
+</li>
+<li id="comment-1921010" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2017/07/linux-pid-1-%e5%92%8c-systemd/" class="url" rel="ugc external nofollow">Linux PID 1 和 Systemd - 知乎精选</a> </div>
+</li>
+<li id="comment-1921400" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yunwzs.com/1840.html" class="url" rel="ugc external nofollow">Docker 核心技术与实现原理 - 云维助手</a> </div>
+</li>
+<li id="comment-1927964" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1927964" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11ed04a0b47e1e2ab764304c6419a386?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11ed04a0b47e1e2ab764304c6419a386?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.bahutou.cn" class="url" rel="ugc external nofollow">张连聘</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-1927964"><time datetime="2018-05-01T11:58:23+08:00">2018年05月01日 11:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢作者分享此系列文章，让我对这种基于OS的虚拟化环境技术有了更深刻的认识。也启发我对VM 和VE的一些思索。<br/>
+再次感谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1930141" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itdir.top/1115.html" class="url" rel="ugc external nofollow">docker入门 – 架构师之路·琼</a> </div>
+</li>
+<li id="comment-1934098" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.littlebill.me/2013/04/technology.html" class="url" rel="ugc external nofollow">【转载】大牛文章 – Little bill</a> </div>
+</li>
+<li id="comment-1934699" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.gblm.net/1709.html" class="url" rel="ugc external nofollow">Docker 核心技术与实现原理 | 乐意分享</a> </div>
+</li>
+<li id="comment-1979334" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/03/21/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e6%89%93%e9%80%a0%e9%ab%98%e6%95%88%e7%9a%84%e5%b7%a5%e4%bd%9c%e7%8e%af%e5%a2%83-shell-%e7%af%87/" class="url" rel="ugc external nofollow">【酷壳】 打造高效的工作环境 – Shell 篇 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-1998354" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.littlebill.me/2013/04/23/technology/" class="url" rel="ugc external nofollow">【转载】大牛文章 – Little bill</a> </div>
+</li>
+<li id="comment-2034160" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://sunflower.keda.io/docker%e5%9f%ba%e7%a1%80%e6%8a%80%e6%9c%af%ef%bc%9adevicemapper" class="url" rel="ugc external nofollow">Docker基础技术：DeviceMapper – 可達書院</a> </div>
+</li>
+<li id="comment-2077420" class="comment even thread-even depth-1">
+<article id="div-comment-2077420" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b6d3184996682dd27686b4b8ec92c5b4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b6d3184996682dd27686b4b8ec92c5b4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">linker Von</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17061.html#comment-2077420"><time datetime="2020-03-14T13:23:45+08:00">2020年03月14日 13:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对一个已经存在的文件进行读，最顶层的可写层不会改变，但是进行写操作时，最顶层的可写层会把底层文件全部拷贝到顶层。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2078756" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/docker/docker_84827.html" class="url" rel="ugc external nofollow">K8s 学习者绝对不能错过的最全知识图谱（内含 58个知识点链接） _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2139735" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.vpsdao.cn/752.html" class="url" rel="ugc external nofollow">centOS7安装Docker CE | VPS岛</a> </div>
+</li>
+<li id="comment-2192506" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.vpsdao.cn/280.html" class="url" rel="ugc external nofollow">centOS7安装Docker CE – VPS岛</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

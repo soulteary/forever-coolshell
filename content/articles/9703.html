@@ -1,0 +1,654 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>无锁HashMap的原理与实现 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9703 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9703" class="post-content post-9703 post type-post status-publish format-standard hentry category-javadev category-progdesign tag-hash tag-hashmap tag-java tag-performance tag-671 tag-672">
+<header class="entry-header">
+<span class="screen-reader-text">无锁HashMap的原理与实现</span>
+<h1 class="entry-title">无锁HashMap的原理与实现</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9703.html" title="21:31" rel="bookmark"><time class="entry-date" datetime="2013-05-30T21:31:20+08:00" pubdate="">2013年05月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/onetwogoo" title="View all posts by onetwogoo" rel="author">onetwogoo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9703.html#comments" class="comments-link">35 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 64,510 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong> (本文由<a href="https://github.com/onetwogoo" rel="author">onetwogoo</a>投稿)</strong></p>
+<p>在《<a title="疫苗：Java HashMap的死循环" href="/articles/9606.html" target="_blank">疫苗：Java HashMap的死循环</a>》中，我们看到，java.util.HashMap并不能直接应用于多线程环境。对于多线程环境中应用HashMap，主要有以下几种选择：</p>
+<ol>
+<li><span style="line-height: 13px;">使用线程安全的java.util.Hashtable作为替代。</span></li>
+<li>使用java.util.Collections.synchronizedMap方法，将已有的HashMap对象包装为线程安全的。</li>
+<li>使用java.util.concurrent.ConcurrentHashMap类作为替代，它具有非常好的性能。</li>
+</ol>
+<p>而以上几种方法在实现的具体细节上，都或多或少地用到了互斥锁。互斥锁会造成线程阻塞，降低运行效率，并有可能产生死锁、优先级翻转等一系列问题。</p>
+<p>CAS(Compare And Swap)是一种底层硬件提供的功能，它可以将判断并更改一个值的操作原子化。关于CAS的一些应用，《<a title="无锁队列的实现" href="/articles/8239.html" target="_blank">无锁队列的实现</a>》一文中有很详细的介绍。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Java%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C" title="Java中的原子操作">Java中的原子操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%97%A0%E9%94%81%E9%93%BE%E8%A1%A8%E7%9A%84%E5%AE%9E%E7%8E%B0" title="无锁链表的实现">无锁链表的实现</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%97%A0%E9%94%81HashMap%E7%9A%84%E9%9A%BE%E7%82%B9%E4%B8%8E%E7%AA%81%E7%A0%B4" title="无锁HashMap的难点与突破">无锁HashMap的难点与突破</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82" title="实现细节">实现细节</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%8B%E6%A0%87%E6%93%8D%E4%BD%9C" title="初始化下标操作">初始化下标操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%8F%92%E5%85%A5%E6%93%8D%E4%BD%9C" title="插入操作">插入操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%9F%A5%E6%89%BE%E6%93%8D%E4%BD%9C" title="查找操作">查找操作</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%88%A0%E9%99%A4%E6%93%8D%E4%BD%9C" title="删除操作">删除操作</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%8F%82%E8%80%83%E6%96%87%E7%8C%AE" title="参考文献">参考文献</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Java%E4%B8%AD%E7%9A%84%E5%8E%9F%E5%AD%90%E6%93%8D%E4%BD%9C"></span>Java中的原子操作<span class="ez-toc-section-end"></span></h4>
+<p>在java.util.concurrent.atomic包中，Java为我们提供了很多方便的原子类型，它们底层完全基于CAS操作。</p>
+<p>例如我们希望实现一个全局公用的计数器，那么可以：</p>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">private AtomicInteger counter = new AtomicInteger(3);
+
+public void addCounter() {
+    for (;;) {
+        int oldValue = counter.get();
+        int newValue = oldValue + 1;
+        if (counter.compareAndSet(oldValue, newValue))
+            return;
+    }
+}</pre>
+<p><span id="more-9703"></span></p>
+<p>其中，compareAndSet方法会检查counter现有的值是否为oldValue，如果是，则将其设置为新值newValue，操作成功并返回true；否则操作失败并返回false。</p>
+<p>当计算counter新值时，若其他线程将counter的值改变，compareAndSwap就会失败。此时我们只需在外面加一层循环，不断尝试这个过程，那么最终一定会成功将counter值+1。（其实AtomicInteger已经为常用的+1/-1操作定义了incrementAndGet与decrementAndGet方法，以后我们只需简单调用它即可）</p>
+<p>除了AtomicInteger外，java.util.concurrent.atomic包还提供了AtomicReference和AtomicReferenceArray类型，它们分别代表原子性的引用和原子性的引用数组（引用的数组）。</p>
+<h4><span class="ez-toc-section" id="%E6%97%A0%E9%94%81%E9%93%BE%E8%A1%A8%E7%9A%84%E5%AE%9E%E7%8E%B0"></span>无锁链表的实现<span class="ez-toc-section-end"></span></h4>
+<p>在实现无锁HashMap之前，让我们先来看一下比较简单的无锁链表的实现方法。</p>
+<p>以插入操作为例：</p>
+<ol>
+<li><span style="line-height: 13px;">首先我们需要找到待插入位置前面的节点A和后面的节点B。</span></li>
+<li><span style="line-height: 13px;">然后新建一个节点C，并使其next指针指向节点B。（见图1）</span></li>
+<li>最后使节点A的next指针指向节点C。（见图2）</li>
+</ol>
+<p><img decoding="async" class="aligncenter size-full wp-image-9743" alt="" src="/uploads/2013/05/图1-3.jpg" width="600" height="479" srcset="" sizes="(max-width: 600px) 100vw, 600px"/></p>
+<p>但在操作中途，有可能其他线程在A与B直接也插入了一些节点（假设为D），如果我们不做任何判断，可能造成其他线程插入节点的丢失。（见图3）我们可以利用CAS操作，在为节点A的next指针赋值时，判断其是否仍然指向B，如果节点A的next指针发生了变化则重试整个插入操作。大致代码如下：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">private void listInsert(Node head, Node c) {
+    for (;;) {
+        Node a = findInsertionPlace(head), b = a.next.get();
+        c.next.set(b);
+        if (a.next.compareAndSwap(b,c))
+            return;
+    }
+}</pre>
+<p>(Node类的next字段为AtomicReference&lt;Node&gt;类型，即指向Node类型的原子性引用)</p>
+<p>无锁链表的查找操作与普通链表没有区别。而其删除操作，则需要找到待删除节点前方的节点A和后方的节点B，利用CAS操作验证并更新节点A的next指针，使其指向节点B。</p>
+<h4><span class="ez-toc-section" id="%E6%97%A0%E9%94%81HashMap%E7%9A%84%E9%9A%BE%E7%82%B9%E4%B8%8E%E7%AA%81%E7%A0%B4"></span>无锁HashMap的难点与突破<span class="ez-toc-section-end"></span></h4>
+<p>HashMap主要有<strong>插入</strong>、<strong>删除</strong>、<strong>查找</strong>以及<strong>ReHash</strong>四种基本操作。一个典型的HashMap实现，会用到一个数组，数组的每项元素为一个节点的链表。对于此链表，我们可以利用上文提到的操作方法，执行插入、删除以及查找操作，但对于ReHash操作则比较困难。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9744" alt="" src="/uploads/2013/05/图4.jpg" width="648" height="265" srcset="" sizes="(max-width: 648px) 100vw, 648px"/></p>
+<p>如图4，在ReHash过程中，一个典型的操作是遍历旧表中的每个节点，计算其在新表中的位置，然后将其移动至新表中。期间我们需要操纵3次指针：</p>
+<ol>
+<li>将A的next指针指向D</li>
+<li>将B的next指针指向C</li>
+<li>将C的next指针指向E</li>
+</ol>
+<p>而这三次指针操作必须同时完成，才能保证移动操作的原子性。但我们不难看出，CAS操作每次只能保证<strong>一个</strong>变量的值被原子性地验证并更新，无法满足同时验证并更新三个指针的需求。</p>
+<p>于是我们不妨换一个思路，既然移动节点的操作如此困难，我们可以使所有节点始终保持有序状态，从而避免了移动操作。在典型的HashMap实现中，数组的长度始终保持为2<sup>i</sup>，而从Hash值映射为数组下标的过程，只是简单地对数组长度执行取模运算（即仅保留Hash二进制的后i位）。当ReHash时，数组长度加倍变为2<sup>i+1</sup>，旧数组第j项链表中的每个节点，要么移动到新数组中第j项，要么移动到新数组中第j+2<sup>i</sup>项，而它们的唯一区别在于Hash值第i+1位的不同（第i+1位为0则仍为第j项，否则为第j+2<sup>i</sup>项）。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-9745" alt="" src="/uploads/2013/05/图5-6.jpg" width="690" height="297" srcset="" sizes="(max-width: 690px) 100vw, 690px"/></p>
+<p>如图5，我们将所有节点按照Hash值的翻转位序（如1101-&gt;1011）由小到大排列。当数组大小为8时，2、18在一个组内；3、11、27在另一个组内。每组的开始，插入一个哨兵节点，以方便后续操作。为了使哨兵节点正确排在组的最前方，我们将正常节点Hash的最高位（翻转后变为最低位）置为1，而哨兵节点不设置这一位。</p>
+<p>当数组扩容至16时（见图6），第二组分裂为一个只含3的组和一个含有11、27的组，但节点之间的相对顺序并未改变。这样在ReHash时，我们就不需要移动节点了。</p>
+<h4><span class="ez-toc-section" id="%E5%AE%9E%E7%8E%B0%E7%BB%86%E8%8A%82"></span>实现细节<span class="ez-toc-section-end"></span></h4>
+<p>由于扩容时数组的复制会占用大量的时间，这里我们采用了将整个数组分块，懒惰建立的方法。这样，当访问到某下标时，仅需判断此下标所在块是否已建立完毕（如果没有则建立）。</p>
+<p>另外定义size为当前已使用的下标范围，其初始值为2，数组扩容时仅需将size加倍即可；定义count代表目前HashMap中包含的总节点个数（不算哨兵节点）。</p>
+<p>初始时，数组中除第0项外，所有项都为null。第0项指向一个仅有一个哨兵节点的链表，代表整条链的起点。初始时全貌见图7，其中浅绿色代表当前未使用的下标范围，虚线箭头代表逻辑上存在，但实际未建立的块。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9746" alt="" src="/uploads/2013/05/图7.jpg" width="446" height="282" srcset="" sizes="(max-width: 446px) 100vw, 446px"/></p>
+<h5><span class="ez-toc-section" id="%E5%88%9D%E5%A7%8B%E5%8C%96%E4%B8%8B%E6%A0%87%E6%93%8D%E4%BD%9C"></span>初始化下标操作<span class="ez-toc-section-end"></span></h5>
+<p>数组中为null的项都认为处于未初始化状态，初始化某个下标即代表建立其对应的哨兵节点。初始化是递归进行的，即若其父下标未初始化，则先初始化其父下标。（一个下标的父下标是其移除最高二进制位后得到的下标）大致代码如下：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">private void initializeBucket(int bucketIdx) {
+    int parentIdx = bucketIdx ^ Integer.highestOneBit(bucketIdx);
+    if (getBucket(parentIdx) == null)
+        initializeBucket(parentIdx);
+
+    Node dummy = new Node();
+    dummy.hash = Integer.reverse(bucketIdx);
+    dummy.next = new AtomicReference&amp;lt;&amp;gt;();
+
+    setBucket(bucketIdx, listInsert(getBucket(parentIdx), dummy));
+}</pre>
+<p>其中getBucket即封装过的获取数组某下标内容的方法，setBucket同理。listInsert将从指定位置开始查找适合插入的位置插入给定的节点，若链表中已存在hash相同的节点则返回那个已存在的节点；否则返回新插入的节点。</p>
+<h5><span class="ez-toc-section" id="%E6%8F%92%E5%85%A5%E6%93%8D%E4%BD%9C"></span>插入操作<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>首先用HashMap的size对键的hashCode取模，得到应插入的数组下标。</li>
+<li>然后判断该下标处是否为null，如果为null则初始化此下标。</li>
+<li>构造一个新的节点，并插入到适当位置，注意节点中的hash值应为原hashCode经过位翻转并将最低位置1之后的值。</li>
+<li>将节点个数计数器加1，若加1后节点过多，则仅需将size改为size*2，代表对数组扩容（ReHash）。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E6%9F%A5%E6%89%BE%E6%93%8D%E4%BD%9C"></span>查找操作<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li>找出待查找节点在数组中的下标。</li>
+<li>判断该下标处是否为null，如果为null则返回查找失败。</li>
+<li>从相应位置进入链表，顺次寻找，直至找出待查找节点或超出本组节点范围。</li>
+</ul>
+<h5><span class="ez-toc-section" id="%E5%88%A0%E9%99%A4%E6%93%8D%E4%BD%9C"></span>删除操作<span class="ez-toc-section-end"></span></h5>
+<ul>
+<li><span style="line-height: 13px;">找出应删除节点在数组中的下标。</span></li>
+<li>判断该下标处是否为null，如果为null则初始化此下标。</li>
+<li>找到待删除节点，并从链表中删除。（注意由于哨兵节点的存在，任何正常元素只被其唯一的前驱节点所引用，不存在被前驱节点与数组中指针同时引用的情况，从而不会出现需要同时修改多个指针的情况）</li>
+<li>将节点个数计数器减1。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E6%96%87%E7%8C%AE"></span>参考文献<span class="ez-toc-section-end"></span></h4>
+<p><a title="《Split-Ordered Lists: Lock-Free Extensible Hash Tables》" href="http://www.cs.ucf.edu/~dcm/Teaching/COT4810-Spring2011/Literature/SplitOrderedLists.pdf" target="_blank">《Split-Ordered Lists: Lock-Free Extensible Hash Tables》</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9703-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Hash</a>, <a href="javascript:void(0)" rel="tag">HashMap</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">Performance</a>, <a href="javascript:void(0)" rel="tag">多线程</a>, <a href="javascript:void(0)" rel="tag">并发</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>无锁HashMap的原理与实现</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-512749" class="comment even thread-even depth-1">
+<article id="div-comment-512749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9b255bd8fa3c7387e031332f144f77be?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9b255bd8fa3c7387e031332f144f77be?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Wiflg Goth</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-512749"><time datetime="2013-05-30T21:49:56+08:00">2013年05月30日 21:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>沙发</p>
+</div>
+ </article>
+</li>
+<li id="comment-513004" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-513004" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cc4cb23ed3dfb6abce1d31f9665c9ba2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cc4cb23ed3dfb6abce1d31f9665c9ba2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">J41c</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513004"><time datetime="2013-05-31T01:43:45+08:00">2013年05月31日 01:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>沙发有屎，我坐板凳<a href="#comment-512749" rel="nofollow">@Wiflg Goth </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-513031" class="comment even thread-even depth-1">
+<article id="div-comment-513031" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c53cb3f626a9a07d16b39608c3db305e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c53cb3f626a9a07d16b39608c3db305e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mazheng.org" class="url" rel="ugc external nofollow">冰上游鱼</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513031"><time datetime="2013-05-31T02:12:22+08:00">2013年05月31日 02:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>先占个座儿 。<br/>
+这么晚发博客，辛苦了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-513071" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-513071" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/59eae5418286815d438b94ad640f1cd4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/59eae5418286815d438b94ad640f1cd4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gkiwi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513071"><time datetime="2013-05-31T02:41:16+08:00">2013年05月31日 02:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>放pocket中，明天再看！失眠好多次～</p>
+</div>
+ </article>
+</li>
+<li id="comment-513134" class="comment even thread-even depth-1">
+<article id="div-comment-513134" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7db2362c545482158ea0f7b41229570b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7db2362c545482158ea0f7b41229570b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/wengaotie" class="url" rel="ugc external nofollow">温少</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513134"><time datetime="2013-05-31T03:29:29+08:00">2013年05月31日 03:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>put/delete操作至少三次cacheline访问，sizeIncrement和listInsert都是竞争热点。在非竞争下，性能差，激烈竞争时性能更差。</p>
+</div>
+ </article>
+</li>
+<li id="comment-513525" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-513525" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f559b16d183f1ce4fce2324a26b869f9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f559b16d183f1ce4fce2324a26b869f9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sqtds</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513525"><time datetime="2013-05-31T08:23:35+08:00">2013年05月31日 08:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>温少牛人啊，这么晚了还在学习。<a href="#comment-513134" rel="nofollow">@温少 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-513582" class="comment even thread-even depth-1">
+<article id="div-comment-513582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c873fc042672ae67aaf67e91afa9fe38?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c873fc042672ae67aaf67e91afa9fe38?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.shellblog.cn" class="url" rel="ugc external nofollow">夕水溪下</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513582"><time datetime="2013-05-31T09:02:56+08:00">2013年05月31日 09:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中的图是用什么工具画的？</p>
+</div>
+ </article>
+</li>
+<li id="comment-513603" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-513603" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cec5cc530ca7b6d72d94a1fd0871109e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cec5cc530ca7b6d72d94a1fd0871109e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">maverick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513603"><time datetime="2013-05-31T09:19:33+08:00">2013年05月31日 09:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>昨天我在阿里面试实习生被问的就是这个问题,我回答的就是用单链表的原子操作，不过rehash过程没能想到这么详细的方法，细节也不够，不知道面试能不能给过。</p>
+</div>
+ </article>
+</li>
+<li id="comment-513632" class="comment even thread-even depth-1">
+<article id="div-comment-513632" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31b03cec2f11cdac43747980b99d552e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31b03cec2f11cdac43747980b99d552e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kaka</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513632"><time datetime="2013-05-31T09:46:09+08:00">2013年05月31日 09:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么不只判断size来进行CAS判断，这样的话，性能会好一些吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-513737" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-513737" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14d02c0001b8836fbb752c0858048f48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14d02c0001b8836fbb752c0858048f48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Evo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513737"><time datetime="2013-05-31T11:11:37+08:00">2013年05月31日 11:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问这个性能测试指标有哪些</p>
+</div>
+ </article>
+</li>
+<li id="comment-513738" class="comment even thread-even depth-1">
+<article id="div-comment-513738" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4929942c64d3b6e4589e72bb5d85dd05?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4929942c64d3b6e4589e72bb5d85dd05?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">linshenqi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513738"><time datetime="2013-05-31T11:12:38+08:00">2013年05月31日 11:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用CAS也是要等的，不过好像粒度变小。不知实际性能咋样</p>
+</div>
+ </article>
+</li>
+<li id="comment-513884" class="comment byuser comment-author-onetwogoo bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-513884" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f87d8248b1d4f71322576b96d5072376?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f87d8248b1d4f71322576b96d5072376?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">onetwogoo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-513884"><time datetime="2013-05-31T13:06:41+08:00">2013年05月31日 13:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-513582" rel="nofollow">@夕水溪下 </a><br/>
+学习浩哥精神，用ppt</p>
+</div>
+ </article>
+</li>
+<li id="comment-514166" class="comment even thread-even depth-1">
+<article id="div-comment-514166" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1093fec993109b46d2f20963e52718bc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1093fec993109b46d2f20963e52718bc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.kghost.info/" class="url" rel="ugc external nofollow">Zealot</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-514166"><time datetime="2013-05-31T17:12:13+08:00">2013年05月31日 17:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主所描述的无锁链表根本不可能实现，考虑这种情况：</p>
+<p>A-&gt;B-&gt;C</p>
+<p>线程1:尝试在B-&gt;C之间插入新节点D<br/>
+线程2:尝试删除B</p>
+<p>按照博主的方法将会出现这种情况：</p>
+<p> A-&gt;C<br/>
+↗<br/>
+B-&gt;D</p>
+<p>D节点被莫名其妙牺牲掉了</p>
+</div>
+ </article>
+</li>
+<li id="comment-514181" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-514181" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mosky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-514181"><time datetime="2013-05-31T17:32:11+08:00">2013年05月31日 17:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>今天看到博主写这个主题我很高兴，因为我刚好以前写过一个和博主描述一模一样的HashMap。</p>
+<p>我个人认为插入操作和删除操作不加锁是无法完成的（即put和remove）操作，就算不在整个HashMap上加锁，也要在节点上加锁。</p>
+<p>本想看看博主会如何解决这个问题，但是很遗憾博主只是侧重在哈希扩容时的不加锁解决方案。不过也好啦，哈哈。</p>
+<p>其实我写过的那个HashMap扩容和博主的基本一样，就是链表排序（之前我还考虑排序会不会影响效率，后来一想根本不会，因为put操作要把相关的节点全部遍历一遍才行，顺便就把应该插入的有序位置确定好了，根本不影响效率。）</p>
+<p>此外，不用一整块数组，而是用多级数组来找，也是我写的那个HashMap的解决方法。不同于博主的两级，我写的允许多级。</p>
+<p>另外一点就是我没有用哨兵节点，也没有要求整个HashMap的节点全部排序并连接成一条链表。</p>
+<p>恕我愚昧，我不能理解博主为何要设置哨兵节点，并把所有链表连接成一条链表。我认为不这么做完全没有问题。</p>
+<p>此外，我认为哈希扩容不论怎么减少时间，还是一个比较耗时的操作，且是一个频率发生不是很高的操作。因此，我认为在哈希扩容的时候锁定整个HashMap应该是没有什么关系的。</p>
+<p>而且博主的解决方法也肯定必须让哈希扩容排斥另一个哈希扩容吧。（虽然可以令扩容期间put和remove操作照常进行。）</p>
+</div>
+ </article>
+</li>
+<li id="comment-514191" class="comment even thread-even depth-1">
+<article id="div-comment-514191" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mosky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-514191"><time datetime="2013-05-31T17:43:24+08:00">2013年05月31日 17:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>另外这篇文章又勾起了我之前的一个问题：</p>
+<p>对于读-改-写这种操作，如何无锁又线程安全的实现。</p>
+<p>我能想出的解决方法无非是自旋锁，或自旋锁的变种。</p>
+</div>
+ </article>
+</li>
+<li id="comment-514377" class="comment byuser comment-author-onetwogoo bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-514377" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f87d8248b1d4f71322576b96d5072376?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f87d8248b1d4f71322576b96d5072376?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">onetwogoo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-514377"><time datetime="2013-05-31T21:02:28+08:00">2013年05月31日 21:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-514181" rel="nofollow">@mosky </a><br/>
+设置哨兵节点，是为了防止某个数据节点被数组和前驱节点同时引用，这样删除它的时候需要同时更新两个指针（用CAS无法做到）。<br/>
+文中所述的Hash扩展是懒惰的，它本质上只是对一个全局size变量所做的原子性加倍操作，不会耗时很多。另外，加倍时，如果CAS返回失败，则不会重新尝试加倍操作，防止重复加倍(这是你所说的排斥？).<br/>
+关于有序链表的操作，文章所述确实存在一些疏漏，如需了解链表的严格操作方法，请参阅http://cs.brown.edu/~mph/HellerHLMSS05/2005-OPODIS-Lazy.pdf</p>
+</div>
+ </article>
+</li>
+<li id="comment-514725" class="comment even thread-even depth-1">
+<article id="div-comment-514725" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cbe6b5d7c14421b7b988aa119d5cdf2e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cbe6b5d7c14421b7b988aa119d5cdf2e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">poly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-514725"><time datetime="2013-06-01T02:28:42+08:00">2013年06月01日 02:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实我更关心的是这篇文章里的图是用什么软件画的，很带感的样子～～<br/>
+唉，最近在苦逼论文，望陈皓能现身明示。</p>
+</div>
+ </article>
+</li>
+<li id="comment-515004" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-515004" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eac9046d4d3fcb13fb55ae0f85c53575?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eac9046d4d3fcb13fb55ae0f85c53575?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.tektea.com" class="url" rel="ugc external nofollow">茶话汇</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-515004"><time datetime="2013-06-01T07:30:19+08:00">2013年06月01日 07:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，看了博主很多文章，你可真是全才啊。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-517007" class="comment even thread-even depth-1">
+<article id="div-comment-517007" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mosky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-517007"><time datetime="2013-06-02T15:11:05+08:00">2013年06月02日 15:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-514377" rel="nofollow">@onetwogoo </a><br/>
+感谢作者能解答这个问题。<br/>
+现在有些理解哨兵节点，以及将所有链表练成一个链表的意义了。</p>
+<p>我没有设置哨兵节点，也没有把链表连起来，于是在扩容的时候不得不使用锁来保证分链表的中间的插入操作不至于在扩容的时候发生错误。</p>
+<p>如果设置了哨兵节点，则根本不必在此进行额外的锁操作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-519552" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-519552" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed6da1b7603f926a74f48e1a2062e173?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed6da1b7603f926a74f48e1a2062e173?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Evanzhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-519552"><time datetime="2013-06-03T13:45:22+08:00">2013年06月03日 13:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我之前有做过个测试，600个线程用无锁的队列取东西，没见到比LinkedBlockingQueue快多少，可能还比他慢点。竞争激烈的时候，无锁还不如有锁。</p>
+</div>
+ </article>
+</li>
+<li id="comment-520217" class="comment even thread-even depth-1">
+<article id="div-comment-520217" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/973b498c3c5f042d61f87e99b1e16d3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/973b498c3c5f042d61f87e99b1e16d3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">micromagic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-520217"><time datetime="2013-06-03T17:12:46+08:00">2013年06月03日 17:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>需要实现无锁那就必须自锁，就像之前的那篇无锁队列http://coolshell.cn/articles/8239.html的插图，一辆自行车如果没有锁的话，那他需要自己把自己锁起来。<br/>
+用原子操作在无竞争的情况下能提供效率，在有竞争的情况下并没有快多少。<br/>
+针对map，如果是大量的写操作，那无论用什么方式都差不多，但是读的比例远高于写的比例的话，那就大有文章可做。可以想办法去除读取时所有与锁及原子操作的相关代码，大大提供读取时的效率。<br/>
+为了达到这个目的，我也专门定制了一个map，只在添加（包含rehash）及删除时加锁。<br/>
+需要注意的地方就时在rehash时不要影响原来的hash表，在链表中添加entry时添加在链表头，整个添加操作的最后再修改链表的root。当然这个方式在jdk1.4及之前由于内存无序写入的问题，会发生意料之外的问题。不过在jdk1.5及之后的版本已经修复了这个问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-523838" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-523838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a488d4852ae23b79542d729b7d2a597c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a488d4852ae23b79542d729b7d2a597c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fwlx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-523838"><time datetime="2013-06-04T12:54:34+08:00">2013年06月04日 12:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同意，文中谈到的无锁链表的删除是有问题的，误导读者，这有片详细的论文，实现无锁链表非阻塞删除<br/>
+<a href="http://www.liblfds.org/mediawiki/images/1/1d/Valois_-_Lock-Free_Linked_Lists_Using_Compare-and-Swap.pdf" rel="nofollow ugc">http://www.liblfds.org/mediawiki/images/1/1d/Valois_-_Lock-Free_Linked_Lists_Using_Compare-and-Swap.pdf</a><br/>
+<a href="#comment-514166" rel="nofollow">@Zealot </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-524361" class="comment even thread-even depth-1">
+<article id="div-comment-524361" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f97ba51e8f710077a3165c464c2acf88?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f97ba51e8f710077a3165c464c2acf88?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">techni</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-524361"><time datetime="2013-06-04T15:50:22+08:00">2013年06月04日 15:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>rehash只是再mod array 的 length么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-766145" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-766145" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1bd487a5fabedf0fdcc534c26530bf16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="562c3e3738312f3730333f3d3f3b3f16313b373f3a7835393b">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-766145"><time datetime="2013-09-27T17:47:55+08:00">2013年09月27日 17:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-513134" rel="nofollow">@温少 </a><br/>
+CAS也是性能杀手啊。实际性能有待测试！</p>
+</div>
+ </article>
+</li>
+<li id="comment-909531" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=134" class="url" rel="ugc external nofollow">面试题：火车运煤问题 | multiprocess</a> </div>
+</li>
+<li id="comment-1019481" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1019481" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b0e55d8c0c102f2addbbb7b73ea2ce3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b0e55d8c0c102f2addbbb7b73ea2ce3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">用小弟弟思考的程序员</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-1019481"><time datetime="2013-12-03T16:05:53+08:00">2013年12月03日 16:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得把CAS不当成锁应该是不正确的，从广义角度来讲CAS也是锁的一种实现。其实底层并发控制也就那么些东西，CAS，轮询，进程/线程通信等。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1258961" class="comment even thread-even depth-1">
+<article id="div-comment-1258961" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/769258bddd63563c42f9ea3e64f26608?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/769258bddd63563c42f9ea3e64f26608?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jtuki</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-1258961"><time datetime="2014-02-09T14:47:44+08:00">2014年02月09日 14:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-523838"><p>
+<strong><a href="#comment-523838" rel="nofollow">fwlx</a> :</strong><br/>
+同意，文中谈到的无锁链表的删除是有问题的，误导读者，这有片详细的论文，实现无锁链表非阻塞删除<br/>
+<a href="http://www.liblfds.org/mediawiki/images/1/1d/Valois_-_Lock-Free_Linked_Lists_Using_Compare-and-Swap.pdf" rel="nofollow">http://www.liblfds.org/mediawiki/images/1/1d/Valois_-_Lock-Free_Linked_Lists_Using_Compare-and-Swap.pdf</a><br/>
+<a href="#comment-514166" rel="nofollow">@Zealot </a>
+</p></blockquote>
+<blockquote cite="#commentbody-514166"><p>
+<strong><a href="#comment-514166" rel="nofollow">Zealot</a> :</strong><br/>
+博主所描述的无锁链表根本不可能实现，考虑这种情况：<br/>
+A-&gt;B-&gt;C<br/>
+线程1:尝试在B-&gt;C之间插入新节点D<br/>
+线程2:尝试删除B<br/>
+按照博主的方法将会出现这种情况：<br/>
+A-&gt;C<br/>
+↗<br/>
+B-&gt;D<br/>
+D节点被莫名其妙牺牲掉了
+</p></blockquote>
+<p>赞！「无锁就意味着自锁」，真实现起来，要考虑周全相当费脑子啊…… 而且似乎没法测，只能用作证明题的思路证明正确性…… 另外，对于「除非修改两个指针否则无法做到一致性」这种硬件的原子操作难以完成的事情，似乎无解，比如双向链表……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1293239" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1293239" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4022c99906c1dcb26b72ff237201038a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4022c99906c1dcb26b72ff237201038a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">你最红</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-1293239"><time datetime="2014-02-20T17:53:21+08:00">2014年02月20日 17:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-514166" rel="nofollow">@Zealot </a><br/>
+博主讲述的无锁链表没有问题。你没有考虑到的情况是如果线程2执行成功，那么线程1每次自旋过程中都会去重新查找插入位置，也即文中的”Node a = findInsertionPlace(head),…”，所以你的前提”尝试在B-&gt;C之间插入新节点D”就有问题。通过findInsertionPlace(head)也能看出无锁自旋也是有代价的，是否适用得看具体场景。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1342348" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=733" class="url" rel="ugc external nofollow">Java中的CopyOnWrite容器 | zengine</a> </div>
+</li>
+<li id="comment-1345659" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=961" class="url" rel="ugc external nofollow">Java中的CopyOnWrite容器 | 星达红</a> </div>
+</li>
+<li id="comment-1414190" class="comment even thread-even depth-1">
+<article id="div-comment-1414190" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7d0f7275851df8df5312c37513e60d7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7d0f7275851df8df5312c37513e60d7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liuinsect.com" class="url" rel="ugc external nofollow">liuinsect</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-1414190"><time datetime="2014-04-04T10:10:42+08:00">2014年04月04日 10:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的理解是，新建这个Map的时候就可以指定好每个区块负责多少个实际分块，也就是说每个键值在put的时候就确定了，并且一直不会该改变<br/>
+比如，当键值A的hashcode在11的位置，A在被put的时候就直接放在了11这个分块上，并且初始化2这个分块索引，1可以不用初始化。<br/>
+直接说就是，通过分块索引的引入，避免了Rehash过程中结点的移动。</p>
+<p>不知这样说 是否正确？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1862225" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.techsite.cn/?p=5520" class="url" rel="ugc external nofollow">探索jdk8之ConcurrentHashMap 的实现机制 – 淮左 – | 长流技术</a> </div>
+</li>
+<li id="comment-1906967" class="comment even thread-even depth-1">
+<article id="div-comment-1906967" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bf57294f4024cdd4b4380e16b1a3d602?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bf57294f4024cdd4b4380e16b1a3d602?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lqy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9703.html#comment-1906967"><time datetime="2016-12-14T14:15:05+08:00">2016年12月14日 14:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1293239" rel="nofollow">@你最红 </a><br/>
+前提并没有问题，假设线程1先findInsertionPlace(head)找到B，要在B后插入D了，但是还没插入完成的时候(B.next还未修改) 线程2执行了，利索地删除了B(结果为 A-&gt;C B-&gt;C, 这里改的是 A.next，B.next 不变)，然后线程1继续执行插入，”成功”地插在了B后面(A-&gt;C B-&gt;D-&gt;C)，并结束了循环，并没有重新遍历找插入位置。</p>
+<p>如果没有删除，只有插入，上面的插入实现完美无缺，但是如果有删除，以上的实现就必然有问题。</p>
+<p>因为删除过程中不可能知道有另一个线程已经准备好在当前要删除的节点后插入新节点了(完成插入前只是读取了链表的数据，没有在链表中留下任何信息，这是就目前的插入代码来说，当然可以添加这样的辅助信息让删除知道有这么个情况，比如用一个AtomicInteger记录当前进入插入流程的线程个数和删除流程线程的个数，可以设计成插入和删除在不同阶段交替执行，嗯，复杂化了，应该算馊主意，哈哈)。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2042001" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/644889" class="url" rel="ugc external nofollow">Java 并发之 ConcurrentSkipListMap 简述 - 算法网</a> </div>
+</li>
+<li id="comment-2188205" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21128.html" class="url" rel="ugc">Go编程模式：切片，接口，时间和性能 | 酷 壳 - CoolShell</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,215 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>预发布环境,Tag发布机制和可重复的部署过程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3709 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3709" class="post-content post-3709 post type-post status-publish format-standard hentry category-techarticle category-process tag-tag tag-490 tag-492">
+<header class="entry-header">
+<span class="screen-reader-text">预发布环境,Tag发布机制和可重复的部署过程</span>
+<h1 class="entry-title">预发布环境,Tag发布机制和可重复的部署过程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3709.html" title="15:28" rel="bookmark"><time class="entry-date" datetime="2011-02-20T15:28:59+08:00" pubdate="">2011年02月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3709.html#comments" class="comments-link">8 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 9,898 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><span style="font-size: 11pt;"><strong>下面文章由网友<a href="http://blog.lvscar.info/" target="_blank">吕毅</a>投递，源文是：<a href="http://blog.lvscar.info/?p=427" target="_blank">http://blog.lvscar.info/?p=427</a></strong></span></p>
+<p>—————————————————————————————————————————————</p>
+<p>周末聚会，无意间聊起建筑行业。自己是搞软件开发的，我们的行业从建筑设计/施工过程中借鉴了大量的概念，隐喻，名词。可以说软件就是现实中伴随整个人类历史发展的“建筑”在虚拟空间中的投影。有个两年前问过其他朋友的问题，这次友人又再次提起，“为什么建筑设计过程中没有普遍性的采用版本控制呢？” 瞎扯了一干各种原因后，我们几乎同时想到一个名字”Joel”，建筑设计行业或许缺乏像<a href="http://www.joelonsoftware.com/">Joel Spolsky</a>一样十数年如一日，把自己丰富的经验和深入的思考转化成一篇篇文章以向新人传授软件开发过程中那些容易被忽略的概念。高傲的黑客们会对CMMI之类的认证抱以鄙夷之情，但对Joel整理出的12条写出更好软件的”最佳实践”，大家甚至把此称为审视其他团队开发过程的<a href="http://www.joelonsoftware.com/articles/fog0000000043.html">“Joel TEST”</a>以推崇</p>
+<p>这12条测试如下:</p>
+<blockquote><p>1. 是否启用版本控制？</p>
+<p>2. 是否可以一步构建?</p>
+<p>3. 是否进行每日构建？</p>
+<p>4. 是否有bug跟踪列表？</p>
+<p>5. 是否在修改bug后，才开始写新代码？</p>
+<p>6. 是否及时更新工作计划？</p>
+<p>7. 是否在开发前编写了大家一致认可的功能文档？</p>
+<p>8. 是否有安静的工作环境？</p>
+<p>9. 是否在使用最好的软件开发工具？</p>
+<p>10.是否有专职测试人员？</p>
+<p>11.是否在面试时以实际编写代码来检查求职者？</p>
+<p>12.是否利用陌生人进行可用性测试？</p></blockquote>
+<p>你所在的团队符合其中的几条呢？ 觉得这些条目太一般，软件开发原本就该如此？ Joel Test写于十年前，一个Windows XP，Mac OS X,Ubuntu都还没有面世的年代。 如果你觉得这些条目有些过时了，Google中搜索“Joel Test”，你可以看到这十年内很多对此进行更新的尝试, 比如这两个页面<a href="http://geekswithblogs.net/btudor/archive/2009/06/16/132842.aspx">“The Joel Test Update for 2010″</a>,<a href="http://allinthehead.com/retro/228/">“Joel Test for web dev”</a>.</p>
+<p><span id="more-3709"></span></p>
+<p>我的主要工作集中在”Web/Mobile Web”领域，在”Joel Test”写就的年代，Web技术仅仅是一些用记事本就能写出的Html页面。但到了今天，到了经历过BS浪潮,后端编程语言井喷涌现，Ajax和HTML5变得人人皆知的今天。Web技术已经变成了一个由N种后端技术*N种开发语言/框架*N种前端技术交织起来的复杂体系。Web 程序员们觉得Joel开出的列表仍然有价值,那是因为我们的大部分工作仍然延续着上一代程序员们开创的轨迹；我们仍然在通过程序代码释创造力同时避免BUG的出现;我们仍然得谨慎的在强大,华丽与高效之间做着权衡. 相比客户端,Web技术最大的优势在于部署成本的节省,我们的程序和Joel年代最大的区别也在于此。这一年来新的工作岗位让我学到了很多,部署过程正是其中我觉得最值得和大家分享的部分.</p>
+<p>下面这个列表来自前阵子看到的一篇很好的文章<a href="http://www.kalzumeus.com/2010/12/12/staging-servers-source-control-deploy-workflows-and-other-stuff-nobody-teaches-you/">Staging Servers, Source Control &amp; Deploy Workflows, And Other Stuff Nobody Teaches You</a>,标题中的列出的三项和我的体会高度吻合,下面我会对他们一一做出自己的诠释</p>
+<blockquote><p>1.是否采用了预发布环境</p>
+<p>2.是否以Tag作为发布单位</p>
+<p>3.是否让部署过程是可重复的</p></blockquote>
+<div>
+<h3>是否采用了预发布环境</h3>
+<p>关于测试驱动开发的鼓吹中,”免除对代码修改的恐惧”十分具有诱惑力.我们都不喜欢功能逐渐丰富过程中冷不防出现的各种BUG,这些BUG打乱我们的计划,破坏我们的心情,从而让我们对开发新功能的旅程心存恐惧.TDD的最大魅力也来自于通过测试先行来保证后续的功能扩展相对于预期是可验证的. 不过无论你的WEB开发过程是怎样的,最终的代码和内容还是要通过发布来送达到用户浏览器中,你可以对PK需求,修改BUG,延长加班毫无畏惧,但你不能忽略用户体验.代码一旦部署到正式环境上,对你工作的评判不再是项目组中关心你,体谅你的同事.而是千万对错误零容忍的用户. 在发布前你已经做过周全的测试? 新增的每一项功能已经测试过? 很好.不过是在你的开发环境或某处偏僻的”测试环境”中? 服务器OS不一样,Web Server有差别,缓存服务未启用,APP容器或解释器,数据库版本有差别,没接通第三方API, 这所有的一切都可能会造成发布后,你自己或用户刷新网站后的那声”What The fuck?”, 我想这应该是较之修改BUG,你更不想面对的情景吧.</p>
+<p>总的说来,”预发布环境”就等于没有真实用户访问的生产环境, 除了让用户不能访问到外,尽一切可能让这个环境和生产环境一致.每次正式发布时以这个环境为目标,测试流程完成后.把发布内容从这个环境”平移”到生产环境.</p>
+</div>
+<div>
+<h3>是否以Tag作为发布单位</h3>
+<p>从业几年来,”所在团队把SVN当FTP用”是几乎每次朋友们互相吐槽时都能听到的话题,”SVN的分支合并太难用;需要更密切和团队伙伴共享工作内容…”我们可以很轻松的找到不创建功能分支然后进行合并的理由,事实上这么做可能也有一定的”合理性”.但发布时打个Tag,对你的现有开发流程几乎不会带来负担.你不需要切换到<a href="http://git-scm.com/">Git</a>或<a href="http://mercurial.selenic.com/">Mercury</a>,唯一要做的只是在提交后,发布前运行一行svn copy命令,然后在发布目标上用svn switch命令代替svn update来更新代码.只有一点需要注意,创建Tag的svn copy命令的目标最好是一个新的SVN仓库地址(新Tag路径),而不是本地目录.这么做的理由是当以仓库路径作为svn copy目标时,不会产生文件拷贝,而以本地路径为目标执行时,会发生文件拷贝,如果项目包含很多文件,这个过程会较为漫长.如果想避免本地打tag时的文件拷贝,你可切换到分布式版本控制系统.</p>
+<p>这么做的好处也是明显的,虽然我们已经通过预发布环境规避了大部分发布环境可能引入的问题.但当那”万一”发生时.你能够以最快的速度切换到上一次发布时的状态.通常可以通过”$svn switch [上次发布Tag的SVN路径]“一行命令搞定.</p>
+</div>
+<div>
+<h3>是否让部署过程是可重复的</h3>
+<p>如果你所在的团队对开发和运维工作进行了严格切分,这不会是一个问题.但不是所有项目都会到这个规模,如果你是一个幸福的能变更生产环境的Web程序员,请千万小心,你对生产环境的每次调整/优化,都可能让项目部署过程变得不可重复.随着时间的推移,你会忘记当时的配置项.一旦项目需要扩容,恢复,移交.这过程都可能演变成灾难.</p>
+<p>上面提到那篇文章中,提倡用部署脚本来管理部署过程.这是很好的解决方法,但如果你暂时缺乏系统脚本编程能力.分门别类把每次环境配置过程记录清楚吧,就当这项工作要在你不在场的情况下被别人重复执行.</p>
+</div>
+<p>别人说我们是”码农”,我们要把自己当工程师.</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3709-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">流程方法</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Tag</a>, <a href="javascript:void(0)" rel="tag">投递</a>, <a href="javascript:void(0)" rel="tag">部署</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>预发布环境,Tag发布机制和可重复的部署过程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-30792" class="comment even thread-even depth-1">
+<article id="div-comment-30792" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f67f0f662d20e085ad62789029ada283?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f67f0f662d20e085ad62789029ada283?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">残影</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-30792"><time datetime="2011-02-20T19:02:23+08:00">2011年02月20日 19:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益匪浅……</p>
+</div>
+ </article>
+</li>
+<li id="comment-30831" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-30831" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24dcb43740def38d7235835569f6feb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24dcb43740def38d7235835569f6feb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/sunwaymike" class="url" rel="ugc external nofollow">Johnny</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-30831"><time datetime="2011-02-20T23:04:15+08:00">2011年02月20日 23:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习.</p>
+</div>
+ </article>
+</li>
+<li id="comment-30955" class="comment even thread-even depth-1">
+<article id="div-comment-30955" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3a487920a7034b0276096ee4669fdcda?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3a487920a7034b0276096ee4669fdcda?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">月下的D大调</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-30955"><time datetime="2011-02-21T10:19:17+08:00">2011年02月21日 10:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢作者～<br/>
+虽然文章没有全部看懂，但读过一遍感觉有所收获，有时间一定还会再读几遍的～</p>
+</div>
+ </article>
+</li>
+<li id="comment-31023" class="comment byuser comment-author-liuxd odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-31023" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/05cdbb54576585408d487d5e8aca534d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/05cdbb54576585408d487d5e8aca534d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">喜东</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-31023"><time datetime="2011-02-21T17:28:18+08:00">2011年02月21日 17:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>金玉良言啊，不过不是所有的“码农”都有能力改变这一切啊～</p>
+</div>
+ </article>
+</li>
+<li id="comment-31211" class="comment even thread-even depth-1">
+<article id="div-comment-31211" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bac6a50016ff697439669390375c135d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bac6a50016ff697439669390375c135d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">howlprowler</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-31211"><time datetime="2011-02-22T10:13:35+08:00">2011年02月22日 10:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>预发部环境，把发布内容从这个环境”平移”到生产环境？ 怎么平移？ 你的预发部和生产环境是在同一个局域网吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-32549" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-32549" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/987e45e7e2ea4810f489041196851c28?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/987e45e7e2ea4810f489041196851c28?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ypzy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-32549"><time datetime="2011-02-26T22:56:51+08:00">2011年02月26日 22:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感同身受，项目环境到日常环境，日常环境到预发环境，版本的切换合并到部署，每一步都要尽量减少bug的产生，尤其面对大量pv时，鸭梨很大阿。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-78783" class="comment even thread-even depth-1">
+<article id="div-comment-78783" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/00291790182fbc6df10dac05e51b4121?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/00291790182fbc6df10dac05e51b4121?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">floe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3709.html#comment-78783"><time datetime="2011-09-02T15:23:15+08:00">2011年09月02日 15:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一定要tag吗?svn本身就有统一版本号,把版本号记下来就够了吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1281948" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cn-php.com/2013/07/151.html" class="url" rel="ugc external nofollow">7个示例科普CPU Cache | cn-php</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

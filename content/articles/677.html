@@ -1,0 +1,269 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>用Python写NCurses UI | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-677 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-677" class="post-content post-677 post type-post status-publish format-standard hentry category-pythondev category-proglanguage tag-ncurses tag-pythondev">
+<header class="entry-header">
+<span class="screen-reader-text">用Python写NCurses UI</span>
+<h1 class="entry-title">用Python写NCurses UI</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/677.html" title="10:19" rel="bookmark"><time class="entry-date" datetime="2009-04-26T10:19:41+08:00" pubdate="">2009年04月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/677.html#comments" class="comments-link">7 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 21,747 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><a href="https://coolshell.cn/wp-content/uploads/2009/04/python_ncurses.jpg"></a>Ncurses是一个能提供基于文本终端窗口功能的动态库. Ncurses可以:</p>
+<ul>
+<li>可以使用整个屏幕</li>
+<li>创建和管理一个窗口</li>
+<li>使用8种不同的彩色</li>
+<li>为您的程序提供鼠标支持</li>
+<li>使用键盘上的功能键</li>
+</ul>
+<p>Ncurses可以在任何遵循ANSI/POSIX标准的Unix/Linux系统上运行，除此之外，它还可以从系统数据库中检测终端的属性,，并且自动进行调整,提供一个不受终端约束的接口。因此,Ncurses可以在不同的系统平台和不同的终端上工作的非常好。</p>
+<p><span id="more-677"></span></p>
+<p>mc工具集就是一个用ncurses写的很好的例子,而且在终端上系统核心配置的界面同样是用ncurses编写的. 下面就是它们的截图：</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2009/04/ncurses_example.jpg"><img decoding="async" class="alignnone size-full wp-image-678" title="ncurses_example" src="/uploads/2009/04/ncurses_example.jpg" alt="ncurses_example" width="526" height="423" srcset="" sizes="(max-width: 526px) 100vw, 526px"/></a></p>
+<p>当然，在我们这篇文章中，我们不会教你怎么写NCurses程序，我们只是想告诉你如何用Python来写Ncurses的程序，示例会非常简单，点到为止。</p>
+<p>在此之前，我们先简单的回顾一下如何使用Python的一些简单的语法。</p>
+<p>先看看一个最简单的Python程序：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">print &#34;How easy is this?&#34; 
+
+x = 1
+y = 2
+z = x + y
+
+print &#34;Result of x + y is&#34;, z
+</pre>
+<p>程序很简单，我就不多说，把这个文件存成test.py，然后在命令行下调用python test.py就可以看到输出了。</p>
+<p>下面我们再来看一个Python的函数定义——还是很简单，我也不用多说了。</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">def saystuff(mystring):
+     print &#34;You said:&#34;, mystring 
+
+saystuff(&#34;Bach rules&#34;)
+saystuff(&#34;So does Telemann&#34;)
+</pre>
+<p>好，言归正传，让我们来看一下，如何在Python中使用NCurses，下面是一个小例程：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">import curses 
+
+myscreen = curses.initscr()
+
+myscreen.border(0)
+myscreen.addstr(12, 25, &#34;Python curses in action!&#34;)
+myscreen.refresh()
+myscreen.getch()
+
+curses.endwin()
+</pre>
+<p>注意这个示例中的第一行import curses，表明使用curses库，然后这个示像在屏幕中间输出“Python curses in action!”字样，其中坐标为12, 25，注意，在字符界面下，80 x 25是屏幕大小，其用的是字符，而不是像素。下面是运行后的抓屏：</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2009/04/python_ncursespy.jpg"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-679" title="python_ncursespy" src="/uploads/2009/04/python_ncursespy.jpg" alt="python_ncursespy" width="674" height="413" srcset="" sizes="(max-width: 674px) 100vw, 674px"/></a></p>
+<p> 最后，我们再来看一个数字菜单的示例：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">#!/usr/bin/env python
+
+from os import system
+import curses
+
+def get_param(prompt_string):
+     screen.clear()
+     screen.border(0)
+     screen.addstr(2, 2, prompt_string)
+     screen.refresh()
+     input = screen.getstr(10, 10, 60)
+     return input
+
+def execute_cmd(cmd_string):
+     system(&#34;clear&#34;)
+     a = system(cmd_string)
+     print &#34;&#34;
+     if a == 0:
+          print &#34;Command executed correctly&#34;
+     else:
+          print &#34;Command terminated with error&#34;
+     raw_input(&#34;Press enter&#34;)
+     print &#34;&#34;
+
+x = 0
+
+while x != ord(&#39;4&#39;):
+     screen = curses.initscr()
+
+     screen.clear()
+     screen.border(0)
+     screen.addstr(2, 2, &#34;Please enter a number...&#34;)
+     screen.addstr(4, 4, &#34;1 - Add a user&#34;)
+     screen.addstr(5, 4, &#34;2 - Restart Apache&#34;)
+     screen.addstr(6, 4, &#34;3 - Show disk space&#34;)
+     screen.addstr(7, 4, &#34;4 - Exit&#34;)
+     screen.refresh()
+
+     x = screen.getch()
+
+     if x == ord(&#39;1&#39;):
+          username = get_param(&#34;Enter the username&#34;)
+          homedir = get_param(&#34;Enter the home directory, eg /home/nate&#34;)
+          groups = get_param(&#34;Enter comma-separated groups, eg adm,dialout,cdrom&#34;)
+          shell = get_param(&#34;Enter the shell, eg /bin/bash:&#34;)
+          curses.endwin()
+          execute_cmd(&#34;useradd -d &#34; + homedir + &#34; -g 1000 -G &#34; + groups + &#34; -m -s &#34; + shell + &#34; &#34; + username)
+     if x == ord(&#39;2&#39;):
+          curses.endwin()
+          execute_cmd(&#34;apachectl restart&#34;)
+     if x == ord(&#39;3&#39;):
+          curses.endwin()
+          execute_cmd(&#34;df -h&#34;)
+
+curses.endwin()
+</pre>
+<p>下面是运行时的显示：</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2009/04/python_ncurses.jpg"><img decoding="async" loading="lazy" class="alignnone size-full wp-image-680" title="python_ncurses" src="/uploads/2009/04/python_ncurses.jpg" alt="python_ncurses" width="394" height="221" srcset="" sizes="(max-width: 394px) 100vw, 394px"/></a></p>
+<p>如果你你了解NCurses编程，你可以看看相关的Linux HOW-TO的文章，链接在这里：<a href="http://www.linux.org/docs/ldp/howto/NCURSES-Programming-HOWTO/index.html" target="_blank">Linux Documentation Project’s NCURSES Programming How To</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-677-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Python</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Ncurses</a>, <a href="javascript:void(0)" rel="tag">Python</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>用Python写NCurses UI</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-158" class="comment even thread-even depth-1">
+<article id="div-comment-158" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31a7d46ff0ad06cfad350af2242d956b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31a7d46ff0ad06cfad350af2242d956b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lee.shuge.org" class="url" rel="ugc external nofollow">shuge.lee</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/677.html#comment-158"><time datetime="2009-05-29T03:05:03+08:00">2009年05月29日 03:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ncurses也可以在windows下跑</p>
+<p>moc也是ncurses的好例子</p>
+</div>
+ </article>
+</li>
+<li id="comment-1469" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1469" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed6a612488df54f47e62c79ffab0af27?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed6a612488df54f47e62c79ffab0af27?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhangdut</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/677.html#comment-1469"><time datetime="2009-10-20T10:47:00+08:00">2009年10月20日 10:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了！！谢～</p>
+</div>
+ </article>
+</li>
+<li id="comment-55257" class="comment even thread-even depth-1">
+<article id="div-comment-55257" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/866835e27655971f4e3a56d8191da534?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/866835e27655971f4e3a56d8191da534?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://magang.name" class="url" rel="ugc external nofollow">marsteel</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/677.html#comment-55257"><time datetime="2011-05-28T14:57:10+08:00">2011年05月28日 14:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好玩</p>
+</div>
+ </article>
+</li>
+<li id="comment-203278" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-203278" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20dd05347249e3984f2d4546ea0ca127?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20dd05347249e3984f2d4546ea0ca127?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://hit9.github.com" class="url" rel="ugc external nofollow">hit9</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/677.html#comment-203278"><time datetime="2012-10-07T17:36:31+08:00">2012年10月07日 17:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有意思这个!</p>
+</div>
+ </article>
+</li>
+<li id="comment-781956" class="comment even thread-even depth-1">
+<article id="div-comment-781956" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27bad757628493da03e64a453318cd65?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27bad757628493da03e64a453318cd65?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">白条</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/677.html#comment-781956"><time datetime="2013-10-03T21:24:50+08:00">2013年10月03日 21:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在windows平台python没有自带，要强用curses没linux下方便，http://invisible-island.net/ncurses/ncurses.faq.html#what_platforms</p>
+</div>
+ </article>
+</li>
+<li id="comment-1398640" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=851" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 | zengine</a> </div>
+</li>
+<li id="comment-1540586" class="comment even thread-even depth-1">
+<article id="div-comment-1540586" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cbdcef76e13d98e4278ccca42a2d0ef1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cbdcef76e13d98e4278ccca42a2d0ef1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">limbo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/677.html#comment-1540586"><time datetime="2014-09-21T10:46:02+08:00">2014年09月21日 10:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cool!! 正是我想要的</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

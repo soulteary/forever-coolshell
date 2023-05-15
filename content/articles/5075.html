@@ -1,0 +1,555 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>你确信你了解时间吗？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5075 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5075" class="post-content post-5075 post type-post status-publish format-standard hentry category-misc category-story tag-java tag-programmer tag-stackoverflow tag-timestamp tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">你确信你了解时间吗？</span>
+<h1 class="entry-title">你确信你了解时间吗？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5075.html" title="08:25" rel="bookmark"><time class="entry-date" datetime="2011-08-01T08:25:59+08:00" pubdate="">2011年08月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5075.html#comments" class="comments-link">93 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 53,609 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>你还记得“<a title="软件真的好难做啊" href="/articles/4811.html" target="_blank" rel="noopener">软件真的好难做</a>”中的那个有意思的例子吗？那个例子告诉我们软件开发中假设可能会是致命的事。今天，我又在StackOverflow上看到一个关于时间的问题——<a href="http://stackoverflow.com/questions/6841333/why-is-subtracting-these-two-times-in-1927-giving-a-strange-result" target="_blank" rel="noopener">为什么1927年12月31日的午夜时间这么奇怪</a>？提问题的这个人给了下面的一段java代码（我做一些修改，保证让你可以copy过去就可以编译运行）</p>
+<p>我在其中高亮了几行，这个程序就是想比较一下“<span class="Apple-style-span" style="font-family: Consolas, Monaco, monospace; font-size: 12px; line-height: 18px; white-space: pre;">1927-12-31 23:54:07<span class="Apple-style-span" style="font-family: Georgia, &#39;Times New Roman&#39;, &#39;Bitstream Charter&#39;, Times, serif; font-size: 13px; line-height: 19px; white-space: normal;">”  和  “<span class="Apple-style-span" style="font-family: Consolas, Monaco, monospace; font-size: 12px; line-height: 18px; white-space: pre;">1927-12-31 23:54:08<span class="Apple-style-span" style="font-family: Georgia, &#39;Times New Roman&#39;, &#39;Bitstream Charter&#39;, Times, serif; font-size: 13px; line-height: 19px; white-space: normal;">” 差几秒，很明显，是差一秒。但是程序的输出却不是这样的。</span></span></span></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="java" data-enlighter-highlight="8,9,10">import java.text.SimpleDateFormat;
+import java.text.ParseException;
+import java.util.Date;
+import java.util.TimeZone;
+class time{
+    public static void main(String[] args) throws ParseException {
+        SimpleDateFormat sf = new SimpleDateFormat(&#34;yyyy-MM-dd HH:mm:ss&#34;);
+        sf.setTimeZone(TimeZone.getTimeZone(&#34;Asia/Shanghai&#34;));
+        String str3 = &#34;1927-12-31 23:54:07&#34;;
+        String str4 = &#34;1927-12-31 23:54:08&#34;;
+        Date sDt3 = sf.parse(str3);
+        Date sDt4 = sf.parse(str4);
+        long ld3 = sDt3.getTime() /1000;
+        long ld4 = sDt4.getTime() /1000;
+        System.out.println(ld3);
+        System.out.println(ld4);
+        System.out.println(ld4-ld3);
+    }
+}</pre>
+<p> </p>
+<p><span id="more-5075"></span></p>
+<p>下面，让我们来看看程序的输出：（是的，差出353秒钟来）</p>
+<blockquote><p><code>-1325491905<br/>
+-1325491552<br/>
+353</code></p></blockquote>
+<p>Stackoverflow真的很强大，在大家要求发问者给出时区（中国上海）的15分钟内就解决了这个问题。相当的令人惊叹。原因是什么呢？大家需要围观一下<a href="http://www.timeanddate.com/worldclock/clockchange.html?n=237&amp;year=1927" target="_blank" rel="noopener">这个网页</a>。（为了怕被墙或是被和谐，我已习惯了抓屏保存，如果有人能开发一个软件能随看随抓，然后如果源被删了可以P2P的从已下载了的人那里获取，那么这个软件应该会很有国内市场。蛋扯远了，Sorry）</p>
+<p style="text-align: center;"><img decoding="async" class="aligncenter size-full wp-image-5077" title="Time changes in year 1927 for China – ShanghaiS" src="/uploads/2011/07/Time-changes-in-year-1927-for-China-–-ShanghaiS.png" alt="" width="598" height="335" srcset="" sizes="(max-width: 598px) 100vw, 598px"/></p>
+<p>从上图中我们可以看到—— 在1927年12月31日23:59:59时，往后面的一秒应该是1928年1月1日 0:0:0，但是这个时间被往后调整了5分52秒，而成了，1927年12月31日的，23:54:08，于是，完成了352秒的穿越。于是我们的Java程序出了这样的一个问题，这真是一个奇迹。</p>
+<p>为什么会有这个调整呢？我居然Google不到，不过，我在这个timeanddate.com上查看了一下北京的时间，发现北京的时间只到1970年，于是我猜想，中国近代历史乱七八糟的政权交替可能是这个原因。于是我看 了一下北京和上海物理时差，果然，北京上海的时差在5分50秒左右。<strong>因此，我觉得这个时间的变化应该是从上海（南京）时间变成了北京时间</strong>。至于你信不信，反正我是信了。</p>
+<p>从这个事，我得到下面的一些启示：</p>
+<ol>
+<li>Java在的时区实现相当的强大啊。这种细节都能考虑到。</li>
+<li>本地时间的完全就是一锅粥，应该尽量不用。</li>
+<li>如果你要开发和时区有关系的程序，你的系统里一定要使用GMT标准时间，仅在显示的时候才转成本地时间。</li>
+</ol>
+<div>各位无证程序员们，看到这个例子，你们是不是感到编程的压力了？呵呵。</div>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5075-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">StackOverflow</a>, <a href="javascript:void(0)" rel="tag">timestamp</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>你确信你了解时间吗？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-70842" class="comment even thread-even depth-1">
+<article id="div-comment-70842" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c16fde559cf0b625d3c9517f59ad2aea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c16fde559cf0b625d3c9517f59ad2aea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/skyivben" class="url" rel="ugc external nofollow">skyivben</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-70842"><time datetime="2011-08-05T08:03:36+08:00">2011年08月05日 08:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-70697" rel="nofollow">@pip </a><br/>
+的确，按照您的说法，改为“Asia/Shanghai”，重新编译后，运行结果如下所示：<br/>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f193949fb193949fdc9cc5c1c1c185">[email protected]</a>:~/work/08$ javac time.java<br/>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f193949fb193949fdc9cc5c1c1c185">[email protected]</a>:~/work/08$ java time<br/>
+-1325491905<br/>
+-1325491552<br/>
+353<br/>
+<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="36545358765453581b5b0206060642">[email protected]</a>:~/work/08$<br/>
+可见，在 Linux 操作系统中，不但文件名的大小写很重要，时区名称的大小写也很重要。</p>
+</div>
+ </article>
+</li>
+<li id="comment-70883" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-70883" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65ebbb6eaca277f92385877991afd694?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65ebbb6eaca277f92385877991afd694?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">n_tao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-70883"><time datetime="2011-08-05T12:09:34+08:00">2011年08月05日 12:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个问题是程序员需要考虑的吗？表示压力很大。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-70907" class="comment even thread-even depth-1">
+<article id="div-comment-70907" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b712a9a3214560fcc71a9665476e0f35?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b712a9a3214560fcc71a9665476e0f35?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gauzeehom</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-70907"><time datetime="2011-08-05T14:05:15+08:00">2011年08月05日 14:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>反正它就是发生了</p>
+</div>
+ </article>
+</li>
+<li id="comment-70915" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-70915" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b6deb6e7c6035e5eaadc819ed4cec3a6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b6deb6e7c6035e5eaadc819ed4cec3a6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dragonball</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-70915"><time datetime="2011-08-05T14:50:01+08:00">2011年08月05日 14:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得这就是一个BUG，不是什么强大的智能性。上海和北京之间也不可能存在时差，而且是353秒这么久。</p>
+</div>
+ </article>
+</li>
+<li id="comment-70952" class="comment even thread-even depth-1">
+<article id="div-comment-70952" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/15f111b4e413a12de6dd05745e674199?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/15f111b4e413a12de6dd05745e674199?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">HgG</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-70952"><time datetime="2011-08-05T18:18:15+08:00">2011年08月05日 18:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后追踪到 sun.util.calendar.ZoneInfoFile，各种时区信息数据库文件保存在/lib/zi目录下。<br/>
+包括夏令时、天文学调整、立法调整等等都是用同样的方式处理的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-71408" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-71408" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d230da0a4c2d795eb2a07aeaa59bd78d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d230da0a4c2d795eb2a07aeaa59bd78d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ss-x</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-71408"><time datetime="2011-08-08T01:22:52+08:00">2011年08月08日 01:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-70915" rel="nofollow">@dragonball </a><br/>
+这个时差真的不是可能存在而是的确存在。。你跟你隔壁如果是东西向的，都存在时差，更别说是北京到上海经度差了这么多。地理常识~</p>
+</div>
+ </article>
+</li>
+<li id="comment-73583" class="comment even thread-even depth-1">
+<article id="div-comment-73583" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.aqualuna.me" class="url" rel="ugc external nofollow">yuxioz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-73583"><time datetime="2011-08-14T22:41:53+08:00">2011年08月14日 22:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>這邊有對時區調整的說明，見「南京政府時期」一節<br/>
+<a href="https://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9C%8B%E6%99%82%E5%8D%80" rel="nofollow ugc">http://zh.wikipedia.org/wiki/%E4%B8%AD%E5%9C%8B%E6%99%82%E5%8D%80</a> （維基百科）</p>
+</div>
+ </article>
+</li>
+<li id="comment-73584" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73584" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.aqualuna.me" class="url" rel="ugc external nofollow">yuxioz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-73584"><time datetime="2011-08-14T22:43:53+08:00">2011年08月14日 22:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Wikipedia 好像在牆內是看不到的，我把相關文字轉貼過來：<br/>
+====<br/>
+民國17年（1928年），國民政府統一中國，原中央觀象台的業務由南京政府中央研究院的天文研究所和氣象研究所分別接收。天文研究所編寫的曆書基本上沿襲中央觀象台的做法，仍將全國劃分為5個標準時區，只是在有關交氣、合朔、太陽出沒時刻等處，不再使用北平的地方平時，而改以南京所在的標準時區的區時即東經120°標準時替代。<br/>
+====<br/>
+從北平地方平時改為東經120°標準時，兩者相差了352秒</p>
+</div>
+ </article>
+</li>
+<li id="comment-73587" class="comment even thread-even depth-1">
+<article id="div-comment-73587" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0d5fba23b78bb962f58ad1fc4bfa695?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.aqualuna.me" class="url" rel="ugc external nofollow">yuxioz</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-73587"><time datetime="2011-08-14T22:46:11+08:00">2011年08月14日 22:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>剛沒看到第一頁的評論，結果發了重複的訊息。<br/>
+好像也沒法子刪掉，抱歉了</p>
+</div>
+ </article>
+</li>
+<li id="comment-74848" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-74848" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bee40945ed0c51446596544657b402de?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bee40945ed0c51446596544657b402de?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Lazyshell</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-74848"><time datetime="2011-08-18T13:55:47+08:00">2011年08月18日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>也许这就是MySQL的Timestamp最小值不能小于1928-01-01 00：00：00的原因</p>
+</div>
+ </article>
+</li>
+<li id="comment-76291" class="comment even thread-even depth-1">
+<article id="div-comment-76291" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd40b53ec18303395a8e9683745caf1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd40b53ec18303395a8e9683745caf1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/warmcode" class="url" rel="ugc external nofollow">贫民窟主人</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-76291"><time datetime="2011-08-23T13:27:26+08:00">2011年08月23日 13:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不知道这个上海和北京之间的“物理时差”是什么概念，北京经度116°.25′(东西跨度2度)上海经度东经 121°.4′，最大跨度竟然有五度之多，地理时间上差了近20分钟。</p>
+</div>
+ </article>
+</li>
+<li id="comment-78802" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cnsst.com/wordpress/?p=79" class="url" rel="ugc external nofollow">弱爆程序员的特征值 | 零度领域的博客-我的一米阳光</a> </div>
+</li>
+<li id="comment-83440" class="comment even thread-even depth-1">
+<article id="div-comment-83440" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6472389467e830c85398b16337a7b999?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6472389467e830c85398b16337a7b999?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.ivvy.org/" class="url" rel="ugc external nofollow">ivvy.org</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-83440"><time datetime="2011-09-22T13:18:23+08:00">2011年09月22日 13:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太强悍了！居然这种细节到考虑到了！看来我们还有好多路要走啊！加油！</p>
+</div>
+ </article>
+</li>
+<li id="comment-84312" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-84312" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c608ac4aef7500b168a500f7b98c4da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c608ac4aef7500b168a500f7b98c4da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">harrison</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-84312"><time datetime="2011-09-26T13:23:54+08:00">2011年09月26日 13:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>测试了下，和博主测试结果有很大差异哦！<br/>
+JDK version：1.6.0_26<br/>
+OS：Windows XP</p>
+<p>我测出来结果是相差60秒。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-87743" class="comment even thread-even depth-1">
+<article id="div-comment-87743" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f68c76f06367202c39078a5b0418b51f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f68c76f06367202c39078a5b0418b51f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vaa4</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-87743"><time datetime="2011-10-18T23:18:05+08:00">2011年10月18日 23:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实大家对时区可能还有个误解。比如当朝正在用的“北京时间”，其实不是北京地方时（东经116.4°），而是北京所处的时区（东八区）的中间经线（东经120°）的“地方时”！<br/>
+所以“北京时间”会比“北京市的地方时”早一点点哦~~<br/>
+当然这个不是解释LZ的问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-93654" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-93654" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cced8ca2f6ba42161e0817ef8fbd8f2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cced8ca2f6ba42161e0817ef8fbd8f2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">s</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-93654"><time datetime="2011-11-08T21:49:15+08:00">2011年11月08日 21:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果利用JAVA的时差之强大来做穿越项目的话。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-108266" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://flychen.com/?p=381" class="url" rel="ugc external nofollow">程序员技术练级攻略 | 搜索引擎技术博客</a> </div>
+</li>
+<li id="comment-110084" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ironblood.net/2011/12/13/reputation-system-description-for-stackoverflow/" class="url" rel="ugc external nofollow">Stackoverflow的荣誉制度说明 | IronBlood&#39;s Blog</a> </div>
+</li>
+<li id="comment-197941" class="comment even thread-even depth-1">
+<article id="div-comment-197941" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eff3d317f7da78f3ead47b3cb8f8309f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eff3d317f7da78f3ead47b3cb8f8309f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zdx3578</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-197941"><time datetime="2012-06-30T18:21:05+08:00">2012年06月30日 18:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-69848"><p>
+<strong><a href="#comment-69848" rel="nofollow">hscui</a> :</strong><br/>
+而且我怎么觉得煎蛋虽然是个娱乐网站，关于程序方面回帖的质量比这里还要高些呢？是我错觉么。。。<br/>
+煎蛋网址：http://jandan.net/2011/07/30/1927-java-time.html
+</p></blockquote>
+<p>这里解释稍微详细些</p>
+</div>
+ </article>
+</li>
+<li id="comment-197951" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=6474" class="url" rel="ugc external nofollow">关于闰秒</a> </div>
+</li>
+<li id="comment-197973" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/7804.html" class="url" rel="ugc">关于闰秒 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-198014" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198014" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-198014"><time datetime="2012-07-01T10:39:54+08:00">2012年07月01日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>压力相当大，看来想成为一名真正优秀的程序员不是我想的那么容易啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-198195" class="comment even thread-even depth-1">
+<article id="div-comment-198195" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/30652bc82de16e3a971622b07e500fb8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/30652bc82de16e3a971622b07e500fb8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">oneGeek</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-198195"><time datetime="2012-07-04T14:23:26+08:00">2012年07月04日 14:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这尼玛还得了解近代史，擦！</p>
+</div>
+ </article>
+</li>
+<li id="comment-198357" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-198357" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/37d204782391a7f7237038698b5b4949?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/37d204782391a7f7237038698b5b4949?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小天</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-198357"><time datetime="2012-07-06T10:36:37+08:00">2012年07月06日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>但是1.4的JDK测试还是1s</p>
+</div>
+ </article>
+</li>
+<li id="comment-198521" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/leap-seconds.html" class="url" rel="ugc external nofollow">Definite Digest » 关于闰秒</a> </div>
+</li>
+<li id="comment-200182" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.xlinblog.sinaapp.com/?p=23" class="url" rel="ugc external nofollow">小小说网站 » 关于闰秒</a> </div>
+</li>
+<li id="comment-200654" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=54" class="url" rel="ugc external nofollow">小小说阅读网 » 关于闰秒</a> </div>
+</li>
+<li id="comment-201443" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=484" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » 关于闰秒</a> </div>
+</li>
+<li id="comment-201671" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://1.kaiyuanshengshi.sinaapp.com/?p=7968" class="url" rel="ugc external nofollow">对技术的态度</a> </div>
+</li>
+<li id="comment-201756" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xn--vcsz15do0j8lv.net/?p=1683" class="url" rel="ugc external nofollow">对技术的态度 | 物联9点</a> </div>
+</li>
+<li id="comment-201762" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=1121" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » 对技术的态度</a> </div>
+</li>
+<li id="comment-202932" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.laoniangke.com/?p=278" class="url" rel="ugc external nofollow">HisenKing » 关于时间计算的思考</a> </div>
+</li>
+<li id="comment-824509" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://dabentu.com/622.html" class="url" rel="ugc external nofollow">[程序员段子] 1927年12月31日午夜一秒谜案 （转） | 大笨兔</a> </div>
+</li>
+<li id="comment-1125645" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1125645" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cb9489b2f418884dbbf8fc34faf1fa2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cb9489b2f418884dbbf8fc34faf1fa2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nnkken</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-1125645"><time datetime="2013-12-31T12:52:18+08:00">2013年12月31日 12:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>這一期的Computerphile就是在說計算時間的難題（Youtube，翻牆注意）<br/>
+<a href="https://youtu.be/-5wpm-gesOY" rel="nofollow ugc">http://youtu.be/-5wpm-gesOY</a><br/>
+它的結論是：從此你不再自己去寫計算時間的系統，而是直接複製前人寫好的那一大坨代碼，放進自己的代碼裡，發誓以後不再嘗試去看這坨代碼，並感激前人把它寫好及開源了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1468663" class="comment even thread-even depth-1">
+<article id="div-comment-1468663" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/424cf98ac3a2c98658597282af06e4e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/424cf98ac3a2c98658597282af06e4e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">COpper</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-1468663"><time datetime="2014-05-24T22:49:29+08:00">2014年05月24日 22:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-70915" rel="nofollow">@dragonball </a><br/>
+北京上海地方是是有差别的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1630243" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1630243" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84b7b07cf48878b8b74192fc44c5ae3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84b7b07cf48878b8b74192fc44c5ae3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Cu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-1630243"><time datetime="2014-12-16T00:29:40+08:00">2014年12月16日 00:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-69951" rel="nofollow">@haitao </a><br/>
+中国放弃夏令时有不方便的原因，但是更主要的是不节省能源。</p>
+<p>国外这种横跨多个时区而全国并不使用统一时间的情况下，夏令时让人们生产生活提前一个小时，能充分利用日光，缩短夜间活动时间，减少夜间电能消耗。</p>
+<p>但是中国横跨多个时区又是全国统一时间，使用夏令时了之后东部地区能充分利用日光了，但是西部地区提前了之后太阳还没有升起来，还得用电，结果就是夏令时带来不方便了，却没有节约多少能源，得不偿失。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1630244" class="comment even thread-even depth-1">
+<article id="div-comment-1630244" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84b7b07cf48878b8b74192fc44c5ae3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84b7b07cf48878b8b74192fc44c5ae3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Cu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-1630244"><time datetime="2014-12-16T00:30:13+08:00">2014年12月16日 00:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>1928年变化之后应该是用中原标准时间，没有北京时间一说。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1745282" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1745282" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84b7b07cf48878b8b74192fc44c5ae3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84b7b07cf48878b8b74192fc44c5ae3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Cu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-1745282"><time datetime="2015-08-10T13:05:09+08:00">2015年08月10日 13:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>民国17年（1928年），国民政府统一中国，原中央观象台的业务由南京政府中央研究院的天文研究所和气象研究所分别接收。天文研究所编写的历书基本上沿袭中央观象台的做法，仍将全国划分为5个标准时区，只是在有关交气、合朔、太阳出没时刻等处，不再使用北平的地方平时，而改以南京所在的标准时区的区时即东经120°标准时替代</p>
+<p>是由上海本地时间变为东八区标准时间</p>
+</div>
+ </article>
+</li>
+<li id="comment-1829930" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/%e5%85%b3%e4%ba%8e%e9%97%b0%e7%a7%92.html" class="url" rel="ugc external nofollow">关于闰秒 | | Codeba</a> </div>
+</li>
+<li id="comment-1923994" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1923994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/86203df8c8193ab4894bd4cee5a4f154?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/86203df8c8193ab4894bd4cee5a4f154?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hax</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5075.html/comment-page-2#comment-1923994"><time datetime="2018-02-09T19:11:07+08:00">2018年02月09日 19:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>来晚了。实际上这是个bug，现在已经被修正。如楼上所说当时是把上海本地时间变为东八区标准时间。但是实际上，上海因为是口岸，至少从1903年就开始使用海岸时（即东八区标准时）。所以1928年的变化并不会影响上海的时区。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2187480" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21128.html" class="url" rel="ugc">Go编程模式：切片，接口，时间和性能 | 酷 壳 - CoolShell</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/5075.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/5075.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">5075</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

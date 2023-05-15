@@ -1,0 +1,637 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C/C++语言中闭包的探究及比较 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8309 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8309" class="post-content post-8309 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-closure tag-objective-c">
+<header class="entry-header">
+<span class="screen-reader-text">C/C++语言中闭包的探究及比较</span>
+<h1 class="entry-title">C/C++语言中闭包的探究及比较</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8309.html" title="08:17" rel="bookmark"><time class="entry-date" datetime="2012-09-20T08:17:07+08:00" pubdate="">2012年09月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/jason" title="View all posts by Jason Lee" rel="author">Jason Lee</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8309.html#comments" class="comments-link">76 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 60,281 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>（<strong><span style="color: #cc0000;">感谢投稿人</span> <a href="http://weibo.com/jasonmblog" target="_blank">@思禽饮霜</a> </strong>）</p>
+<p>这里主要讨论的是C语言的扩展特性<a href="https://en.wikipedia.org/wiki/Blocks_(C_language_extension)" target="_blank">block</a>。该特性是Apple为C、C++、Objective-C增加的扩展，让这些语言可以用类Lambda表达式的语法来创建<a href="https://en.wikipedia.org/wiki/Closure_(computer_science)" target="_blank">闭包</a>。前段时间，在对CoreData存取进行封装时（让开发人员可以更简洁快速地写相关代码），我对block机制有了进一步了解，觉得可以和C++ 11中的Lambda表达式相互印证，所以最近重新做了下整理，分享给大家。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#0_%E7%AE%80%E5%8D%95%E5%88%9B%E5%BB%BA%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0" title="0. 简单创建匿名函数">0. 简单创建匿名函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#1_%E4%BB%8E%E8%AF%AD%E6%B3%95%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E6%8D%95%E8%8E%B7%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F" title="1. 从语法上看如何捕获外部变量">1. 从语法上看如何捕获外部变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#2_%E4%BB%8E%E8%AF%AD%E6%B3%95%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E4%BF%AE%E6%94%B9%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F" title="2. 从语法上看如何修改外部变量">2. 从语法上看如何修改外部变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#3_%E4%BB%8E%E5%AE%9E%E7%8E%B0%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E6%8D%95%E8%8E%B7%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F" title="3. 从实现上看如何捕获外部变量">3. 从实现上看如何捕获外部变量</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#4_%E4%BB%8E%E5%AE%9E%E7%8E%B0%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E4%BF%AE%E6%94%B9%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F%EF%BC%88_block%E7%B1%BB%E5%9E%8B%E6%8C%87%E7%A4%BA%E7%AC%A6%EF%BC%89" title="4. 从实现上看如何修改外部变量（__block类型指示符）">4. 从实现上看如何修改外部变量（__block类型指示符）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#5_%E8%83%8C%E5%90%8E%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%8A%A8%E4%BD%9C" title="5. 背后的内存管理动作">5. 背后的内存管理动作</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#51_%E6%8B%B7%E8%B4%9Dblock%E7%BB%93%E6%9E%84%E4%BD%93" title="5.1 拷贝block结构体">5.1 拷贝block结构体</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#52_%E6%8B%B7%E8%B4%9D%E6%8D%95%E8%8E%B7%E7%9A%84%E5%8F%98%E9%87%8F%EF%BC%88_block%E5%8F%98%E9%87%8F%EF%BC%89" title="5.2 拷贝捕获的变量（__block变量）">5.2 拷贝捕获的变量（__block变量）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#53_forwarding%E6%8C%87%E9%92%88%E7%9A%84%E4%BD%9C%E7%94%A8" title="5.3 __forwarding指针的作用">5.3 __forwarding指针的作用</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99%EF%BC%9A" title="参考资料：">参考资料：</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="0_%E7%AE%80%E5%8D%95%E5%88%9B%E5%BB%BA%E5%8C%BF%E5%90%8D%E5%87%BD%E6%95%B0"></span>0. 简单创建匿名函数<span class="ez-toc-section-end"></span></h4>
+<p>下面两段代码的作用都是创建匿名函数并调用，输出Hello, World语句。分别使用Objective-C和C++ 11：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">^{ printf(&#34;Hello, World!\n&#34;); } ();</code><br/>
+<code data-enlighter-language="c" class="EnlighterJSRAW">[] { cout &lt;&lt; &#34;Hello, World&#34; &lt;&lt; endl; } ();</code></p>
+<p>Lambda表达式的一个好处就是让开发人员可以在需要的时候临时创建函数，便捷。</p>
+<p>在创建闭包（或者说Lambda函数）的语法上，Objective-C采用的是上尖号<span style="color: #ff0000;">^</span>，而C++ 11采用的是配对的方括号<span style="color: #ff0000;">[]</span>。</p>
+<p>不过“<span style="color: #808000;">匿名函数</span>”一词是针对程序员而言的，编译器还是采取了一定的命名规则。</p>
+<p>比如下面Objective-C代码中的3个block，</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#import &lt;Foundation/Foundation.h&gt;
+
+int (^maxBlk)(int , int) = ^(int m, int n){ return m &gt; n ? m : n; };
+
+int main(int argc, const char * argv[])
+{
+    ^{ printf(&#34;Hello, World!\n&#34;); } ();
+
+    int i = 1024;
+    void (^blk)(void) = ^{ printf(&#34;%d\n&#34;, i); };
+    blk();
+
+    return 0;
+}
+</pre>
+<p>会产生对应的3个函数：</p>
+<p><span id="more-8309"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">__maxBlk_block_func_0
+__main_block_func_0
+__main_block_func_1
+</pre>
+<p>可见函数的命名规则为：__<span style="color: #ff0000;">{$Scope}</span>_block_func_<span style="color: #ff0000;">{$index}</span>。其中{$Scope}为block所在函数，如果{$Scope}为全局就取block本身的名称；{$index}表示该block在{$Scope}作用域内出现的顺序（第几个block）。</p>
+<h4><span class="ez-toc-section" id="1_%E4%BB%8E%E8%AF%AD%E6%B3%95%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E6%8D%95%E8%8E%B7%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F"></span>1. 从语法上看如何捕获外部变量<span class="ez-toc-section-end"></span></h4>
+<p>在上面的代码中，已经看到“<span style="color: #808000;">匿名函数</span>”可以直接访问外围作用域的变量i：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int i = 1024;
+void (^blk)(void) = ^{ printf(&#34;%d\n&#34;, i); };
+blk();
+</pre>
+<p>当匿名函数和non-local变量结合起来，就形成了闭包（个人看法）。<br/>
+这一段代码可以成功输出i的值。</p>
+<p>我们把一样的逻辑搬到C++上：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int i = 1024;
+auto func = [] { printf(&#34;%d\n&#34;, i); };
+func();
+</pre>
+<p>GCC会输出：<span style="color: #808000;"><span style="color: #ff0000;">错误</span>：‘i’未被捕获</span>。可见在C++中无法直接捕获外围作用域的变量。</p>
+<p>以BNF来表示Lambda表达式的上下文无关文法，存在：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">lambda-expression : lambda-introducer lambda-parameter-declarationopt compound-statement
+lambda-introducer : [ lambda-captureopt ]
+</pre>
+<p>因此，方括号中还可以加入一些选项：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">[]        Capture nothing (or, a scorched earth strategy?)
+[&amp;]       Capture any referenced variable by reference
+[=]       Capture any referenced variable by making a copy
+[=, &amp;foo] Capture any referenced variable by making a copy, but capture variable foo by reference
+[bar]     Capture bar by making a copy; don&#39;t copy anything else
+[this]    Capture the this pointer of the enclosing class
+</pre>
+<p>根据文法，对代码加以修改，使其能够成功运行：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">bash-3.2# vi testLambda.cpp
+bash-3.2# g++-4.7 -std=c++11 testLambda.cpp -o testLambda
+bash-3.2# ./testLambda
+1024
+bash-3.2# cat testLambda.cpp
+#include &lt;iostream&gt;
+
+using  namespace std;
+
+int main()
+{
+     int i = 1024;
+     auto func = [=] { printf(&#34;%d\n&#34;, i); };
+     func();
+
+     return 0;
+}
+bash-3.2#
+</pre>
+<h4><span class="ez-toc-section" id="2_%E4%BB%8E%E8%AF%AD%E6%B3%95%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E4%BF%AE%E6%94%B9%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F"></span>2. 从语法上看如何修改外部变量<span class="ez-toc-section-end"></span></h4>
+<p>上面代码中使用了符号<span style="color: #ff0000;">=</span>，通过<span style="color: #808000;">拷贝方式</span>捕获了外部变量i。<br/>
+但是如果尝试在Lambda表达式中修改变量i：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">auto func = [=] { i = 0; printf(&#34;%d\n&#34;, i); };
+</pre>
+<p>会得到错误：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">testLambda.cpp: 在 lambda 函数中:
+testLambda.cpp:9:24: 错误：向只读变量‘i’赋值
+</pre>
+<p>可见<em><span style="color: #808000;">通过拷贝方式捕获的外部变量是只读的</span></em>。Python中也有一个类似的经典case，个人觉得有相通之处：</p>
+<pre data-enlighter-language="python" class="EnlighterJSRAW">x = 10
+def foo():
+    print(x)
+    x += 1
+foo()
+</pre>
+<p>这段代码会抛出<span style="color: #ff0000;">UnboundLocalError</span>错误，原因可以参见<a href="https://docs.python.org/faq/programming.html#why-am-i-getting-an-unboundlocalerror-when-the-variable-has-a-value" target="_blank">FAQ</a>。</p>
+<p>在C++的闭包语法中，如果需要对外部变量的写权限，可以使用符号<span style="color: #ff0000;">&amp;</span>，通过<span style="color: #808000;"><em>引用方式</em></span>捕获：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int i = 1024;
+auto func = [&amp;] { i = 0; printf(&#34;%d\n&#34;, i); };
+func();
+</pre>
+<p>反过来，将修改外部变量的逻辑放到Objective-C代码中：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int i = 1024;
+void (^blk)(void) = ^{ i = 0; printf(&#34;%d\n&#34;, i); };
+blk();
+</pre>
+<p>会得到如下错误：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">main.m:14:29: error: variable is not assignable (missing __block type specifier)
+    void (^blk)(void) = ^{ i++; printf(&#34;%d\n&#34;, i); };
+                           ~^
+1 error generated.
+</pre>
+<p>可见在block的语法中，默认捕获的外部变量也是只读的，如果要修改外部变量，需要使用<span style="color: #ff0000;">__block</span>类型指示符进行修饰。<br/>
+为什么呢？请继续往下看 ：）</p>
+<h4><span class="ez-toc-section" id="3_%E4%BB%8E%E5%AE%9E%E7%8E%B0%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E6%8D%95%E8%8E%B7%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F"></span>3. 从实现上看如何捕获外部变量<span class="ez-toc-section-end"></span></h4>
+<p>闭包对于编程语言来说是一种语法糖，包括Block和Lambda，是为了方便程序员开发而引入的。因此，对Block特性的支持会落地在<span style="color: #808000;"><em>编译器前端</em></span>，中间代码将会是C语言。</p>
+<p>先看如下代码会产生怎样的中间代码。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main(int argc, const char * argv[])
+{
+    int i = 1024;
+    void (^blk)(void) = ^{ printf(&#34;%d\n&#34;, i); };
+    blk();
+
+    return 0;
+}
+</pre>
+<p>首先是<span style="color: #ff0000;">block结构体</span>的实现：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#ifndef BLOCK_IMPL
+#define BLOCK_IMPL
+struct __block_impl {
+    void *isa;
+    int Flags;
+    int Reserved;
+    void *FuncPtr;
+};
+// 省略部分代码
+
+#endif
+</pre>
+<p>第一个成员<span style="color: #ff0000;">isa</span>指针用来表示该结构体的类型，使其仍然处于Cocoa的对象体系中，类似Python对象系统中的PyObject。</p>
+<p>第二、三个成员是标志位和保留位。</p>
+<p>第四个成员是对应的“匿名函数”，在这个例子中对应函数：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static void __main_block_func_0(struct __main_block_impl_0 *__cself) {
+    int i = __cself-&gt;i; // bound by copy
+    printf(&#34;%d\n&#34;, i);
+}
+</pre>
+<p>函数__main_block_func_0引入了参数<span style="color: #808000;">__cself</span>，为struct __main_block_impl_0 *类型，从参数名称就可以看出它的功能类似于C++中的this指针或者Objective-C的self。<br/>
+而struct __main_block_impl_0的结构如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0* Desc;
+    int i;
+    __main_block_impl_0(void *fp, struct __main_block_desc_0 *desc, int _i, int flags=0) : i(_i) {
+        impl.isa = &amp;_NSConcreteStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+};
+</pre>
+<p>从__main_block_impl_0这个名称可以看出该结构体是为main函数中第零个block服务的，即示例代码中的blk；也可以猜到不同场景下的block对应的结构体不同，但本质上第一个成员一定是<span style="color: #808000;">struct __block_impl impl</span>，因为这个成员是block实现的基石。</p>
+<p>结构体__main_block_impl_0又引入了一个新的结构体，也是中间代码里最后一个结构体：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static struct __main_block_desc_0 {
+    unsigned long reserved;
+    unsigned long Block_size;
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0)};
+</pre>
+<p>可以看出，这个描述性质的结构体包含的价值信息就是struct __main_block_impl_0的大小。</p>
+<p>最后剩下main函数对应的中间代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main(int argc, const char * argv[])
+{
+    int i = 1024;
+    void (*blk)(void) = (void (*)(void))&amp;__main_block_impl_0((void *)__main_block_func_0, &amp;__main_block_desc_0_DATA, i);
+    ((void (*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct __block_impl *)blk);
+
+    return 0;
+}
+</pre>
+<p>从main函数对应的中间代码可以看出<span style="color: #ff0000;">执行block的本质</span>就是<span style="color: #808000;">以block结构体自身作为__cself参数</span>，这里对应__main_block_impl_0，<span style="color: #808000;">通过结构体成员FuncPtr函数指针调用对应的函数</span>，这里对应__main_block_func_0。</p>
+<p>其中，局部变量i是以<span style="color: #808000;">值传递</span>的方式拷贝一份，作为__main_block_impl_0的构造函数的参数，并以初始化列表的形式赋值给其成员变量i。所以，基于这样的实现，不允许直接修改外部变量是合理的——因为按值传递根本改不到外部变量。</p>
+<h4><span class="ez-toc-section" id="4_%E4%BB%8E%E5%AE%9E%E7%8E%B0%E4%B8%8A%E7%9C%8B%E5%A6%82%E4%BD%95%E4%BF%AE%E6%94%B9%E5%A4%96%E9%83%A8%E5%8F%98%E9%87%8F%EF%BC%88_block%E7%B1%BB%E5%9E%8B%E6%8C%87%E7%A4%BA%E7%AC%A6%EF%BC%89"></span>4. 从实现上看如何修改外部变量（<span style="color: #ff0000;">__block</span>类型指示符）<span class="ez-toc-section-end"></span></h4>
+<p>如果想要修改外部变量，则需要用<span style="color: #ff0000;">__block</span>来修饰：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main(int argc, const char * argv[])
+{
+    __block int i = 1024;
+    void (^blk)(void) = ^{ i = 0; printf(&#34;%d\n&#34;, i); };
+    blk();
+
+    return 0;
+}
+</pre>
+<p>此时再看中间代码，发现多了一个结构体：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct __Block_byref_i_0 {
+    void *__isa;
+    __Block_byref_i_0 *__forwarding;
+    int __flags;
+    int __size;
+    int i;
+};
+</pre>
+<p>于是，用__block修饰的int变量<span style="color: #808000;">i化身为</span>__Block_byref_i_0结构体的最后一个<span style="color: #808000;">成员变量</span>。</p>
+<p>代码中blk对应的结构体也发生了变化：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct __main_block_impl_0 {
+    struct __block_impl impl;
+    struct __main_block_desc_0* Desc;
+    __Block_byref_i_0 *i; // by ref
+    __main_block_impl_0(void *fp, struct__main_block_desc_0 *desc, __Block_byref_i_0 *_i, int flags=0) : i(_i-&gt;__forwarding) {
+        impl.isa = &amp;_NSConcreteStackBlock;
+        impl.Flags = flags;
+        impl.FuncPtr = fp;
+        Desc = desc;
+    }
+};
+</pre>
+<p>__main_block_impl_0发生的变化就是int类型的成员变量i换成了__Block_byref_i_0 *类型，从名称可以看出现在要通过引用方式来捕获了。</p>
+<p>对应的函数也不同了：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static void __main_block_func_0(struct  __main_block_impl_0 *__cself) {
+    __Block_byref_i_0 *i = __cself-&gt;i; // bound by ref
+    (i-&gt;__forwarding-&gt;i) = 0; // 看起来很厉害的样子
+    printf(&#34;%d\n&#34;, (i-&gt;__forwarding-&gt;i));
+}
+</pre>
+<p>main函数也有了变动：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int main(int argc, const char * argv[])
+{
+    __block __Block_byref_i_0 i = {(void*)0,(__Block_byref_i_0 *)&amp;i, 0, sizeof(__Block_byref_i_0), 1024};
+    void (*blk)(void) = (void (*)(void))&amp;__main_block_impl_0((void *)__main_block_func_0, &amp;__main_block_desc_0_DATA, (struct __Block_byref_i_0 *)&amp;i, 570425344);
+    ((void (*)(struct __block_impl *))((struct __block_impl *)blk)-&gt;FuncPtr)((struct __block_impl *)blk);
+
+    return 0;
+}
+</pre>
+<p>前两行代码创建了两个关键结构体，特地高亮显示。</p>
+<p>这里没有看__main_block_desc_0发生的变化，<em><span style="color: #808000;">放到后面讨论</span></em>。</p>
+<p>使用<span style="color: #ff0000;">__block类型指示符的本质</span>就是引入了__Block_byref_<span style="color: #ff0000;">{$var_name}</span>_<span style="color: #ff0000;">{$index}</span>结构体，而被__block关键字修饰的变量就被放到这个结构体中。另外，block结构体通过引入__Block_byref_{$var_name}_{$index}指针类型的成员，得以间接访问到外部变量。</p>
+<p>通过这样的设计，我们就可以修改外部作用域的变量了，再一次应了那句话：</p>
+<blockquote><p>There is no problem in computer science that can’t be solved by adding another level of indirection.</p></blockquote>
+<p>指针是我们最经常使用的间接手段，而这里的本质也是通过指针来间接访问，为什么要特地引入__Block_byref_{$var_name}_{$index}结构体，而不是直接使用int *来访问外部变量i呢？</p>
+<p>另外，__Block_byref_{$var_name}_{$index}结构体中的<span style="color: #ff0000;">__forwarding</span>指针成员有何作用？</p>
+<p>请继续往下看 ：）</p>
+<h4><span class="ez-toc-section" id="5_%E8%83%8C%E5%90%8E%E7%9A%84%E5%86%85%E5%AD%98%E7%AE%A1%E7%90%86%E5%8A%A8%E4%BD%9C"></span>5. 背后的内存管理动作<span class="ez-toc-section-end"></span></h4>
+<p>在Objective-C中，block特性的引入是<em><span style="color: #808000;">为了让程序员可以更简洁优雅地编写并发代码</span></em>（配合看起来像敏感词的GCD）。比较常见的就是将block作为函数参数传递，以供后续回调执行。</p>
+<p>先看一段完整的、可执行的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#import &lt;Foundation/Foundation.h&gt;
+#include &lt;pthread.h&gt;
+
+typedef void (^DemoBlock)(void);
+
+void test();
+void *testBlock(void *blk);
+
+int main(int argc, const char * argv[])
+{
+    printf(&#34;Before test()\n&#34;);
+    test();
+    printf(&#34;After test()\n&#34;);
+
+    sleep(5);
+    return 0;
+}
+
+void test()
+{
+    __block int i = 1024;
+    void (^blk)(void) = ^{ i = 2048; printf(&#34;%d\n&#34;, i); };
+
+    pthread_t thread;
+    int ret = pthread_create(&amp;thread, NULL, testBlock, (void *)blk);
+    printf(&#34;thread returns : %d\n&#34;, ret);
+
+    sleep(3); // 这里睡眠1s的话，程序会崩溃
+}
+
+void *testBlock(void *blk)
+{
+    sleep(2);
+
+    printf(&#34;testBlock : Begin to exec blk.\n&#34;);
+    DemoBlock demoBlk = (DemoBlock)blk;
+    demoBlk();
+
+    return NULL;
+}
+</pre>
+<p>在这个示例中，位于test()函数的block类型的变量blk就作为函数参数传递给testBlock。</p>
+<p>正常情况下，这段代码可以成功运行，输出：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Before test()
+thread returns : 0
+testBlock : Begin to exec blk.
+2048
+After test()
+</pre>
+<p>如果按照注释，将test()函数最后一行改为休眠1s的话，正常情况下程序会在输出如下结果后崩溃：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Before test()
+thread returns : 0
+After test()
+testBlock : Begin to exec blk.
+</pre>
+<p>从输出可以看出，当要执行blk的时候，test()已经执行完毕回到main函数中，对应的<span style="color: #808000;">函数栈也已经展开</span>，此时栈上的变量已经不存在了，继续访问导致崩溃——这也是不用int *直接访问外部变量i的原因。</p>
+<h5><span class="ez-toc-section" id="51_%E6%8B%B7%E8%B4%9Dblock%E7%BB%93%E6%9E%84%E4%BD%93"></span>5.1 拷贝block结构体<span class="ez-toc-section-end"></span></h5>
+<p>上文提到block结构体__block_impl的第一个成员是isa指针，使其成为NSObject的子类，所以我们可以通过相应的<span style="color: #808000;">内存管理机制</span>将其拷贝到堆上：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void test()
+{
+    __block int i = 1024;
+    void (^blk)(void) = ^{ i = 2048; printf(&#34;%d\n&#34;, i); };
+
+    pthread_t thread;
+    int ret = pthread_create(&amp;thread, NULL, testBlock, (void *)[blk copy]);
+    printf(&#34;thread returns : %d\n&#34;, ret);
+
+    sleep(1);
+}
+
+void *testBlock(void *blk)
+{
+    sleep(2);
+
+    printf(&#34;testBlock : Begin to exec blk.\n&#34;);
+    DemoBlock demoBlk = (DemoBlock)blk;
+    demoBlk();
+    [demoBlk release];
+
+    returnNULL;
+}
+</pre>
+<p>再次执行，得到输出：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">Before test()
+thread returns : 0
+After test()
+testBlock : Begin to exec blk.
+2048
+</pre>
+<p>可以看出，在test()函数栈展开后，demoBlk仍然可以成功执行，这是由于blk对应的block结构体__main_block_impl_0已经在堆上了。<span style="color: #808000;">不过这还不够</span>——</p>
+<h5><span class="ez-toc-section" id="52_%E6%8B%B7%E8%B4%9D%E6%8D%95%E8%8E%B7%E7%9A%84%E5%8F%98%E9%87%8F%EF%BC%88_block%E5%8F%98%E9%87%8F%EF%BC%89"></span>5.2 拷贝捕获的变量（<span style="color: #ff0000;">__block</span>变量）<span class="ez-toc-section-end"></span></h5>
+<p>在拷贝block结构体的同时，还会将捕获的<span style="color: #ff0000;">__block</span>变量，即结构体__Block_byref_i_0，复制到堆上。这个任务落在前面没有讨论的__main_block_desc_0结构体身上：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">static void __main_block_copy_0(struct __main_block_impl_0*dst, struct __main_block_impl_0*src) {_Block_object_assign((void*)&amp;dst-&gt;i, (void*)src-&gt;i, 8/*BLOCK_FIELD_IS_BYREF*/);}
+
+static void __main_block_dispose_0(struct __main_block_impl_0*src) {_Block_object_dispose((void*)src-&gt;i, 8/*BLOCK_FIELD_IS_BYREF*/);}
+
+static struct __main_block_desc_0 {
+    unsigned long reserved;
+    unsigned long Block_size;
+    void (*copy)(struct __main_block_impl_0*, struct __main_block_impl_0*);
+    void (*dispose)(struct __main_block_impl_0*);
+} __main_block_desc_0_DATA = { 0, sizeof(struct __main_block_impl_0), __main_block_copy_0, __main_block_dispose_0};
+</pre>
+<p>栈上的__main_block_impl_0结构体为src，堆上的__main_block_impl_0结构体为dst，当发生复制动作时，__main_block_copy_0函数会得到调用，将src的成员变量i，即__Block_byref_i_0结构体，也<span style="color: #808000;">复制到堆上</span>。</p>
+<h5><span class="ez-toc-section" id="53_forwarding%E6%8C%87%E9%92%88%E7%9A%84%E4%BD%9C%E7%94%A8"></span>5.3 __forwarding指针的作用<span class="ez-toc-section-end"></span></h5>
+<p>当复制动作完成后，<span style="color: #808000;">栈上和堆上都存在</span>着__main_block_impl_0结构体。如果栈上、堆上的block结构体都对捕获的外部变量进行操作，会如何？</p>
+<p>下面是一段示例代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void test()
+{
+    __block int i = 1024;
+    void (^blk)(void) = ^{ i++; printf(&#34;%d\n&#34;, i); };
+
+    pthread_t thread;
+    int ret = pthread_create(&amp;thread, NULL, testBlock, (void *)[blk copy]);
+    printf(&#34;thread returns : %d\n&#34;, ret);
+
+    sleep(1);
+    blk();
+}
+
+void *testBlock(void *blk)
+{
+    sleep(2);
+
+    printf(&#34;testBlock : Begin to exec blk.\n&#34;);
+    DemoBlock demoBlk = (DemoBlock)blk;
+    demoBlk();
+    [demoBlk release];
+
+    returnNULL;
+}
+</pre>
+<ol>
+<li>在test()函数中调用pthread_create创建线程时，<span style="color: #808000;">blk被复制了一份到堆上</span>作为testBlock函数的参数。</li>
+<li>test()函数中的<span style="color: #808000;">blk结构体位于栈中，在休眠1s后被执行</span>，对i进行自增动作。</li>
+<li>testBlock函数在休眠2s后，<span style="color: #808000;">执行位于堆上的block结构体</span>，这里为demoBlk。</li>
+</ol>
+<p>上述代码执行后输出：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">Before test()
+thread returns : 0
+1025
+After test()
+testBlock : Begin to exec blk.
+1026
+</pre>
+<p>可见无论是栈上的还是堆上的block结构体，修改的都是<span style="color: #808000;">同一个__block变量</span>。</p>
+<p>这就是前面提到的__forwarding指针成员的作用了：</p>
+<p><span style="color: #ff0000;">起初</span>，栈上的__block变量的成员指针__forwarding指向__block变量本身，即栈上的__Block_byref_i_0结构体。</p>
+<p><span style="color: #ff0000;">当__block变量被复制到堆上后</span>，栈上的__block变量的__forwarding成员会指向堆上的那一份拷贝，从而保持一致。</p>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99%EF%BC%9A"></span>参考资料：<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><a href="http://msdn.microsoft.com/en-us/library/dd293603.aspx" target="_blank">http://msdn.microsoft.com/en-us/library/dd293603.aspx</a></li>
+<li><a href="http://www.cprogramming.com/c++11/c++11-lambda-closures.html" target="_blank">http://www.cprogramming.com/c++11/c++11-lambda-closures.html</a></li>
+<li><a href="http://developer.apple.com/library/ios/#documentation/cocoa/Conceptual/Blocks/Articles/00_Introduction.html" target="_blank">http://developer.apple.com/library/ios/#documentation/cocoa/Conceptual/Blocks/Articles/00_Introduction.html</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Closure_(computer_science)" target="_blank">http://en.wikipedia.org/wiki/Closure_(computer_science)</a></li>
+</ul>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8309-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Closure</a>, <a href="javascript:void(0)" rel="tag">Objective-C</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C/C++语言中闭包的探究及比较</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-315994" class="comment even thread-even depth-1">
+<article id="div-comment-315994" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5321ed7ee8b1ebaace9341e24c029fdf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5321ed7ee8b1ebaace9341e24c029fdf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.fandecheng.com/" class="url" rel="ugc external nofollow">Decheng Fan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8309.html/comment-page-2#comment-315994"><time datetime="2013-03-24T13:10:01+08:00">2013年03月24日 13:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好，想请教一个小问题，文中“栈上的__block变量的__forwarding成员会指向堆上的那一份拷贝，从而保持一致”，那么，当线程函数的[demoBlk release]执行之后，假设线程函数比主函数先退出的话，是不是主函数中的blk的__forwarding依然指着堆上的拷贝，不会再指回去了，然后等到主函数的对象析构之后一并释放？</p>
+</div>
+ </article>
+</li>
+<li id="comment-323710" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-323710" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b4cd314bf40e013f27763d821d8ef6fe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b4cd314bf40e013f27763d821d8ef6fe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dobuy.webnode.jp" class="url" rel="ugc external nofollow">Nike Air Jordan 人気</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8309.html/comment-page-2#comment-323710"><time datetime="2013-04-10T11:49:51+08:00">2013年04月10日 11:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>LOL @ kids and cake. Mine dont like frosted cake</p>
+</div>
+ </article>
+</li>
+<li id="comment-779619" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://itblog.cc/519.html" class="url" rel="ugc external nofollow">C++模板”&gt;&gt;”编译问题与词法消歧设计 – IT技术博客大全</a> </div>
+</li>
+<li id="comment-796139" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://itblog.cc/528.html" class="url" rel="ugc external nofollow">C++面试中string类的一种正确写法 – IT技术博客大全</a> </div>
+</li>
+<li id="comment-829963" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yoese.com/?p=1755" class="url" rel="ugc external nofollow">C++面试中string类的一种正确写法 | 有益</a> </div>
+</li>
+<li id="comment-965639" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=202" class="url" rel="ugc external nofollow">数据即代码：元驱动编程 | 星达红</a> </div>
+</li>
+<li id="comment-965654" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=208" class="url" rel="ugc external nofollow">程序的本质复杂性和元语言抽象 | 星达红</a> </div>
+</li>
+<li id="comment-1233742" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=497" class="url" rel="ugc external nofollow">一个“蝇量级” C 语言协程库 | zengine</a> </div>
+</li>
+<li id="comment-1235422" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=721" class="url" rel="ugc external nofollow">一个“蝇量级” C 语言协程库 | 星达红</a> </div>
+</li>
+<li id="comment-1442316" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1442316" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/70a63d0491c409cb85df00af7dcfab63?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/70a63d0491c409cb85df00af7dcfab63?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yangff</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8309.html/comment-page-2#comment-1442316"><time datetime="2014-04-21T20:55:11+08:00">2014年04月21日 20:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在G++里面，lambda表达式应该是被处理成了类似<br/>
+struct function_name(){<br/>
+// vars<br/>
+RetType operator() (Args…) {<br/>
+// code<br/>
+}<br/>
+}lambda0();<br/>
+的形式……</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2009480" class="comment even depth-2">
+<article id="div-comment-2009480" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a6bb2aed91f3d58f5f826db347a8c48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a6bb2aed91f3d58f5f826db347a8c48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/duangsuse" class="url" rel="ugc external nofollow">duangsuse</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8309.html/comment-page-2#comment-2009480"><time datetime="2019-08-05T17:58:23+08:00">2019年08月05日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>嗯嗯，我也觉得就是 encapsulating function 外部函数建立闭包的时候给它作为一组数据（值/基于指针的引用）和一个函数指针怎么分配着包起来，然后可以到处传、自动调用 当然也有优化，推荐 <a href="https://cppinsights.io/lnk?code=Ly8gVHlwZSB5b3VyIGNvZGUgaGVyZSwgb3IgbG9hZCBhbiBleGFtcGxlLgphdXRvIHNxdWFyZShpbnQgbnVtKSB7CiAgICByZXR1cm4gW251bV0geyByZXR1cm4gbnVtICogbnVtOyB9Owp9&amp;insightsOptions=cpp2a&amp;std=cpp2a&amp;rev=1.0" rel="nofollow">CppInsights</a> 看的很清楚了，不过实现必须的到底也就是那个样子</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1491635" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.chawenti.com/articles/24524.html" class="url" rel="ugc external nofollow">mac TeamTalk开发点点滴滴之二——block和DDLogic的有机结合 – 刀哥的技术随笔 | 查问题</a> </div>
+</li>
+<li id="comment-1491658" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ym910.com/wp/?p=6094" class="url" rel="ugc external nofollow">mac TeamTalk开发点点滴滴之二——block和DDLogic的有机结合 | 易鸣</a> </div>
+</li>
+<li id="comment-1893802" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1155" class="url" rel="ugc external nofollow">如何读懂并写出装逼的函数式代码 | 星达红</a> </div>
+</li>
+<li id="comment-1914403" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.qianpangzi.com/2016/10/23/%e5%a6%82%e4%bd%95%e8%af%bb%e6%87%82%e5%b9%b6%e5%86%99%e5%87%ba%e8%a3%85%e9%80%bc%e7%9a%84%e5%87%bd%e6%95%b0%e5%bc%8f%e4%bb%a3%e7%a0%81/" class="url" rel="ugc external nofollow">如何读懂并写出装逼的函数式代码 - 钱胖子</a> </div>
+</li>
+<li id="comment-1921222" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1921222" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/143ece7b210d98920c72042cb40b3076?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/143ece7b210d98920c72042cb40b3076?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">王星禹</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8309.html/comment-page-2#comment-1921222"><time datetime="2017-11-28T09:53:20+08:00">2017年11月28日 09:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你妈逼</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2009449" class="comment even depth-2">
+<article id="div-comment-2009449" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a6bb2aed91f3d58f5f826db347a8c48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a6bb2aed91f3d58f5f826db347a8c48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/duangsuse-valid-projects" class="url" rel="ugc external nofollow">duangsuse</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8309.html/comment-page-2#comment-2009449"><time datetime="2019-08-05T15:39:00+08:00">2019年08月05日 15:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章讲的很细很不错，这句话是什么意思 @陈浩<br/>
+down vote ?</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8309.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8309.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">8309</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

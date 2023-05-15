@@ -1,0 +1,349 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>酷壳 – CoolShell.cn - Part 13</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="home blog paged paged-13 group-blog">
+
+<div id="page" class="hfeed site">
+<header id="masthead" role="banner">
+
+<div id="cc_spacer"></div>
+<div class="site-header">
+
+<div class="site-branding">
+<a class="home-link" href="/" title="酷 壳 – CoolShell" rel="home">
+<h1 class="site-title">酷 壳 – CoolShell</h1>
+<h2 class="site-description">享受编程和技术所带来的快乐 – Coding Your Ambition</h2>
+</a>
+</div>
+</div>
+</header>
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" class="site-main" role="main">
+<article id="post-9859" class="post-content post-9859 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-netsecurity tag-alan-cox tag-c tag-kernel tag-linux tag-network tag-tcp">
+<header class="entry-header">
+<span class="screen-reader-text">Alan Cox：单向链表中prev指针的妙用</span>
+<h2 class="entry-title">
+<a href="/articles/9859.html" rel="bookmark">Alan Cox：单向链表中prev指针的妙用</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9859.html" title="12:27" rel="bookmark"><time class="entry-date" datetime="2013-06-30T12:27:04+08:00" pubdate="">2013年06月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9859.html#comments" class="comments-link">56 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 38,114 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<figure id="attachment_9906" aria-describedby="caption-attachment-9906" style="width: 200px" class="wp-caption alignright"><img decoding="async" class="size-medium wp-image-9906" title="Alan Cox" alt="Alan Cox" src="/uploads/2013/06/Alan-Cox-200x300.jpg" width="200" height="300" srcset="" sizes="(max-width: 200px) 100vw, 200px"/><figcaption id="caption-attachment-9906" class="wp-caption-text">Alan Cox</figcaption></figure>
+<p><span style="color: #cc0000;"><strong> （感谢网友 </strong></span><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><span style="color: #cc0000;"><strong> 投稿）</strong></span></p>
+<p>之前发过一篇<a href="/articles/8990.html" target="_blank">二级指针操作单向链表</a>的例子，显示了C语言指针的灵活性，这次再探讨一个指针操作链表的例子，而且是一种完全不同的用法。</p>
+<p>这个例子是linux-1.2.13网络协议栈里的，关于链表遍历&amp;数据拷贝的一处实现。源文件是/net/inet/dev.c，你可以从<a href="https://www.kernel.org/pub/linux/kernel/v1.2/" target="_blank">kernel.org</a>官网上下载。</p>
+<p>从最早的0.96c版本开始，linux网络部分一直采取TCP/IP协议族实现，这是最为广泛应用的网络协议，整个架构就是经典的OSI七层模型的描述，其中dev.c是属于链路层实现。从功能上看，其位于网络设备驱动程序和网络层协议实现模块之间，作为二者之间的数据包传输通道，一种接口模块而存在——对驱动层的接口函数netif_rx, 以及对网络层的接口函数net_bh。前者提供给驱动模块的中断例程调用，用于链路数据帧的封装；后者作为驱动中断例程<strong>底半部(buttom half)</strong>，用于对数据帧的解析处理并向上层传送。</p>
+<p>为了便于理解，这里补充一下网络通信原理和linux驱动中断机制的背景知识。从最底层的物理层说起，当主机和路由器相互之间进行通信的时候，在物理介质上（同轴、光纤等）以电平信号进行传输。主机或路由器的<strong>硬件接口（网卡）</strong>负责收发这些信号，当信号发送到接口，再由内置的<strong>调制解调器(modem)</strong>将数字信号转换成二进制码，这样才能驻留在主机的硬件缓存中。这时接口（网卡）设备驱动程序将通过<strong>硬中断</strong>来获取硬件缓存中的数据，驱动程序是操作系统中负责直接同硬件设备打交道的模块，硬中断的触发是初始化时通过设置控制寄存器实现的，用于通知驱动程序硬件缓存中有新的数据到来。linux卡设备驱动就是在<strong>中断处理例程(ISR)</strong>中将硬件缓存数据拷贝到内核缓存中，打包成数据链路帧进行解析处理，再向上分发到各种协议层。由于ISR上下文是原子性的、中断屏蔽的，整个步骤又较为繁琐，因此全部放在ISR中处理会影响到其它中断响应实时性，于是linux有实现一种bottom half的<strong>软中断</strong>处理机制，将整个ISR一分为二，前半部上下文屏蔽所有中断，专门处理紧急的、实时性强的事务，如拷贝硬件缓存并打包封装，后半部上下文没有屏蔽中断（但代码不可重入），用于处理比较耗时且非紧急事务，包括数据帧的解析处理和分发。下面要讲的net_bh就属于后半部。</p>
+<p>我们主要关心的是将链路帧分发到协议层那一段逻辑，下面摘自net_bh函数中的一段代码：</p>
+<p> <a href="/articles/9859.html#more-9859" class="more-link">…</a></p><a href="/articles/9859.html#more-9859" class="more-link">
+</a><p class="read-more"><a href="/articles/9859.html#more-9859" class="more-link"></a><a class="btn btn-default" href="/articles/9859.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9859-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9749" class="post-content post-9749 post type-post status-publish format-standard hentry category-webdev category-progdesign tag-ajax tag-dom tag-javascript tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">Javascript 装载和执行</span>
+<h2 class="entry-title">
+<a href="/articles/9749.html" rel="bookmark">Javascript 装载和执行</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9749.html" title="08:31" rel="bookmark"><time class="entry-date" datetime="2013-06-05T08:31:06+08:00" pubdate="">2013年06月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9749.html#comments" class="comments-link">104 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 99,403 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright  wp-image-9778" alt="" src="/uploads/2013/06/javascript.jpg" width="300" height="225" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>一两个月前在淘宝内网里看到一个优化Javascript代码的竞赛，发现有不少的人对Javascript的执行和装载的基础并不懂，所以，从那天起我就想写一篇文章，但一直耽搁了。自上篇《<a title="浏览器的渲染原理简介" href="/articles/9666.html" target="_blank">浏览器渲染原理简介</a>》，正好也可以承前启后。</p>
+<p>首先，我想说一下Javascript的装载和执行。通常来说，浏览器对于Javascript的运行有两大特性：<strong>1）载入后马上执行，2）执行时会阻塞页面后续的内容（包括页面的渲染、其它资源的下载）</strong>。于是，如果有多个js文件被引入，那么对于浏览器来说，这些js文件被被串行地载入，并依次执行。</p>
+<p>因为javascript可能会来操作HTML文档的DOM树，所以，浏览器一般都不会像并行下载css文件并行下载js文件，因为这是js文件的特殊性造成的。所以，如果你的javascript想操作后面的DOM元素，基本上来说，浏览器都会报错说对象找不到。因为Javascript执行时，后面的HTML被阻塞住了，DOM树时还没有后面的DOM结点。所以程序也就报错了。</p>
+<h4>传统的方式</h4>
+<p>所以，当你写在代码中写下如下的代码：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;script type=&#34;text/javascript&#34;
+        src=&#34;https://coolshell.cn/asyncjs/alert.js&#34;&gt;&lt;/script&gt;</pre>
+<p> <a href="/articles/9749.html#more-9749" class="more-link">…</a></p><a href="/articles/9749.html#more-9749" class="more-link">
+</a><p class="read-more"><a href="/articles/9749.html#more-9749" class="more-link"></a><a class="btn btn-default" href="/articles/9749.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9749-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9703" class="post-content post-9703 post type-post status-publish format-standard hentry category-javadev category-progdesign tag-hash tag-hashmap tag-java tag-performance tag-671 tag-672">
+<header class="entry-header">
+<span class="screen-reader-text">无锁HashMap的原理与实现</span>
+<h2 class="entry-title">
+<a href="/articles/9703.html" rel="bookmark">无锁HashMap的原理与实现</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9703.html" title="21:31" rel="bookmark"><time class="entry-date" datetime="2013-05-30T21:31:20+08:00" pubdate="">2013年05月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/onetwogoo" title="View all posts by onetwogoo" rel="author">onetwogoo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9703.html#comments" class="comments-link">35 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 64,517 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong> (本文由<a href="https://github.com/onetwogoo" rel="author">onetwogoo</a>投稿)</strong></p>
+<p>在《<a title="疫苗：Java HashMap的死循环" href="/articles/9606.html" target="_blank">疫苗：Java HashMap的死循环</a>》中，我们看到，java.util.HashMap并不能直接应用于多线程环境。对于多线程环境中应用HashMap，主要有以下几种选择：</p>
+<ol>
+<li><span style="line-height: 13px;">使用线程安全的java.util.Hashtable作为替代。</span></li>
+<li>使用java.util.Collections.synchronizedMap方法，将已有的HashMap对象包装为线程安全的。</li>
+<li>使用java.util.concurrent.ConcurrentHashMap类作为替代，它具有非常好的性能。</li>
+</ol>
+<p>而以上几种方法在实现的具体细节上，都或多或少地用到了互斥锁。互斥锁会造成线程阻塞，降低运行效率，并有可能产生死锁、优先级翻转等一系列问题。</p>
+<p>CAS(Compare And Swap)是一种底层硬件提供的功能，它可以将判断并更改一个值的操作原子化。关于CAS的一些应用，《<a title="无锁队列的实现" href="/articles/8239.html" target="_blank">无锁队列的实现</a>》一文中有很详细的介绍。</p>
+<h4>Java中的原子操作</h4>
+<p>在java.util.concurrent.atomic包中，Java为我们提供了很多方便的原子类型，它们底层完全基于CAS操作。</p>
+<p>例如我们希望实现一个全局公用的计数器，那么可以：</p>
+<p> </p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">private AtomicInteger counter = new AtomicInteger(3);
+
+public void addCounter() {
+    for (;;) {
+        int oldValue = counter.get();
+        int newValue = oldValue + 1;
+        if (counter.compareAndSet(oldValue, newValue))
+            return;
+    }
+}</pre>
+<p> <a href="/articles/9703.html#more-9703" class="more-link">…</a></p><a href="/articles/9703.html#more-9703" class="more-link">
+</a><p class="read-more"><a href="/articles/9703.html#more-9703" class="more-link"></a><a class="btn btn-default" href="/articles/9703.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9703-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9666" class="post-content post-9666 post type-post status-publish format-standard hentry category-webdev category-progdesign tag-css tag-dom tag-html tag-javascript tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">浏览器的渲染原理简介</span>
+<h2 class="entry-title">
+<a href="/articles/9666.html" rel="bookmark">浏览器的渲染原理简介</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9666.html" title="08:17" rel="bookmark"><time class="entry-date" datetime="2013-05-22T08:17:47+08:00" pubdate="">2013年05月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9666.html#comments" class="comments-link">155 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 194,562 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>看到这个标题大家一定会想到这篇神文《<a href="http://taligarsiel.com/Projects/howbrowserswork1.htm" target="_blank">How Browsers Work</a>》，这篇文章把浏览器的很多细节讲得很细，而且也被<a href="http://ux.sohu.com/topics/50972d9ae7de3e752e0081ff" target="_blank">翻译成了中文</a>。为什么我还想写一篇呢？因为两个原因，</p>
+<p style="padding-left: 30px;">1）这篇文章太长了，阅读成本太大，不能一口气读完。</p>
+<p style="padding-left: 30px;">2）花了大力气读了这篇文章后可以了解很多，但似乎对工作没什么帮助。</p>
+<p>所以，我准备写下这篇文章来解决上述两个问题。希望你能在上班途中，或是坐马桶时就能读完，并能从中学会一些能用在工作上的东西。</p>
+<h4>浏览器工作大流程</h4>
+<p>废话少说，先来看个图：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-9667" alt="" src="/uploads/2013/05/Render-Process.jpg" width="712" height="231" srcset="" sizes="(max-width: 712px) 100vw, 712px"/></p>
+<p style="text-align: left;">从上面这个图中，我们可以看到那么几个事：</p>
+<p> <a href="/articles/9666.html#more-9666" class="more-link">…</a></p><a href="/articles/9666.html#more-9666" class="more-link">
+</a><p class="read-more"><a href="/articles/9666.html#more-9666" class="more-link"></a><a class="btn btn-default" href="/articles/9666.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9666-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9606" class="post-content post-9606 post type-post status-publish format-standard hentry category-javadev category-progdesign tag-hash tag-hashmap tag-java tag-671 tag-672">
+<header class="entry-header">
+<span class="screen-reader-text">疫苗：Java HashMap的死循环</span>
+<h2 class="entry-title">
+<a href="/articles/9606.html" rel="bookmark">疫苗：Java HashMap的死循环</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9606.html" title="08:12" rel="bookmark"><time class="entry-date" datetime="2013-05-10T08:12:12+08:00" pubdate="">2013年05月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9606.html#comments" class="comments-link">181 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 305,219 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="size-medium wp-image-9618 alignright" alt="" src="/uploads/2013/05/race_condition-300x190.jpg" width="300" height="190" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>在淘宝内网里看到同事发了贴说了一个CPU被100%的线上故障，并且这个事发生了很多次，原因是在Java语言在并发情况下使用HashMap造成Race Condition，从而导致死循环。这个事情我4、5年前也经历过，本来觉得没什么好写的，因为Java的HashMap是非线程安全的，所以在并发下必然出现问题。但是，我发现近几年，很多人都经历过这个事（在网上查“HashMap Infinite Loop”可以看到很多人都在说这个事）所以，觉得这个是个普遍问题，需要写篇疫苗文章说一下这个事，并且给大家看看一个完美的“Race Condition”是怎么形成的。</p>
+<h4>问题的症状</h4>
+<p>从前我们的Java代码因为一些原因使用了HashMap这个东西，但是当时的程序是单线程的，一切都没有问题。后来，我们的程序性能有问题，所以需要变成多线程的，于是，变成多线程后到了线上，发现程序经常占了100%的CPU，查看堆栈，你会发现程序都Hang在了HashMap.get()这个方法上了，重启程序后问题消失。但是过段时间又会来。而且，这个问题在测试环境里可能很难重现。</p>
+<p>我们简单的看一下我们自己的代码，我们就知道HashMap被多个线程操作。而Java的文档说HashMap是非线程安全的，应该用ConcurrentHashMap。</p>
+<p>但是在这里我们可以来研究一下原因。</p>
+<p> <a href="/articles/9606.html#more-9606" class="more-link">…</a></p><a href="/articles/9606.html#more-9606" class="more-link">
+</a><p class="read-more"><a href="/articles/9606.html#more-9606" class="more-link"></a><a class="btn btn-default" href="/articles/9606.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9606-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9543" class="post-content post-9543 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">“C++的数组不支持多态”？</span>
+<h2 class="entry-title">
+<a href="/articles/9543.html" rel="bookmark">“C++的数组不支持多态”？</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9543.html" title="16:17" rel="bookmark"><time class="entry-date" datetime="2013-04-29T16:17:40+08:00" pubdate="">2013年04月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9543.html#comments" class="comments-link">180 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 90,719 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>先是在微博上看到了个<a href="http://weibo.com/1876004965/zueproucp" target="_blank">微博</a>和云风的评论，然后我回了“楼主对C的内存管理不了解”。</p>
+<p><a href="https://coolshell.cn/wp-content/uploads/2013/04/weibo.jpg"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9544" alt="" src="/uploads/2013/04/weibo.jpg" width="580" height="211" srcset="" sizes="(max-width: 580px) 100vw, 580px"/></a></p>
+<p>后来引发了很多人的讨论，大量的人又借机来黑C++，比如：</p>
+<blockquote><p>//<a href="http://weibo.com/n/Baidu-ThursdayWang">@Baidu-ThursdayWang</a>:这不就c++弱爆了的地方吗，需要记忆太多东西</p>
+<p>//<a href="http://weibo.com/n/%E7%BC%96%E7%A8%8B%E6%B5%AA%E5%AD%90%E5%BC%A0%E5%8F%91%E8%B4%A2">@编程浪子张发财</a>:这个跟C关系真不大。不过我得验证一下，感觉真的不应该是这样的。如果基类的析构这种情况不能 调用，就太弱了。</p>
+<p>//<a href="http://weibo.com/1401324585" target="_blank">@程序元</a>：现在看来，当初由于毅力不够而没有深入纠缠c++语言特性的各种犄角旮旯的坑爹细枝末节，实是幸事。为现在还沉浸于这些诡异特性并乐此不疲的同志们感到忧伤。</p></blockquote>
+<p>然后，也出现了一些乱七八糟的理解：</p>
+<p> <a href="/articles/9543.html#more-9543" class="more-link">…</a></p><a href="/articles/9543.html#more-9543" class="more-link">
+</a><p class="read-more"><a href="/articles/9543.html#more-9543" class="more-link"></a><a class="btn btn-default" href="/articles/9543.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9543-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9410" class="post-content post-9410 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-operatingsystem category-story tag-compiler tag-interpreter tag-ken-thompson tag-shell tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">Unix考古记：一个“遗失”的shell</span>
+<h2 class="entry-title">
+<a href="/articles/9410.html" rel="bookmark">Unix考古记：一个“遗失”的shell</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9410.html" title="22:29" rel="bookmark"><time class="entry-date" datetime="2013-04-26T22:29:56+08:00" pubdate="">2013年04月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9410.html#comments" class="comments-link">26 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 48,517 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><span style="color: #cc0000;"><strong>(感谢网友Leo投递此文)</strong></span></p>
+<p>谨以此文纪念伟大的计算机科学巨匠<a href="https://en.wikipedia.org/wiki/Ken_Thompson" target="_blank">Ken Thompson</a>和<a href="https://en.wikipedia.org/wiki/Dennis_Ritchie" target="_blank">Dennis Ritchie</a>，并同时向其他所有为Unix发展做出贡献的黑客致敬。</p>
+<h4>历史的尘埃</h4>
+<p>Unix作为一个举世闻名的操作系统已有40余年的历史，围绕着这个古老的操作系统的发展又衍生出了一系列外围软件生态群，其中一个非常重要的组件就是shell。<strong>它是操作系统最外层的接口，负责直接面向用户交互并提供内核服务，</strong>包括命令行接口(CLI)或图形界面接口(GUI)两种形式。以CLI为例，它提供一套命令规范，是一种解释性语言，将用户输入经过解释器(interpreter)输出使其转化成真正的系统调用，实现人机交互的功能。</p>
+<p>和操作系统一样，shell也经历了一个漫长的演变史。如今大部分资料讲述最古老的shell都是从1977年的<a href="https://en.wikipedia.org/wiki/Bourne_shell" target="_blank">Bourne Shell</a>说起的，它最初移植到<a href="https://en.wikipedia.org/wiki/Version_7_Unix" target="_blank">Unix V7</a>上，被追认整个shell家族成员的鼻祖，后来的种群都是从其身上分支出来的。</p>
+<p><img decoding="async" class="aligncenter" alt="Linux shells since 1977 " src="https://www.ibm.com/developerworks/linux/library/l-linux-shells/figure1.gif"/></p>
+<p>对于1977年之前的历史很多资料大多一笔带过或略过不提。事实上，第一个移植到Unix上的shell却不是<a href="https://en.wikipedia.org/wiki/Stephen_Richard_Bourne" target="_blank">Steve Bourne</a>写的，早在1975年5月，贝尔实验室就对外发布了第一个广泛传播的Unix版本——<a href="https://en.wikipedia.org/wiki/UNIX_V6" target="_blank">Unix V6</a>（之前开发的版本只供内部研究之用），其根目录下的/bin/sh是第一个Unix自带的shell，由Ken Thompson写的，因此也被称为<a href="https://en.wikipedia.org/wiki/Thompson_shell" target="_blank">Thompson Shell</a>。甚至，更早可以追溯到1971年的时候，Thompson Shell就作为一个独立于内核的应用程序而实现了，只不过从1975年正式问世到1977年被取代，短短两年的寿命使得它很少为大多数人所认识。</p>
+<p> <a href="/articles/9410.html#more-9410" class="more-link">…</a></p><a href="/articles/9410.html#more-9410" class="more-link">
+</a><p class="read-more"><a href="/articles/9410.html#more-9410" class="more-link"></a><a class="btn btn-default" href="/articles/9410.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9410-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9508" class="post-content post-9508 post type-post status-publish format-standard hentry category-techarticle category-misc tag-atom tag-google tag-pfif tag-rss tag-xml">
+<header class="entry-header">
+<span class="screen-reader-text">PFIF网上寻人协议</span>
+<h2 class="entry-title">
+<a href="/articles/9508.html" rel="bookmark">PFIF网上寻人协议</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9508.html" title="00:20" rel="bookmark"><time class="entry-date" datetime="2013-04-22T00:20:16+08:00" pubdate="">2013年04月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9508.html#comments" class="comments-link">24 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 22,716 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文的主要内容来自Wikipedia(<a href="https://en.wikipedia.org/wiki/People_Finder_Interchange_Format" target="_blank">http://en.wikipedia.org/wiki/People_Finder_Interchange_Format</a>)</p>
+<p>PFIF全称People Finder Interchange Format，是一个应用广泛的数据开源的标准协议，这个协议主要是设计用来在不同的政府、救援组织、或是其它的一些灾难中生存者和其亲人联系的网站间进行数据交换的一种协议。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/04/Google-Person-Finder.png" width="492" height="249" srcset=""/></p>
+<p>这个协议基于XML，信息中包括人的身份标识，还有人目前的位置和状态等一些信息。PFIF可以通过Atom和RSS feed出去。PFIF可以允许不同的寻人站点进行数据交换和合并。每一条记录都有一个唯一的标识，这个标识说明了这是由哪个域名创建的。这样，当A站点获得B点的某个人的数据时，在A站点可以对这个人的增加的信息可以转到其它站点上再被增加相关的信息，因为有一个唯一的ID，所以信息可以在不同的站点上被附加。</p>
+<p>从wikipedia上看，说起PFIF这个事，得回到2001年的911事件，那时人们一共使用了超过25个不同的在线论坛和网上寻人站来查找相关的亲人和朋友（注：寻人网站英文叫：Survivor Registry，生还者登记网站）。其中一个最大的网站是由伯克利大学的学生Ka-Ping Yee 和 Miriam Walker 开发运行在Millennium计算集群上的safe.millennium.berkeley.edu网站。那时，为了减少各种网站间的混乱，伯克利的寻人网站开始从其它几个比较大的寻人站点收集相关的数据，并人肉整合到一起。</p>
+<p> <a href="/articles/9508.html#more-9508" class="more-link">…</a></p><a href="/articles/9508.html#more-9508" class="more-link">
+</a><p class="read-more"><a href="/articles/9508.html#more-9508" class="more-link"></a><a class="btn btn-default" href="/articles/9508.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9508-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9308" class="post-content post-9308 post type-post status-publish format-standard hentry category-misc category-story tag-baidu tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">“作环保的程序员，从不用百度开始”</span>
+<h2 class="entry-title">
+<a href="/articles/9308.html" rel="bookmark">“作环保的程序员，从不用百度开始”</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9308.html" title="21:47" rel="bookmark"><time class="entry-date" datetime="2013-03-23T21:47:20+08:00" pubdate="">2013年03月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9308.html#comments" class="comments-link">780 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 588,111 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>酷壳对来自百度搜索引擎的访问会弹窗，但是我的这个行为发酵出了一些事情，这里把这个事情说明如下，我会更新相关的东西。内行看门道，外行看热闹。</p>
+<h4>事由</h4>
+<p><strong>2月6日</strong> 看到<a href="http://weibo.com/1497035431/zi69DBK3b" target="_blank" rel="noopener">梁斌同学的微博</a>（起因可能是因为梁斌同学在微博上对帮助百度的一些工程师们说话导致他的“<a href="http://xunren.thuir.org/" target="_blank" rel="noopener">微博寻人</a>”全站被百度屏蔽）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" src="/uploads/2013/03/01.png" alt="" width="591" height="348" srcset=""/></p>
+<p>我看到后，觉得梁斌同学有点太看重被百度收录了，没有站长应该有的气质，所以，我<a href="http://weibo.com/1401880315/zibYUvZYd" target="_blank" rel="noopener">回了一个微博</a>——</p>
+<blockquote><p>“我的酷壳倒反而因为被百度收录而感到掉价！”</p></blockquote>
+<p><strong>2月6日当天</strong>，我给coolshell做了个弹窗，并发布微博—— （该微博目前已被新浪管理员删除，后面有说明）</p>
+<p> <a href="/articles/9308.html#more-9308" class="more-link">…</a></p><a href="/articles/9308.html#more-9308" class="more-link">
+</a><p class="read-more"><a href="/articles/9308.html#more-9308" class="more-link"></a><a class="btn btn-default" href="/articles/9308.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9308-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-9156" class="post-content post-9156 post type-post status-publish format-standard hentry category-550 category-misc category-career tag-programmer tag-rework tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">《Rework》摘录及感想</span>
+<h2 class="entry-title">
+<a href="/articles/9156.html" rel="bookmark">《Rework》摘录及感想</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9156.html" title="08:25" rel="bookmark"><time class="entry-date" datetime="2013-03-11T08:25:34+08:00" pubdate="">2013年03月11日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9156.html#comments" class="comments-link">152 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 118,971 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright wp-image-9277" src="/uploads/2013/03/rework.jpg" alt="" width="235" height="360" srcset="" sizes="(max-width: 235px) 100vw, 235px"/>读了《Rework》这本书好多遍，每次读都有不同的感想。但从来没有把这些感想记录下来，今天把《Rework》书中的一些章节做一些摘录，并把我的一些感想总结出来。供大家参考。这是一本平生以来让我中毒很深的书，也是一本让我思考得很多的书。希望看到这篇文章的人都能好好地读读这本书。这本书并不难读，是一本你可以一口气不中断就可以读完的书。</p>
+<h4>现实世界</h4>
+<p>“这在现实世界里面行不通”，当你向人们介绍一个新创意时，人们总是这么回答你。这个“现实世界”听起来如此令人沮丧，……只有人耳熟能详，习以为常的事情才会胜利，即使是这些事情已经漏洞百出陈腐低效。</p>
+<p>揭开“现实世界”这个锅盖，你会发现居住在里的人都充斥着悲观主义和失望的情绪。更糟的是，他们想将别人拖进他们的坟墓。如果你是充满希望和野心的人，他们会试着说服你，你的想法是不可能的。他们会说你在浪费时间。</p>
+<p><strong>“现实世界”并不存在，那只是人的一个借口。只是某些人为了开脱 自己的无所作为，跟你一点关系也没有。</strong></p>
+<blockquote><p><strong>感想</strong>：我经常会向一同事和朋友提及一些我的想法，朋友同事们经常会回答我——这个事某某人，某某团队做过了，没成功。或是对我说，你做这个事的时候，要小心这个要小心那个。我觉得，这个时候是最考验我们的时候了，要有一个清醒的头脑去分析别人的话，别人真不代表自己。这个世界上大多数人都是比较保守的，大多数都对这个现实世界都有或多或少的恐惧感。当然，你可以选择做大众，但是如果你想让你的人生有些不同，有些精彩，我还是建议你不要和大多数人想得一样，<strong>如果你和大多数人的想法一样，你必然会和大多数人一样的平庸</strong>。当然，如果你和大多数人不一样，你要么就是天才，要么就是傻瓜。要证明你自己是不是傻瓜，我们可以看看我们过去有没有过一些小成功或小成绩。如果有，那么就应该大胆地坚持自己的想法。</p></blockquote>
+<h4>被高估的“从错误中学习”</h4>
+<p>你真的从错误和失败里面学到什么了吗？你也许学到了别再重蹈覆辙，但是这有什么意义吗？你仍然不知道接下来该做什么。</p>
+<p> <a href="/articles/9156.html#more-9156" class="more-link">…</a></p><a href="/articles/9156.html#more-9156" class="more-link">
+</a><p class="read-more"><a href="/articles/9156.html#more-9156" class="more-link"></a><a class="btn btn-default" href="/articles/9156.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-9156-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+<div class="row">
+<div class="wp-pagenavi" role="navigation">
+<span class="pages">第 13 / 74 页</span><a class="first" aria-label="First Page" href="/">« 首页</a><a class="previouspostslink" rel="prev" aria-label="上一页" href="/page/12.html">«</a><span class="extend">...</span><a class="page smaller" title="第 9 页" href="/page/9.html">9</a><a class="page smaller" title="第 10 页" href="/page/10.html">10</a><a class="page smaller" title="第 11 页" href="/page/11.html">11</a><a class="page smaller" title="第 12 页" href="/page/12.html">12</a><span aria-current="page" class="current">13</span><a class="page larger" title="第 14 页" href="/page/14.html">14</a><a class="page larger" title="第 15 页" href="/page/15.html">15</a><a class="page larger" title="第 16 页" href="/page/16.html">16</a><a class="page larger" title="第 17 页" href="/page/17.html">17</a><a class="page larger" title="第 18 页" href="/page/18.html">18</a><span class="extend">...</span><a class="larger page" title="第 30 页" href="/page/30.html">30</a><a class="larger page" title="第 40 页" href="/page/40.html">40</a><a class="larger page" title="第 50 页" href="/page/50.html">50</a><a class="larger page" title="第 60 页" href="/page/60.html">60</a><a class="larger page" title="第 70 页" href="/page/70.html">70</a><span class="extend">...</span><a class="nextpostslink" rel="next" aria-label="下一页" href="/page/14.html">»</a><a class="last" aria-label="Last Page" href="/page/74.html">末页 »</a>
+</div>
+</div>
+</div>
+</nav>
+</main>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

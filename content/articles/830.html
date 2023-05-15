@@ -1,0 +1,315 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>语言的歧义 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-830 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-830" class="post-content post-830 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">语言的歧义</span>
+<h1 class="entry-title">语言的歧义</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/830.html" title="15:57" rel="bookmark"><time class="entry-date" datetime="2009-05-17T15:57:59+08:00" pubdate="">2009年05月17日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/neo" title="View all posts by Neo" rel="author">Neo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/830.html#comments" class="comments-link">52 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 40,689 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>语言是人与人相互沟通的途径，而计算机语言则是人和计算机沟通的途径。就算是任何再完美的自然语言都会有歧义，但是又是什么让人和计算计算机间产生了歧义呢？<br/>
+下面这篇文章来自Gowri Kumar的<a href="http://www.gowrikumar.com/c/index.html">Puzzle C</a>一文。我做了一些整理，挑选了其中的一些问题，并在之后配上相应的答案(这些答案是我加的，如果需要原版的答案可以直接和本文作者Gowri Kumar联系，作者的联系方式可以从<a href="http://www.gowrikumar.com/contact.html">这里</a>得到)。</p>
+<h3>puzzle 1</h3>
+<p>此段程序的作者希望输出数组中的所有元素，但是他却没有得到他想要的结果，是什么让程序员和计算机产生歧义？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#define TOTAL_ELEMENTS (sizeof(array) / sizeof(array[0]))
+int array[] = {23,34,12,17,204,99,16};
+int main()
+{
+    int d;
+
+    for(d=-1;d &lt;= (TOTAL_ELEMENTS-2);d++)
+        printf(&#34;%d\n&#34;,array[d+1]);
+
+    return 0;
+}
+</pre>
+<p><span id="more-830"></span></p>
+<p><strong>解答：</strong><br/>
+运行上面的程序，结果是什么都没有输出，导致这个结果的原因是sizeof的返回值是一个unsinged int，为此在比较int d 和TOTAL_ELEMENTS两个值都被转换成了unsigned int来进行比较，这样就导致-1被转换成一个非常大的值，以至于for循环不满足条件。因此，如果程序员不能理解sizeof操作符返回的是一个unsigned int的话，就会产生类似如上的人机歧义。</p>
+<h3>puzzle 2</h3>
+<p>看上去非常完美的程序，是什么导致了编程程序不通过？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+
+void OS_Solaris_print()
+{
+    printf(&#34;Solaris - Sun Microsystems\n&#34;);
+}
+
+void OS_Windows_print()
+{
+    printf(&#34;Windows - Microsoft\n&#34;);
+}
+
+void OS_HP-UX_print()
+{
+    printf(&#34;HP-UX - Hewlett Packard\n&#34;);
+}
+
+int main()
+{
+    int num;
+    printf(&#34;Enter the number (1-3):\n&#34;);
+    scanf(&#34;%d&#34;,&amp;num);
+
+    switch(num)
+    {
+        case 1:
+            OS_Solaris_print();
+            break;
+        case 2:
+            OS_Windows_print();
+            break;
+        case 3:
+            OS_HP-UX_print();
+            break;
+        default:
+            printf(&#34;Hmm! only 1-3 :-)\n&#34;);
+        break;
+    }
+    return 0;
+}
+</pre>
+<p><strong>解答：</strong><br/>
+程序员要以计算机的语言进行思考，不上上面那段程序导致的结果不止是歧义这么简单，而直接的结果是，导致计算机”听不懂”你在说什么。导致计算机听不懂的原因是HP-UX中的’-‘是减号？还是其他什么？</p>
+<h3>puzzle 3</h3>
+<p>下面这段程序会输出什么，为什么？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">enum {false,true};
+
+int main()
+{
+    int i=1;
+    do
+    {
+        printf(&#34;%d\n&#34;,i);
+        i++;
+
+        if(i &lt; 15)
+            continue;
+    }while(false);
+
+    return 0;
+}
+</pre>
+<p><strong>解答：</strong><br/>
+1到14？不对，结果是1，因为continue的含义是不执行循环体之后语义，而直接到循环点。明显while(false)不属于循环体。导致这段程序的歧义就是：程序员没有完全理解计算机语言中continue的含义。</p>
+<h3>puzzle 4</h3>
+<p>下面这段程序的输出结果是：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#define f(a,b) a##b
+#define g(a)   #a
+#define h(a) g(a)
+
+int main()
+{
+        printf(&#34;%s\n&#34;, h(f(1,2)));
+        printf(&#34;%s\n&#34;, g(f(1,2)));
+        return 0;
+}
+</pre>
+<p>当然，你首先要了解##和#的用法，如果不懂的话，本题你可以直接跳过。<br/>
+<strong>解答：</strong><br/>
+看到这段程序你可能会认为，这两个printf输出的同一个结果，可是答案却非如此，本题的输出是12和f(1,2)，为什么会这样呢？因为这是宏，宏的解开不象函数执行，由里带外。</p>
+<h3>puzzle 5</h3>
+<p>下面这段程序的输出是什么</p>
+<blockquote><p>#include &lt;stdio.h&gt;<br/>
+int main()<br/>
+{<br/>
+int a=10;<br/>
+switch(a)<br/>
+{<br/>
+case ‘1’:<br/>
+printf(“ONE\n”);<br/>
+break;<br/>
+case ‘2’:<br/>
+printf(“TWO\n”);<br/>
+break;<br/>
+defau1t:<br/>
+printf(“NONE\n”);<br/>
+｝<br/>
+return 0;<br/>
+}</p></blockquote>
+<p><strong>解答：</strong><br/>
+本题我故意将语法敏感插件去掉，为了就是能得到更好的效果，这道题又是什么让歧义再次发生，如果不仔细你可能永远都找不到答案，如果真到的到了那个时候，你是否会因为对default语义的怀疑，而不敢再使用default？本题的歧义点就是default，看好了是defau1t而不是default，不是关键字！为什么计算能”听懂”这样的defau1t，算然它听懂了，但它的理解却是标号”defau1t”</p>
+<h3>puzzle 6</h3>
+<p>下面这段程序的输出什么？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+
+int main()
+{
+    float f=0.0f;
+    int i;
+
+    for(i=0;i&lt;10;i++)
+        f = f + 0.1f;
+
+    if(f == 1.0f)
+        printf(&#34;f is 1.0 \n&#34;);
+    else
+        printf(&#34;f is NOT 1.0 \n&#34;);
+
+    return 0;
+}
+</pre>
+<p><strong>解答：</strong><br/>
+你是否似曾相识？不错这个问题在酷壳之前的博文《<a href="/articles/688.html">你能做对下面这些JavaScript的题吗？</a>》中曾今提到过，不要让两个浮点数相比较。所以本题的答案是”f is NOT 1.0″，如果你真想比较两个浮点数时，你应该按一定精度来比较，比如你一定要在本题中做比较那么你应该这么做if( (f – 1.0f)&lt;0.1 )</p>
+<h3>puzzle 7</h3>
+<p>下面两个函数是否具有相同的原型？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int foobar(void);
+int foobar();
+</pre>
+<p>下面这两段程序将会帮你找到上题的答案<br/>
+程序1</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+void foobar1(void)
+{
+    printf(&#34;In foobar1\n&#34;);
+}
+
+void foobar2()
+{
+    printf(&#34;In foobar2\n&#34;);
+}
+
+int main()
+{
+    char ch = &#39;a&#39;;
+
+    foobar1();
+    foobar2(33, ch);
+
+     return 0;
+}
+</pre>
+<p>程序2</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &#34;stdio.h&#34;
+void foobar1(void)
+{
+    printf(&#34;In foobar1\n&#34;);
+}
+
+void foobar2()
+{
+    printf(&#34;In foobar2\n&#34;);
+}
+
+int main()
+{
+    char ch = &#39;a&#39;;
+
+    foobar1(33,ch);
+    foobar2();
+
+    return 0;
+}
+</pre>
+<p><strong>解答</strong><br/>
+程序片段一，没有问题，程序片段二编译报错，这两个程序告诉我们，foobar1(void)和foobar2()是有不同原型的的。我们可以在《ISO/IEC 9899》的C语言规范找到下面两段关于函数声明的描述</p>
+<blockquote><p>10.The special case of an unnamed parameter of type void as the only item in the list specifies that the function has no parameters</p></blockquote>
+<blockquote><p>14.An identifier list declares only the identifiers of the parameters of the function. An empty list in a function declarator that is part of a definition of that function specifies that the function has no parameters. The empty list in a function declarator that is not part of a definition of that function specifies that no information about the number or types of the parameters is supplied.124)</p></blockquote>
+<p>上面两段话的意思就是：foobar1(void)是没有参数，而foobar1()等于forbar1(…)等于参数类型未知。</p>
+<p><strong>总结</strong><br/>
+看到这些C语言的题目，不禁让我想起了巴别塔，计算机语言作为如此严谨的语言都有可能带来如此多的歧义，更何况自然语言，更何况相互不通的自然语言。要杜绝歧义，我们就必须清晰的了解计算机语言每一个指令的语义。就如同人类，人类要和平就要相互了解各自的文化。愿世界上人们清晰了解别人的语言的语义，愿世界不再因为文化的不同而战争，原世界和平。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-830-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>语言的歧义</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1949198" class="comment even thread-even depth-1">
+<article id="div-comment-1949198" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="6215070c110a030c05180a0d0c050617225354514c010d0f">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/830.html/comment-page-2#comment-1949198"><time datetime="2018-12-25T16:26:34+08:00">2018年12月25日 16:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第6题 比较浮点数那个, 下面的帖子有详细的解释<br/>
+<a href="http://bbs.51cto.com/thread-533167-1.html" rel="nofollow ugc">http://bbs.51cto.com/thread-533167-1.html</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2371080" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/115120" class="url" rel="ugc external nofollow">C语言的谜题 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/830.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/830.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">830</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>mochiweb参数化模型Req相关功能 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1516 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1516" class="post-content post-1516 post type-post status-publish format-standard hentry category-proglanguage tag-erlang tag-mochiweb">
+<header class="entry-header">
+<span class="screen-reader-text">mochiweb参数化模型Req相关功能</span>
+<h1 class="entry-title">mochiweb参数化模型Req相关功能</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1516.html" title="20:00" rel="bookmark"><time class="entry-date" datetime="2009-09-30T20:00:34+08:00" pubdate="">2009年09月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/free-wang" title="View all posts by free.wang" rel="author">free.wang</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1516.html#comments" class="comments-link">1 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 7,010 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文的笔记讲述如何从client请求中获取各种参数,如method, request path, headers, cookie等。</p>
+<p>Mochiweb是Erlang实现的一个开源Web服务器，它设计的一个亮点就是他本身的Http请求的参数化模型。因此我们可以用OO的方式来理解它的相关用法。<br/>
+它的实现在mochiweb_request模块.在mochiweb中,每个client请求其构造一个 Req 对象(注：这个“对象“只是便于理解的提法), Req 可以理解成 mochiweb_request 的一个参数化或实例化.<br/>
+<span id="more-1516"></span></p>
+<p>1.<span style="color: #339966"><strong>Req:get(method)</strong></span><strong> </strong>-&gt; ‘OPTIONS’ | ‘GET’ | ‘HEAD’ | ‘POST’ | ‘PUT’ | ‘DELETE’ | ‘TRACE’.<br/>
+获取Http请求的方式.</p>
+<p>2.<span style="color: #339966"><strong>Req:get(raw_path)</strong> </span>-&gt; String().<br/>
+获取raw_path.比如 http://www.nextim.cn/session/login?username=test#p,那/session/login?username=test#p就是这个raw_path.</p>
+<p>3.<span style="color: #339966"><strong>Req:get(path)</strong></span><strong> </strong>-&gt; String().<br/>
+获取path.比如 http://www.nextim.cn/session/login?username=test#p,那/session/login就是这个raw_path.</p>
+<p>4.<span style="color: #339966"><strong>Req:parse_qs()</strong></span> -&gt; [{strng(), string()}].<br/>
+获取get参数.比如 http://www.nextim.cn/session/login?username=test#p,则返回[{“username”,”test”}].</p>
+<p>5.<span style="color: #339966"><strong>Req:parse_post()</strong></span> -&gt; [{strng(), string()}].<br/>
+确保post数据类型为: application/x-www-form-urlencoded, 否则不要调用(其内部会调用Req:recv_body),返回值类似Req:parse_qs().</p>
+<p>6.<span style="color: #339966"><strong>Req:get(peer)</strong></span><strong> </strong>-&gt; string().<br/>
+返回值为client的ip</p>
+<p>7.<span style="color: #339966"><strong>Req:get_header_value(Key)</strong></span> -&gt; undefined | string().<br/>
+获取某个header,比如Key为”User-Agent”时，返回”Mozila…….”</p>
+<p>8.<span style="color: #339966"><strong>Req:get_primary_header_value(Key) </strong></span>-&gt; undefined | string().<br/>
+获取http headers中某个key对应的主值(value以分号分割).<br/>
+举例: 假设 Content-Type 为 application/x-www-form-urlencoded; charset=utf8,则<br/>
+Req:get_header_value(“content-type”) 返回 application/x-www-form-urlencoded</p>
+<p>9.<span style="color: #339966"><strong>Req:get(headers)</strong> </span>-&gt; dict().<br/>
+获取所有headers<br/>
+说明: 返回结果为stdlib/dict 数据结构,可以通过mochiweb_headers模块进行操作.<br/>
+举例: 下面代码显示请求中所有headers:<br/>
+Headers = Req:get(headers),<br/>
+lists:foreach(fun(Key, Value) -&gt;<br/>
+io:format(“~p : ~p ~n”, [Key, Value])<br/>
+end,<br/>
+mochiweb_headers:to_list(Headers)).</p>
+<p>10.<span style="color: #339966"><strong>Req:parse_cookie()</strong></span> -&gt; [{string(), string()}].<br/>
+解析Cookie</p>
+<p>11.<strong><span style="color: #339966">R</span></strong><span style="color: #339966"><strong><span style="color: #339966">eq:get_cookie_value(Key)</span></strong></span><strong><span style="color: #339966"> </span></strong>-&gt; string().<br/>
+类似<span style="color: #ffcc00">Req:get_header_value(Key)</span></p>
+<div><span style="font-family: &#39;Lucida Grande&#39;, Verdana, Arial, &#39;Bitstream Vera Sans&#39;, sans-serif"><span>最近搜了下，发现用mochiweb的挺多的。但自己用的时候发现来不少疑难。以上文档皆由litaocheng总结提供。感谢所带来的帮助。希望这个对国内使用mochiweb的朋友们带来帮助。</span></span></div>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1516-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Erlang</a>, <a href="javascript:void(0)" rel="tag">Mochiweb</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>mochiweb参数化模型Req相关功能</span>》 的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1335641" class="comment even thread-even depth-1">
+<article id="div-comment-1335641" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cbf321477249725cf0f03744ad343ee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cbf321477249725cf0f03744ad343ee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">王国</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1516.html#comment-1335641"><time datetime="2014-03-05T22:29:06+08:00">2014年03月05日 22:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>麻烦问下，mochiweb 怎么解决跨域问题？</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

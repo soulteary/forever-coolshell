@@ -1,0 +1,425 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go语言源码的一个改动 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1761 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1761" class="post-content post-1761 post type-post status-publish format-standard hentry category-unixlinux category-techarticle category-proglanguage category-story tag-go tag-google tag-ken-thompson tag-unix">
+<header class="entry-header">
+<span class="screen-reader-text">Go语言源码的一个改动</span>
+<h1 class="entry-title">Go语言源码的一个改动</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1761.html" title="08:31" rel="bookmark"><time class="entry-date" datetime="2009-11-12T08:31:25+08:00" pubdate="">2009年11月12日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1761.html#comments" class="comments-link">31 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 22,897 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>2009年11月11日，光棍节，<a href="/articles/1751.html" target="_blank">Google发布了Go语言</a>，马上，就有网友在<a href="https://code.google.com/p/go/" target="_blank">http://code.google.com/p/go/</a>上找到了一个Go语言包文件操作源码/src/pkg/os/file.go文件的一个最新改动。这个改动的作者就是那个大名鼎鼎的Unix之父<a href="https://en.wikiquote.org/wiki/Kenneth_Thompson" target="_blank">Ken Thompson</a>（看看人家，都这么老了，还在写程序，佩服佩服，真是顶级程序员啊——《<a rel="bookmark" href="/articles/343.html" target="_blank">程序员的八个级别</a>》），而这个改动的<a href="https://code.google.com/p/go/source/detail?r=4a3f6bbb5f0c6021279ccb3c23558b3c480d995f" target="_blank">Log Message</a>如下所示（把屏抓下来，以免以后某日被放到墙外或是google.com数据丢失或是Google公司倒闭）</p>
+<p style="text-align: center;"><span style="font-size: large;">Spell it with an “e”<br/>
+</span><br/>
+<img decoding="async" class="size-full wp-image-1762" title="spell it with an e" src="/uploads/2009/11/spell_it_with_e.jpg" border="1" alt="spell it with an e" width="474" height="344" srcset="" sizes="(max-width: 474px) 100vw, 474px"/></p>
+<p> </p>
+<p>这是一个很著名的典故，要知道这个典故，你需要知道两件事，一个是Ken Thompson的经典语录，一个是Unix的系统调用。</p>
+<p><span id="more-1761"></span></p>
+<p>关于Ken Thompson的经典语录，你可以在wikipdia上的<a href="https://en.wikiquote.org/wiki/Kenneth_Thompson" target="_blank">Ken Thompson</a>词条中找到，这个事情是这样的。</p>
+<blockquote><p>Ken Thompson was once asked what he would do differently if he were redesigning the UNIX system. His reply: “<strong>I’d spell creat with an e.</strong>” （<span style="color: #008000;">Ken Thompson有一次在被问到——如果他可以重新设计Unix系统，他会做些什么不同的事？而他回答到：“我会把“creat”多拼一个e”</span>）</p></blockquote>
+<p>“I’d spell creat with an e”，也就是说，他会把creat这个单词拼成<strong>creat</strong><span style="color: #ff0000;"><strong>e</strong><span style="color: #000000;">，而不是creat。为什么是creat呢，这需要我们来看一下creat这个系统调用，你可以在Unix或Linux下简单地<a href="http://linux.die.net/man/2/creat" target="_blank">man creat</a>你就可以知道，这个系统调用连带其某些参数，如：<strong>O_CREAT</strong>，都是一个少了“e”的create。（Unix下的有很多东西都是简写，如：usr，gp，ls，mv，ps，满大街的都是缩写）</span></span></p>
+<p><span style="color: #ff0000;"><span style="color: #000000;">看看这个改动的<a href="https://code.google.com/p/go/source/diff?spec=svn1f0a01c93d305f1ab636c68b67346659c5b957f7&amp;r=4a3f6bbb5f0c6021279ccb3c23558b3c480d995f&amp;format=side&amp;path=/src/pkg/os/file.go&amp;old_path=/src/pkg/os/file.go&amp;old=50a1ee94151635c25ad76816044252af417a45b8" target="_blank">diff</a>——这个diff只有一行，第65行，抓屏如下（理由同上）</span></span></p>
+<p style="text-align: center;"><span style="color: #ff0000;"><span style="color: #000000;"><img decoding="async" loading="lazy" class="size-full wp-image-1763" title="spell it with e  diff" src="/uploads/2009/11/spell_it_with_e_diff.jpg" alt="spell it with e  diff" width="487" height="79" srcset="" sizes="(max-width: 487px) 100vw, 487px"/></span></span></p>
+<p><span style="color: #ff0000;"><span style="color: #000000;">40年后的今天，Ken Thompson参与Go语言设计，于是，他提交了这个改动，也算是圆了他的愿望，从这点看来，Ken Thompson把Go语言看得和Unix一样重啊。难道Go语言也会像Unix一样成为另一个传奇？（Unix传奇 <a href="http://blog.csdn.net/haoel/archive/2007/03/27/1542340.aspx" target="_blank">上篇</a>，<a href="http://blog.csdn.net/haoel/archive/2007/03/27/1542353.aspx" target="_blank">下篇</a>）</span></span></p>
+<p><span style="color: #ff0000;"><span style="color: #000000;">（全文完）</span></span></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1761-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">Google</a>, <a href="javascript:void(0)" rel="tag">Ken Thompson</a>, <a href="javascript:void(0)" rel="tag">Unix</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go语言源码的一个改动</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1864" class="comment even thread-even depth-1">
+<article id="div-comment-1864" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://li2z.cn" class="url" rel="ugc external nofollow">bones7456</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1864"><time datetime="2009-11-12T09:13:58+08:00">2009年11月12日 09:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后3个链接都是死链。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1865" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1865" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a54d3cbbbcd43ec2f82857e618b40300?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a54d3cbbbcd43ec2f82857e618b40300?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lennie</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1865"><time datetime="2009-11-12T09:47:23+08:00">2009年11月12日 09:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大哥能把rss输出改为全文输出吗？在greader里总是要点过来看全文 ..</p>
+</div>
+ </article>
+</li>
+<li id="comment-1866" class="comment even thread-even depth-1">
+<article id="div-comment-1866" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60bdf936f7c5f296ced2d9825987dc8c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60bdf936f7c5f296ced2d9825987dc8c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.163.com/ecy_fu" class="url" rel="ugc external nofollow">ecy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1866"><time datetime="2009-11-12T10:34:22+08:00">2009年11月12日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，很想试试这种新语言 ^_^</p>
+</div>
+ </article>
+</li>
+<li id="comment-1867" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1867" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3aa394e5aef22274b9d36a74adb787e9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3aa394e5aef22274b9d36a74adb787e9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imtx.cn" class="url" rel="ugc external nofollow">TualatriX</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1867"><time datetime="2009-11-12T10:46:52+08:00">2009年11月12日 10:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很有意思，我要学习Go语言去！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1868" class="comment byuser comment-author-haoel bypostauthor even thread-even depth-1">
+<article id="div-comment-1868" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">耗子</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1868"><time datetime="2009-11-12T11:01:23+08:00">2009年11月12日 11:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1864"><p>
+<strong><a href="#comment-1864" rel="nofollow">bones7456 </a> :</strong></p>
+<p>最后3个链接都是死链。。</p>
+</blockquote>
+<p>对不起，文章写得快了点，没有仔细检查，现已修复!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1870" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1870" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d171de090fb487838930ef4f7f92c26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d171de090fb487838930ef4f7f92c26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gugaotianshi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1870"><time datetime="2009-11-12T11:22:18+08:00">2009年11月12日 11:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>囧…..</p>
+</div>
+ </article>
+</li>
+<li id="comment-1871" class="comment even thread-even depth-1">
+<article id="div-comment-1871" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3a8934bdaec0f8a7a138faf357339a56?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3a8934bdaec0f8a7a138faf357339a56?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yegle.net" class="url" rel="ugc external nofollow">yegle</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1871"><time datetime="2009-11-12T11:46:06+08:00">2009年11月12日 11:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呼唤全文输出…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1875" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1875" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ecb35dc14a137ea4ff228029d021c679?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ecb35dc14a137ea4ff228029d021c679?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1875"><time datetime="2009-11-12T13:26:48+08:00">2009年11月12日 13:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么要多加一个e呢，本文还是没有说清楚啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-1879" class="comment even thread-even depth-1">
+<article id="div-comment-1879" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f1b43804f3b7ae21514b2d10249f2880?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f1b43804f3b7ae21514b2d10249f2880?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mono</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1879"><time datetime="2009-11-12T15:30:11+08:00">2009年11月12日 15:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1875" rel="nofollow">@cc</a><br/>
+UNIX新手总是对UNIX对命令的命名表示惊讶。在DOS和Mac上受的教育不足以让他们体会到cp、rm、ls这类两字母命令的简洁和优美。<br/>
+像我们这样用过70年代早期的IO设备的人都能理解，ASR-33 Teletype这类设备的速度、可靠性，以及它的键盘是万恶之源。和今天这种基于反馈原理、只需要关闭一个微开关的键盘不同，你必须用足力气揿下Teletype的键至少半英寸，以发动一个类似自行车上用的小型发电机，在上面操作要冒指骨骨折的危险。<br/>
+如果当时Dennis和Ken用的是Selectric而不是Teletype，可能今天我们敲的将不是”cp”和”rm”而是”copy”和”remove”了。（Ken Thompson曾被问道如果他能重新设计UNIX他将做什么修改，他回答说：“我会在creat命令后加上个e。”），科技在拓宽我们的选择的同时，也能限制我们的选择，此一例也。<br/>
+—-摘自unix痛恨者手册</p>
+</div>
+ </article>
+</li>
+<li id="comment-1882" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1882" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0de763ffc22240f035686a4f794eb5d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0de763ffc22240f035686a4f794eb5d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mhsy2003</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1882"><time datetime="2009-11-12T20:54:23+08:00">2009年11月12日 20:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谁搞个Go群哈？好像语法一开始不是很习惯。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1887" class="comment even thread-even depth-1">
+<article id="div-comment-1887" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f3b92251d56989e1fdbe07eb6299160?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f3b92251d56989e1fdbe07eb6299160?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yufeng.info" class="url" rel="ugc external nofollow">yufeng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1887"><time datetime="2009-11-13T00:16:48+08:00">2009年11月13日 00:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>整个go设计的很有味道 用起来很舒服的感觉</p>
+</div>
+ </article>
+</li>
+<li id="comment-1893" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1893" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87faf37877746799f59259de7d3a6b57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87faf37877746799f59259de7d3a6b57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">LInd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1893"><time datetime="2009-11-13T12:07:58+08:00">2009年11月13日 12:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>总感觉看不全….</p>
+</div>
+ </article>
+</li>
+<li id="comment-1908" class="comment even thread-even depth-1">
+<article id="div-comment-1908" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/21791aecccd7f7dc6c739e322e6d60d7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/21791aecccd7f7dc6c739e322e6d60d7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.qixinglu.com/" class="url" rel="ugc external nofollow">muzuiget</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1908"><time datetime="2009-11-13T15:04:26+08:00">2009年11月13日 15:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈哈，Ken Thompson真的多加了个“e”。这个典故我也是在《unix痛恨者手册》里看到的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1911" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1911" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/397c870780ab34ae398db56fa77c912e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/397c870780ab34ae398db56fa77c912e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.17knet.cn" class="url" rel="ugc external nofollow">sexla</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1911"><time datetime="2009-11-13T16:30:28+08:00">2009年11月13日 16:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>介绍这个的课真多呀</p>
+</div>
+ </article>
+</li>
+<li id="comment-1919" class="comment even thread-even depth-1">
+<article id="div-comment-1919" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f308b177f1d66ada6f96aeaeabecce7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f308b177f1d66ada6f96aeaeabecce7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://tr.im/tommyang" class="url" rel="ugc external nofollow">Tommy Yang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1919"><time datetime="2009-11-13T19:21:16+08:00">2009年11月13日 19:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章的wikipedia少了一个e…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1920" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1920" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29fcda0fb4e815a087a88ac857086f6d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29fcda0fb4e815a087a88ac857086f6d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">( ⊙ o ⊙ )啊！</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-1920"><time datetime="2009-11-13T19:21:38+08:00">2009年11月13日 19:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>越来越觉得，所谓自主知识产权是一个阴谋。<br/>
+什么都自主了，就可以闭关了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2099" class="comment even thread-even depth-1">
+<article id="div-comment-2099" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ae09a3a0a3cf03c687f33efc2ae89d32?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ae09a3a0a3cf03c687f33efc2ae89d32?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-2099"><time datetime="2009-11-27T19:31:26+08:00">2009年11月27日 19:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>到处都在说这个Go语言,怎么网站上都下不了一个完整的编译器,怎么玩啊… …</p>
+</div>
+ </article>
+</li>
+<li id="comment-5445" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-5445" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/639ad3583a96300d2212b91da67c8d41?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/639ad3583a96300d2212b91da67c8d41?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xiazhengxin.cn" class="url" rel="ugc external nofollow">小鑫</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-5445"><time datetime="2010-03-13T18:59:00+08:00">2010年03月13日 18:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>貌似很有前途的样子</p>
+</div>
+ </article>
+</li>
+<li id="comment-32544" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wangleheng.net/2010/04/beta-club-go/" class="url" rel="ugc external nofollow">joyfire 王乐珩 » Beta技术沙龙：Go语言</a> </div>
+</li>
+<li id="comment-117673" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ntcn.net/blog/?p=83" class="url" rel="ugc external nofollow">Go语言资料收集 | 我的博客</a> </div>
+</li>
+<li id="comment-198633" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://topgeek.org/?p=475" class="url" rel="ugc external nofollow">【活动预告】七周七语言系列活动之一“Go语言” – GDG Shanghai和17Geek合办 | TopGeek</a> </div>
+</li>
+<li id="comment-211496" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://lidashuang.sinaapp.com/2012/11/go-%e8%af%ad%e8%a8%80%e7%ae%80%e4%bb%8b%ef%bc%88%e4%b8%8a%ef%bc%89%e2%80%94-%e8%af%ad%e6%b3%95/" class="url" rel="ugc external nofollow">Google Reader分享 » Go 语言简介（上）— 语法</a> </div>
+</li>
+<li id="comment-213648" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/the-go-language-introduction-on-syntax.html" class="url" rel="ugc external nofollow">Definite Digest » Go 语言简介（上）— 语法</a> </div>
+</li>
+<li id="comment-213652" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/go-language-introduction-under-features.html" class="url" rel="ugc external nofollow">Definite Digest » Go 语言简介（下）— 特性</a> </div>
+</li>
+<li id="comment-374303" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/unix-kao-gu-ji-yi-ge-yi-shi-di-shell.html" class="url" rel="ugc external nofollow">Definite Digest » Unix考古记：一个“遗失”的shell</a> </div>
+</li>
+<li id="comment-454786" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-454786" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d76ce7154bfa06035fb95705082b8e41?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d76ce7154bfa06035fb95705082b8e41?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://louisvuittonoutletg1.blogspot.com/2013/05/louis-vuitton-outlet-portland-oregon.html" class="url" rel="ugc external nofollow">Louis Vuitton Outlet Portland Oregon</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-454786"><time datetime="2013-05-17T19:34:25+08:00">2013年05月17日 19:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Cheap Louis Vuitton Outlet Sales</p>
+</div>
+ </article>
+</li>
+<li id="comment-454792" class="comment even thread-even depth-1">
+<article id="div-comment-454792" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d76ce7154bfa06035fb95705082b8e41?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d76ce7154bfa06035fb95705082b8e41?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://louisvuittonoutletc1.blogspot.com/2013/05/are-there-any-real-lv-outlets.html" class="url" rel="ugc external nofollow">are There Any Real LV Outlets</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-454792"><time datetime="2013-05-17T19:34:45+08:00">2013年05月17日 19:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>are Louis Vuitton Outlet Bags Real</p>
+</div>
+ </article>
+</li>
+<li id="comment-454853" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-454853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/094b1a15a7933f59fafa13ae7297d82a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/094b1a15a7933f59fafa13ae7297d82a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://louisvuittonoutletr2.blogspot.com/2013/05/authentic-louis-vuitton-outlet-store.html" class="url" rel="ugc external nofollow">Authentic Louis Vuitton Outlet Store</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-454853"><time datetime="2013-05-17T19:44:18+08:00">2013年05月17日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>are Louis Vuitton Outlet Store Online For Real</p>
+</div>
+ </article>
+</li>
+<li id="comment-454854" class="comment even thread-even depth-1">
+<article id="div-comment-454854" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/094b1a15a7933f59fafa13ae7297d82a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/094b1a15a7933f59fafa13ae7297d82a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://louisvuittonoutletm4.blogspot.com/2013/05/louis-vuitton-outlet-puerto-rico.html" class="url" rel="ugc external nofollow">Louis Vuitton Outlet Puerto Rico</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1761.html#comment-454854"><time datetime="2013-05-17T19:44:37+08:00">2013年05月17日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Louis Vuitton Outlet Online Store Real</p>
+</div>
+ </article>
+</li>
+<li id="comment-1499556" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.oleshi.com/?p=5" class="url" rel="ugc external nofollow">Go语言资料收集 | 逸山居士</a> </div>
+</li>
+<li id="comment-2034990" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/11/03/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-unix-50-%e5%b9%b4%ef%bc%9aken-thompson-%e7%9a%84%e5%af%86%e7%a0%81/" class="url" rel="ugc external nofollow">【酷壳】 Unix 50 年：Ken Thompson 的密码 | 大白的平凡世界</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

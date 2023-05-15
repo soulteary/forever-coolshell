@@ -1,0 +1,232 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Javascript 装载和执行 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9749 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9749" class="post-content post-9749 post type-post status-publish format-standard hentry category-webdev category-progdesign tag-ajax tag-dom tag-javascript tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">Javascript 装载和执行</span>
+<h1 class="entry-title">Javascript 装载和执行</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9749.html" title="08:31" rel="bookmark"><time class="entry-date" datetime="2013-06-05T08:31:06+08:00" pubdate="">2013年06月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9749.html#comments" class="comments-link">104 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 99,401 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright  wp-image-9778" alt="" src="/uploads/2013/06/javascript.jpg" width="300" height="225" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>一两个月前在淘宝内网里看到一个优化Javascript代码的竞赛，发现有不少的人对Javascript的执行和装载的基础并不懂，所以，从那天起我就想写一篇文章，但一直耽搁了。自上篇《<a title="浏览器的渲染原理简介" href="/articles/9666.html" target="_blank">浏览器渲染原理简介</a>》，正好也可以承前启后。</p>
+<p>首先，我想说一下Javascript的装载和执行。通常来说，浏览器对于Javascript的运行有两大特性：<strong>1）载入后马上执行，2）执行时会阻塞页面后续的内容（包括页面的渲染、其它资源的下载）</strong>。于是，如果有多个js文件被引入，那么对于浏览器来说，这些js文件被被串行地载入，并依次执行。</p>
+<p>因为javascript可能会来操作HTML文档的DOM树，所以，浏览器一般都不会像并行下载css文件并行下载js文件，因为这是js文件的特殊性造成的。所以，如果你的javascript想操作后面的DOM元素，基本上来说，浏览器都会报错说对象找不到。因为Javascript执行时，后面的HTML被阻塞住了，DOM树时还没有后面的DOM结点。所以程序也就报错了。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BC%A0%E7%BB%9F%E7%9A%84%E6%96%B9%E5%BC%8F" title="传统的方式">传统的方式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#documentwrite%E6%96%B9%E5%BC%8F" title="document.write方式">document.write方式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#script%E7%9A%84defer%E5%92%8Casync%E5%B1%9E%E6%80%A7" title="script的defer和async属性">script的defer和async属性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%8A%A8%E6%80%81%E5%88%9B%E5%BB%BADOM%E6%96%B9%E5%BC%8F" title="动态创建DOM方式">动态创建DOM方式</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%8C%89%E9%9C%80%E5%BC%82%E6%AD%A5%E8%BD%BD%E5%85%A5js" title="按需异步载入js">按需异步载入js</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%9B%B4%E5%A4%9A" title="更多">更多</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BC%A0%E7%BB%9F%E7%9A%84%E6%96%B9%E5%BC%8F"></span>传统的方式<span class="ez-toc-section-end"></span></h4>
+<p>所以，当你写在代码中写下如下的代码：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;script type=&#34;text/javascript&#34;
+        src=&#34;https://coolshell.cn/asyncjs/alert.js&#34;&gt;&lt;/script&gt;</pre>
+<p><span id="more-9749"></span></p>
+<p>基本上来说，head里的 &lt;script&gt;标签会阻塞后续资源的载入以及整个页面的生成。我专门做了一个示例你可以看看：<strong><a href="https://coolshell.cn/asyncjs/async_test01.html" target="_blank">示例一</a></strong>。 注意：我的alert.js中只有一句话：alert(“hello world”) ，这更容易让你看到javascript是怎么阻塞后面的东西的。</p>
+<p>所以，你知道为什么有很多网站把javascript放在网页的最后面了，要么就是动用了window.onload或是docmuemt ready之类的事件。</p>
+<p>另外，因为绝大多数的Javascript代码并不需要等页面，所以，我们异步载入的功能。那么我们怎么异步载入呢？</p>
+<h4><span class="ez-toc-section" id="documentwrite%E6%96%B9%E5%BC%8F"></span>document.write方式<span class="ez-toc-section-end"></span></h4>
+<p>于是，你可能以为document.write()这种方式能够解决不阻塞的方式。你当然会觉得，document.write了的&lt;script&gt;标签后就可以执行后面的东西去了，这没错。对于在同一个script标签里的Javascript的代码来说，是这样的，但是对于整个页面来说，这个还是会阻塞。 下面是一段测试代码：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;script type=&#34;text/javascript&#34; language=&#34;javascript&#34;&gt;
+    function loadjs(script_filename) {
+        document.write(&#39;&lt;&#39; + &#39;script language=&#34;javascript&#34; type=&#34;text/javascript&#34;&#39;);
+        document.write(&#39; src=&#34;&#39; + script_filename + &#39;&#34;&gt;&#39;);
+        document.write(&#39;&lt;&#39;+&#39;/script&#39;+&#39;&gt;&#39;);
+        alert(&#34;loadjs() exit...&#34;);
+    }
+
+    var script = &#39;https://coolshell.cn/asyncjs/alert.js&#39;;
+
+    loadjs(script);
+    alert(&#34;loadjs() finished!&#34;);
+&lt;/script&gt;
+
+&lt;script type=&#34;text/javascript&#34; language=&#34;javascript&#34;&gt;
+   alert(&#34;another block&#34;);
+&lt;/script&gt;</pre>
+<p>你觉得alert的顺序是什么？你可以在不同的浏览器里试一试。这里的想关的测试页面：<strong><a href="https://coolshell.cn/asyncjs/async_test02.html" target="_blank">示例二</a></strong>。</p>
+<h4><span class="ez-toc-section" id="script%E7%9A%84defer%E5%92%8Casync%E5%B1%9E%E6%80%A7"></span>script的defer和async属性<span class="ez-toc-section-end"></span></h4>
+<p>IE自从IE6就支持defer标签，如：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;script defer type=&#34;text/javascript&#34; src=&#34;./alert.js&#34; &gt;
+&lt;/script&gt;</pre>
+<p>对于IE来说，这个标签会让IE并行下载js文件，并且把其执行hold到了整个DOM装载完毕（DOMContentLoaded），多个defer的&lt;script&gt;在执行时也会按照其出现的顺序来运行。最重要的是&lt;script&gt;被加上defer后，其不会阻塞后续DOM的的渲染。但是因为这个defer只是IE专用，所以一般用得比较少。</p>
+<p>而我们标准的的HTML5也加入了一个异步载入javascript的属性：async，无论你对它赋什么样的值，只要它出现，它就开始异步加载js文件。但是， async的异步加载会有一个比较严重的问题，那就是它忠实地践行着“载入后马上执行”这条军规，所以，虽然它并不阻塞页面的渲染，但是你也无法控制他执行的次序和时机。你可以<a href="https://coolshell.cn/asyncjs/async_test01.async.html" target="_blank">看看这个示例去感受一下</a>。</p>
+<p>支持 async标签的浏览器是：Firefox3.6+，Chrome 8.0+，Safari 5.0+，IE 10+，Opera还不支持（<a href="http://caniuse.com/#feat=script-async" target="_blank">来自这里</a>）所以这个方法也不是太好。因为并不是所有的浏览器你都能行。</p>
+<h4><span class="ez-toc-section" id="%E5%8A%A8%E6%80%81%E5%88%9B%E5%BB%BADOM%E6%96%B9%E5%BC%8F"></span>动态创建DOM方式<span class="ez-toc-section-end"></span></h4>
+<p>这种方式可能是用得最多的了。</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">function loadjs(script_filename) {
+    var script = document.createElement(&#39;script&#39;);
+    script.setAttribute(&#39;type&#39;, &#39;text/javascript&#39;);
+    script.setAttribute(&#39;src&#39;, script_filename);
+    script.setAttribute(&#39;id&#39;, &#39;coolshell_script_id&#39;);
+
+    script_id = document.getElementById(&#39;coolshell_script_id&#39;);
+    if(script_id){
+        document.getElementsByTagName(&#39;head&#39;)[0].removeChild(script_id);
+    }
+    document.getElementsByTagName(&#39;head&#39;)[0].appendChild(script);
+}
+
+var script = &#39;https://coolshell.cn/asyncjs/alert.js&#39;;
+loadjs(script);
+</pre>
+<p>这个方式几乎成了标准的异步载入js文件的方式，这个方式的演示请参看：<strong><a href="https://coolshell.cn/asyncjs/async_test03.html" target="_blank">示例三</a></strong>。这方式还被玩出了JSONP的东东，也就是我可以为script的src指定某个后台的脚本（如PHP），而这个PHP返回一个javascript函数，其参数是一个json的字符串，返回来调用我们的预先定义好的javascript的函数。你可以看一下这个示例：<a href="https://coolshell.cn/t.js" target="_blank">t.js</a> （这个示例是我之前在微博征集的<a href="https://coolshell.cn/t.html" target="_blank">一个异步ajax调用的小例子</a>）<strong><br/>
+</strong></p>
+<h4><span class="ez-toc-section" id="%E6%8C%89%E9%9C%80%E5%BC%82%E6%AD%A5%E8%BD%BD%E5%85%A5js"></span>按需异步载入js<span class="ez-toc-section-end"></span></h4>
+<p>上面那个DOM方式的例子解决了异步载入Javascript的问题，但是没有解决我们想让他按我们指定的时机运行的问题。所以，我们只需要把上面那个DOM方式绑到某个事件上来就可以了。</p>
+<p>比如：</p>
+<p><strong>绑在window.load事件上</strong>——<strong><a href="https://coolshell.cn/asyncjs/async_test04.html" target="_blank">示例四</a> </strong></p>
+<p><strong></strong>你一定要比较一下示例四和示例三在执行上有什么不同，我在这两个示例中都专门用了个代码高亮的javascript，看看那个代码高亮的的脚本的执行和我的alert.js的执行的情况，你就知道不同了）</p>
+<p><code data-enlighter-language="js" class="EnlighterJSRAW">window.load = loadjs(&#34;https://coolshell.cn/asyncjs/alert.js&#34;)</code></p>
+<p><strong>绑在特定的事件上</strong>——<strong><a href="https://coolshell.cn/asyncjs/async_test05.html" target="_blank">示例五</a></strong></p>
+<p><code data-enlighter-language="html" class="EnlighterJSRAW">&lt;p style=&#34;cursor: pointer&#34; onclick=&#34;LoadJS()&#34;&gt;Click to load alert.js &lt;/p&gt;</code></p>
+<p>这个示例很简单了。当你点击某个DOM元素，才会真正载入我们的alert.js。</p>
+<h4><span class="ez-toc-section" id="%E6%9B%B4%E5%A4%9A"></span>更多<span class="ez-toc-section-end"></span></h4>
+<p>但是，绑定在某个特定事件上这个事似乎又过了一点，因为只有在点击的时候才会去真正的下载js，这又会太慢了了。好了，到这里，要抛出我们的终极问题——<strong>我们想要异步地把js文件下载到用户的本地，但是不执行，仅当在我们想要执行的时候去执行</strong>。</p>
+<p>要是我们有下面这样的方式就好了：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var script = document.createElement(&#34;script&#34;);
+script.noexecute = true;
+script.src = &#34;alert.js&#34;;
+document.body.appendChild(script);
+
+//后面我们可以这么干
+script.execute();</pre>
+<p>可惜的是，这只是一个美丽的梦想，今天我们的Javascript还比较原始，这个“JS梦”还没有实现呢。</p>
+<p>所以，我们的程序员只能使用hack的方式来搞。</p>
+<p>有的程序员使用了非标准的script的type来cache javascript。如：</p>
+<p><code data-enlighter-language="html" class="EnlighterJSRAW">&lt;script type=cache/script src=&#34;./alert.js&#34;&gt;&lt;/script&gt;</code></p>
+<p>因为”cache/script”，这个东西根本就不能被浏览器解析，所以浏览器也就不能把alert.js当javascript去执行，但是他又要去下载js文件，所以就可以搞定了。可惜的是，webkit严格符从了HTML的标准——对于这种不认识的东西，直接删除，什么也不干。于是，我们的梦又破了。</p>
+<p>所以，我们需要再hack一下，就像N多年前玩preload图片那样，我们可以动用object标签（也可以动用iframe标签），于是我们有下面这样的代码：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">    function cachejs(script_filename){
+        var cache = document.createElement(&#39;object&#39;);
+        cache.data = script_filename;
+        cache.id = &#34;coolshell_script_cache_id&#34;;
+        cache.width = 0;
+        cache.height = 0;
+        document.body.appendChild(cache);
+    }</pre>
+<p>然后，我们在的最后调用一下这个函数。请参看一下相关的示例：<strong><a href="https://coolshell.cn/asyncjs/async_test06.html" target="_blank">示例六</a></strong></p>
+<p>在Chrome下按 Ctrl+Shit+I，切换到network页，你就可以看到下载了alert.js但是没有执行，然后我们再用示例五的方式，因为浏览器端有缓存了，不会再从服务器上下载alert.js了。所以，就能保证执行速度了。</p>
+<p>关于这种preload这种东西你应该不会陌生了。你还可以使用Ajax的方式，如：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">var xhr = new XMLHttpRequest();
+xhr.open(&#39;GET&#39;, &#39;new.js&#39;);
+xhr.send(&#39;&#39;);</pre>
+<p>到这里我就不再多说了，也不给示例了，大家可以自己试试去。</p>
+<p>最后再提两个js，一个是<a href="http://stevesouders.com/controljs/" target="_blank">ControlJS</a>，一个叫<a href="http://headjs.com/" target="_blank">HeadJS</a>，专门用来做异步load javascript文件的。</p>
+<p>好了，这是所有的内容了，希望大家看过后能对Javascript的载入和执行，以及相关的技术有个了解。<strong>同时，也希望各前端高手不吝赐教！</strong></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9749-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">AJAX</a>, <a href="javascript:void(0)" rel="tag">DOM</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">Web</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Javascript 装载和执行</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1920265" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kaifa1234.com/?p=178" class="url" rel="ugc external nofollow">Javascript 装载和执行 – H5作品收藏夹</a> </div>
+</li>
+<li id="comment-1946066" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.linjunlong.com/p/1156.html" class="url" rel="ugc external nofollow">Javascript 装载和执行-小林博客</a> </div>
+</li>
+<li id="comment-2039211" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jackieathome.net/archives/437.html" class="url" rel="ugc external nofollow">nginx启用对HTTP2的支持 | Jackie的家</a> </div>
+</li>
+<li id="comment-2074435" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2074435" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0e522bb6f9e9b9fab7b47c3f138b3cba?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0e522bb6f9e9b9fab7b47c3f138b3cba?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ZC</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9749.html/comment-page-3#comment-2074435"><time datetime="2020-03-06T13:25:33+08:00">2020年03月06日 13:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>浩叔，你好<br/>
+对于defer、async属性的浏览器兼容性，caniuse.com上好像和文中有些不一致。<br/>
+<a href="https://caniuse.com/#feat=script-async&amp;search=async" rel="nofollow ugc">https://caniuse.com/#feat=script-async&amp;search=async</a></p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9749.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9749.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/9749.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">9749</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

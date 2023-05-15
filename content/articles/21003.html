@@ -1,0 +1,909 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>计时攻击 Timing Attacks | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21003 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21003" class="post-content post-21003 post type-post status-publish format-standard hentry category-progdesign category-netsecurity tag-hmac tag-862 tag-863">
+<header class="entry-header">
+<span class="screen-reader-text">计时攻击 Timing Attacks</span>
+<h1 class="entry-title">计时攻击 Timing Attacks</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21003.html" title="13:26" rel="bookmark"><time class="entry-date" datetime="2020-07-05T13:26:52+08:00" pubdate="">2020年07月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/tanglei-name" title="View all posts by tanglei.name" rel="author">tanglei.name</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21003.html#comments" class="comments-link">46 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 71,173 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-21015 " src="/uploads/2020/06/time-bomb-300x300.png" alt="" width="240" height="240" srcset="" sizes="(max-width: 240px) 100vw, 240px"/>本文来自读者“程序猿石头”的投稿文章《<a href="http://mp.weixin.qq.com/s?__biz=MzI3OTUzMzcwNw==&amp;mid=100002290&amp;idx=1&amp;sn=8829db16a065f485b257fba0c691d94f&amp;chksm=6b4708165c30810096133f36523c8c781ce5333d851c31905d6cc49dd9b756a3f08141fbc9e8#rd" target="_blank" rel="noopener noreferrer">这 10 行比较字符串相等的代码给我整懵了，不信你也来看看</a>》，原文写的很好，但不够直接了当，信息密度不够高，所以我对原文进行大量的删减、裁剪、改写和添加，主要删除了一些没有信息的段落，主要加入了如何实施计时攻击相关的其它内容，让这篇文章中的知识更系统一些，并且还指出了其它的一些问题。所以，我把标题也改成了《计时攻击 Timing Attacks》。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%8F%A6%E7%B1%BB%E7%9A%84%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%AF%94%E8%BE%83" title="另类的字符串比较">另类的字符串比较</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E8%AE%A1%E6%97%B6%E6%94%BB%E5%87%BBTiming_Attack" title="计时攻击(Timing Attack)">计时攻击(Timing Attack)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%90%84%E8%AF%AD%E8%A8%80%E7%9A%84%E5%AF%B9%E5%BA%94%E5%87%BD%E6%95%B0" title="各语言的对应函数">各语言的对应函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#One_More_Thing" title="One More Thing">One More Thing</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%8F%A6%E7%B1%BB%E7%9A%84%E5%AD%97%E7%AC%A6%E4%B8%B2%E6%AF%94%E8%BE%83"></span>另类的字符串比较<span class="ez-toc-section-end"></span></h4>
+<p>在 Java 的 Play Framework 里有<a href="https://github.com/playframework/play1/blob/b01eb02eb8df2e94cac2793c028dd9c4c5a57b31/framework/src/play/mvc/CookieDataCodec.java#L82" target="_blank" rel="noopener noreferrer">一段代码</a>用来验证cookie(session)中的数据是否合法（包含签名的验证）的代码，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="java">boolean safeEqual(String a, String b) {
+   if (a.length() != b.length()) {
+       return false;
+   }
+   int equal = 0;
+   for (int i = 0; i &lt; a.length(); i++) {
+       equal |= a.charAt(i) ^ b.charAt(i);
+   }
+   return equal == 0;
+}</pre>
+<p>相信刚看到这段源码的人会感觉挺奇怪的，这个函数的功能是比较两个字符串是否相等，如果要判断两个字符串是否相等，正常人的写法应该是下面这个样子的（来自JDK8 的 <code>String.equals()</code>-有删减）：</p>
+<p><span id="more-21003"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="java" data-enlighter-highlight="9,10">public boolean equals(Object anObject) {
+    String anotherString = (String)anObject;
+    int n = value.length;
+    if (n == anotherString.value.length) {
+        char v1[] = value;
+        char v2[] = anotherString.value;
+        int i = 0;
+        while (n-- != 0) {
+            if (v1[i] != v2[i]) // &lt;- 遇到第一个不一样的字符时退出
+                return false;
+            i++;
+        }
+        return true;
+    }
+    return false;
+}</pre>
+<p>我们可以看到，在比较两个字符串是否相等的正常写法是：</p>
+<ol>
+<li>先看一下两个字符串长度是否相等，如果不等直接返回 false。</li>
+<li>如果长度相等，则依次判断每个字符是否相等，如果不等则返回 false。</li>
+<li>如果全部相等，则返回 true。一旦遇到不一样的字符时，直接返回false。</li>
+</ol>
+<p>然而，Play Framework里的代码却不是这样的，尤其是上述的第2点，用到了异或，熟悉位操作的你很容易就能看懂，通过异或操作 <code>1^1=0</code> , <code>1^0=1</code>, <code>0^0=0</code>，来比较每一位，如果每一位都相等的话，两个字符串肯定相等，最后存储累计异或值的变量 <code>equal</code>必定为 0（因为相同的字符必然为偶数），否则为 1。</p>
+<p>但是，这种异或的方式不是遇到第一个不一样的字符就返回 false 了，而是要做全量比较，这种比较完全没有效率，这是为什么呢？原因是为了安全。</p>
+<h4><span class="ez-toc-section" id="%E8%AE%A1%E6%97%B6%E6%94%BB%E5%87%BBTiming_Attack"></span>计时攻击(Timing Attack)<span class="ez-toc-section-end"></span></h4>
+<p>计时攻击（<a href="https://en.wikipedia.org/wiki/Timing_attack" target="_blank" rel="noopener noreferrer">Wikipedia</a>）是<a href="https://en.wikipedia.org/wiki/Side-channel_attack" target="_blank" rel="noopener noreferrer">旁道攻击</a>(或称”侧信道攻击”， Side Channel Attack， 简称SCA) 的一种，<b>旁通道攻击</b>是指基于从计算机系统的实现中获得的信息的任何攻击 ，而不是基于实现的算法本身的弱点（例如，密码分析和软件错误）。时间信息，功耗，电磁泄漏甚至声音可以提供额外的信息来源，可以加以利用。在很多物理隔绝的环境中（黑盒），往往也能出奇制胜，这类新型攻击的有效性远高于传统的密码分析的数学方法。（注：企图通过社会工程学欺骗或强迫具有合法访问权限的人来破坏密码系统通常不被视为旁道攻击）</p>
+<p>计时攻击是最常用的攻击方法。那么，正常的字符串比较是怎么被黑客进行时间攻击的呢？</p>
+<p>我们知道，正常的字符串比较，一旦遇到每一个不同的字符就返回失败了，所以，理论上来说，前面只有2个字符相同字符串比较的耗时，要比前面有10个字符相同的比较要短。你会说，这能相差多少呢？可能几微秒吧。但是，我们可以放大这个事。比如，在Web应用时，记录每个请求的返回所需请求时间（一般是毫秒级），如果我们重复50次，我们可以查看平均时间或是p50的时间，以了解哪个字符返回的时间比较长，如果某个我们要尝试的字符串的时间比较长，我们就可以确定地得出这个这字符串的前面一段必然是正确的。（当然，你会说网络请求的燥音太多了，在毫秒级的请求上完全没办判断，这个需要用到统计学来降噪，后面会给出方法）</p>
+<p>这个事情，可以用来做HMAC的攻击，所谓HMAC，你可以参看本站的《<a title="HTTP API 认证授权术" href="/articles/19395.html" target="_blank" rel="noopener noreferrer">HTTP API 认证授权术</a>》文章了解更多的细节。简单来说，HMAC，就是客户端向服务端发来一个字符串和其签名字符串（HMAC），然后，服务端的程序用一个私钥来对客户端发来的字符串进行签名得到签名字符串，然后再比较这个签名字符串（所谓签名，也就是使用MD5或SHA这样的哈希算法进行编码，是不可逆的）</p>
+<p>写成伪代码大概是这个样子：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">bool verify(message, digest) {
+    my_digest = HMAC(key, message);
+    return my_digest.equals(digest) ;
+}</pre>
+<p>于是，攻击者在不知道签名算法和私钥的情况下，但是知道API的调用接口时，就可以通过一边穷举签名，一边统计调用时间的方式来非常有效率的破解签名。在这篇文章《<a href="http://www.eggie5.com/45-hmac-timing-attacks" target="_blank" rel="noopener noreferrer">HMAC Timing Attacks</a>》中记录了整个攻击的过程。文章中记载：</p>
+<p>如果一个签名有40个长度，如：<code>f5acdffbf0bb39b2cdf59ccc19625015b33f55fe</code> 攻击者，从 <code>0000000000000000000000000000000000000000</code> 开始穷举，下面是穷举第一个字符（从<code>0</code>到<code>f</code>因为这是HMAC算法的取值范围）的时间统计。</p>
+<pre>0 0.005450913
+1 0.005829198
+2 0.004905407
+3 0.005286876
+4 0.005597611
+5 0.004814430
+6 0.004969118
+7 0.005335884
+8 0.004433182
+9 0.004440246
+a 0.004860263
+b 0.004561121
+c 0.004463188
+d 0.004406799
+e 0.004978907
+f 0.004887240
+</pre>
+<p>可以看到，第一次测试通过的计时结果（以秒为单位），而值“ f”与样品的其余部分之间没有较大的变化量，所有结果看起来都非常接近。换句话说，有很多噪声掩盖了信号。因此，有必要进行多个采样（对测试进行缩放）并使用统计工具从噪声中滤除信号。为了将信号与噪声分开，我们必须按任意常数对测试进行缩放。通过实验，作者发现500是一个很好的数字。换句话说：运行测试500次，并记录500个试验中每个试验的结果。然后，通过人的肉眼观察可以可能看到 f 的调用明显比别的要长，但是这种方法很难自动化。</p>
+<p>所以，作者给了另一个统计算法，这个算法向服务器分别从 0 到 f 发出16个请求，并记录每个请求的响应时间，并将它们排序为1-16，其中1是最长（最慢）的请求，而16是最短（最快的请求），分别记录 0 – f 的名次，然后重复上述的过程 500 次。如下所示（仅显示25个样本，字符“ 0”首先被排名7、1、3，然后再次排名3……）：</p>
+<pre>{
+&#34;0&#34;=&gt;[7, 1, 3, 3, 15, 5, 4, 9, 15, 10, 13, 2, 14, 9, 4, 14, 7, 9, 15, 2, 14, 9, 14, 6, 11...],
+&#34;1&#34;=&gt;[13, 4, 7, 11, 0, 4, 0, 2, 14, 11, 6, 7, 2, 2, 14, 11, 8, 10, 5, 13, 11, 7, 4, 9, 3...],
+&#34;2&#34;=&gt;[14, 5, 15, 5, 1, 0, 3, 1, 9, 12, 4, 4, 1, 1, 8, 6, 9, 4, 9, 5, 8, 3, 12, 8, 5...],
+&#34;3&#34;=&gt;[15, 2, 9, 7, 2, 1, 14, 11, 7, 8, 8, 1, 4, 7, 12, 15, 13, 0, 4, 1, 7, 0, 3, 0, 0...],
+&#34;4&#34;=&gt;[12, 10, 14, 15, 8, 9, 10, 12, 10, 4, 1, 13, 15, 15, 3, 1, 6, 8, 2, 6, 15, 4, 0, 3, 2...],
+&#34;5&#34;=&gt;[5, 13, 13, 12, 7, 8, 13, 14, 3, 13, 2, 12, 7, 14, 2, 10, 12, 5, 8, 0, 4, 10, 5, 10, 12...]
+&#34;6&#34;=&gt;[0, 15, 11, 13, 5, 15, 8, 8, 4, 7, 12, 9, 10, 11, 11, 7, 0, 6, 0, 9, 2, 6, 15, 13, 14...]
+&#34;7&#34;=&gt;[1, 9, 0, 10, 6, 6, 2, 4, 12, 9, 5, 10, 5, 10, 7, 2, 4, 14, 6, 7, 13, 11, 6, 12, 4...],
+&#34;8&#34;=&gt;[4, 0, 2, 1, 9, 11, 12, 13, 11, 14, 0, 15, 9, 0, 0, 13, 11, 13, 1, 8, 6, 5, 11, 15, 7...],
+&#34;9&#34;=&gt;[11, 11, 10, 4, 13, 7, 6, 3, 2, 2, 14, 5, 3, 3, 15, 9, 14, 7, 10, 3, 0, 14, 1, 5, 15...],
+&#34;a&#34;=&gt;[8, 3, 6, 14, 10, 2, 7, 5, 1, 3, 3, 0, 0, 6, 10, 12, 15, 12, 12, 15, 9, 13, 13, 11, 9...],
+&#34;b&#34;=&gt;[9, 12, 5, 8, 3, 3, 5, 15, 0, 6, 11, 11, 12, 8, 1, 3, 1, 11, 11, 14, 5, 1, 2, 1, 6...],
+&#34;c&#34;=&gt;[6, 7, 8, 2, 12, 10, 9, 10, 6, 1, 10, 8, 6, 4, 6, 4, 3, 2, 7, 11, 1, 8, 7, 2, 13...],
+&#34;d&#34;=&gt;[2, 14, 4, 0, 14, 12, 11, 0, 8, 0, 15, 3, 8, 12, 5, 0, 10, 1, 3, 4, 12, 12, 8, 14, 8...],
+&#34;e&#34;=&gt;[10, 8, 12, 6, 11, 13, 1, 6, 13, 5, 7, 14, 11, 5, 9, 5, 2, 15, 14, 10, 10, 2, 10, 4, 1...],
+&#34;f&#34;=&gt;[3, 6, 1, 9, 4, 14, 15, 7, 5, 15, 9, 6, 13, 13, 13, 8, 5, 3, 13, 12, 3, 15, 9, 7, 10...]
+}</pre>
+<p>然后将每个字符的500个排名进行平均，得出以下示例输出：</p>
+<pre>&#34;f&#34;, 5.302
+&#34;0&#34;, 7.17
+&#34;6&#34;, 7.396
+&#34;3&#34;, 7.472
+&#34;5&#34;, 7.562
+&#34;a&#34;, 7.602
+&#34;2&#34;, 7.608
+&#34;8&#34;, 7.626
+&#34;9&#34;, 7.688
+&#34;b&#34;, 7.698
+&#34;1&#34;, 7.704
+&#34;e&#34;, 7.812
+&#34;4&#34;, 7.82
+&#34;d&#34;, 7.826
+&#34;7&#34;, 7.854
+&#34;c&#34;, 7.86</pre>
+<p>于是，<code>f</code> 就这样脱颖而出了。然后，再对剩余的39个字符重复此算法。</p>
+<p><strong>这是一种统计技术，可让我们从噪声中滤出真实的信号</strong>。因此，总共需要调用：16 * 500 * 40 = 320,000个请求，而蛮力穷举需要花费16 ^ 40个请求。</p>
+<p>另外，学术界的这篇论文就宣称用这种计时攻击的方法破解了 OpenSSL 0.9.7 的RSA加密算法了。这篇 <a href="http://crypto.stanford.edu/~dabo/papers/ssl-timing.pdf" target="_blank" rel="noopener noreferrer">Remote Timing Attacks are Practical （PDF）</a>论文中指出（我大致翻译下摘要，感兴趣的同学可以通过链接去看原文）：</p>
+<blockquote><p>计时攻击往往用于攻击一些性能较弱的计算设备，例如一些智能卡。我们通过实验发现，也能用于攻击普通的软件系统。本文通过实验证明，通过这种计时攻击方式能够攻破一个基于 OpenSSL 的 web 服务器的私钥。结果证明计时攻击用于进行网络攻击在实践中可行的，因此各大安全系统需要抵御这种风险。</p></blockquote>
+<p>参考资料：</p>
+<ul>
+<li>
+<section><a href="http://www.cs.sjsu.edu/faculty/stamp/students/article.html">Timing Attacks on RSA: Revealing Your Secrets through the Fourth Dimension</a></section>
+</li>
+<li>
+<section><a href="http://crypto.stanford.edu/~dabo/papers/ssl-timing.pdf">Remote Timing Attacks are Practical</a></section>
+</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%90%84%E8%AF%AD%E8%A8%80%E7%9A%84%E5%AF%B9%E5%BA%94%E5%87%BD%E6%95%B0"></span>各语言的对应函数<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们来看看各个语言对计时攻击的对应函数</p>
+<p><strong>PHP</strong>: <a href="https://wiki.php.net/rfc/timing_attack" target="_blank" rel="noopener noreferrer">https://wiki.php.net/rfc/timing_attack</a></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">bool hash_equals ( string $known_string , string $user_string )
+
+boolean password_verify ( string $password , string $hash )</pre>
+<p><strong>Java</strong>:  Java 在1.6时是有问题的，其在 1.6.0._17(6u17)才Fix了这个问题（<a href="http://hg.openjdk.java.net/jdk6/jdk6/jdk/rev/562da0baf70b" target="_blank" rel="noopener noreferrer">相关的fix patch</a>），下面是 <a href="https://hg.openjdk.java.net/jdk8u/jdk8u-dev/jdk/file/1832c29655eb/src/share/classes/java/security/MessageDigest.java#l442" target="_blank" rel="noopener noreferrer">JDK8源码</a> – <code>MessageDigest.isEqual()</code></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="java">public static boolean MessageDigest.isEqual(byte[] digesta, byte[] digestb) {
+    if (digesta == digestb) return true;
+    if (digesta == null || digestb == null) {
+        return false;
+    }
+    if (digesta.length != digestb.length) {
+        return false;
+    }
+
+    int result = 0;
+    // time-constant comparison
+    for (int i = 0; i &lt; digesta.length; i++) {
+        result |= digesta[i] ^ digestb[i];
+    }
+    return result == 0;
+}</pre>
+<p><strong>C/C++</strong>：没有在常用的库中找到相关的函数，还是自己写吧。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int util_cmp_const(const void * a, const void *b, const size_t size) 
+{
+  const unsigned char *_a = (const unsigned char *) a;
+  const unsigned char *_b = (const unsigned char *) b;
+  unsigned char result = 0;
+  size_t i;
+
+  for (i = 0; i &lt; size; i++) {
+    result |= _a[i] ^ _b[i];
+  }
+
+  return result; /* returns 0 if equal, nonzero otherwise */
+}</pre>
+<p><strong>Python</strong> – 2.7.7+使用 <code>hmac.compare_digest(a, b)</code>，否则，使用如下的Django的代码</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="python">#Taken from Django Source Code
+
+def constant_time_compare(val1, val2):
+    &#34;&#34;&#34;
+    Returns True if the two strings are equal, False otherwise.
+
+    The time taken is independent of the number of characters that match.
+
+    For the sake of simplicity, this function executes in constant time only
+    when the two strings have the same length. It short-circuits when they
+    have different lengths.
+    &#34;&#34;&#34;
+    if len(val1) != len(val2):
+        return False
+    result = 0
+    for x, y in zip(val1, val2):
+        result |= ord(x) ^ ord(y)
+    return result == 0</pre>
+<p><strong>Go</strong>  – 使用 <code>crypto/subtle</code> 代码包</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func ConstantTimeByteEq(x, y uint8) int
+func ConstantTimeCompare(x, y []byte) int
+func ConstantTimeCopy(v int, x, y []byte)
+func ConstantTimeEq(x, y int32) int
+func ConstantTimeLessOrEq(x, y int) int
+func ConstantTimeSelect(v, x, y int) int</pre>
+<h4><span class="ez-toc-section" id="One_More_Thing"></span>One More Thing<span class="ez-toc-section-end"></span></h4>
+<p>在文章结束前，再提一个事。</p>
+<p>上面的所有的代码都还有一个问题——他们都要判断字符串的长度是否一致，如果不一致就返回了，所以，通过时间攻击是可以知道字符串的长度的。比如：你的密码长度。理论上来说，字符串的长度也应该属于“隐私数据”（当然，对于签名则不是）。</p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21003-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">HMAC</a>, <a href="javascript:void(0)" rel="tag">程序设计</a>, <a href="javascript:void(0)" rel="tag">网络安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>计时攻击 Timing Attacks</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2127853" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2127853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/721d70c80ade836659693895ef66bbff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/721d70c80ade836659693895ef66bbff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">iseki</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127853"><time datetime="2020-07-05T13:50:26+08:00">2020年07月05日 13:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教下，如果再返回前进行一个随机的delay可不可以缓解问题呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2127857" class="comment odd alt depth-2 parent">
+<article id="div-comment-2127857" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/69aa5e0612b902aa8f94e810542aaad0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/69aa5e0612b902aa8f94e810542aaad0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cuill</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127857"><time datetime="2020-07-05T14:07:24+08:00">2020年07月05日 14:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我认为不可以。 假设随机延迟是0-999ms之间的随机数。 只要请求次数够多，那就相当于每个请求都慢了500ms。 一样可以被统计出差异</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2127903" class="comment even depth-3 parent">
+<article id="div-comment-2127903" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bc41eaf86815bc104720ca1d13ce605e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bc41eaf86815bc104720ca1d13ce605e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://twitter.com/likev" class="url" rel="ugc external nofollow">likev</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127903"><time datetime="2020-07-05T16:41:34+08:00">2020年07月05日 16:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只要设计好延迟，也是可以解决问题的。比如字符串a固定延迟hash(a)毫秒。<br/>
+当然前提是hash函数不能公开，不适用于开源软件。</p>
+<p>另外我感觉上面各种 safeEqual 版本经不起编译器优化啊，聪明的编译器是可以优化为提前返回的非安全版本的。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2128153" class="comment odd alt depth-4">
+<article id="div-comment-2128153" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c411fea7fd5a85d1fe8f6eede7296e77?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c411fea7fd5a85d1fe8f6eede7296e77?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.dennisthink.com/" class="url" rel="ugc external nofollow">DennisThink</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128153"><time datetime="2020-07-06T07:32:03+08:00">2020年07月06日 07:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个在CPU运算速度低的机器上应该更明显吧，相当于小的差别被放大了。</p>
+<p>个人理解，欢迎讨论。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2128544" class="comment even depth-4">
+<article id="div-comment-2128544" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/541fc638005f00f9076464eba2905769?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/541fc638005f00f9076464eba2905769?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128544"><time datetime="2020-07-07T10:39:18+08:00">2020年07月07日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>编译器也没有聪明到这种程度吧</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2128548" class="comment odd alt depth-2">
+<article id="div-comment-2128548" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/541fc638005f00f9076464eba2905769?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/541fc638005f00f9076464eba2905769?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128548"><time datetime="2020-07-07T10:45:47+08:00">2020年07月07日 10:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得可以对错误的请求设置一个固定的延迟</p>
+<p>start = time.now()<br/>
+if digest-match:<br/>
+return true<br/>
+else:<br/>
+wait until start + 5s<br/>
+return false</p>
+<p>这样只要错了就会有固定的返回时间，并且设个 5s 左右还可以极大增加暴力破解成本</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2127883" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2127883" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.lilydjwg.me/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127883"><time datetime="2020-07-05T15:34:56+08:00">2020年07月05日 15:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>长度的话，一般都是在比较 hash，所以长度不是秘密。</p>
+<p>我记得几年前有个站发现自己有这个问题，还自己尝试攻击过来着。效果很明显，根本没用到很多请求。（当然啦，他们是在修复之后才公布这个消息的。）</p>
+<p>PS: Python 3.3 在标准库中添加了 hmac.compare_digest 函数，不用自己写了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2127885" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2127885" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.lilydjwg.me/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127885"><time datetime="2020-07-05T15:36:38+08:00">2020年07月05日 15:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哦对了，听说 openssh 的 ecdsa key 也有这个问题，并且修起来比较棘手。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2127897" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2127897" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9fea926c22d66ceb48c71dd1cba081df?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9fea926c22d66ceb48c71dd1cba081df?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">一枝梅不落</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127897"><time datetime="2020-07-05T16:31:55+08:00">2020年07月05日 16:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学会了，这就去对线，不过没用了，已经打补丁了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2127916" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2127916" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a2e1b34640b8ef68e14e33630053cf9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a2e1b34640b8ef68e14e33630053cf9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">进击的龙虾</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127916"><time datetime="2020-07-05T17:37:07+08:00">2020年07月05日 17:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“理论上来说，前面只有2个字符相同字符串比较的耗时，要比前面有10个字符相同的比较要长”，这个说反了吧，应该要短</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2127942" class="comment byuser comment-author-haoel even depth-2">
+<article id="div-comment-2127942" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127942"><time datetime="2020-07-05T19:14:36+08:00">2020年07月05日 19:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>笔误，已修正。谢谢</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2127961" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2127961" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ab112d821136e91d68eab844a2939b75?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ab112d821136e91d68eab844a2939b75?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">路人甲</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2127961"><time datetime="2020-07-05T20:13:27+08:00">2020年07月05日 20:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果i的取值不是从0开始递增，而是从末尾向前，或者从随机的位置开始，也能避免密码被猜测。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2128160" class="comment even depth-2 parent">
+<article id="div-comment-2128160" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d515cc73157a73046405ccb957858b90?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d515cc73157a73046405ccb957858b90?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rhythm</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128160"><time datetime="2020-07-06T09:25:14+08:00">2020年07月06日 09:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有意思的想法，i=random()</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2128162" class="comment odd alt depth-3">
+<article id="div-comment-2128162" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e94f2165954f973563a84a713947716?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e94f2165954f973563a84a713947716?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yifeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128162"><time datetime="2020-07-06T09:51:53+08:00">2020年07月06日 09:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>random其实也可以，随机一个i的位置，不过需要判断是否到了数组尾巴，到尾巴了再遍历回头部即可。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2128161" class="comment even depth-2 parent">
+<article id="div-comment-2128161" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2e94f2165954f973563a84a713947716?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2e94f2165954f973563a84a713947716?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yifeng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128161"><time datetime="2020-07-06T09:49:42+08:00">2020年07月06日 09:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实，可以先将服务端数组的索引随机排个序，放入一个list中，然后foreach遍历这个list对比服务端和客户端的值即可。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2128547" class="comment odd alt depth-3">
+<article id="div-comment-2128547" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/541fc638005f00f9076464eba2905769?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/541fc638005f00f9076464eba2905769?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128547"><time datetime="2020-07-07T10:41:15+08:00">2020年07月07日 10:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>取随机数，函数调用，排序都要时间的吧，效率可能还不如全量比较</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2139452" class="comment even depth-2">
+<article id="div-comment-2139452" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a6d8179ab28c8aa7661ab398c5820db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a6d8179ab28c8aa7661ab398c5820db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2139452"><time datetime="2020-08-06T21:56:53+08:00">2020年08月06日 21:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这很可能是个通用方法，不仅仅在一个地方会用到，所以，我觉得不适合再做修改。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2128011" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2128011" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bcfa94c8e9b2c29824363f7a07b4d010?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bcfa94c8e9b2c29824363f7a07b4d010?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Grissiom</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128011"><time datetime="2020-07-05T23:05:08+08:00">2020年07月05日 23:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>前面长度不对直接返回对么？是不是也可以根据执行时间先把长度测量出来？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2139453" class="comment even depth-2">
+<article id="div-comment-2139453" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a6d8179ab28c8aa7661ab398c5820db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a6d8179ab28c8aa7661ab398c5820db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2139453"><time datetime="2020-08-06T21:57:24+08:00">2020年08月06日 21:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也这么认为</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2128202" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2128202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6bbf60e51f07ec67bc11d01354bbe817?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6bbf60e51f07ec67bc11d01354bbe817?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mzh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2128202"><time datetime="2020-07-06T13:06:42+08:00">2020年07月06日 13:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>常见的还有hash collision attack，设计得非常精巧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2129402" class="comment even thread-even depth-1">
+<article id="div-comment-2129402" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce760233eb1df8db60a90d62458edbb7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce760233eb1df8db60a90d62458edbb7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">何建洋</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2129402"><time datetime="2020-07-09T17:53:30+08:00">2020年07月09日 17:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>以固定时间返回。猜不出了吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-2129410" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2129410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/51c6448b82b056af497a8fdc13fe160a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/51c6448b82b056af497a8fdc13fe160a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">零下一度</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2129410"><time datetime="2020-07-09T18:11:11+08:00">2020年07月09日 18:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近做的一个需求正好有验签的部分，用的是golang的 == 去比较签名是否相等的[狗头]</p>
+</div>
+ </article>
+</li>
+<li id="comment-2129446" class="comment even thread-even depth-1">
+<article id="div-comment-2129446" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c55cfb99d9efbf944861afc939b5512?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c55cfb99d9efbf944861afc939b5512?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dailuyao28</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2129446"><time datetime="2020-07-09T20:24:46+08:00">2020年07月09日 20:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>天天向上 <a href="http://www.tiantianxsh.com" rel="nofollow ugc">http://www.tiantianxsh.com</a> zzzzzzzzzzz</p>
+</div>
+ </article>
+</li>
+<li id="comment-2130147" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2130147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/67018c2424dc982f1cc995829f3fb903?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/67018c2424dc982f1cc995829f3fb903?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.taohuacn.com" class="url" rel="ugc external nofollow">淘花</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2130147"><time datetime="2020-07-11T18:21:36+08:00">2020年07月11日 18:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写的很好 就是太深奥啦 一头雾水 哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-2130358" class="comment even thread-even depth-1">
+<article id="div-comment-2130358" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5ff9770fadbc86fc807c430cb944d27d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5ff9770fadbc86fc807c430cb944d27d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://chen-qingyu.github.io/" class="url" rel="ugc external nofollow">chobits</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2130358"><time datetime="2020-07-12T09:58:50+08:00">2020年07月12日 09:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>厉害啊！又知道了一种黑客技术哈哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-2134515" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2134515" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/628c2c0de4c0d35a165dcaafa71accfa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/628c2c0de4c0d35a165dcaafa71accfa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zizy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2134515"><time datetime="2020-07-24T08:42:36+08:00">2020年07月24日 08:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这段cpp缺少边界判断啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-2138986" class="comment even thread-even depth-1">
+<article id="div-comment-2138986" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7f198287e2639a174472b71d37abaf6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7f198287e2639a174472b71d37abaf6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">duckpower</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2138986"><time datetime="2020-08-05T20:36:44+08:00">2020年08月05日 20:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是说因为要多循环一遍所以运算时间会边长么,怎么例子里找第一’f’,是选运算时间最短的那个,仅仅是根据特异性来选择的么?</p>
+</div>
+ </article>
+</li>
+<li id="comment-2139470" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2139470" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/69d8ebdc1661f4a7fbd52bf5ff3a51e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/69d8ebdc1661f4a7fbd52bf5ff3a51e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">叶夕</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2139470"><time datetime="2020-08-06T23:03:24+08:00">2020年08月06日 23:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然理论上有效，但实际上感觉没啥用处，没有哪个服务器允许你同一个IP不间断调用一个接口32万次。然而这种安全函数对于所有正常用户请求来讲，服务器资源被白白浪费了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2142068" class="comment even thread-even depth-1">
+<article id="div-comment-2142068" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3c577fc224af39a0988d97f4349a6590?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3c577fc224af39a0988d97f4349a6590?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jingf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2142068"><time datetime="2020-08-13T09:43:03+08:00">2020年08月13日 09:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>偶像，大概明白一点</p>
+</div>
+ </article>
+</li>
+<li id="comment-2144202" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2144202" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/51b09e7070c27640a0b2c215775fda88?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/51b09e7070c27640a0b2c215775fda88?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ka</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2144202"><time datetime="2020-08-18T07:21:13+08:00">2020年08月18日 07:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你好，我读了你提到的文章《HMAC Timing Attacks》，在这篇文章里我发现作者是在用类似启发式的方法直接发送hash到server来猜测HMAC码。但是实际场景下用户是无法发送hash码给server的，而是server收到用户输入到password之后进行hash然后再比较。这种情况下用户是无法构造hash码来猜测server端存储到HMAC码的。 不知道是不是我没理解作者的意思，但是这样看起来是不可能行得通的，我感到很疑惑。是不是我哪里搞错了？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2180270" class="comment even depth-2">
+<article id="div-comment-2180270" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e077d99bc11b1664febf863401c0d02f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e077d99bc11b1664febf863401c0d02f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2180270"><time datetime="2020-12-08T17:31:10+08:00">2020年12月08日 17:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中的场景应该是类似API接口调用，需要传递消息和签名。签名需要先确定一个签名算法，然后就是通过时间攻击来破解用来签名的密钥了</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2147301" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2147301" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/589ffb5a7bac13c6126aea150cc6f66c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/589ffb5a7bac13c6126aea150cc6f66c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.kunzejiaoyu.net/" class="url" rel="ugc external nofollow">深圳成人高考</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2147301"><time datetime="2020-08-25T17:40:46+08:00">2020年08月25日 17:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我静悄悄的来啦~</p>
+</div>
+ </article>
+</li>
+<li id="comment-2148015" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2148015" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/65086a1c6937a501163956fcc16800b7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/65086a1c6937a501163956fcc16800b7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lxyscls</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2148015"><time datetime="2020-08-27T11:20:21+08:00">2020年08月27日 11:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cooool…</p>
+</div>
+ </article>
+</li>
+<li id="comment-2149313" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2149313" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da41081571508751d42ba5d0a31168ba?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da41081571508751d42ba5d0a31168ba?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.zikaosch.com/" class="url" rel="ugc external nofollow">广东自考网</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2149313"><time datetime="2020-08-30T18:15:27+08:00">2020年08月30日 18:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主写的很详细！！感谢博主的分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-2151278" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2151278" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff01f038ab3bbf653712f91df6059784?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff01f038ab3bbf653712f91df6059784?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xl</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2151278"><time datetime="2020-09-07T08:25:58+08:00">2020年09月07日 08:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我写的密码验证函数都是错误的密码先暂停 500 毫秒再返回，连错n次（例如5次）暂停指定的时间（例如 30 分钟），这个怎么攻击？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2151463" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2151463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/514faaf0185eae20ce7a498156e95508?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/514faaf0185eae20ce7a498156e95508?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.zikaobenke.cn/" class="url" rel="ugc external nofollow">广东自考网上报名</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2151463"><time datetime="2020-09-08T18:15:59+08:00">2020年09月08日 18:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好深奥,难懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-2156542" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2156542" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba34e9ef9c58bd272d05da59b434b561?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba34e9ef9c58bd272d05da59b434b561?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ascend</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2156542"><time datetime="2020-09-26T14:33:31+08:00">2020年09月26日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在现实世界的攻防中，带来安全隐患的不仅仅是最直接的漏洞，能够提供辅助对手决策的“信息”都是可利用的。这些公开的信息，运用 等价推理、试错尝试、概率分析等技巧，就可能分析出更多的漏洞信息。<br/>
+这种攻防也不仅限于网络攻防，商业竞争、战争、等等，都可以适用，都需要利用对手的各种“信息”。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2161827" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2161827" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5dd97a22404f583e1dc117acb2dbe3cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5dd97a22404f583e1dc117acb2dbe3cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ron</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2161827"><time datetime="2020-10-13T21:04:15+08:00">2020年10月13日 21:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一个想到这种攻击方法的人也是脑洞够大，表示佩服！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2162737" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2162737" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4ee99d06d3830a330463ca1641b8e5a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4ee99d06d3830a330463ca1641b8e5a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Potter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2162737"><time datetime="2020-10-16T17:54:21+08:00">2020年10月16日 17:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>真是长见识了，get到了，感谢分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-2174116" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2174116" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/42bde625c2ee5c1405be66a890237891?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/42bde625c2ee5c1405be66a890237891?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.maoyingdong.com" class="url" rel="ugc external nofollow">毛英东</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2174116"><time datetime="2020-11-17T09:48:27+08:00">2020年11月17日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>长见识系列</p>
+</div>
+ </article>
+</li>
+<li id="comment-2191773" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2191773" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb28d0eb27388ff5f33db68b1cf18250?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb28d0eb27388ff5f33db68b1cf18250?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">DennisHu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2191773"><time datetime="2021-01-06T15:57:59+08:00">2021年01月06日 15:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大体看明白了。</p>
+<p>有个困惑，为什么’f’反而是用时最短的呢？不应该是用时最长吗？</p>
+<p>其他的字符串在比较第一个字符的时候就会返回了，而’f’需要比较到第二个字符才回返回。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2192244" class="comment odd alt depth-2">
+<article id="div-comment-2192244" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb28d0eb27388ff5f33db68b1cf18250?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb28d0eb27388ff5f33db68b1cf18250?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Dennis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2192244"><time datetime="2021-01-07T21:23:23+08:00">2021年01月07日 21:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Sorry，我潦草了。<br/>
+这个数字是排名，不是具体的时间。<br/>
+抱歉</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2200558" class="comment even thread-even depth-1">
+<article id="div-comment-2200558" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.jsonformatting.com/" class="url" rel="ugc external nofollow">json formatter</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2200558"><time datetime="2021-01-31T16:29:54+08:00">2021年01月31日 16:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个黑科技可以。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2289686" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2289686" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f070cdb555cd53d5287a9a063ea1fe68?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f070cdb555cd53d5287a9a063ea1fe68?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chuhai5.com/" class="url" rel="ugc external nofollow">ChuHai5</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2289686"><time datetime="2021-08-19T19:33:33+08:00">2021年08月19日 19:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错不错，来看看。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2355171" class="comment even thread-even depth-1">
+<article id="div-comment-2355171" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8b34c0a48674d33571581bb95822e316?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8b34c0a48674d33571581bb95822e316?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chary</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2355171"><time datetime="2021-12-31T17:46:56+08:00">2021年12月31日 17:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教如何投稿呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2357151" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2357151" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/220e408805bb4ea0920b29dc1ac730fa?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/220e408805bb4ea0920b29dc1ac730fa?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">robin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21003.html#comment-2357151"><time datetime="2022-01-05T16:19:31+08:00">2022年01月05日 16:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么我用你这种方法在本地用C++自带的字符串比较函数没有试出来第一个正确的字符，第一目标正确字符的排名一直在中间位置，根本不是最大耗时，这种时间极短的判断影响因素太多，就算破解了也是碰运气</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

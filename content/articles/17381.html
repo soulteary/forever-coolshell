@@ -1,0 +1,327 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>性能测试应该怎么做？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17381 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17381" class="post-content post-17381 post type-post status-publish format-standard hentry category-process category-progdesign tag-performance tag-test">
+<header class="entry-header">
+<span class="screen-reader-text">性能测试应该怎么做？</span>
+<h1 class="entry-title">性能测试应该怎么做？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17381.html" title="01:03" rel="bookmark"><time class="entry-date" datetime="2016-07-06T01:03:26+08:00" pubdate="">2016年07月06日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17381.html#comments" class="comments-link">77 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 119,281 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-17383" src="/uploads/2016/07/PerfTest.png" alt="PerfTest" width="300" height="277" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>偶然间看到了阿里中间件<a href="http://dubbo.io/User+Guide-zh.htm#UserGuide-zh-%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95%E6%8A%A5%E5%91%8A" target="_blank">Dubbo的性能测试报告</a>，我觉得这份性能测试报告让人觉得做这性能测试的人根本不懂性能测试，我觉得这份报告会把大众带沟里去，所以，想写下这篇文章，做一点科普。</p>
+<p>首先，这份测试报告里的主要问题如下：</p>
+<p><strong>1）用的全是平均值</strong>。老实说，平均值是非常不靠谱的。</p>
+<p><strong>2）响应时间没有和吞吐量TPS/QPS挂钩</strong>。而只是测试了低速率的情况，这是完全错误的。</p>
+<p><strong>3）响应时间和吞吐量没有和成功率挂钩。</strong></p>
+<p><span id="more-17381"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B9%B3%E5%9D%87%E5%80%BC%E4%B8%8D%E9%9D%A0%E8%B0%B1" title="为什么平均值不靠谱">为什么平均值不靠谱</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%EF%BC%88latency%EF%BC%89%E8%A6%81%E5%92%8C%E5%90%9E%E5%90%90%E9%87%8F%EF%BC%88Thoughput%EF%BC%89%E6%8C%82%E9%92%A9" title="为什么响应时间（latency）要和吞吐量（Thoughput）挂钩">为什么响应时间（latency）要和吞吐量（Thoughput）挂钩</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E5%90%9E%E5%90%90%E9%87%8F%E5%92%8C%E6%88%90%E5%8A%9F%E7%8E%87%E8%A6%81%E6%8C%82%E9%92%A9" title="为什么响应时间吞吐量和成功率要挂钩">为什么响应时间吞吐量和成功率要挂钩</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%A6%82%E4%BD%95%E4%B8%A5%E8%B0%A8%E5%9C%B0%E5%81%9A%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95" title="如何严谨地做性能测试">如何严谨地做性能测试</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%B8%BA%E4%BB%80%E4%B9%88%E5%B9%B3%E5%9D%87%E5%80%BC%E4%B8%8D%E9%9D%A0%E8%B0%B1"></span>为什么平均值不靠谱<span class="ez-toc-section-end"></span></h4>
+<p>关于平均值为什么不靠谱，我相信大家读新闻的时候经常可以看到，<strong>平均工资</strong>，<strong>平均房价</strong>，<strong>平均支出</strong>，等等这样的字眼，<span id="zoom" class="show_c">你就知道为什么平均值不靠谱了。（这些都是数学游戏，对于理工科的同学来说，天生应该有免疫力）</span></p>
+<p>软件的性能测试也一样，平均数也是不靠谱的，这里可以参看这篇详细的文章《<a href="http://apmblog.dynatrace.com/2012/11/14/why-averages-suck-and-percentiles-are-great/" target="_blank">Why Averages Suck and Percentiles are Great</a>》，我在这里简单说一下。</p>
+<p>我们知道，性能测试时，测试得到的结果数据不总是一样的，而是有高有低的，如果算平均值就会出现这样的情况，假如，测试了10次，有9次是1ms，而有1次是1s，那么平均数据就是100ms，很明显，这完全不能反应性能测试的情况，也许那1s的请求就是一个不正常的值，是个噪点，应该去掉。所以，我们会在一些评委打分中看到要去掉一个最高分一个最低分，然后再算平均值。</p>
+<p>另外，中位数（Mean）可能会比平均数要稍微靠谱一些，所谓中位数的意就是把将一组数据按大小顺序排列，处在最中间位置的一个数叫做这组数据的中位数 ，这意味着至少有50%的数据低于或高于这个中位数。</p>
+<p>当然，最为正确的统计做法是用百分比分布统计。也就是英文中的TP – Top Percentile ，TP50的意思在，50%的请求都小于某个值，TP90表示90%的请求小于某个时间。</p>
+<p>比如：我们有一组数据：[ 10ms,  1s, 200ms, 100ms]，我们把其从小到大排个序：[10ms, 100ms, 200ms, 1s]，于是我们知道，TP50，就是50%的请求ceil(4*0.5)=2时间是小于100ms的，TP90就是90%的请求ceil(4*0.9)=4时间小于1s。于是：TP50就是100ms，TP90就是1s。</p>
+<p>我以前在路透做的金融系统响应时间的性能测试的要求是这样的，<strong>99.9%的请求必须小于1ms，所有的平均时间必须小于1ms。两个条件的限制。</strong></p>
+<h4><span class="ez-toc-section" id="%E4%B8%BA%E4%BB%80%E4%B9%88%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%EF%BC%88latency%EF%BC%89%E8%A6%81%E5%92%8C%E5%90%9E%E5%90%90%E9%87%8F%EF%BC%88Thoughput%EF%BC%89%E6%8C%82%E9%92%A9"></span>为什么响应时间（latency）要和吞吐量（Thoughput）挂钩<span class="ez-toc-section-end"></span></h4>
+<p>系统的性能如果只看吞吐量，不看响应时间是没有意义的。我的系统可以顶10万请求，但是响应时间已经到了5秒钟，这样的系统已经不可用了，这样的吞吐量也是没有意义的。</p>
+<p>我们知道，当并发量（吞吐量）上涨的时候，系统会变得越来越不稳定，响应时间的波动也会越来越大，响应时间也会变得越来越慢，而吞吐率也越来越上不去（如下图所示），包括CPU的使用率情况也会如此。所以，当系统变得不稳定的时候，吞吐量已经没有意义了。吞吐量有意义的时候仅当系统稳定的时候。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-17382" src="/uploads/2016/07/BenchmarkOptimalRate.png" alt="BenchmarkOptimalRate" width="535" height="343" srcset="" sizes="(max-width: 535px) 100vw, 535px"/></p>
+<p>所以，<strong>吞吐量的值必需有响应时间来卡。</strong>比如：<strong>TP99小于100ms的时候，系统可以承载的最大并发数是1000qps</strong>。这意味着，我们要不断的在不同的并发数上测试，以找到软件的最稳定时的最大吞吐量。</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E4%B8%BA%E4%BB%80%E4%B9%88%E5%93%8D%E5%BA%94%E6%97%B6%E9%97%B4%E5%90%9E%E5%90%90%E9%87%8F%E5%92%8C%E6%88%90%E5%8A%9F%E7%8E%87%E8%A6%81%E6%8C%82%E9%92%A9"></span>为什么响应时间吞吐量和成功率要挂钩<span class="ez-toc-section-end"></span></h4>
+<p>我们这应该不难理解了，如果请求不成功的话，都还做毛的性能测试。比如，我说我的系统并发可以达到10万，但是失败率是</p>
+<p>40%，那么，这10万的并发完全就是一个笑话了。</p>
+<p>性能测试的失败率的容忍应该是非常低的。对于一些关键系统，成功请求数必须在100%，一点都不能含糊。</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E5%A6%82%E4%BD%95%E4%B8%A5%E8%B0%A8%E5%9C%B0%E5%81%9A%E6%80%A7%E8%83%BD%E6%B5%8B%E8%AF%95"></span>如何严谨地做性能测试<span class="ez-toc-section-end"></span></h4>
+<p>一般来说，性能测试要统一考虑这么几个因素：<strong>Thoughput吞吐量</strong>，<strong>Latency响应时间</strong>，<strong>资源利用</strong>（CPU/MEM/IO/Bandwidth…），<strong>成功率</strong>，<strong>系统稳定性</strong>。</p>
+<p>下面的这些性能测试的方式基本上来源自我的老老东家汤森路透，一家做real-time的金融数据系统的公司。</p>
+<p style="padding-left: 30px;"><strong>一，你得定义一个系统的响应时间latency，建议是TP99，以及成功率</strong>。比如路透的定义：99.9%的响应时间必需在1ms之内，平均响应时间在1ms以内，100%的请求成功。</p>
+<p style="padding-left: 30px;"><strong>二，在这个响应时间的限制下，找到最高的吞吐量</strong>。测试用的数据，需要有大中小各种尺寸的数据，并可以混合。最好使用生产线上的测试数据。</p>
+<p style="padding-left: 30px;"><strong>三，在这个吞吐量做Soak Test，比如：使用第二步测试得到的吞吐量连续7天的不间断的压测系统。</strong>然后收集CPU，内存，硬盘/网络IO，等指标，查看系统是否稳定，比如，CPU是平稳的，内存使用也是平稳的。那么，这个值就是系统的性能</p>
+<p style="padding-left: 30px;"><strong>四，找到系统的极限值。比如：在成功率100%的情况下（不考虑响应时间的长短），系统能坚持10分钟的吞吐量。</strong></p>
+<p style="padding-left: 30px;"><strong>五，做Burst Test。用第二步得到的吞吐量执行5分钟，然后在第四步得到的极限值执行1分钟，再回到第二步的吞吐量执行5钟，再到第四步的权限值执行1分钟，如此往复个一段时间，比如2天。</strong>收集系统数据：CPU、内存、硬盘/网络IO等，观察他们的曲线，以及相应的响应时间，确保系统是稳定的。</p>
+<p style="padding-left: 30px;"><strong>六、低吞吐量和网络小包的测试。</strong>有时候，在低吞吐量的时候，可能会导致latency上升，比如TCP_NODELAY的参数没有开启会导致latency上升（详见<a href="/articles/11564.html" target="_blank">TCP的那些事</a>），而网络小包会导致带宽用不满也会导致性能上不去，所以，性能测试还需要根据实际情况有选择的测试一下这两咱场景。</p>
+<p>（注：在路透，路透会用第二步得到的吞吐量乘以66.7%来做为系统的软报警线，80%做为系统的硬报警线，而极限值仅仅用来扛突发的peak）</p>
+<p><strong>是不是很繁锁？是的，只因为，这是工程，工程是一门科学，科学是严谨的。</strong></p>
+<p>欢迎大家也分享一下你们性能测试的经验和方法。</p>
+<p>（全文完）</p>
+<p> </p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17381-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">流程方法</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Performance</a>, <a href="javascript:void(0)" rel="tag">test</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>性能测试应该怎么做？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1934810" class="comment even thread-even depth-1">
+<article id="div-comment-1934810" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/376b9aaf18759ac1406aa8393b93e7c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/376b9aaf18759ac1406aa8393b93e7c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.mimvp.com" class="url" rel="ugc external nofollow">米扑博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1934810"><time datetime="2018-07-22T06:58:19+08:00">2018年07月22日 06:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>测试工程是一门科学，科学是严谨的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1935153" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.littlebill.me/2013/04/technology.html" class="url" rel="ugc external nofollow">【转载】大牛文章 – Little bill</a> </div>
+</li>
+<li id="comment-1935222" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1935222" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c0ae2c4bbcd844863d2e824b72d8dc9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c0ae2c4bbcd844863d2e824b72d8dc9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chenwei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1935222"><time datetime="2018-07-25T17:55:14+08:00">2018年07月25日 17:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中的1ms是100ms？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1942483" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2 parent">
+<article id="div-comment-1942483" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1942483"><time datetime="2018-10-01T09:26:19+08:00">2018年10月01日 09:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是，就是1ms，是股票的数据，所以，必需查实时的。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1945547" class="comment even depth-3">
+<article id="div-comment-1945547" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bfbb1ffa59bf721e5983d42c6b435ad4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bfbb1ffa59bf721e5983d42c6b435ad4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">forreal</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1945547"><time datetime="2018-11-28T15:01:17+08:00">2018年11月28日 15:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问，这个1ms的延时是从客户端角度来衡量的一次业务请求的响应时间吗？这个1ms应该是在IDC内部服务相互调用的时延吧？</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1937245" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1937245" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fdb010948e07a383d57510a6fbecc088?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fdb010948e07a383d57510a6fbecc088?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dingjian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1937245"><time datetime="2018-08-09T17:37:08+08:00">2018年08月09日 17:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>碰到一个问题，关注的一个指标是ms级别的，但是如果采样达不到同样级别，那么最大值、最小值就是没有意义的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1951275" class="comment even thread-even depth-1">
+<article id="div-comment-1951275" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0651749aab66640edf74c3b34742309f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0651749aab66640edf74c3b34742309f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mr Chen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1951275"><time datetime="2019-01-11T19:25:09+08:00">2019年01月11日 19:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老大好！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1955724" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1955724" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ecb75d0149c17e589d65afa9d800d95a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ecb75d0149c17e589d65afa9d800d95a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Alex</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-1955724"><time datetime="2019-01-29T12:10:20+08:00">2019年01月29日 12:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>能请教下软报警线 、硬报警线是指什么吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1995951" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.littlebill.me/2013/04/23/technology/" class="url" rel="ugc external nofollow">【转载】大牛文章 – Little bill</a> </div>
+</li>
+<li id="comment-2007225" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.5w5j.com/2019/07/22/%e5%bc%b9%e5%8a%9b%e8%ae%be%e8%ae%a1%e7%af%87%e4%b9%8b%e9%99%90%e6%b5%81%e8%ae%be%e8%ae%a1/" class="url" rel="ugc external nofollow">弹力设计篇之“限流设计” |it资源 舞迹</a> </div>
+</li>
+<li id="comment-2008926" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://tuhora-llego.online/2019/08/02/la-tecnologia-que-he-estado-estudiando-a-lo-largo-de-los-anos/" class="url" rel="ugc external nofollow">LA TECNOLOGÍA QUE HE ESTADO ESTUDIANDO A LO LARGO DE LOS AÑOS. – 现在就自由自在</a> </div>
+</li>
+<li id="comment-2024217" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2024217" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ba0d4a7cc9dacd3b95b1908a5cbe9c5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ba0d4a7cc9dacd3b95b1908a5cbe9c5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zjg</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-2024217"><time datetime="2019-09-25T16:15:39+08:00">2019年09月25日 16:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>吞吐量和响应时间应该是在一定的并发数下吧？那么衡量性能的话是不是还要明确下并发数这个指标呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2099271" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.28x0.com/archives/7489.html" class="url" rel="ugc external nofollow">服务端压测怎么做 | 28x0新闻网</a> </div>
+</li>
+<li id="comment-2099749" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.lizenghai.com/archives/71768.html" class="url" rel="ugc external nofollow">服务端压测怎么做 – Python量化投资</a> </div>
+</li>
+<li id="comment-2154093" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/%e8%bf%99%e5%a4%9a%e5%b9%b4%e6%9d%a5%e6%88%91%e4%b8%80%e7%9b%b4%e5%9c%a8%e9%92%bb%e7%a0%94%e7%9a%84%e6%8a%80%e6%9c%af.html" class="url" rel="ugc external nofollow">这多年来我一直在钻研的技术 | 酷 壳 – CoolShell 3F</a> </div>
+</li>
+<li id="comment-2167490" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2167490" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0f657ea65c32223e128ed903dbb18633?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0f657ea65c32223e128ed903dbb18633?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">王同学</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-2167490"><time datetime="2020-10-29T10:19:26+08:00">2020年10月29日 10:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想问一下，这个测试的方案是针对单一api的压测么？那针对混合场景，比如20个api，每个api都符合要求，比如单一的搜索api符合，单一的插入api也符合，但是混合使用的时候，性能就会降低，针对这个混合场景该怎么测试呀</p>
+</div>
+ </article>
+</li>
+<li id="comment-2174131" class="comment even thread-even depth-1">
+<article id="div-comment-2174131" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8765b499eef879966eb0899fa997a495?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8765b499eef879966eb0899fa997a495?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">iamtzh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-2174131"><time datetime="2020-11-17T11:36:42+08:00">2020年11月17日 11:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好！<br/>
+「另外，中位数（Mean）可能会比平均数要稍微靠谱一些」<br/>
+中位数用 Mean 不准确吧，中位数的维基百科是 <a href="https://en.wikipedia.org/wiki/Median，里面表示均值是用的" rel="nofollow ugc">https://en.wikipedia.org/wiki/Median，里面表示均值是用的</a> Mean？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2209539" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2209539" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ccf02d08bfdd9e90752b2b81b11d7440?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.jsonformatting.com/" class="url" rel="ugc external nofollow">json viewer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17381.html/comment-page-2#comment-2209539"><time datetime="2021-02-22T09:35:17+08:00">2021年02月22日 09:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>规范的性能测试，确实是很必要的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2225774" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.h5w3.com/128208.html" class="url" rel="ugc external nofollow">IT工程师程序员文化-H5W3</a> </div>
+</li>
+<li id="comment-2310319" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1302649" class="url" rel="ugc external nofollow">面向开发的测试技术（二）：性能测试 - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/17381.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/17381.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">17381</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

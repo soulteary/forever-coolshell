@@ -1,0 +1,197 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>五个编程语言设计的失误 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2598 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2598" class="post-content post-2598 post type-post status-publish format-standard hentry category-progdesign category-proglanguage tag-programming-language">
+<header class="entry-header">
+<span class="screen-reader-text">五个编程语言设计的失误</span>
+<h1 class="entry-title">五个编程语言设计的失误</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2598.html" title="08:38" rel="bookmark"><time class="entry-date" datetime="2010-07-14T08:38:34+08:00" pubdate="">2010年07月14日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2598.html#comments" class="comments-link">8 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 21,558 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>在近几年来，编程语言的设计正在经历着类似于“文艺复兴”的过程，这么说主要是基于下面两个事实：1）多核技术推动着PC消费者更多的关注并行程序。2）动态语言的性能越来越好，其性期已经可以足够用来实现互联网服务，并且它们正在走出“脚本语言”阴影。</p>
+<p>这篇文章试图收集最重要的编程语言的设计错误，以便让那些程序语言设计者们在设计新型的编程语言时避免。我避免了一些纠缠不清的有好有坏的问题，如：动态类型或是静态类型。我也省略了那些看起来并不严重，很容易被修改的错误。例如，加入“参量”（Parametric Type），这在Java中已经有了。Sun在发布Java 1.0版后的第八年才加入了这一功能。还有一个最近的例子是 <a href="https://golang.org/doc/go_lang_faq.html#generics" target="_blank">Google Go Language Design FAQ</a> 中说到的：: “Generics may well be added at some point. We don’t feel an urgency for them, although we understand some programmers do.”</p>
+<h3>0. Null 指针</h3>
+<p>几乎在所有的主流编程语言中，对一个对像的引用可能会是一个空指针，这个错误会引发运行时错误。 C.A.R. Hoare 最近声明向这一“发明”负责，尽管如此，其它许多的设计者们都应该对这样的设计受到批评。下面是 C.A.R Hoare 的“忏悔”：</p>
+<blockquote><p>I call it my billion-dollar mistake. It was the invention of the null reference in 1965. […] More recent programming languages like Spec# have introduced declarations for non-null references. This is the solution, which I rejected in 1965. – <a href="http://qconlondon.com/london-2009/presentation/Null+References:+The+Billion+Dollar+Mistake" target="_blank">C.A.R. Hoare</a></p>
+<p>我把它叫做“亿万美元错误”。这个空指针的发明创造来自1965年。…… 现在的编程语言引入了“非空引用”的声明规格。这个方案被我在1965年给拒绝了。</p></blockquote>
+<p><span id="more-2598"></span></p>
+<p>其它语言，如 C/C++ 更夸张，它们在运到这样的错误时，直接Crash掉，而 Java， Python 和其它语言会抛出一NullPointerException异常，但问题是，这个 RuntimeException 可能会被几乎所有的语句抛出。其实，只需要一个静态类型的语言就可以保证不会出现空指针或空引用。例如： <a href="http://cyclone.thelanguage.org/" target="_blank">Cyclone</a> 是一个安全的C变种，其引入了非空指针和指针运算的限制。</p>
+<p>一些语言甚至让你根本不可能创建空指针，虽然这使得明确的指针不能行进行运算。Haskell 就是这样的一个语言，其提供了Maybe Monad，其强制程序员考虑“Null”的情形。</p>
+<h3>1. 很难解析的语法</h3>
+<p>编程语言的语法应该来自 <a href="https://en.wikipedia.org/wiki/LALR_parser" target="_blank">LALR</a> 或是更好的 <a href="https://en.wikipedia.org/wiki/LL_parser" target="_blank">LL(1)</a>。今天的程序员需要适当的工具来支持其开发语言，也就是我们常说的IDE，编译器或是其它可以帮你解析程序语言的编程工具。这并不会出现在一个单一的前端。也许，多重编译器已经被实现出来了。这可能让我们的开始变得更容易一些。然而，我们现实中的一个反例是 C++，几乎没有哪个C++的编译器可以把C++这个语言完美地正确地解释出来，而且不同C++的编译器的行为如此的诡异。编程语法的开销是微不足道的，程序员应该在编写程序中享有更快速和高效的回报。</p>
+<h3>2. 未定义的语义</h3>
+<p>别在语言规格中说“实现规范”！尽可能的少使用“未定义”这样的术语来描述语言的行为（C/C++中出现了很多undefined的行为）！黄金准则是StandardML，其是一个完整地正式的语义。C 语言是这样一个反例，其规则中有太多太多的未定义的情况。然而，由于其广泛使用，所以某些行为的定义已经成为了世界的共识（江湖的行规，或，潜规则）。 举个例子，在C中，整型 overflow 的行为是未定义的，而编译器也是有能力推断出“ <code>x &lt; x+1</code> ”是否总是为真。不幸的是，这个本来是编译器应该干的事，交给了程序员，于是在C的世界里，出现了大量的整型溢出的代码。而当整型溢出的时候，几乎所有的行为都是像x86处理器一样（如： <code>maxint+1 == minint）。</code></p>
+<p>明确的语义可以让验证和错误检查更容易。虽然，软件校验来得比缓慢，但一定会来。我可以想像，编程语言的下一个机会将会是更容易地校验，这可能需要十到二十年的时间，但今天开始这样做的语言将会在那天成为世界的主流。</p>
+<h3>3. 坏的Unicode 支持</h3>
+<p>程序中几乎都要处理字符串，但别忘了并不是所有人都会使用英语来编程。今天，几乎所有的编程语言都不支持Unicode，所以，我们只能使用ANSI的英语来编程。这个时代， 程序员应该使用Unicode 来编程，所以，源代码也可以声明其用什么来编码。</p>
+<p>在文本和字节序间的转换和区分在的标准库方面会比语言方面更是一个问题，当然，这也影响了语法。读一读 <a href="https://docs.python.org/py3k/whatsnew/3.0.html#text-vs-data-instead-of-unicode-vs-8-bit" target="_blank">Python 3 是怎么解决这个问题</a>可能会更有一些帮助。</p>
+<h3>4. 预处理器</h3>
+<p>像C++和MP4的预处理器已经被广泛地使用着，使用预处理器更像是一种hack而不是一个干净的解决方案。 他们被用来，使用外部文件（如头文件，但确没有正确地模块机制），使用条件编译，宏替换，等。把这些功能与编程语言集成起来一起使用可以增加程序的性能和开发效率，并没有什么不好的地方。</p>
+<p>如果要举一个反例，那么就是预编译器的模块化系统。C使用<code>#include</code> 而 C++ 更痛苦，因为模板需要写一个大的头文件，而且其会被包含在几乎所有的其它文件中。而一个真正的模块化的系统是不需要使用 <code>extern</code> 关键字，也不需要程序的链接，而应该是直接使用。</p>
+<h2></h2>
+<p>文章：<a href="http://beza1e1.tuxen.de/articles/proglang_mistakes.html" target="_blank">来源</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2598-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">programming language</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>五个编程语言设计的失误</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-7749" class="comment even thread-even depth-1">
+<article id="div-comment-7749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b6f767d19dd920431616134d39f1360?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b6f767d19dd920431616134d39f1360?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://glacjay.is-a-geek.org/blog/" class="url" rel="ugc external nofollow">GlacJAY</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-7749"><time datetime="2010-07-14T17:58:44+08:00">2010年07月14日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原始链接太小了，差点儿没找到。这东东不是应该放在译文开头的醒目位置么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-7797" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-7797" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/18bfa98e7da6e98e5517be1d51d6848d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/18bfa98e7da6e98e5517be1d51d6848d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">linuxbbs</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-7797"><time datetime="2010-07-15T23:55:58+08:00">2010年07月15日 23:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第4段是m4预处理器。</p>
+</div>
+ </article>
+</li>
+<li id="comment-11492" class="comment even thread-even depth-1">
+<article id="div-comment-11492" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fa8ae22191d95d58eff8640eb0a9e24?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fa8ae22191d95d58eff8640eb0a9e24?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">吴凯</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-11492"><time datetime="2010-10-12T12:08:41+08:00">2010年10月12日 12:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>白痴，让编译器决定意义得人，都是白痴，就像在说，古代皇帝，从来都定义了，他们得草庭都是，万寿无疆得，以后怎么样呢？？？编译器只是一个逻辑流程得奠基，它有权控制将来发展得什么东西？？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-11493" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-11493" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fa8ae22191d95d58eff8640eb0a9e24?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fa8ae22191d95d58eff8640eb0a9e24?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">吴凯</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-11493"><time datetime="2010-10-12T12:09:59+08:00">2010年10月12日 12:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你就一个弱智，在不懂装懂，强发言而已</p>
+</div>
+ </article>
+</li>
+<li id="comment-25023" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jackhoo.com/2010/07/16/290.html" class="url" rel="ugc external nofollow">Jack&#39;s blog 我的博客 » Blog Archive » 五个编程语言设计的失误</a> </div>
+</li>
+<li id="comment-63278" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63278" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9583b17049b31dba24f7ca1de96d946b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9583b17049b31dba24f7ca1de96d946b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">songtianyi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-63278"><time datetime="2011-07-05T16:46:43+08:00">2011年07月05日 16:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>能不能说下多核、并行时代 :)</p>
+</div>
+ </article>
+</li>
+<li id="comment-320975" class="comment even thread-even depth-1">
+<article id="div-comment-320975" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/798db2626737edc0f2c029fce8a9b180?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/798db2626737edc0f2c029fce8a9b180?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">walkingsk</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-320975"><time datetime="2013-04-03T17:11:19+08:00">2013年04月03日 17:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Unicode支持这个确实做得不好，连VC2010似乎都不能使用\uXXXX字符</p>
+</div>
+ </article>
+</li>
+<li id="comment-1862529" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1862529" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0aa72428df6e2a1f238443825d99d46d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0aa72428df6e2a1f238443825d99d46d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cn.kongstyle.co.kr" class="url" rel="ugc external nofollow">韩国时尚女装品牌购物</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2598.html#comment-1862529"><time datetime="2016-07-29T14:44:10+08:00">2016年07月29日 14:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>倘若可以多赚1美元，只要有这种机会，我就绝对不放弃。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

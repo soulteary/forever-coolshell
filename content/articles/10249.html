@@ -1,0 +1,441 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>7个示例科普CPU Cache | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10249 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10249" class="post-content post-10249 post type-post status-publish format-standard hentry category-progdesign category-602 tag-cache tag-cpu tag-672">
+<header class="entry-header">
+<span class="screen-reader-text">7个示例科普CPU Cache</span>
+<h1 class="entry-title">7个示例科普CPU Cache</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10249.html" title="09:05" rel="bookmark"><time class="entry-date" datetime="2013-07-30T09:05:38+08:00" pubdate="">2013年07月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10249.html#comments" class="comments-link">73 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 106,752 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 翻译投稿）</strong></p>
+<p>CPU cache一直是理解计算机体系架构的重要知识点，也是并发编程设计中的技术难点，而且相关参考资料如同过江之鲫，浩瀚繁星，阅之如临深渊，味同嚼蜡，三言两语难以入门。正好网上有人推荐了微软大牛Igor Ostrovsky一篇博文<strong>《漫游处理器缓存效应》</strong>，文章不仅仅用7个最简单的源码示例就将CPU cache的原理娓娓道来，还附加图表量化分析做数学上的佐证，个人感觉这种案例教学的切入方式绝对是俺的菜，故而忍不住贸然译之，以飨列位看官。</p>
+<p>原文地址：<a href="http://igoro.com/archive/gallery-of-processor-cache-effects/">Gallery of Processor Cache Effects</a></p>
+<p>大多数读者都知道cache是一种快速小型的内存，用以存储最近访问内存位置。这种描述合理而准确，但是更多地了解一些处理器缓存工作中的“烦人”细节对于理解程序运行性能有很大帮助。</p>
+<p>在这篇博客中，我将运用代码示例来详解cache工作的方方面面，以及对现实世界中程序运行产生的影响。</p>
+<p>下面的例子都是用C#写的，但语言的选择同程序运行状况以及得出的结论几乎没什么影响。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E7%A4%BA%E4%BE%8B1%EF%BC%9A%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE%E5%92%8C%E8%BF%90%E8%A1%8C" title="示例1：内存访问和运行">示例1：内存访问和运行</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%A4%BA%E4%BE%8B2%EF%BC%9A%E7%BC%93%E5%AD%98%E8%A1%8C%E7%9A%84%E5%BD%B1%E5%93%8D" title="示例2：缓存行的影响">示例2：缓存行的影响</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%A4%BA%E4%BE%8B3%EF%BC%9AL1%E5%92%8CL2%E7%BC%93%E5%AD%98%E5%A4%A7%E5%B0%8F" title="示例3：L1和L2缓存大小">示例3：L1和L2缓存大小</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%A4%BA%E4%BE%8B4%EF%BC%9A%E6%8C%87%E4%BB%A4%E7%BA%A7%E5%88%AB%E5%B9%B6%E5%8F%91" title="示例4：指令级别并发">示例4：指令级别并发</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%A4%BA%E4%BE%8B5%EF%BC%9A%E7%BC%93%E5%AD%98%E5%85%B3%E8%81%94%E6%80%A7" title="示例5：缓存关联性">示例5：缓存关联性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%A4%BA%E4%BE%8B6%EF%BC%9A%E7%BC%93%E5%AD%98%E8%A1%8C%E7%9A%84%E4%BC%AA%E5%85%B1%E4%BA%ABfalse-sharing" title="示例6：缓存行的伪共享(false-sharing)">示例6：缓存行的伪共享(false-sharing)</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%A4%BA%E4%BE%8B7%EF%BC%9A%E7%A1%AC%E4%BB%B6%E5%A4%8D%E6%9D%82%E6%80%A7" title="示例7：硬件复杂性">示例7：硬件复杂性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%85%B3%E4%BA%8E%E7%AC%AC7%E4%B8%AA%E4%BE%8B%E5%AD%90%E7%9A%84%E4%B8%80%E4%B8%AA%E5%9B%9E%E5%B8%96" title="关于第7个例子的一个回帖">关于第7个例子的一个回帖</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#PS%E4%B8%AA%E4%BA%BA%E6%84%9F%E6%82%9F%E2%80%94%E2%80%94%E5%B1%80%E9%83%A8%E6%80%A7%E5%8E%9F%E7%90%86%E5%92%8C%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%B9%B6%E5%8F%91" title="P.S.个人感悟——局部性原理和流水线并发">P.S.个人感悟——局部性原理和流水线并发</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99" title="参考资料">参考资料</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B1%EF%BC%9A%E5%86%85%E5%AD%98%E8%AE%BF%E9%97%AE%E5%92%8C%E8%BF%90%E8%A1%8C"></span>示例1：内存访问和运行<span class="ez-toc-section-end"></span></h4>
+<p>你认为相较于循环1，循环2会运行多快？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int[] arr = new int[64 * 1024 * 1024];
+
+// Loop 1
+for (int i = 0; i &lt; arr.Length; i++) arr[i] *= 3;
+
+// Loop 2
+for (int i = 0; i &lt; arr.Length; i += 16) arr[i] *= 3;</pre>
+<p><span id="more-10249"></span></p>
+<p>第一个循环将数组的每个值乘3，第二个循环将每16个值乘3，第二个循环只做了第一个约6%的工作，但在现代机器上，两者几乎运行相同时间：在我机器上分别是80毫秒和78毫秒。</p>
+<p>两个循环花费相同时间的原因跟内存有关。<strong>循环执行时间长短由数组的内存访问次数决定的，而非整型数的乘法运算次数。</strong>经过下面对第二个示例的解释，你会发现硬件对这两个循环的主存访问次数是相同的。</p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B2%EF%BC%9A%E7%BC%93%E5%AD%98%E8%A1%8C%E7%9A%84%E5%BD%B1%E5%93%8D"></span>示例2：缓存行的影响<span class="ez-toc-section-end"></span></h4>
+<p>让我们进一步探索这个例子。我们将尝试不同的循环步长，而不仅仅是1和16。</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">for (int i = 0; i &lt; arr.Length; i += K) arr[i] *= 3;</code></p>
+<p>下图为该循环在不同步长(K)下的运行时间：</p>
+<p><img decoding="async" class="aligncenter" alt="running times of this loop for different step values (K)" src="http://igoro.com/wordpress/wp-content/uploads/2010/01/image6.png"/></p>
+<p>注意当步长在1到16范围内，循环运行时间几乎不变。但从16开始，每次步长加倍，运行时间减半。</p>
+<p>背后的原因是今天的CPU不再是按字节访问内存，而是以64字节为单位的块(chunk)拿取，称为一个缓存行(cache line)。当你读一个特定的内存地址，整个缓存行将从主存换入缓存，并且访问同一个缓存行内的其它值的开销是很小的。</p>
+<p>由于16个整型数占用64字节（一个缓存行），for循环步长在1到16之间必定接触到相同数目的缓存行：即数组中所有的缓存行。当步长为32，我们只有大约每两个缓存行接触一次，当步长为64，只有每四个接触一次。</p>
+<p>理解缓存行对某些类型的程序优化而言可能很重要。比如，数据字节对齐可能决定一次操作接触1个还是2个缓存行。那上面的例子来说，很显然操作不对齐的数据将损失一半性能。</p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B3%EF%BC%9AL1%E5%92%8CL2%E7%BC%93%E5%AD%98%E5%A4%A7%E5%B0%8F"></span>示例3：L1和L2缓存大小<span class="ez-toc-section-end"></span></h4>
+<p>今天的计算机具有两级或三级缓存，通常叫做L1、L2以及可能的L3（译者注：如果你不明白什么叫二级缓存，可以参考<a href="/articles/3236.html" target="_blank">这篇精悍的博文</a>lol）。如果你想知道不同缓存的大小，你可以使用系统内部工具<a href="http://technet.microsoft.com/en-us/sysinternals/cc835722.aspx" target="_blank">CoreInfo</a>，或者Windows API调用<a href="http://msdn.microsoft.com/en-us/library/ms683194(VS.85).aspx" target="_blank">GetLogicalProcessorInfo</a>。两者都将告诉你缓存行以及缓存本身的大小。</p>
+<p>在我的机器上，CoreInfo现实我有一个32KB的L1数据缓存，一个32KB的L1指令缓存，还有一个4MB大小L2数据缓存。L1缓存是处理器独享的，L2缓存是成对处理器共享的。</p>
+<p>Logical Processor to Cache Map:<br/>
+*— Data Cache 0, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+*— Instruction Cache 0, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+-*– Data Cache 1, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+-*– Instruction Cache 1, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+**– Unified Cache 0, Level 2, 4 MB, Assoc 16, LineSize 64<br/>
+–*- Data Cache 2, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+–*- Instruction Cache 2, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+—* Data Cache 3, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+—* Instruction Cache 3, Level 1, 32 KB, Assoc 8, LineSize 64<br/>
+–** Unified Cache 1, Level 2, 4 MB, Assoc 16, LineSize 64</p>
+<p>（译者注：作者平台是四核机，所以L1编号为0~3，数据/指令各一个，L2只有数据缓存，两个处理器共享一个，编号0~1。关联性字段在后面例子说明。）</p>
+<p>让我们通过一个实验来验证这些数字。遍历一个整型数组，每16个值自增1——一种节约地方式改变每个缓存行。当遍历到最后一个值，就重头开始。我们将使用不同的数组大小，可以看到当数组溢出一级缓存大小，程序运行的性能将急剧滑落。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int steps = 64 * 1024 * 1024;
+// Arbitrary number of steps
+int lengthMod = arr.Length - 1;
+for (int i = 0; i &lt; steps; i++)
+{
+    arr[(i * 16) &amp; lengthMod]++; // (x &amp; lengthMod) is equal to (x % arr.Length)
+}</pre>
+<p>下图是运行时间图表：<br/>
+<img decoding="async" class="aligncenter" alt="cache size" src="http://igoro.com/wordpress/wp-content/uploads/2010/02/image.png"/></p>
+<p>你可以看到在32KB和4MB之后性能明显滑落——正好是我机器上L1和L2缓存大小。</p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B4%EF%BC%9A%E6%8C%87%E4%BB%A4%E7%BA%A7%E5%88%AB%E5%B9%B6%E5%8F%91"></span>示例4：指令级别并发<span class="ez-toc-section-end"></span></h4>
+<p>现在让我们看一看不同的东西。下面两个循环中你以为哪个较快？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int steps = 256 * 1024 * 1024;
+int[] a = new int[2];
+
+// Loop 1
+for (int i=0; i&lt;steps; i++) { a[0]++; a[0]++; }
+
+// Loop 2
+for (int i=0; i&lt;steps; i++) { a[0]++; a[1]++; }</pre>
+<p>结果是第二个循环约比第一个快一倍，至少在我测试的机器上。为什么呢？这跟两个循环体内的操作指令依赖性有关。</p>
+<p>第一个循环体内，操作做是相互依赖的（译者注：下一次依赖于前一次）：<br/>
+<img decoding="async" class="aligncenter" alt="same value dependency" src="http://igoro.com/wordpress/wp-content/uploads/2010/01/image.png"/><br/>
+但第二个例子中，依赖性就不同了：<br/>
+<img decoding="async" class="aligncenter" alt="different values dependency" src="http://igoro.com/wordpress/wp-content/uploads/2010/02/image2.png"/></p>
+<p>现代处理器中对不同部分指令拥有一点并发性（译者注：跟流水线有关，比如Pentium处理器就有U/V两条流水线，后面说明）。这使得CPU在同一时刻访问L1两处内存位置，或者执行两次简单算术操作。在第一个循环中，处理器无法发掘这种指令级别的并发性，但第二个循环中就可以。</p>
+<p>[原文更新]：许多人在reddit上询问有关编译器优化的问题，像{ a[0]++; a[0]++; }能否优化为{ a[0]+=2; }。实际上，C#编译器和CLR JIT没有做优化——在数组访问方面。我用release模式编译了所有测试（使用优化选项），但我查询了JIT汇编语言证实优化并未影响结果。</p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B5%EF%BC%9A%E7%BC%93%E5%AD%98%E5%85%B3%E8%81%94%E6%80%A7"></span>示例5：缓存关联性<span class="ez-toc-section-end"></span></h4>
+<p>缓存设计的一个关键决定是确保每个主存块(chunk)能够存储在任何一个缓存槽里，或者只是其中一些（译者注：此处一个槽位就是一个缓存行）。</p>
+<p>有三种方式将缓存槽映射到主存块中：</p>
+<ol>
+<li><strong>直接映射(Direct mapped cache)</strong><br/>
+每个内存块只能映射到一个特定的缓存槽。一个简单的方案是通过块索引chunk_index映射到对应的槽位(chunk_index % cache_slots)。被映射到同一内存槽上的两个内存块是不能同时换入缓存的。（译者注：chunk_index可以通过物理地址/缓存行字节计算得到）</li>
+<li><strong>N路组关联(N-way set associative cache)</strong><br/>
+每个内存块能够被映射到N路特定缓存槽中的任意一路。比如一个16路缓存，每个内存块能够被映射到16路不同的缓存槽。一般地，具有一定相同低bit位地址的内存块将共享16路缓存槽。（译者注：相同低位地址表明相距一定单元大小的连续内存）</li>
+<li><strong>完全关联(Fully associative cache)</strong><br/>
+每个内存块能够被映射到任意一个缓存槽。操作效果上相当于一个散列表。</li>
+</ol>
+<p>直接映射缓存会引发冲突——当多个值竞争同一个缓存槽，它们将相互驱逐对方，导致命中率暴跌。另一方面，完全关联缓存过于复杂，并且硬件实现上昂贵。N路组关联是处理器缓存的典型方案，它在电路实现简化和高命中率之间取得了良好的折中。</p>
+<p><img decoding="async" class="aligncenter" alt="完全关联与多路关联的cache映射" src="http://my.csdn.net/uploads/201204/18/1334757273_8141.png"/><br/>
+（此图由译者给出，直接映射和完全关联可以看做N路组关联的两个极端，从图中可知当N=1时，即直接映射；当N取最大值时，即完全关联。读者可以自行想象直接映射图例，具体表述见参考资料。）</p>
+<p>举个例子，4MB大小的L2缓存在我机器上是16路关联。所有64字节内存块将分割为不同组，映射到同一组的内存块将竞争L2缓存里的16路槽位。</p>
+<p>L2缓存有65,536个缓存行（译者注：4MB/64），每个组需要16路缓存行，我们将获得4096个集。这样一来，块属于哪个组取决于块索引的低12位bit(2^12=4096)。<strong>因此缓存行对应的物理地址凡是以262,144字节(4096*64)的倍数区分的，将竞争同一个缓存槽。我机器上最多维持16个这样的缓存槽。</strong>（译者注：请结合上图中的2路关联延伸理解，一个块索引对应64字节，chunk0对应组0中的任意一路槽位，chunk1对应组1中的任意一路槽位，以此类推chunk4095对应组4095中的任意一路槽位，chunk0和chunk4096地址的低12bit是相同的，所以chunk4096、chunk8192将同chunk0竞争组0中的槽位，它们之间的地址相差262,144字节的倍数，而最多可以进行16次竞争，否则就要驱逐一个chunk）。</p>
+<p>为了使得缓存关联效果更加明了，我需要重复地访问同一组中的16个以上的元素，通过如下方法证明：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">public static long UpdateEveryKthByte(byte[] arr, int K)
+{
+    Stopwatch sw = Stopwatch.StartNew();
+    const int rep = 1024*1024; // Number of iterations – arbitrary
+    int p = 0;
+    for (int i = 0; i &lt; rep; i++)
+    {
+        arr[p]++;
+        p += K;
+        if (p &gt;= arr.Length) p = 0;
+    }
+    sw.Stop();
+    return sw.ElapsedMilliseconds;
+}</pre>
+<p>该方法每次在数组中迭代K个值，当到达末尾时从头开始。循环在运行足够长（2^20次）之后停止。</p>
+<p>我使用不同的数组大小（每次增加1MB）和不同的步长传入UpdateEveryKthByte()。以下是绘制的图表，蓝色代表运行较长时间，白色代表较短时间：<br/>
+<img decoding="async" class="aligncenter" alt="timing" src="http://igoro.com/wordpress/wp-content/uploads/2010/02/image_thumb1_opt.png"/><br/>
+蓝色区域（较长时间）表明当我们重复数组迭代时，更新的值无法同时放在缓存中。浅蓝色区域对应80毫秒，白色区域对应10毫秒。</p>
+<p>让我们来解释一下图表中蓝色部分：</p>
+<p><strong>1.为何有垂直线？</strong>垂直线表明步长值过多接触到同一组中内存位置（大于16次）。在这些次数里，我的机器无法同时将接触过的值放到16路关联缓存中。</p>
+<p>一些糟糕的步长值为2的幂：256和512。举个例子，考虑512步长遍历8MB数组，存在32个元素以相距262,144字节空间分布，所有32个元素都会在循环遍历中更新到，因为512能够整除262,144（译者注：此处一个步长代表一个字节）。</p>
+<p>由于32大于16，这32个元素将一直竞争缓存里的16路槽位。</p>
+<p>（译者注：为何512步长的垂直线比256步长颜色更深？在同样足够多的步数下，512比256访问到存在竞争的块索引次数多一倍。比如跨越262,144字节边界512需要512步，而256需要1024步。那么当步数为2^20时，512访问了2048次存在竞争的块而256只有1024次。最差情况下步长为262,144的倍数，因为每次循环都会引发一个缓存行驱逐。）</p>
+<p>有些不是2的幂的步长运行时间长仅仅是运气不好，最终访问到的是同一组中不成比例的许多元素，这些步长值同样显示为蓝线。</p>
+<p><strong>2.为何垂直线在4MB数组长度的地方停止？</strong>因为对于小于等于4MB的数组，16路关联缓存相当于完全关联缓存。</p>
+<p>一个16路关联缓存最多能够维护16个以262,144字节分隔的缓存行，4MB内组17或更多的缓存行都没有对齐在262,144字节边界上，因为16*262,144=4,194,304。</p>
+<p><strong>3.为何左上角出现蓝色三角？</strong>在三角区域内，我们无法在缓存中同时存放所有必要的数据，不是出于关联性，而仅仅是因为L2缓存大小所限。</p>
+<p>举个例子，考虑步长128遍历16MB数组，数组中每128字节更新一次，这意味着我们一次接触两个64字节内存块。为了存储16MB数组中每两个缓存行，我们需要8MB大小缓存。但我的机器中只有4MB缓存（译者注：这意味着必然存在冲突从而延时）。</p>
+<p>即使我机器中4MB缓存是全关联，仍无法同时存放8MB数据。</p>
+<p><strong>4.为何三角最左边部分是褪色的？</strong>注意左边0~64字节部分——正好一个缓存行！就像上面示例1和2所说，额外访问相同缓存行的数据几乎没有开销。比如说，步长为16字节，它需要4步到达下一个缓存行，也就是说4次内存访问只有1次开销。</p>
+<p>在相同循环次数下的所有测试用例中，采取省力步长的运行时间来得短。</p>
+<p>将图表延伸后的模型：<br/>
+<img decoding="async" class="aligncenter" alt="timing2" src="http://igoro.com/wordpress/wp-content/uploads/2010/02/assoc_big_thumb1_opt.png"/></p>
+<p>缓存关联性理解起来有趣而且确能被证实，但对于本文探讨的其它问题比起来，它肯定不会是你编程时所首先需要考虑的问题。</p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B6%EF%BC%9A%E7%BC%93%E5%AD%98%E8%A1%8C%E7%9A%84%E4%BC%AA%E5%85%B1%E4%BA%ABfalse-sharing"></span>示例6：缓存行的伪共享(false-sharing)<span class="ez-toc-section-end"></span></h4>
+<p>在多核机器上，缓存遇到了另一个问题——一致性。不同的处理器拥有完全或部分分离的缓存。在我的机器上，L1缓存是分离的（这很普遍），而我有两对处理器，每一对共享一个L2缓存。这随着具体情况而不同，如果一个现代多核机器上拥有多级缓存，那么快速小型的缓存将被处理器独占。</p>
+<p><strong>当一个处理器改变了属于它自己缓存中的一个值，其它处理器就再也无法使用它自己原来的值，因为其对应的内存位置将被刷新(invalidate)到所有缓存。而且由于缓存操作是以缓存行而不是字节为粒度，所有缓存中整个缓存行将被刷新！</strong></p>
+<p>为证明这个问题，考虑如下例子：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">private static int[] s_counter = new int[1024];
+private void UpdateCounter(int position)
+{
+    for (int j = 0; j &lt; 100000000; j++)
+    {
+        s_counter[position] = s_counter[position] + 3;
+    }
+}</pre>
+<p>在我的四核机上，如果我通过四个线程传入参数0,1,2,3并调用UpdateCounter，所有线程将花费4.3秒。</p>
+<p>另一方面，如果我传入16,32,48,64，整个操作进花费0.28秒！</p>
+<p>为何会这样？第一个例子中的四个值很可能在同一个缓存行里，每次一个处理器增加计数，这四个计数所在的缓存行将被刷新，而其它处理器在下一次访问它们各自的计数（译者注：注意数组是private属性，每个线程独占）将失去命中(miss)一个缓存。这种多线程行为有效地禁止了缓存功能，削弱了程序性能。</p>
+<h4><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B7%EF%BC%9A%E7%A1%AC%E4%BB%B6%E5%A4%8D%E6%9D%82%E6%80%A7"></span>示例7：硬件复杂性<span class="ez-toc-section-end"></span></h4>
+<p>即使你懂得了缓存的工作基础，有时候硬件行为仍会使你惊讶。不用处理器在工作时有不同的优化、探试和微妙的细节。</p>
+<p>有些处理器上，L1缓存能够并发处理两路访问，如果访问是来自不同的存储体，而对同一存储体的访问只能串行处理。而且处理器聪明的优化策略也会使你感到惊讶，比如在伪共享的例子中，以前在一些没有微调的机器上运行表现并不良好，但我家里的机器能够对最简单的例子进行优化来减少缓存刷新。</p>
+<p>下面是一个“硬件怪事”的奇怪例子：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">private static int A, B, C, D, E, F, G;
+private static void Weirdness()
+{
+    for (int i = 0; i &lt; 200000000; i++)
+    {
+        // do something...
+    }
+}</pre>
+<p>当我在循环体内进行三种不同操作，我得到如下运行时间：</p>
+<p><strong>           操作</strong>                    <strong>时间</strong><br/>
+A++; B++; C++; D++;     719 ms<br/>
+A++; C++; E++; G++;     448 ms<br/>
+A++; C++;                      518 ms</p>
+<p>增加A,B,C,D字段比增加A,C,E,G字段花费更长时间，更奇怪的是，增加A,C两个字段比增加A,C,E,G执行更久！</p>
+<p>我无法肯定这些数字背后的原因，但我怀疑这跟存储体有关，如果有人能够解释这些数字，我将洗耳恭听。</p>
+<p>这个例子的教训是，你很难完全预测硬件的行为。你可以预测很多事情，但最终，衡量及验证你的假设非常重要。</p>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8E%E7%AC%AC7%E4%B8%AA%E4%BE%8B%E5%AD%90%E7%9A%84%E4%B8%80%E4%B8%AA%E5%9B%9E%E5%B8%96"></span>关于第7个例子的一个回帖<span class="ez-toc-section-end"></span></h4>
+<p>Goz：我询问Intel的工程师最后的例子，得到以下答复：</p>
+<p>“很显然这涉及到执行单元里指令是怎样终止的，机器处理存储-命中-加载的速度，以及如何快速且优雅地处理试探性执行的循环展开（比如是否由于内部冲突而多次循环）。但这意味着你需要非常细致的流水线跟踪器和模拟器才能弄明白。在纸上预测流水线里的乱序指令是无比困难的工作，就算是设计芯片的人也一样。对于门外汉来说，没门，抱歉！”</p>
+<h4><span class="ez-toc-section" id="PS%E4%B8%AA%E4%BA%BA%E6%84%9F%E6%82%9F%E2%80%94%E2%80%94%E5%B1%80%E9%83%A8%E6%80%A7%E5%8E%9F%E7%90%86%E5%92%8C%E6%B5%81%E6%B0%B4%E7%BA%BF%E5%B9%B6%E5%8F%91"></span>P.S.个人感悟——局部性原理和流水线并发<span class="ez-toc-section-end"></span></h4>
+<p>程序的运行存在<strong>时间和空间上的局部性</strong>，前者是指只要内存中的值被换入缓存，今后一段时间内会被多次引用，后者是指该内存附近的值也被换入缓存。如果在编程中特别注意运用局部性原理，就会获得性能上的回报。</p>
+<p>比如<strong>C语言中应该尽量减少静态变量的引用，</strong>这是因为静态变量存储在全局数据段，在一个被反复调用的函数体内，引用该变量需要对缓存多次换入换出，而如果是分配在堆栈上的局部变量，函数每次调用CPU只要从缓存中就能找到它了，因为堆栈的重复利用率高。</p>
+<p>再比如<strong>循环体内的代码要尽量精简，</strong>因为代码是放在指令缓存里的，而指令缓存都是一级缓存，只有几K字节大小，如果对某段代码需要多次读取，而这段代码又跨越一个L1缓存大小，那么缓存优势将荡然无存。</p>
+<p>关于<strong>CPU的流水线(pipeline)并发性</strong>简单说说，Intel Pentium处理器有两条流水线U和V，每条流水线可各自独立地读写缓存，所以可以在一个时钟周期内同时执行两条指令。但这两条流水线不是对等的，U流水线可以处理所有指令集，V流水线只能处理简单指令。</p>
+<p>CPU指令通常被分为四类，第一类是常用的简单指令，像mov, nop, push, pop, add, sub, and, or, xor, inc, dec, cmp, lea，可以在任意一条流水线执行，只要相互之间不存在依赖性，完全可以做到指令并发。</p>
+<p>第二类指令需要同别的流水线配合，像一些进位和移位操作，这类指令如果在U流水线中，那么别的指令可以在V流水线并发运行，如果在V流水线中，那么U流水线是暂停的。</p>
+<p>第三类指令是一些跳转指令，如cmp,call以及条件分支，它们同第二类相反，当工作在V流水线时才能通U流水线协作，否则只能独占CPU。</p>
+<p>第四类指令是其它复杂的指令，一般不常用，因为它们都只能独占CPU。</p>
+<p>如果是汇编级别编程，<strong>要达到指令级别并发，必须要注重指令之间的配对。</strong>尽量使用第一类指令，避免第四类，还要在顺序上减少上下文依赖。</p>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E8%B5%84%E6%96%99"></span>参考资料<span class="ez-toc-section-end"></span></h4>
+<p>wiki上的CPU cache解析（<a href="https://zh.wikipedia.org/zh-cn/CPU%E7%BC%93%E5%AD%98" target="_blank">中文版</a>）（<a href="https://en.wikipedia.org/wiki/CPU_cache" target="_blank">英文版</a>）。</p>
+<p>上海交通大学师生制作的一个关于<a href="http://yoursunny.com/study/EI209/?topic=cache" target="_blank">cache映射功能、命中率计算</a>的教学演示程序，模拟了不同关联模式下cache的映射和命中几率，形象直观。</p>
+<p>网易数据库大牛<a href="http://weibo.com/u/2216172320" target="_blank">@何_登成</a>自制PPT<a href="http://vdisk.weibo.com/s/dBzv2sibdUB8" target="_blank">《CPU Cache and Memory Ordering》</a>，信息量超大！</p>
+<p>南京大学计算机教学<a href="http://cs.nju.edu.cn/swang/CompArchOrg_12F/slides/lecture09.pdf" target="_blank">公开PPT</a>，温馨提示，地址域名里面改变字段”lecture”后面的数字编号可切换课程;-)</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10249-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">cache</a>, <a href="javascript:void(0)" rel="tag">CPU</a>, <a href="javascript:void(0)" rel="tag">并发</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>7个示例科普CPU Cache</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-944434" class="comment even thread-even depth-1">
+<article id="div-comment-944434" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ffa3f3c9ce982f70177f0ac9b39a53bb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ffa3f3c9ce982f70177f0ac9b39a53bb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zelaot</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-944434"><time datetime="2013-11-17T14:35:29+08:00">2013年11月17日 14:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>int steps = 64 * 1024 * 1024;<br/>
+// Arbitrary number of steps<br/>
+int lengthMod = arr.Length – 1;<br/>
+for (int i = 0; i &lt; steps; i++)<br/>
+{<br/>
+arr[(i * 16) &amp; lengthMod]++; // (x &amp; lengthMod) is equal to (x % arr.Length)<br/>
+}</p>
+<p>其中(x &amp; lengthMod) is equal to (x % arr.Length)<br/>
+这个不是对任意的数都成立的，有条件的。不然系统的除法运算就不会那么耗时间了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-999692" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-999692" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f9481b565c686ff3eec5e9a465f874a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f9481b565c686ff3eec5e9a465f874a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">等待</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-999692"><time datetime="2013-11-29T17:24:50+08:00">2013年11月29日 17:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff</p>
+</div>
+ </article>
+</li>
+<li id="comment-999698" class="comment even thread-even depth-1">
+<article id="div-comment-999698" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f9481b565c686ff3eec5e9a465f874a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f9481b565c686ff3eec5e9a465f874a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.baidu.com" class="url" rel="ugc external nofollow">等待</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-999698"><time datetime="2013-11-29T17:25:38+08:00">2013年11月29日 17:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>ifgyklmsrglnjawngkdfgjmnklnbmnfc,mbndm,fnbjkldlgdjklffffffffff</p>
+</div>
+ </article>
+</li>
+<li id="comment-1049352" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/155.html" class="url" rel="ugc external nofollow">7个示例科普CPU Cache | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1213878" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://javablogs.org/?p=148" class="url" rel="ugc external nofollow">程序的本质复杂性和元语言抽象 | java博客，java教程</a> </div>
+</li>
+<li id="comment-1214973" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1214973" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0e1c6427c712f6475df46559a2180a3c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0e1c6427c712f6475df46559a2180a3c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yann</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-1214973"><time datetime="2014-01-22T20:59:47+08:00">2014年01月22日 20:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Thanks</p>
+</div>
+ </article>
+</li>
+<li id="comment-1402866" class="comment even thread-even depth-1">
+<article id="div-comment-1402866" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/357a20e8c56e69d6f9734d23ef9517e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/357a20e8c56e69d6f9734d23ef9517e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Anonymous</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-1402866"><time datetime="2014-03-24T22:36:15+08:00">2014年03月24日 22:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>额。。。图挂了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1412479" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=246" class="url" rel="ugc external nofollow">CPU缓存刷新的误解 | skynetdoc</a> </div>
+</li>
+<li id="comment-1413650" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://skynetdoc.com/?p=287" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | skynetdoc</a> </div>
+</li>
+<li id="comment-1472284" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=988" class="url" rel="ugc external nofollow">TCP 的那些事儿（上） | 星达红</a> </div>
+</li>
+<li id="comment-1493782" class="comment even thread-even depth-1">
+<article id="div-comment-1493782" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2359d22c1c517f2659e3a345652767cb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2359d22c1c517f2659e3a345652767cb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://aliyun.com" class="url" rel="ugc external nofollow">cloud</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-1493782"><time datetime="2014-07-11T12:40:28+08:00">2014年07月11日 12:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-662298" rel="nofollow">@zhodj </a><br/>
+“我觉得,我以为”这是自我打脸的节奏?<br/>
+你对中国现代企业的了解有多少?<br/>
+你从哪里得知工程师在计算机科学领域没有发明?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1695142" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1695142" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cad2847d57ca03b8fc682f5d123a69fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cad2847d57ca03b8fc682f5d123a69fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">raymond</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10249.html/comment-page-2#comment-1695142"><time datetime="2015-04-22T16:10:35+08:00">2015年04月22日 16:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在”示例2：缓存行的影响”，后半部分提到，当步长是16的倍数递增时，执行时间减小。<br/>
+原因实际是：步长为16的倍数，那么每次访问必然会读DRAM，并替换Cache line。数组长度一定，步长加倍，自然循环执行的时间久减倍。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1898436" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://fengyingsheng.com/?p=214" class="url" rel="ugc external nofollow">Java专家系列：CPU Cache与高性能编程 – 冯英胜的博客</a> </div>
+</li>
+<li id="comment-1936898" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codertw.com/%e7%a8%8b%e5%bc%8f%e8%aa%9e%e8%a8%80/637498/" class="url" rel="ugc external nofollow">Data alignment(資料、記憶體對齊)漫談 | 程式前沿</a> </div>
+</li>
+<li id="comment-1942445" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://zhouyonglong.wordpress.com/2018/09/29/engineering/" class="url" rel="ugc external nofollow">Engineering – Yonglong.Zhou</a> </div>
+</li>
+<li id="comment-2061143" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/406.html" class="url" rel="ugc external nofollow">个人订阅的10佳博客与相关介绍 | 3F Blog 2020</a> </div>
+</li>
+<li id="comment-2064645" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/the-top-10-blogs-subscribed.html" class="url" rel="ugc external nofollow">个人订阅的10佳博客与相关介绍 | 3F Coolshell Blog</a> </div>
+</li>
+<li id="comment-2072500" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2020/03/01/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-%e4%b8%8e%e7%a8%8b%e5%ba%8f%e5%91%98%e7%9b%b8%e5%85%b3%e7%9a%84cpu%e7%bc%93%e5%ad%98%e7%9f%a5%e8%af%86/" class="url" rel="ugc external nofollow">【酷壳】 与程序员相关的CPU缓存知识 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2361687" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2136434" class="url" rel="ugc external nofollow">浅析x86架构中cache的组织结构 | 算法网</a> </div>
+</li>
+<li id="comment-2369830" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2248345" class="url" rel="ugc external nofollow">一篇对伪共享、缓存行填充和CPU缓存讲的很透彻的文章 - 算法网</a> </div>
+</li>
+<li id="comment-2370940" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/286323" class="url" rel="ugc external nofollow">7个示例科普CPU Cache(from 酷壳网） - Java天堂</a> </div>
+</li>
+<li id="comment-2371186" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/396185" class="url" rel="ugc external nofollow">从X86架构中cahe的组织结构引发的各种思考 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10249.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10249.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">10249</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

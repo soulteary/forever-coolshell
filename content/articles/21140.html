@@ -1,0 +1,722 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go 编程模式：错误处理 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21140 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21140" class="post-content post-21140 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-error tag-go tag-golang series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go 编程模式：错误处理</span>
+<h1 class="entry-title">Go 编程模式：错误处理</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21140.html" title="18:19" rel="bookmark"><time class="entry-date" datetime="2020-12-22T18:19:30+08:00" pubdate="">2020年12月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21140.html#comments" class="comments-link">24 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 52,407 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-21143" src="/uploads/2020/12/err-check-300x186.jpg" alt="" width="300" height="186" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>错误处理一直以一是编程必需要面对的问题，错误处理如果做的好的话，代码的稳定性会很好。不同的语言有不同的出现处理的方式。Go语言也一样，在本篇文章中，我们来讨论一下Go语言的出错出处，尤其是那令人抓狂的 <code>if err != nil</code> 。</p>
+<p>在正式讨论Go代码里满屏的 <code>if err != nil</code> 怎么办这个事之前，我想先说一说编程中的错误处理。这样可以让大家在更高的层面理解编程中的错误处理。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第2 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go 编程模式：错误处理</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21228.html">Go编程模式：Pipeline</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/21128.html" rel="prev" title="Go编程模式：切片，接口，时间和性能">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21146.html" rel="next" title="Go 编程模式：Functional Options">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#C%E8%AF%AD%E8%A8%80%E7%9A%84%E9%94%99%E8%AF%AF%E6%A3%80%E6%9F%A5" title="C语言的错误检查">C语言的错误检查</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Java%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86" title="Java的错误处理">Java的错误处理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Go%E8%AF%AD%E8%A8%80%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86" title="Go语言的错误处理">Go语言的错误处理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E8%B5%84%E6%BA%90%E6%B8%85%E7%90%86" title="资源清理">资源清理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#Error_Check_Hell" title="Error Check  Hell">Error Check  Hell</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%8C%85%E8%A3%85%E9%94%99%E8%AF%AF" title="包装错误">包装错误</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%82%E8%80%83%E6%96%87%E7%AB%A0" title="参考文章">参考文章</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="C%E8%AF%AD%E8%A8%80%E7%9A%84%E9%94%99%E8%AF%AF%E6%A3%80%E6%9F%A5"></span>C语言的错误检查<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们知道，处理错误最直接的方式是通过错误码，这也是传统的方式，在过程式语言中通常都是用这样的方式处理错误的。比如 C 语言，基本上来说，其通过函数的返回值标识是否有错，然后通过全局的 <code>errno</code> 变量并配合一个 <code>errstr</code> 的数组来告诉你为什么出错。</p>
+<p>为什么是这样的设计？道理很简单，除了可以共用一些错误，更重要的是这其实是一种妥协。比如：<code>read()</code>, <code>write()</code>, <code>open()</code> 这些函数的返回值其实是返回有业务逻辑的值。也就是说，这些函数的返回值有两种语义，一种是成功的值，比如 <code>open()</code> 返回的文件句柄指针 <code>FILE*</code> ，或是错误 <code>NULL</code>。这样会导致调用者并不知道是什么原因出错了，需要去检查 <code>errno</code> 来获得出错的原因，从而可以正确地处理错误。</p>
+<p>一般而言，这样的错误处理方式在大多数情况下是没什么问题的。但是也有例外的情况，我们来看一下下面这个 C 语言的函数：</p>
+<p><span id="more-21140"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">int atoi(const char *str)</pre>
+<p>这个函数是把一个字符串转成整型。但是问题来了，如果一个要传的字符串是非法的（不是数字的格式），如 “ABC” 或者整型溢出了，那么这个函数应该返回什么呢？出错返回，返回什么数都不合理，因为这会和正常的结果混淆在一起。比如，返回 <code>0</code>，那么会和正常的对 “0” 字符的返回值完全混淆在一起。这样就无法判断出错的情况。你可能会说，是不是要检查一下 <code>errno</code>，按道理说应该是要去检查的，但是，我们在 C99 的规格说明书中可以看到这样的描述——</p>
+<blockquote><p>7.20.1The functions atof, atoi, atol, and atoll need not affect the value of the integer expression errno on an error. If the value of the result cannot be represented, the behavior is undeﬁned.</p></blockquote>
+<p>像<code>atoi()</code>, <code>atof()</code>, <code>atol()</code> 或是 <code>atoll()</code> 这样的函数是不会设置 <code>errno</code>的，而且，还说了，如果结果无法计算的话，行为是undefined。所以，后来，libc 又给出了一个新的函数<code>strtol()</code>，这个函数在出错的时会设置全局变量 <code>errno</code> ：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="c">long val = strtol(in_str, &amp;endptr, 10);  //10的意思是10进制
+
+//如果无法转换
+if (endptr == str) {
+    fprintf(stderr, &#34;No digits were found\n&#34;);
+    exit(EXIT_FAILURE);
+}
+
+//如果整型溢出了
+if ((errno == ERANGE &amp;&amp; (val == LONG_MAX || val == LONG_MIN)) {
+    fprintf(stderr, &#34;ERROR: number out of range for LONG\n&#34;);
+    exit(EXIT_FAILURE);
+ }
+
+//如果是其它错误
+if (errno != 0 &amp;&amp; val == 0) {
+    perror(&#34;strtol&#34;);
+    exit(EXIT_FAILURE);
+}
+</pre>
+<p>虽然，<code>strtol()</code> 函数解决了 <code>atoi()</code> 函数的问题，但是我们还是能感觉到不是很舒服和自然。</p>
+<p>因为，这种用 返回值 + errno 的错误检查方式会有一些问题:</p>
+<ul>
+<li>程序员一不小心就会忘记返回值的检查，从而造成代码的 Bug；</li>
+<li>函数接口非常不纯洁，正常值和错误值混淆在一起，导致语义有问题。</li>
+</ul>
+<p>所以，后来，有一些类库就开始区分这样的事情。比如，Windows 的系统调用开始使用 <code>HRESULT</code> 的返回来统一错误的返回值，这样可以明确函数调用时的返回值是成功还是错误。但这样一来，函数的 input 和 output 只能通过函数的参数来完成，于是出现了所谓的 入参 和 出参 这样的区别。</p>
+<p>然而，这又使得函数接入中参数的语义变得复杂，一些参数是入参，一些参数是出参，函数接口变得复杂了一些。而且，依然没有解决函数的成功或失败可以被人为忽略的问题。</p>
+<h4><span class="ez-toc-section" id="Java%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86"></span>Java的错误处理<span class="ez-toc-section-end"></span></h4>
+<p>Java语言使用 <code>try-catch-finally</code> 通过使用异常的方式来处理错误，其实，这比起C语言的错处理进了一大步，使用抛异常和抓异常的方式可以让我们的代码有这样的一些好处：</p>
+<ul>
+<li>函数接口在 input（参数）和 output（返回值）以及错误处理的语义是比较清楚的。</li>
+<li>正常逻辑的代码可以与错误处理和资源清理的代码分开，提高了代码的可读性。</li>
+<li>异常不能被忽略（如果要忽略也需要 catch 住，这是显式忽略）。</li>
+<li>在面向对象的语言中（如 Java），异常是个对象，所以，可以实现多态式的 catch。</li>
+<li>与状态返回码相比，异常捕捉有一个显著的好处是，函数可以嵌套调用，或是链式调用。比如：
+<ul>
+<li><code>int x = add(a, div(b,c));</code></li>
+<li><code>Pizza p = PizzaBuilder().SetSize(sz).SetPrice(p)...;</code></li>
+</ul>
+</li>
+</ul>
+<h4><span class="ez-toc-section" id="Go%E8%AF%AD%E8%A8%80%E7%9A%84%E9%94%99%E8%AF%AF%E5%A4%84%E7%90%86"></span>Go语言的错误处理<span class="ez-toc-section-end"></span></h4>
+<p>Go 语言的函数支持多返回值，所以，可以在返回接口把业务语义（业务返回值）和控制语义（出错返回值）区分开来。Go 语言的很多函数都会返回 result, err 两个值，于是:</p>
+<ul>
+<li>参数上基本上就是入参，而返回接口把结果和错误分离，这样使得函数的接口语义清晰；</li>
+<li>而且，Go 语言中的错误参数如果要忽略，需要显式地忽略，用 _ 这样的变量来忽略；</li>
+<li>另外，因为返回的 <code>error</code> 是个接口（其中只有一个方法 <code>Error()</code>，返回一个 <code>string</code> ），所以你可以扩展自定义的错误处理。</li>
+</ul>
+<p>另外，如果一个函数返回了多个不同类型的 <code>error</code>，你也可以使用下面这样的方式：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">if err != nil {
+  switch err.(type) {
+    case *json.SyntaxError:
+      ...
+    case *ZeroDivisionError:
+      ...
+    case *NullPointerError:
+      ...
+    default:
+      ...
+  }
+}</pre>
+<p>我们可以看到，Go语言的错误处理的的方式，本质上是返回值检查，但是他也兼顾了异常的一些好处 – 对错误的扩展。</p>
+<h4><span class="ez-toc-section" id="%E8%B5%84%E6%BA%90%E6%B8%85%E7%90%86"></span>资源清理<span class="ez-toc-section-end"></span></h4>
+<p>出错后是需要做资源清理的，不同的编程语言有不同的资源清理的编程模式：</p>
+<ul>
+<li>C语言 – 使用的是 <code>goto fail;</code> 的方式到一个集中的地方进行清理（有篇有意思的文章可以看一下《<a title="由苹果的低级Bug想到的" href="/articles/11112.html" target="_blank" rel="noopener">由苹果的低级BUG想到的</a>》）</li>
+<li>C++语言- 一般来说使用 <a href="https://en.wikipedia.org/wiki/Resource_acquisition_is_initialization" target="_blank" rel="noopener">RAII模式</a>，通过面向对象的代理模式，把需要清理的资源交给一个代理类，然后在析构函数来解决。</li>
+<li>Java语言 – 可以在finally 语句块里进行清理。</li>
+<li>Go语言 – 使用 <code>defer</code> 关键词进行清理。</li>
+</ul>
+<p>下面是一个Go语言的资源清理的示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func Close(c io.Closer) {
+  err := c.Close()
+  if err != nil {
+    log.Fatal(err)
+  }
+}
+
+func main() {
+  r, err := Open(&#34;a&#34;)
+  if err != nil {
+    log.Fatalf(&#34;error opening &#39;a&#39;\n&#34;)
+  }
+  defer Close(r) // 使用defer关键字在函数退出时关闭文件。
+
+  r, err = Open(&#34;b&#34;)
+  if err != nil {
+    log.Fatalf(&#34;error opening &#39;b&#39;\n&#34;)
+  }
+  defer Close(r) // 使用defer关键字在函数退出时关闭文件。
+}</pre>
+<h4><span class="ez-toc-section" id="Error_Check_Hell"></span>Error Check  Hell<span class="ez-toc-section-end"></span></h4>
+<p>好了，说到 Go 语言的 <code>if err !=nil</code> 的代码了，这样的代码的确是能让人写到吐。那么有没有什么好的方式呢，有的。我们先看如下的一个令人崩溃的代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func parse(r io.Reader) (*Point, error) {
+
+    var p Point
+
+    if err := binary.Read(r, binary.BigEndian, &amp;p.Longitude); err != nil {
+        return nil, err
+    }
+    if err := binary.Read(r, binary.BigEndian, &amp;p.Latitude); err != nil {
+        return nil, err
+    }
+    if err := binary.Read(r, binary.BigEndian, &amp;p.Distance); err != nil {
+        return nil, err
+    }
+    if err := binary.Read(r, binary.BigEndian, &amp;p.ElevationGain); err != nil {
+        return nil, err
+    }
+    if err := binary.Read(r, binary.BigEndian, &amp;p.ElevationLoss); err != nil {
+        return nil, err
+    }
+}</pre>
+<p>要解决这个事，我们可以用函数式编程的方式，如下代码示例：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func parse(r io.Reader) (*Point, error) {
+    var p Point
+    var err error
+    read := func(data interface{}) {
+        if err != nil {
+            return
+        }
+        err = binary.Read(r, binary.BigEndian, data)
+    }
+
+    read(&amp;p.Longitude)
+    read(&amp;p.Latitude)
+    read(&amp;p.Distance)
+    read(&amp;p.ElevationGain)
+    read(&amp;p.ElevationLoss)
+
+    if err != nil {
+        return &amp;p, err
+    }
+    return &amp;p, nil
+}</pre>
+<p>上面的代码我们可以看到，我们通过使用Closure 的方式把相同的代码给抽出来重新定义一个函数，这样大量的  <code>if err!=nil</code> 处理的很干净了。但是会带来一个问题，那就是有一个 <code>err</code> 变量和一个内部的函数，感觉不是很干净。</p>
+<p>那么，我们还能不能搞得更干净一点呢，我们从Go 语言的 <code>bufio.Scanner()</code>中似乎可以学习到一些东西：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">scanner := bufio.NewScanner(input)
+
+for scanner.Scan() {
+    token := scanner.Text()
+    // process token
+}
+
+if err := scanner.Err(); err != nil {
+    // process the error
+}</pre>
+<p>上面的代码我们可以看到，<code>scanner</code>在操作底层的I/O的时候，那个for-loop中没有任何的 <code>if err !=nil</code> 的情况，退出循环后有一个 <code>scanner.Err()</code> 的检查。看来使用了结构体的方式。模仿它，我们可以把我们的代码重构成下面这样：</p>
+<p>首先，定义一个结构体和一个成员函数</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">type Reader struct {
+    r   io.Reader
+    err error
+}
+
+func (r *Reader) read(data interface{}) {
+    if r.err == nil {
+        r.err = binary.Read(r.r, binary.BigEndian, data)
+    }
+}</pre>
+<p>然后，我们的代码就可以变成下面这样：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">func parse(input io.Reader) (*Point, error) {
+    var p Point
+    r := Reader{r: input}
+
+    r.read(&amp;p.Longitude)
+    r.read(&amp;p.Latitude)
+    r.read(&amp;p.Distance)
+    r.read(&amp;p.ElevationGain)
+    r.read(&amp;p.ElevationLoss)
+
+    if r.err != nil {
+        return nil, r.err
+    }
+
+    return &amp;p, nil
+}</pre>
+<p>有了上面这个技术，我们的“<a href="https://martinfowler.com/bliki/FluentInterface.html" target="_blank" rel="noopener">流式接口 Fluent Interface</a>”，也就很容易处理了。如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">package main
+
+import (
+  &#34;bytes&#34;
+  &#34;encoding/binary&#34;
+  &#34;fmt&#34;
+)
+
+// 长度不够，少一个Weight
+var b = []byte {0x48, 0x61, 0x6f, 0x20, 0x43, 0x68, 0x65, 0x6e, 0x00, 0x00, 0x2c} 
+var r = bytes.NewReader(b)
+
+type Person struct {
+  Name [10]byte
+  Age uint8
+  Weight uint8
+  err error
+}
+func (p *Person) read(data interface{}) {
+  if p.err == nil {
+    p.err = binary.Read(r, binary.BigEndian, data)
+  }
+}
+
+func (p *Person) ReadName() *Person {
+  p.read(&amp;p.Name) 
+  return p
+}
+func (p *Person) ReadAge() *Person {
+  p.read(&amp;p.Age) 
+  return p
+}
+func (p *Person) ReadWeight() *Person {
+  p.read(&amp;p.Weight) 
+  return p
+}
+func (p *Person) Print() *Person {
+  if p.err == nil {
+    fmt.Printf(&#34;Name=%s, Age=%d, Weight=%d\n&#34;,p.Name, p.Age, p.Weight)
+  }
+  return p
+}
+
+func main() {   
+  p := Person{}
+  p.ReadName().ReadAge().ReadWeight().Print()
+  fmt.Println(p.err)  // EOF 错误
+}
+</pre>
+<p>相信你应该看懂这个技巧了，但是，其使用场景也就只能在对于同一个业务对象的不断操作下可以简化错误处理，对于多个业务对象的话，还是得需要各种 <code>if err != nil</code>的方式。</p>
+<h4><span class="ez-toc-section" id="%E5%8C%85%E8%A3%85%E9%94%99%E8%AF%AF"></span>包装错误<span class="ez-toc-section-end"></span></h4>
+<p>最后，多说一句，我们需要包装一下错误，而不是干巴巴地把<code>err</code>给返回到上层，我们需要把一些执行的上下文加入。</p>
+<p>通常来说，我们会使用 <code>fmt.Errorf()</code>来完成这个事，比如：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">if err != nil {
+   return fmt.Errorf(&#34;something failed: %v&#34;, err)
+}</pre>
+<p>另外，在Go语言的开发者中，更为普遍的做法是将错误包装在另一个错误中，同时保留原始内容：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type authorizationError struct {
+    operation string
+    err error   // original error
+}
+
+func (e *authorizationError) Error() string {
+    return fmt.Sprintf(&#34;authorization failed during %s: %v&#34;, e.operation, e.err)
+}</pre>
+<p>当然，更好的方式是通过一种标准的访问方法，这样，我们最好使用一个接口，比如 <code>causer</code>接口中实现 <code>Cause()</code> 方法来暴露原始错误，以供进一步检查：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type causer interface {
+    Cause() error
+}
+
+func (e *authorizationError) Cause() error {
+    return e.err
+}
+</pre>
+<p> </p>
+<p>这里有个好消息是，这样的代码不必再写了，有一个第三方的错误库（<a href="https://github.com/pkg/errors" target="_blank" rel="noopener">github.com/pkg/errors</a>），对于这个库，我无论到哪都能看到他的存在，所以，这个基本上来说就是事实上的标准了。代码示例如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">import &#34;github.com/pkg/errors&#34;
+
+//错误包装
+if err != nil {
+    return errors.Wrap(err, &#34;read failed&#34;)
+}
+
+// Cause接口
+switch err := errors.Cause(err).(type) {
+case *MyError:
+    // handle specifically
+default:
+    // unknown error
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83%E6%96%87%E7%AB%A0"></span>参考文章<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><b>Golang Error Handling lesson by Rob Pike<br/>
+</b><a href="http://jxck.hatenablog.com/entry/golang-error-handling-lesson-by-rob-pike">http://jxck.hatenablog.com/entry/golang-error-handling-lesson-by-rob-pike</a></li>
+<li><b>Errors are values<br/>
+</b><a href="https://blog.golang.org/errors-are-values">https://blog.golang.org/errors-are-values</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21140-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Error</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go 编程模式：错误处理</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2187484" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21146.html" class="url" rel="ugc">Go 编程模式：Functional Options | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2187509" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2187509" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/606ff11fb9bbf91826d6d2e168b3e658?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/606ff11fb9bbf91826d6d2e168b3e658?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187509"><time datetime="2020-12-26T17:03:42+08:00">2020年12月26日 17:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有个问题。<br/>
+采用这种方式处理错误的时候，如果read调用错误次数过多，原始的方式可以遇到第一个错误就return，现在这种可能到了最后一个错误才return。逻辑其实是不太一样了？</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="go">func (r *Reader) read(data interface{}) {
+    if r.err == nil {
+        r.err = binary.Read(r.r, binary.BigEndian, data)
+    }
+}</pre>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2187559" class="comment even depth-2 parent">
+<article id="div-comment-2187559" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c4fea2ee18a79862143d4a22a1f3113?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c4fea2ee18a79862143d4a22a1f3113?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://jasonkayzk.github.io/" class="url" rel="ugc external nofollow">jasonkay</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187559"><time datetime="2020-12-26T19:40:05+08:00">2020年12月26日 19:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个的意思应该是只要有一个read函数有err，后面的都会被跳过；</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2187773" class="comment odd alt depth-3">
+<article id="div-comment-2187773" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/606ff11fb9bbf91826d6d2e168b3e658?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/606ff11fb9bbf91826d6d2e168b3e658?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187773"><time datetime="2020-12-27T09:28:36+08:00">2020年12月27日 09:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哦 是的&gt;_ –</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2187560" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2187560" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c4fea2ee18a79862143d4a22a1f3113?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c4fea2ee18a79862143d4a22a1f3113?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://jasonkayzk.github.io/" class="url" rel="ugc external nofollow">jasonkay</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187560"><time datetime="2020-12-26T19:40:54+08:00">2020年12月26日 19:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>资源清理里面Go语言：derfer -&gt; defer</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2187784" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2">
+<article id="div-comment-2187784" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187784"><time datetime="2020-12-27T10:36:08+08:00">2020年12月27日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢，已更正</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2187617" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2187617" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/debffb10c9ee6fac3b15780ceb7b04d0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/debffb10c9ee6fac3b15780ceb7b04d0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">s7v7nislands</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187617"><time datetime="2020-12-26T22:47:04+08:00">2020年12月26日 22:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>出错处理标准库已经有改进了，可以支持Wrap原始错误了</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2187990" class="comment odd alt depth-2 parent">
+<article id="div-comment-2187990" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/09fe7907900043edaa672b7a2620543b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">🍑</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2187990"><time datetime="2020-12-27T23:27:20+08:00">2020年12月27日 23:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是的，现在用标准库了。</p>
+<p><a href="https://pkg.go.dev/errors#pkg-index" rel="nofollow ugc">https://pkg.go.dev/errors#pkg-index</a></p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2192142" class="comment even depth-3">
+<article id="div-comment-2192142" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3611f640d1877c0c9effa2524065e545?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3611f640d1877c0c9effa2524065e545?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.qtmuniao.com/" class="url" rel="ugc external nofollow">muniao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2192142"><time datetime="2021-01-07T15:20:50+08:00">2021年01月07日 15:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><code>fmt.Errorf(&#34;%w&#34;, err)</code> 也不错</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2188166" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2188166" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/602ce6204323cbe91e87849558a1368a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/602ce6204323cbe91e87849558a1368a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/math" class="url" rel="ugc external nofollow">fanfeilong</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2188166"><time datetime="2020-12-28T09:44:01+08:00">2020年12月28日 09:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>rust的错误处理是我写过最舒服的。文章没提。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188201" class="comment byuser comment-author-haoel bypostauthor even depth-2">
+<article id="div-comment-2188201" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2188201"><time datetime="2020-12-28T11:43:54+08:00">2020年12月28日 11:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>本质上还是返回码的方式，只不过包装了一下。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2188222" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2188222" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fbb652e8edb639767a5145482bd10720?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fbb652e8edb639767a5145482bd10720?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ano</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2188222"><time datetime="2020-12-28T13:37:51+08:00">2020年12月28日 13:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实go的错误处理有一个很麻烦的问题，那就是 nil 值处理。<br/>
+有时候函数返回的 error 需要是具体的错误类型，比如说一个 *struct，而不是 error 接口。<br/>
+那么在调用时如果这个返回值被存到了一个 error 类型的变量里，比如直接使用了前面出现过的 err，那 err != nil 永远就是 false了。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2188422" class="comment even depth-2 parent">
+<article id="div-comment-2188422" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/88abc7fe9319e8790cc2141368a22aa5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/88abc7fe9319e8790cc2141368a22aa5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Dong</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2188422"><time datetime="2020-12-29T00:43:26+08:00">2020年12月29日 00:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为啥函数返回一个不实现error接口的error……</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2191283" class="comment odd alt depth-3 parent">
+<article id="div-comment-2191283" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fbb652e8edb639767a5145482bd10720?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fbb652e8edb639767a5145482bd10720?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ano</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2191283"><time datetime="2021-01-05T08:53:12+08:00">2021年01月05日 08:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我可能没有讲明白，贴一段代码你就懂了。</p>
+<p>type MyError struct {}</p>
+<p>func (e *MyError)Error()string{<br/>
+return “ERROR!”<br/>
+}</p>
+<p>func ReturnPointer() *MyError {<br/>
+return nil<br/>
+}<br/>
+func ReturnInterface() error {<br/>
+return nil<br/>
+}</p>
+<p>func main(){<br/>
+var err error<br/>
+err = ReturnPointer()<br/>
+fmt.Printf(“%v\n”,err == nil)<br/>
+err = ReturnInterface()<br/>
+fmt.Printf(“%v\n”,err == nil)<br/>
+}<br/>
+有时候有的函数返回值需要是 *MyError，而不是 error。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2310358" class="comment even depth-4">
+<article id="div-comment-2310358" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b85a1c24bac2b1e2054bb8537a312dc5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b85a1c24bac2b1e2054bb8537a312dc5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://zaunist.com" class="url" rel="ugc external nofollow">阿杰鲁</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2310358"><time datetime="2021-09-29T10:09:08+08:00">2021年09月29日 10:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以才会使用 if err := nil 这样， 限制err的作用域，不去影响到后面的错误处理</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2199319" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2199319" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/24ccb9abbf2dd67d50310f3e6aa6f6dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/24ccb9abbf2dd67d50310f3e6aa6f6dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kelvin kuo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2199319"><time datetime="2021-01-28T13:50:18+08:00">2021年01月28日 13:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在2021-01-28，应当使用官方error warpper方式 %w</p>
+</div>
+ </article>
+</li>
+<li id="comment-2202150" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.yza.ink/wordpress/?p=245" class="url" rel="ugc external nofollow">Go编程模式：FUNCTION OPTIONS – Yza的博客</a> </div>
+</li>
+<li id="comment-2216151" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2216151" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd07451a16123f1901c57bbb24d984e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd07451a16123f1901c57bbb24d984e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2216151"><time datetime="2021-03-10T20:28:26+08:00">2021年03月10日 20:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>当年为了异常处理，微软还自己做了一套SEH，适用于C：<br/>
+抛出异常：<br/>
+RaiseException</p>
+<p>处理异常：<br/>
+__try{}<br/>
+__except(){}<br/>
+__finally{}<br/>
+__leave</p>
+</div>
+ </article>
+</li>
+<li id="comment-2281015" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2281015" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/07ffa48cf72918e1c53ec31831272b0d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/07ffa48cf72918e1c53ec31831272b0d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">524830160</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2281015"><time datetime="2021-07-30T10:35:36+08:00">2021年07月30日 10:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太专业了，看不懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-2294844" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://iyaozhen.com/days-learn-golang.html" class="url" rel="ugc external nofollow">N天学会Go语言 | yaozhen&#39;s blog</a> </div>
+</li>
+<li id="comment-2325997" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2325997" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2bd0081c8780f6ea888c0b1fd65eb9c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2bd0081c8780f6ea888c0b1fd65eb9c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">西蒙吹雪</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2325997"><time datetime="2021-10-28T17:57:58+08:00">2021年10月28日 17:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>资源清理这里的例子有问题</p>
+<p>log.Fatalf() 会调用os.Exit(1)，导致程序直接退出不执行defer</p>
+<p>看一下源代码：</p>
+<p>func Fatalf(format string, v …interface{}) {<br/>
+std.Output(2, fmt.Sprintf(format, v…))<br/>
+os.Exit(1)<br/>
+}</p>
+<p>// Exit causes the current program to exit with the given status code.<br/>
+// Conventionally, code zero indicates success, non-zero an error.<br/>
+// The program terminates immediately; deferred functions are not run.<br/>
+//<br/>
+// For portability, the status code should be in the range [0, 125].<br/>
+func Exit(code int) {<br/>
+if code == 0 {<br/>
+if testlog.PanicOnExit0() {<br/>
+// We were told to panic on calls to os.Exit(0).<br/>
+// This is used to fail tests that make an early<br/>
+// unexpected call to os.Exit(0).<br/>
+panic(“unexpected call to os.Exit(0) during test”)<br/>
+}</p>
+<p><code> // Give race detector a chance to fail the program.<br/>
+// Racy programs do not have the right to finish successfully.<br/>
+runtime_beforeExit()<br/>
+}<br/>
+syscall.Exit(code)<br/>
+</code></p>
+<p>}</p>
+</div>
+ </article>
+</li>
+<li id="comment-2339857" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.s0nnet.com/archives/go-coding-with-error" class="url" rel="ugc external nofollow">Go语言错误处理在业务中的应用实践 | 独木の白帆</a> </div>
+</li>
+<li id="comment-2370455" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.k12diy.com/?p=230" class="url" rel="ugc external nofollow">GO编程模式–错误处理 – 爱上制作</a> </div>
+</li>
+<li id="comment-2371201" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371201" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/386f5f8dcefc0ed0a73efdede20e6183?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/386f5f8dcefc0ed0a73efdede20e6183?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shaoling</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21140.html#comment-2371201"><time datetime="2023-04-20T11:27:48+08:00">2023年04月20日 11:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>上面用于资源清理的代码实际上不会调用吧，因为FatalF直接退出了，没有执行defer的内容：</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

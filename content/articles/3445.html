@@ -1,0 +1,469 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>输出从1到1000的数 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3445 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3445" class="post-content post-3445 post type-post status-publish format-standard hentry category-cplusplus category-misc tag-c tag-puzzle tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">输出从1到1000的数</span>
+<h1 class="entry-title">输出从1到1000的数</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3445.html" title="08:55" rel="bookmark"><time class="entry-date" datetime="2011-01-07T08:55:32+08:00" pubdate="">2011年01月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3445.html#comments" class="comments-link">70 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 30,568 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>有这样一个面试题——<strong>请把从1到1000的数打印出来，但你不能使用任何的循环语句或是条件语句。更不能写1000个printf或是cout</strong>。<strong>用C/C++语言</strong>。</p>
+<p>我相信，大多数人一开始你可能想到的是递归算法：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void f(int n){
+    printf(&#34;%d\n&#34;,n);
+    (1000-n) ? f(n+1) : exit(0) ;
+}
+int main(){
+    f(1);
+}
+</pre>
+<p>当然，题目中说了不能使用条件语句，所以，上面那种解法的不符合题意的，因为还是变向地使用了条件表达式。不过，我们可以用别的方法来让这个递归终止，比如：</p>
+<p>除以零，当程序crash，呵呵。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void f(int n){
+    printf(&#34;%d\n&#34;,n);
+    n/(1000-n);
+    f(n+1);
+}</pre>
+<p>还有这样退出递归的：</p>
+<p><span id="more-3445"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void yesprint(int i);
+void noprint(int i);
+
+typedef void(*fnPtr)(int);
+fnPtr dispatch[] = { yesprint, noprint };
+
+void yesprint(int i) {
+    printf(&#34;%d\n&#34;, i);
+    dispatch[i / 1000](i + 1);
+}
+
+void noprint(int i) { /* do nothing. */ }
+
+int main() {
+      yesprint(1);
+}
+</pre>
+<p>还有下面这些各种各样的解法：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include&lt;stdio.h&gt;
+
+/* prints number  i */
+void print1(int i) {
+    printf(&#34;%d\n&#34;,i);
+}
+
+/* prints 10 numbers starting from i */
+void print10(int i) {
+    print1(i);
+    print1(i+1);
+    print1(i+2);
+    print1(i+3);
+    print1(i+4);
+    print1(i+5);
+    print1(i+6);
+    print1(i+7);
+    print1(i+8);
+    print1(i+9);
+}
+
+/* prints 100 numbers starting from i */
+void print100(int i) {
+    print10(i);
+    print10(i+10);
+    print10(i+20);
+    print10(i+30);
+    print10(i+40);
+    print10(i+50);
+    print10(i+60);
+    print10(i+70);
+    print10(i+80);
+    print10(i+90);
+}
+
+/* prints 1000 numbers starting from i */
+void print1000(int i) {
+    print100(i);
+    print100(i+100);
+    print100(i+200);
+    print100(i+300);
+    print100(i+400);
+    print100(i+500);
+    print100(i+600);
+    print100(i+700);
+    print100(i+800);
+    print100(i+900);
+}
+
+int main() {
+        print1000(1);
+        return 0;
+}</pre>
+<p>不过，print用得多了一些。我们可以用宏嘛。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include&lt;stdio.h&gt;
+#define Out(i)       printf(&#34;%d\n&#34;, i++);
+#define REP(N)       N N N N N N N N N N
+#define Out1000(i)   REP(REP(REP(Out(i))));
+void main()
+{
+    int i = 1;
+    Out1000(i);
+}</pre>
+<p>不过，我们应该使用C++的一些特性，比如：</p>
+<p>使用构造函数</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class Printer
+{
+public:
+    Printer() { static unsigned i=1; cout &lt;&lt; i++ &lt;&lt; endl;; }
+
+};
+
+int main()
+{
+    Printer p[1000];
+}
+</pre>
+<p>或是更为NB的Template：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">template&lt;int N&gt;
+struct NumberGeneration{
+    static void out(std::ostream&amp; os)
+    {
+        NumberGeneration&lt;N-1&gt;::out(os);
+        os &lt;&lt; N &lt;&lt; std::endl;
+    }
+};
+
+template&lt;&gt;
+struct NumberGeneration&lt;1&gt;{
+    static void out(std::ostream&amp; os)
+    {
+        os &lt;&lt; 1 &lt;&lt; std::endl;
+    }
+};
+
+int main(){
+    NumberGeneration&lt;1000&gt;::out(std::cout);
+}</pre>
+<p>最后来个BT一点的：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void main(int j) {
+    printf(&#34;%d\n&#34;, j);
+    (main + (exit - main)*(j/1000))(j+1);
+}
+</pre>
+<p>本文来自: <a href="http://stackoverflow.com/q/4568645/89806" target="_blank">http://stackoverflow.com/q/4568645/89806</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3445-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Puzzle</a>, <a href="javascript:void(0)" rel="tag">面试</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>输出从1到1000的数</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-39557" class="comment even thread-even depth-1">
+<article id="div-comment-39557" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d31252286f5b4060a80b11115262aea1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d31252286f5b4060a80b11115262aea1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">老高</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-39557"><time datetime="2011-03-25T17:10:52+08:00">2011年03月25日 17:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-22111"><p>
+<strong><a href="#comment-22111" rel="nofollow">sswv</a> :</strong><br/>
+在 wangcong 的 presentation 里看到过这个题目。第一反应是 system(“seq 1 1000″);
+</p></blockquote>
+<p>同感同感。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-48226" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-48226" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4d111e66ef1e31bf5f377bec7678abb8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4d111e66ef1e31bf5f377bec7678abb8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">_fish</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-48226"><time datetime="2011-04-26T22:27:41+08:00">2011年04月26日 22:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#include<br/>
+#define Out(i) printf(“%d\n”, i++);<br/>
+#define REP(N) N N N N N N N N N N<br/>
+#define Out1000(i) REP(REP(REP(Out(i))));<br/>
+void main()<br/>
+{<br/>
+int i = 1;<br/>
+Out1000(i);<br/>
+}<br/>
+喜欢短短的感觉。</p>
+</div>
+ </article>
+</li>
+<li id="comment-62395" class="comment even thread-even depth-1">
+<article id="div-comment-62395" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9295de75605f3703ae173504cdbdd087?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9295de75605f3703ae173504cdbdd087?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">股份合格</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-62395"><time datetime="2011-06-30T16:33:15+08:00">2011年06月30日 16:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>void f(int n){<br/>
+printf(“%d\n”,n);<br/>
+n/(1000-n);<br/>
+f(n+1);<br/>
+}<br/>
+编译器编译的时候会把 n/(1000-n)这一句优化掉</p>
+</div>
+ </article>
+</li>
+<li id="comment-65210" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-65210" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ae8bc5acc962bc6b95f9e8f8d0e6bc97?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ae8bc5acc962bc6b95f9e8f8d0e6bc97?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://newcj.cnblogs.com" class="url" rel="ugc external nofollow">- -!</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-65210"><time datetime="2011-07-15T13:35:48+08:00">2011年07月15日 13:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其实这不能说是吃饱了撑的题，这题是是考验程序员的想象力的</p>
+</div>
+ </article>
+</li>
+<li id="comment-78143" class="comment even thread-even depth-1">
+<article id="div-comment-78143" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0eb178cec364c022a189c3814e5f7483?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0eb178cec364c022a189c3814e5f7483?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">=.=</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-78143"><time datetime="2011-08-30T22:51:44+08:00">2011年08月30日 22:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>额.面试的题目别这样…</p>
+</div>
+ </article>
+</li>
+<li id="comment-97944" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-97944" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b53725fd0dee3ecda7cab96db0c5fd0b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b53725fd0dee3ecda7cab96db0c5fd0b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/hustlijian" class="url" rel="ugc external nofollow">hustlijian</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-97944"><time datetime="2011-11-16T23:50:37+08:00">2011年11月16日 23:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有了知识，才能追求技巧！不错。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-191333" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.52coder.net/?p=826" class="url" rel="ugc external nofollow">面试题:输出从1到1000的数 | 我爱程序员-阳光洒满肩,仿佛自由人</a> </div>
+</li>
+<li id="comment-196278" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-196278" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/240c9fc460501eb3d7ba313c29dd5cb3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/240c9fc460501eb3d7ba313c29dd5cb3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ernest</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-196278"><time datetime="2012-06-11T00:03:14+08:00">2012年06月11日 00:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#include </p>
+<p>long p(long x){<br/>
+printf(“%ld “,x);<br/>
+return (x-1000)&amp;&amp;p(x+1);<br/>
+}</p>
+<p>int main(void){<br/>
+p(1);<br/>
+printf(“\n\n”);<br/>
+return 0;<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-196279" class="comment even thread-even depth-1">
+<article id="div-comment-196279" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/240c9fc460501eb3d7ba313c29dd5cb3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/240c9fc460501eb3d7ba313c29dd5cb3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ernest</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-196279"><time datetime="2012-06-11T00:03:33+08:00">2012年06月11日 00:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-196278" rel="nofollow">@Ernest </a> </p>
+<p>#include &lt;stdio.h&gt;</p>
+</div>
+ </article>
+</li>
+<li id="comment-321804" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.sinkshark.com/archives/15.html" class="url" rel="ugc external nofollow">SinkShark » 题目：求 1+2+…+n</a> </div>
+</li>
+<li id="comment-389831" class="comment even thread-even depth-1">
+<article id="div-comment-389831" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/18b1f35a723c9a18679a8e240a71c39c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/18b1f35a723c9a18679a8e240a71c39c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">af</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-389831"><time datetime="2013-05-07T17:14:47+08:00">2013年05月07日 17:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>考验基础，也考验程序员的见识。BT果然是BT级别的</p>
+</div>
+ </article>
+</li>
+<li id="comment-695138" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-695138" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cb9489b2f418884dbbf8fc34faf1fa2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cb9489b2f418884dbbf8fc34faf1fa2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nnkken</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-695138"><time datetime="2013-08-26T23:20:13+08:00">2013年08月26日 23:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>除以0退出的話，每次printf後要fflush(stdout)，不然會因為緩沖區而沒有輸出<br/>
+話說半小時前才看完「一個fork的面試題」，才剛知道printf的緩沖區問題，沒想到這麼快就用上了……</p>
+</div>
+ </article>
+</li>
+<li id="comment-909761" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=912" class="url" rel="ugc external nofollow">C语言函数实现的另类方法 | multiprocess</a> </div>
+</li>
+<li id="comment-1402373" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1402373" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/34eb90a9036e4970ddb9db9cc4e07550?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/34eb90a9036e4970ddb9db9cc4e07550?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.weibo.com/jimbowhy" class="url" rel="ugc external nofollow">Jimbowhy</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-1402373"><time datetime="2014-03-24T09:51:12+08:00">2014年03月24日 09:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原贴还有个搞笑版，笑死人啦：<br/>
+Looks like it doesn’t need to use loops<br/>
+printf(“1 10 11 100 101 110 111 1000\n”);</p>
+</div>
+ </article>
+</li>
+<li id="comment-1478641" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10381.html" class="url" rel="ugc external nofollow">一个“蝇量级” C 语言协程库 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1680869" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1680869" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/11712b544a458c950affac6139b9c058?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/11712b544a458c950affac6139b9c058?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小菜鸟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-1680869"><time datetime="2015-03-26T21:16:43+08:00">2015年03月26日 21:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我果然只想出了第一种方法，太弱了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923936" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1923936" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/80ccecfa4088f328e259c8b04cf0f21c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/80ccecfa4088f328e259c8b04cf0f21c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://bwangel23.github.io/" class="url" rel="ugc external nofollow">被欺负的大白</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-1923936"><time datetime="2018-02-08T02:13:07+08:00">2018年02月08日 02:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔，刚刚刷知乎。看到有人面试前端的时候提的问题：要求输入m.n参数，获取一个m长度的都是n的数组，不能用循环。他说答案是使用递归，我觉得他一定是收到了您这篇文章的启发。</p>
+<p><a href="https://www.zhihu.com/question/60165921/answer/282467697" rel="nofollow ugc">https://www.zhihu.com/question/60165921/answer/282467697</a></p>
+<p>23333</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1923937" class="comment odd alt depth-2">
+<article id="div-comment-1923937" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/80ccecfa4088f328e259c8b04cf0f21c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/80ccecfa4088f328e259c8b04cf0f21c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://bwangel23.github.io/" class="url" rel="ugc external nofollow">被欺负的大白</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3445.html/comment-page-2#comment-1923937"><time datetime="2018-02-08T02:13:57+08:00">2018年02月08日 02:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写错字了，受到了启发，不是收到了启发</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/3445.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/3445.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">3445</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>bash 函数级重定向 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1574 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1574" class="post-content post-1574 post type-post status-publish format-standard hentry category-unixlinux tag-bash tag-redirections">
+<header class="entry-header">
+<span class="screen-reader-text">bash 函数级重定向</span>
+<h1 class="entry-title">bash 函数级重定向</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1574.html" title="23:47" rel="bookmark"><time class="entry-date" datetime="2009-10-14T23:47:25+08:00" pubdate="">2009年10月14日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1574.html#comments" class="comments-link">7 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 10,615 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="size-full wp-image-1380 alignright" title="bash 函数级重定向" src="/uploads/2009/08/bash.jpg" alt="bash 函数级重定向" width="120" height="120" srcset=""/>相信每一个人对于操作系统的重定向不会陌生了。就是&gt;, &gt;&gt;, &lt;, &lt;&lt;，关于重定向的基本知识我就不说了。这里主要讨论bash的重定向中的一个鲜为人知的东西，那就是bash脚本的函数也可以定义相关的重定向操作。这可不是命令级的重定向，这是函数级的重点向。这并不是一个新的东西，我只是想告诉大家一个已经存在了多年但却可能不被人常用的功能。</p>
+<p>关于bash的这个函数级的重定向的语法其实很简单，你只需要在函数结尾时加上一些重定向的定义或指示符就可以了。下面是一个示例：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">function mytest()
+{
+        ...
+} &lt; mytest.in &gt; mytest.out 2&gt; mytest.err</pre>
+<p>现在，只要是test被调用，那么，这个函数就会从mytest.in读入数据，并把输出重定向到mytest.out文件中，然后标准错误则输出到mytest.err文件中。是不是很简单？</p>
+<p><span id="more-1574"></span></p>
+<p>因为函数级的重定向仅当在被函数调用的时候才会起作用，而且其也是脚本的一部分，所以，你自然也可以使用变量来借文件名。下面是一个示例：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">#!/bin/bash
+
+function mytest()
+{
+    echo Hello World CoolShell.cn
+} &gt;$out
+
+out=mytest1.out
+mytest
+out=mytest2.out
+mytest</pre>
+<p>这样一来，标准输出的重定向就可以随$out变量的改变而改变了。在上面的例子中，第一个调是重定向到mytest1.out，第二个则是到mytest2.out。</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">$ bash mytest.sh; more mytest?.out
+::::::::::::::
+mytest1.out
+::::::::::::::
+Hello World CoolShell.cn
+::::::::::::::
+mytest2.out
+::::::::::::::
+Hello World CoolShell.cn</pre>
+<p>正如前面所说的一样，这里并没有什么新的东西。上面的这个示例，转成传统的写法是：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">#!/bin/bash
+
+function mytest()
+{
+    echo Hello World CoolShell.cn
+}
+mytest &gt;mytest1.out
+mytest &gt;mytest2.out</pre>
+<p>到此为此，好像这个feature并没有什么特别的实用之处。有一个可能比较实用的用法可能是把把你所有代码的的标准错误重定向到一个文件中去。如下面所示：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">#!/bin/bash
+
+log=err.log
+function error()
+{
+    echo &#34;$*&#34; &gt;&amp;2
+}
+function mytest1()
+{
+    error mytest1 hello1 world1 coolshell.cn
+}
+
+function mytest2()
+{
+    error mytest2 hello2 world2 coolshell.cn
+}
+
+function main()
+{
+    mytest1
+    mytest2
+} 2&gt;$log
+
+main</pre>
+<p>运行上面的脚本，你可以得到下面的结果：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">$ bash mytest.sh ;cat err.log
+mytest1 hello1 world1 coolshell.cn
+mytest2 hello2 world2 coolshell.cn</pre>
+<p>当然，你也可以不用定义一个函数，只要是{…} 语句块，就可以使用函数级的重定向，就如下面的示例一样：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">#!/bin/bash
+
+log=err.log
+function error()
+{
+    echo &#34;$*&#34; &gt;&amp;2
+}
+function mytest1()
+{
+    error mytest1 hello1 world1 coolshell.cn
+}
+
+function mytest2()
+{
+    error mytest2 hello2 world2 coolshell.cn
+}
+
+{
+mytest1
+mytest2
+} 2&gt;$log</pre>
+<p>你也可以重定向 (…) 语句块，但那会导致语句被执行于一个sub-shell中，这可能会导致一些你不期望的行为或问题，因为sub-shell是在另一个进程中。</p>
+<p>如果你问，我们是否可以覆盖函数级的重定向。答案是否定的。如果你试图这样做，那么，函数调用点的重定向会首先执行，然后函数定义上的重定向会将其覆盖。下面是一个示例：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">#!/bin/bash
+
+function mytest()
+{
+    echo hello world coolshell.cn
+} &gt;out1.txt
+mytest &gt;out2.txt</pre>
+<p>运行结果是，out2.txt会被建立，但里面什么也没有。</p>
+<p>下面是一个重定向标准输入的例子：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">#!/bin/bash
+
+function mytest()
+{
+    while read line
+    do
+        echo $line
+    done
+} &lt;&lt;EOF
+hello
+coolshell.cn
+EOF
+mytest</pre>
+<p>下面是其运行结果：</p>
+<pre data-enlighter-language="bash" class="EnlighterJSRAW">$ bash mytest.sh
+hello
+coolshell.cn</pre>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1574-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Bash</a>, <a href="javascript:void(0)" rel="tag">Redirections</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>bash 函数级重定向</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1409" class="comment even thread-even depth-1">
+<article id="div-comment-1409" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da3942a989b6028f23c7585d86fa7f57?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://li2z.cn" class="url" rel="ugc external nofollow">bones7456</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1574.html#comment-1409"><time datetime="2009-10-15T09:01:25+08:00">2009年10月15日 09:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>建议还是在RSS里输出全文吧？ PS： Neo 发的一些文章倒是输出全文的，为什么呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1412" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1412" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1574.html#comment-1412"><time datetime="2009-10-15T11:22:23+08:00">2009年10月15日 11:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1409"><p>
+<strong><a href="#comment-1409" rel="nofollow">bones7456</a> :</strong></p>
+<p>建议还是在RSS里输出全文吧？ PS： Neo 发的一些文章倒是输出全文的，为什么呢？</p>
+</blockquote>
+<p>很不好意思有这样的设置，只要在我们的文章中使用more标识，在RSS的输出中也会输出部分文章。本来，这并不是Wordpress支持的，Wordpress支持两种RSS输出，一种是全文，一种是摘要（无格式），摘要不用说了，很差。全文好是好，但是有时候文中图片很多或是比较长，所以，大量的文章可能会让在线阅读器非常地凌乱和缓慢，而且，可能出现的情况是，就算是一篇你不感兴趣的文章，你的浏览器也需要下载。所以，我修改了一下Wordpress的源码，也让RSS的输出和Wordpress上一致，个人认为这可能会比较折衷一些。当然，凡事总是有好的一面，也有不好的一面，很难两全。如果大家对CoolShell.cn的文章都感兴趣的话，我们会考虑全面放开的，只是现在很不自信，还在尝试，磨合和摸索阶段。</p>
+<p>不管怎么样，非常感谢你的关注！我们收到你你的建议了，一定会考虑的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1427" class="comment even thread-even depth-1">
+<article id="div-comment-1427" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce9d42d746276612b0328cf93a982edd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce9d42d746276612b0328cf93a982edd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Somobody</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1574.html#comment-1427"><time datetime="2009-10-16T11:26:23+08:00">2009年10月16日 11:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还是全文输出为好</p>
+<p>俺喜欢攒多个文章一起看，G READER里看不到的话很不爽的，尤其是我使用的是掌上设备800*480分辨率（问了几个朋友也都说喜欢全文，其中还有一个用离线RSS阅读器的）</p>
+</div>
+ </article>
+</li>
+<li id="comment-1457" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1457" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f92cd85af8609b9e32e4b428adbd5c63?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f92cd85af8609b9e32e4b428adbd5c63?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">waterlife</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1574.html#comment-1457"><time datetime="2009-10-19T14:41:50+08:00">2009年10月19日 14:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也是来建议全文输出的，没想到前面两位哥们儿都说了，啥都不说了。<br/>
+在GR里看到竟然不是全文输出的时候我就震惊了，为什么？<br/>
+看到上面耗子的回复，我觉得这个可以自信，这个真的可以自信。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1463" class="comment even thread-even depth-1">
+<article id="div-comment-1463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bad4f7b0f46965617a00bf530babe933?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bad4f7b0f46965617a00bf530babe933?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://taotaotalk.cn" class="url" rel="ugc external nofollow">ben-Q</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1574.html#comment-1463"><time datetime="2009-10-20T00:15:34+08:00">2009年10月20日 00:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很深奥~~呵呵</p>
+</div>
+ </article>
+</li>
+<li id="comment-1468" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1468" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c8acda08cfea5d257bc8957d0e5f77db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c8acda08cfea5d257bc8957d0e5f77db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://skyfeng.org" class="url" rel="ugc external nofollow">YOUI</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1574.html#comment-1468"><time datetime="2009-10-20T10:36:17+08:00">2009年10月20日 10:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>支持全文输出～～～</p>
+</div>
+ </article>
+</li>
+<li id="comment-241372" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog-suuuch.rhcloud.com/2012/11/23/%e4%bd%a0%e5%8f%af%e8%83%bd%e4%b8%8d%e7%9f%a5%e9%81%93%e7%9a%84shell/" class="url" rel="ugc external nofollow">你可能不知道的Shell | Suuch</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

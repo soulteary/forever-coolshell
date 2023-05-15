@@ -1,0 +1,237 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C/C++返回内部静态成员的陷阱 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-12192 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-12192" class="post-content post-12192 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C/C++返回内部静态成员的陷阱</span>
+<h1 class="entry-title">C/C++返回内部静态成员的陷阱</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12192.html" title="10:12" rel="bookmark"><time class="entry-date" datetime="2006-11-16T10:12:11+08:00" pubdate="">2006年11月16日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12192.html#comments" class="comments-link">8 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 16,555 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<p align="left">在我们用C/C++开发的过程中，总是有一个问题会给我们带来苦恼。这个问题就是函数内和函数外代码需要通过一块内存来交互（比如，函数返回字符串），这个问题困扰和很多开发人员。如果你的内存是在函数内栈上分配的，那么这个内存会随着函数的返回而被弹栈释放，所以，你一定要返回一块函数外部还有效的内存。</p>
+<p>这是一个让无数人困扰的问题。如果你一不小心，你就很有可能在这个上面犯错误。当然目前有很多解决方法，如果你熟悉一些标准库的话，你可以看到许多各式各样的解决方法。大体来说有下面几种：</p>
+<p>1）在函数内部通过malloc或new在堆上分配内存，然后把这块内存返回（因为在堆上分配的内存是全局可见的）。这样带来的问题就是潜在的内存问题。因为，如果返回出去的内存不释放，那么就是memory Leak。或者是被多次释放，从而造成程序的crash。这两个问题都相当的严重，所以这种设计方法并不推荐。（在一些Windows API中，当你调用了一些API后，你必需也要调用他的某些API来释放这块内存）</p>
+<p>2）让用户传入一块他自己的内存地址，而在函数中把要返回的内存放到这块内存中。这是一个目前普遍使用的方式。很多Windows API函数或是标准C函数都需要你传入一个buffer和这个buffer的长度。这种方式对我们来说应该是屡见不鲜了。这种方式的好处就是由函数外部的程序来维护这块内存，比较简显直观。但问题就是在使用上稍许有些麻烦。不过这种方式把犯错误的机率减到了最低。</p>
+<p>3）第三种方式显得比较另类，他利用了static的特性，static的栈内存一旦分配，那这块内存不会随着函数的返回而释放，而且，它是全局可见的（只要你有这块内存的地址）。所以，有一些函数使用了static的这个特性，即不用使用堆上的内存，也不需要用户传入一个buffer和其长度。从而，使用得自己的函数长得很漂亮，也很容易使用。</p>
+<p>这里，我想对第三个方法进行一些讨论。使用static内存这个方法看似不错，但是它有让你想象不到的陷阱。让我们来用一个实际发生的案例来举一个例子吧。</p>
+<p><span id="more-12192"></span></p>
+<h4><strong>示例</strong></h4>
+<p>有过socket编程经验的人一定知道一个函数叫：inet_ntoa，这个函数主要的功能是把一个数字型的IP地址转成字符串，这个函数的定义是这样的（注意它的返回值）：</p>
+<p align="center"><strong><span style="font-size: medium;">char *inet_ntoa(struct in_addr in);</span></strong></p>
+<p align="left">显然，这个函数不会分配堆上的内存，而他又没有让你传一下字符串的buffer进入，那么他一定使用“返回static char[]”这种方法。在我们继续我们的讨论之前，让我们先了解一下IP地址相关的知识，下面是inet_ntoa这个函数需要传入的参数：（也许你会很奇怪，只有一个member的struct还要放在struct中干什么？这应该是为了程序日后的扩展性的考虑）</p>
+<p><span style="font-size: medium;"><strong>struct in_addr {<br/>
+unsigned long int s_addr;<br/>
+}<br/>
+</strong><br/>
+</span>对于IPV4来说，一个IP地址由四个8位的bit组成，其放在s_addr中，高位在后，这是为了方便网络传输。如果你得到的一个s_addr的整型值是：3776385196。那么，打开你的Windows计算器吧，看看它的二进制是什么？让我们从右到左，8位为一组（如下所示）。</p>
+<p align="center"><span style="font-size: medium;">11100001   00010111    00010000    10101100</span></p>
+<p align="left">再把每一组转成十进制，于是我们就得到：225   23   16   172， 于是IP地址就是 172.16.23.225。</p>
+<p>好了，言归正传。我们有这样一个程序，想记录网络包的源地址和目地地址，于是，我们有如下的代码：</p>
+<p align="left">
+</p><pre data-enlighter-language="c" class="EnlighterJSRAW">struct in_addr src, des;
+........
+........
+fprintf(fp, &#34;源IP地址&lt;%s&gt;/t目的IP地址&lt;%s&gt;/n&#34;, inet_ntoa(src),   inet_ntoa(des));</pre>
+<p></p>
+<p>会发生什么样的结果呢？你会发现记录到文件中的源IP地址和目的IP地址完全一样。这是什么问题呢？于是你开始调试你的程序，你发现src.s_addr和des.s_addr根本不一样（如下所示）。可为什么输出到文件的源和目的都是一样的？难道说是inet_ntoa的bug？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">src.s_addr = 3776385196;    //对应于172.16.23.225
+des.s_addr = 1678184620;  //对应于172.16.7.100</pre>
+<p>原因就是inet_ntoa()“自作聪明”地把内部的static char[]返回了，而我们的程序正是踩中了这个陷阱。让我们来分析一下fprintf代码。在我们fprintf时，编译器先计算inet_ntoa(des)，于是其返回一个字符串的地址，然后程序再去求inet_ntoa(src)表达式，又得到一个字符串的地址。这两个字符串的地址都是inet_ntoa()中那个static char[]，显然是同一个地址，而第二次求src的IP时，这个值的des的IP地址内容必将被src的IP覆盖。所以，这两个表达式的字符串内存都是一样的了，此时，程序会调用fprintf把这两个字符串（其实是一个）输出到文件。所以，得到相同的结果也就不奇怪。</p>
+<p>仔细看一下inet_ntoa的man，我们可以看到这句话：<strong>The string is returned in a statically allocated buffer,  which  subsequent calls will overwrite.</strong> 证实了我们的分析。</p>
+<h4><strong>小结</strong></h4>
+<p>让我们大家都扪心自问一下，我们在写程序的过程当中是否使用了这种方法？这是一个比较危险，容易出错的方法。这种陷阱让人防不胜防。想想，如果你有这样的程序：</p>
+<p>if ( strcmp( inet_ntoa(ip1), inet_ntoa(ip2) )==0 ) {<br/>
+…. ….<br/>
+}</p>
+<p>本想判断一下两个IP地址是否一样，却不料掉入了那个陷阱——让这个条件表达式永真。</p>
+<p>这个事情告诉我们下面几个道理：</p>
+<p>1）慎用这种方式的设计。返回函数内部的static内存有很大的陷阱。<br/>
+2）如果一定要使用这种方式的话。你就必须严肃地告诉所有使用这个函数的人，千万不要在一个表达式中多次使用这个函数。而且，还要告诉他们，不copy函数返回的内存的内容，而只是保存返回的内存地址或是引用是没用的。不然的话，后果概不负责。<br/>
+3）C/C++是很危险的世界，如果你不清楚他的话。还是回火星去吧。</p>
+<p>附：看过Efftive C++的朋友一定知道其中有一个条款（item 23）：不要试图返回对象的引用。这个条款中也对是否返回函数内部的static变量进行了讨论。结果也是持否定态度的。</p>
+<p>(全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-12192-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C/C++返回内部静态成员的陷阱</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1657743" class="comment even thread-even depth-1">
+<article id="div-comment-1657743" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3eec4ec97adc9f12c3bf58845fa89808?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3eec4ec97adc9f12c3bf58845fa89808?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">canny38</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12192.html#comment-1657743"><time datetime="2015-02-08T21:22:51+08:00">2015年02月08日 21:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>唔，返回static变量的接口虽然方便，但是会有这个问题。<br/>
+目前还有一种常见的方案，是返回一个带引用计数的内存块，默认计数为0，意味着下一帧这块内存被释放。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1695194" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1695194" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9d6aad90f9b00fc11bb5e15b6941f50?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9d6aad90f9b00fc11bb5e15b6941f50?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">甘草</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12192.html#comment-1695194"><time datetime="2015-04-22T18:31:27+08:00">2015年04月22日 18:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>inet_ntoa实现真是坑人啊。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1718350" class="comment even thread-even depth-1">
+<article id="div-comment-1718350" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/da9fd1978f054d0235d690e433022c50?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/da9fd1978f054d0235d690e433022c50?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tree</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12192.html#comment-1718350"><time datetime="2015-06-07T01:07:47+08:00">2015年06月07日 01:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>使用localtime()时同样遇到这个问题</p>
+</div>
+ </article>
+</li>
+<li id="comment-1732644" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1732644" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ffe7345870f369704f1f0c888ea814dc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ffe7345870f369704f1f0c888ea814dc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">baixiangcpp</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12192.html#comment-1732644"><time datetime="2015-07-08T00:00:54+08:00">2015年07月08日 00:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看你的博客比看书还有营养O(∩_∩)O</p>
+</div>
+ </article>
+</li>
+<li id="comment-1794345" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.holahola.club/?p=171" class="url" rel="ugc external nofollow">程序员技术练级攻略 | Zane&#39;s Blog</a> </div>
+</li>
+<li id="comment-1909539" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1909539" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12192.html#comment-1909539"><time datetime="2017-01-01T12:50:44+08:00">2017年01月01日 12:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>static静态变量，还有线程安全问题。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1998837" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://pintouge.online/?p=1803" class="url" rel="ugc external nofollow">程序员技术练级攻略（皓哥） – 平头哥个人博客</a> </div>
+</li>
+<li id="comment-2274087" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2274087" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed666307de98f2de40ad503966694fcc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed666307de98f2de40ad503966694fcc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hhh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12192.html#comment-2274087"><time datetime="2021-07-07T10:49:47+08:00">2021年07月07日 10:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>1 #include &lt;stdio.h&gt;<br/>
+2<br/>
+3<br/>
+4 char <em>str(int b)<br/>
+5 {<br/>
+6 static char tmp;<br/>
+7<br/>
+8 tmp = b;<br/>
+9<br/>
+10 return &amp;tmp;<br/>
+11 }<br/>
+12<br/>
+13 void main()<br/>
+14 {<br/>
+15 int c, b;<br/>
+16 FILE *fd;<br/>
+17<br/>
+18 fd = fopen(“./a.txt”, “w”);<br/>
+19 if(fd == NULL)<br/>
+20 {<br/>
+21 perror(“open”);<br/>
+22 }<br/>
+23<br/>
+24 scanf(“%d %d”, &amp;c, &amp;b);<br/>
+25 fprintf(fd, “%c %c\n”,</em>str(c),*str(b));<br/>
+26 }<br/>
+为什么我实验不出？</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

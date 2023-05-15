@@ -1,0 +1,320 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>MySQL: InnoDB 还是 MyISAM? | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-652 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-652" class="post-content post-652 post type-post status-publish format-standard hentry category-techarticle category-datebase tag-database tag-innodb tag-myisam tag-mysql">
+<header class="entry-header">
+<span class="screen-reader-text">MySQL: InnoDB 还是 MyISAM?</span>
+<h1 class="entry-title">MySQL: InnoDB 还是 MyISAM?</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/652.html" title="14:33" rel="bookmark"><time class="entry-date" datetime="2009-04-24T14:33:09+08:00" pubdate="">2009年04月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/652.html#comments" class="comments-link">95 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 49,440 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>MyISAM 是MySQL中默认的存储引擎，一般来说不是有太多人关心这个东西。决定使用什么样的存储引擎是一个很tricky的事情，但是还是值我们去研究一下，这里的文章只考虑 MyISAM 和InnoDB这两个，因为这两个是最常见的。</p>
+<p>下面先让我们回答一些问题：</p>
+<ul>
+<li>你的数据库有外键吗？</li>
+<li>你需要事务支持吗？</li>
+<li>你需要全文索引吗？</li>
+<li>你经常使用什么样的查询模式？</li>
+<li>你的数据有多大？</li>
+</ul>
+<p><span id="more-652"></span></p>
+<p>思考上面这些问题可以让你找到合适的方向，但那并不是绝对的。如果你需要事务处理或是外键，那么InnoDB 可能是比较好的方式。如果你需要全文索引，那么通常来说 MyISAM是好的选择，因为这是系统内建的，然而，我们其实并不会经常地去测试两百万行记录。所以，就算是慢一点，我们可以通过使用Sphinx从InnoDB中获得全文索引。</p>
+<p>数据的大小，是一个影响你选择什么样存储引擎的重要因素，大尺寸的数据集趋向于选择InnoDB方式，因为其支持事务处理和故障恢复。数据库的在小决定了故障恢复的时间长短，InnoDB可以利用事务日志进行数据恢复，这会比较快。而MyISAM可能会需要几个小时甚至几天来干这些事，InnoDB只需要几分钟。</p>
+<p>您操作数据库表的习惯可能也会是一个对性能影响很大的因素。比如： COUNT() 在 MyISAM 表中会非常快，而在InnoDB 表下可能会很痛苦。而主键查询则在InnoDB下会相当相当的快，但需要小心的是如果我们的主键太长了也会导致性能问题。大批的inserts 语句在MyISAM下会快一些，但是updates 在InnoDB 下会更快一些——尤其在并发量大的时候。</p>
+<p>所以，到底你检使用哪一个呢？根据经验来看，如果是一些小型的应用或项目，那么MyISAM 也许会更适合。当然，在大型的环境下使用MyISAM 也会有很大成功的时候，但却不总是这样的。如果你正在计划使用一个超大数据量的项目，而且需要事务处理或外键支持，那么你真的应该直接使用InnoDB方式。但需要记住InnoDB 的表需要更多的内存和存储，转换100GB 的MyISAM 表到InnoDB 表可能会让你有非常坏的体验。</p>
+<p style="display: none;"><img decoding="async" style="display: none; width: 0px; height: 0px; border-style: none;" src="http://blog.inetu.net/wp-content/plugins/wp-spamfree/img/wpsf-img.php" alt="" width="0" height="0"/></p>
+<p style="display: none;">文章：<a href="http://blog.inetu.net/2009/04/mysql-innodb-or-myisam/" target="_blank">来源</a></p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-652-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">数据库</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Database</a>, <a href="javascript:void(0)" rel="tag">InnoDB</a>, <a href="javascript:void(0)" rel="tag">MyISAM</a>, <a href="javascript:void(0)" rel="tag">MySQL</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>MySQL: InnoDB 还是 MyISAM?</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-813327" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://y2kmz.sakura.ne.jp/blogs/blog1/?p=309" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | 在东京</a> </div>
+</li>
+<li id="comment-894691" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ruanfei.com/news/593.html" class="url" rel="ugc external nofollow">MySQL性能优化21条经验最佳实践 – 软飞</a> </div>
+</li>
+<li id="comment-909716" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.multiprocess.net/?p=684" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | multiprocess</a> </div>
+</li>
+<li id="comment-1132750" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.markdream.com/code/top-20-mysql-best-practices.shtml" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | markdream</a> </div>
+</li>
+<li id="comment-1272980" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liu-li.me/?p=73" class="url" rel="ugc external nofollow">刘利 » MySQL文章(整理)</a> </div>
+</li>
+<li id="comment-1309842" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.tcxurun.cn/archives/102" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验(转) - 天一直很蓝</a> </div>
+</li>
+<li id="comment-1344116" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cmsidea.net/web/?p=207" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | CMSIDEA</a> </div>
+</li>
+<li id="comment-1363609" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.miccattle.com/?p=12" class="url" rel="ugc external nofollow">【转】MySQL性能优化的最佳20+条经验 | 東疆之隅</a> </div>
+</li>
+<li id="comment-1443250" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://veryyoung.sinaapp.com/?p=159" class="url" rel="ugc external nofollow">MySQL: InnoDB 还是 MyISAM? | VERYYOUNG</a> </div>
+</li>
+<li id="comment-1475992" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1475992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84d8920cabad9ac26135be5774b65582?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84d8920cabad9ac26135be5774b65582?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.sxwen.com" class="url" rel="ugc external nofollow">jianwu5</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/652.html/comment-page-2#comment-1475992"><time datetime="2014-06-06T00:03:48+08:00">2014年06月06日 00:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>翻译得不错。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1479584" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ifelsend.com/blog/2014/06/11/mysql%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96%e7%9a%84%e6%9c%80%e4%bd%b320%e6%9d%a1%e7%bb%8f%e9%aa%8c.html" class="url" rel="ugc external nofollow">脑袋博客 | MySQL性能优化的最佳20+条经验</a> </div>
+</li>
+<li id="comment-1503908" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mozila.cn/?p=122" class="url" rel="ugc external nofollow">【MySQL】MySQL性能优化的最佳20+条经验 | Mozila.cn</a> </div>
+</li>
+<li id="comment-1511485" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://afeier.sinaapp.com/?p=172" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | 大头的博客</a> </div>
+</li>
+<li id="comment-1518856" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wimmei.com/index.php/32/" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | 趣分享</a> </div>
+</li>
+<li id="comment-1522576" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.webjava.cn/articles/179.html" class="url" rel="ugc external nofollow">MySQL性能优化的20+条最佳经验 | 爱上编程</a> </div>
+</li>
+<li id="comment-1557235" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.phpthinking.com/archives/454" class="url" rel="ugc external nofollow">MySQL性能优化的最佳21条经验 | PHP开发学习门户</a> </div>
+</li>
+<li id="comment-1580091" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/itniu/3560.html" class="url" rel="ugc external nofollow">6个有用的MySQL语句 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1591486" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.xmaoseo.com/mysql-performance-tuning-best-practices/" class="url" rel="ugc external nofollow">MySQL性能优化的最佳经验-猫猫前端页面合理优化</a> </div>
+</li>
+<li id="comment-1599201" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://zhangyiyi.cn/?p=137" class="url" rel="ugc external nofollow">Top 20+ MySQL Best Practices – Tuts+ Code Tutorial | 老张的博客</a> </div>
+</li>
+<li id="comment-1628075" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.phpxue.com/?p=925" class="url" rel="ugc external nofollow">MySQL性能优化的最佳21条经验 – PHP学习网</a> </div>
+</li>
+<li id="comment-1646863" class="comment even thread-even depth-1">
+<article id="div-comment-1646863" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8f6da66c38ddf6b8c86c6f0d186dcc48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8f6da66c38ddf6b8c86c6f0d186dcc48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xinwendashibaike.github.io/" class="url" rel="ugc external nofollow">xinwendashibaike</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/652.html/comment-page-2#comment-1646863"><time datetime="2015-01-19T11:39:43+08:00">2015年01月19日 11:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-28616" rel="nofollow">@蜡笔小强 </a><br/>
+原来还有人看到这个错别字</p>
+</div>
+ </article>
+</li>
+<li id="comment-1667485" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=22163" class="url" rel="ugc external nofollow">mysql优化的21条经验 | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1667946" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://setjs.com/?p=65" class="url" rel="ugc external nofollow">MySQL大量数据插入各种方法性能分析与比较 – 代码之家</a> </div>
+</li>
+<li id="comment-1669843" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.vspsa.com/?p=26314" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20条经验 | 一世浮华一场空</a> </div>
+</li>
+<li id="comment-1750750" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.lanxinbase.com/?p=468" class="url" rel="ugc external nofollow">MySQL性能优化的最佳21条经验 | 蓝芯E管家V3</a> </div>
+</li>
+<li id="comment-1804892" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.doxer.org/mysql-tips/" class="url" rel="ugc external nofollow">mysql tips - Take hold of IT technology trends - learn, practice, troubleshoot, blog</a> </div>
+</li>
+<li id="comment-1806831" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://shunfang.sinaapp.com/archives/115068" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | Tech | 极客笔记</a> </div>
+</li>
+<li id="comment-1810043" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.awaimai.com/569.html" class="url" rel="ugc external nofollow">MySQL性能优化的21条最佳经验 - 歪麦博客歪麦博客</a> </div>
+</li>
+<li id="comment-1910602" class="comment even thread-even depth-1">
+<article id="div-comment-1910602" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/438d9921ded689e01bfff93119bd2012?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/438d9921ded689e01bfff93119bd2012?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hqfz.cnblogs.com" class="url" rel="ugc external nofollow">huoxudong125</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/652.html/comment-page-2#comment-1910602"><time datetime="2017-01-11T10:43:40+08:00">2017年01月11日 10:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文章不长，但还有错别字</p>
+<p>数据库的**在小**决定了故障恢复的时间长短，InnoDB可以利用事务日志进行数据恢复，这会比较快。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913227" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.ruichengm.com/21%e6%9d%a1%e6%9c%80%e4%bd%b3mysql%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96/" class="url" rel="ugc external nofollow">21条最佳MySQL性能优化 – SkyM</a> </div>
+</li>
+<li id="comment-1913924" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.uu3aa.com/a/61494" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 (转载)-IT文库</a> </div>
+</li>
+<li id="comment-1914472" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iszhou.com/2017/06/21/mysql-%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96%e7%9a%84%e6%9c%80%e4%bd%b3-20%e6%9d%a1%e7%bb%8f%e9%aa%8c/" class="url" rel="ugc external nofollow">MySQL 性能优化的最佳 20+条经验-iszhou</a> </div>
+</li>
+<li id="comment-1914835" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iszhou.com/2017/07/03/mysql%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96%e7%9a%84%e6%9c%80%e4%bd%b320%e6%9d%a1%e7%bb%8f%e9%aa%8c/" class="url" rel="ugc external nofollow">MYSQL性能优化的最佳20+条经验-iszhou</a> </div>
+</li>
+<li id="comment-1914935" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dodebug.com/2017/07/%e4%ba%8c%e5%8d%81%e6%9d%a1mysql%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96%e7%9a%84%e7%bb%8f%e9%aa%8c/" class="url" rel="ugc external nofollow">二十条MYSQL性能优化的经验 – bingo埋bug</a> </div>
+</li>
+<li id="comment-1915662" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.foxjin.com/?p=98" class="url" rel="ugc external nofollow">MySQl 性能优化21条 – 慕靳のBlog</a> </div>
+</li>
+<li id="comment-1915682" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.shanglema.com/mysql%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96%e7%9a%84%e6%9c%80%e4%bd%b320%e6%9d%a1%e7%bb%8f%e9%aa%8c/" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 – 上了吗</a> </div>
+</li>
+<li id="comment-1918239" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.e644.com/2557.html" class="url" rel="ugc external nofollow">MySQL性能优化的最佳20+条经验 | E644</a> </div>
+</li>
+<li id="comment-1920365" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.phpserver.cn/index.php/2017/11/04/%e5%a4%a7%e6%95%b0%e6%8d%ae%e9%87%8f%e6%97%b6mysql%e7%9a%84%e4%bc%98%e5%8c%96%e8%a6%81%e7%82%b9%e3%80%90%e8%bd%ac%e3%80%91/" class="url" rel="ugc external nofollow">大数据量时Mysql的优化要点【转】 – PHP技术博客-Garyhuang</a> </div>
+</li>
+<li id="comment-1922669" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blogs.liaoshengzhe.cn/?p=148" class="url" rel="ugc external nofollow">MYSQL性能优化的最佳20+条经验-廖圣哲的博客</a> </div>
+</li>
+<li id="comment-1922704" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://ereesoblog.wordpress.com/2018/01/04/mysql%e6%80%a7%e8%83%bd%e4%bc%98%e5%8c%96/" class="url" rel="ugc external nofollow">MySQL性能优化 – 浮躁的蜗牛</a> </div>
+</li>
+<li id="comment-1925012" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iszhou.com/2018/03/07/%e5%b8%b8%e7%94%a8sql-%e7%9a%84%e4%bc%98%e5%8c%96/" class="url" rel="ugc external nofollow">常用SQL 的优化-iszhou</a> </div>
+</li>
+<li id="comment-1934682" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.iceyicey.com/index.php/archives/184" class="url" rel="ugc external nofollow">MYSQL性能优化的最佳20+条经验 – iceycoding</a> </div>
+</li>
+<li id="comment-1946057" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://56ml.ml/archives/148" class="url" rel="ugc external nofollow">MYSQL性能优化的最佳20+条经验【转载】 | 56博客</a> </div>
+</li>
+<li id="comment-2029215" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dazhuanlan.com/2019/10/12/5da0e1a52c8c8/" class="url" rel="ugc external nofollow">MySQL大量数据插入方法性能分析比较 - 大专栏 | 大专栏</a> </div>
+</li>
+<li id="comment-2355129" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://xindi.xyz/?p=51" class="url" rel="ugc external nofollow">关于MySQL存储引擎的一点记录 – <span class="__cf_email__" data-cfemail="64091d081c0d050b1d0d240a0b1001">[email protected]</span></a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/652.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/652.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">652</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

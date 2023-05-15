@@ -1,0 +1,244 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Alan Cox：单向链表中prev指针的妙用 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9859 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9859" class="post-content post-9859 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-netsecurity tag-alan-cox tag-c tag-kernel tag-linux tag-network tag-tcp">
+<header class="entry-header">
+<span class="screen-reader-text">Alan Cox：单向链表中prev指针的妙用</span>
+<h1 class="entry-title">Alan Cox：单向链表中prev指针的妙用</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9859.html" title="12:27" rel="bookmark"><time class="entry-date" datetime="2013-06-30T12:27:04+08:00" pubdate="">2013年06月30日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9859.html#comments" class="comments-link">56 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 38,112 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p><figure id="attachment_9906" aria-describedby="caption-attachment-9906" style="width: 200px" class="wp-caption alignright"><img decoding="async" class="size-medium wp-image-9906" title="Alan Cox" alt="Alan Cox" src="/uploads/2013/06/Alan-Cox-200x300.jpg" width="200" height="300" srcset="" sizes="(max-width: 200px) 100vw, 200px"/><figcaption id="caption-attachment-9906" class="wp-caption-text">Alan Cox</figcaption></figure><p></p>
+<p><span style="color: #cc0000;"><strong> （感谢网友 </strong></span><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><span style="color: #cc0000;"><strong> 投稿）</strong></span></p>
+<p>之前发过一篇<a href="/articles/8990.html" target="_blank">二级指针操作单向链表</a>的例子，显示了C语言指针的灵活性，这次再探讨一个指针操作链表的例子，而且是一种完全不同的用法。</p>
+<p>这个例子是linux-1.2.13网络协议栈里的，关于链表遍历&amp;数据拷贝的一处实现。源文件是/net/inet/dev.c，你可以从<a href="https://www.kernel.org/pub/linux/kernel/v1.2/" target="_blank">kernel.org</a>官网上下载。</p>
+<p>从最早的0.96c版本开始，linux网络部分一直采取TCP/IP协议族实现，这是最为广泛应用的网络协议，整个架构就是经典的OSI七层模型的描述，其中dev.c是属于链路层实现。从功能上看，其位于网络设备驱动程序和网络层协议实现模块之间，作为二者之间的数据包传输通道，一种接口模块而存在——对驱动层的接口函数netif_rx, 以及对网络层的接口函数net_bh。前者提供给驱动模块的中断例程调用，用于链路数据帧的封装；后者作为驱动中断例程<strong>底半部(buttom half)</strong>，用于对数据帧的解析处理并向上层传送。</p>
+<p>为了便于理解，这里补充一下网络通信原理和linux驱动中断机制的背景知识。从最底层的物理层说起，当主机和路由器相互之间进行通信的时候，在物理介质上（同轴、光纤等）以电平信号进行传输。主机或路由器的<strong>硬件接口（网卡）</strong>负责收发这些信号，当信号发送到接口，再由内置的<strong>调制解调器(modem)</strong>将数字信号转换成二进制码，这样才能驻留在主机的硬件缓存中。这时接口（网卡）设备驱动程序将通过<strong>硬中断</strong>来获取硬件缓存中的数据，驱动程序是操作系统中负责直接同硬件设备打交道的模块，硬中断的触发是初始化时通过设置控制寄存器实现的，用于通知驱动程序硬件缓存中有新的数据到来。linux卡设备驱动就是在<strong>中断处理例程(ISR)</strong>中将硬件缓存数据拷贝到内核缓存中，打包成数据链路帧进行解析处理，再向上分发到各种协议层。由于ISR上下文是原子性的、中断屏蔽的，整个步骤又较为繁琐，因此全部放在ISR中处理会影响到其它中断响应实时性，于是linux有实现一种bottom half的<strong>软中断</strong>处理机制，将整个ISR一分为二，前半部上下文屏蔽所有中断，专门处理紧急的、实时性强的事务，如拷贝硬件缓存并打包封装，后半部上下文没有屏蔽中断（但代码不可重入），用于处理比较耗时且非紧急事务，包括数据帧的解析处理和分发。下面要讲的net_bh就属于后半部。</p>
+<p>我们主要关心的是将链路帧分发到协议层那一段逻辑，下面摘自net_bh函数中的一段代码：</p>
+<p><span id="more-9859"></span></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">526 void net_bh(void *tmp)
+527 {
+       ...
+577
+578    /*
+579    * We got a packet ID.  Now loop over the &#34;known protocols&#34;
+580    * table (which is actually a linked list, but this will
+581    * change soon if I get my way- FvK), and forward the packet
+582    * to anyone who wants it.
+583    *
+584    * [FvK didn&#39;t get his way but he is right this ought to be
+585    * hashed so we typically get a single hit. The speed cost
+586    * here is minimal but no doubt adds up at the 4,000+ pkts/second
+587    * rate we can hit flat out]
+588    */
+589   pt_prev = NULL;
+590   for (ptype = ptype_base; ptype != NULL; ptype = ptype-&gt;next)
+591   {
+592    if ((ptype-&gt;type == type || ptype-&gt;type == htons(ETH_P_ALL)) &amp;&amp; (!ptype-&gt;dev || ptype-&gt;dev==skb-&gt;dev))
+593    {
+594      /*
+595      * We already have a match queued. Deliver
+596      * to it and then remember the new match
+597      */
+598      if(pt_prev)
+599      {
+600        struct sk_buff *skb2;
+601        skb2=skb_clone(skb, GFP_ATOMIC);
+602        /*
+603        * Kick the protocol handler. This should be fast
+604        * and efficient code.
+605        */
+606        if(skb2)
+607          pt_prev-&gt;func(skb2, skb-&gt;dev, pt_prev);
+608      }
+609      /* Remember the current last to do */
+610      pt_prev=ptype;
+611    }
+612   } /* End of protocol list loop */
+613   /*
+614   * Is there a last item to send to ?
+615   */
+616   if(pt_prev)
+617     pt_prev-&gt;func(skb, skb-&gt;dev, pt_prev);
+618   /*
+619    *  Has an unknown packet has been received ?
+620    */
+621   else
+622     kfree_skb(skb, FREE_WRITE);
+623
+      ...
+640 }</pre>
+<p>在此稍稍解说一下数据结构，skb就是内核缓存中sock数据封装，协议栈里从链路层到传输层都会用到，只不过封装格式不同，主要是对<strong>协议首部(header)</strong>的由下而上层层剥离（反之由上而下是层层创建），在此你只需理解为一个链路数据帧即可。这段代码的逻辑是解析skb中的协议字段，从协议类型链表（由ptype_base维护）中查询对应的协议节点进行函数指针func回调，以便将数据帧分发到相应的协议层（如ARP、IP、8022、8023等）。</p>
+<p>第一眼看上去是不是有点奇怪？这段代码竟然用一个pt_prev指针去维护ptype链表中前一个节点，从而产生了额外的条件分支判断，咋一看是否多了很多“余”了？回顾一下那篇<a href="/articles/8990.html" target="_blank">二级指针操作单向链表</a>的博文，简直完全是反其道而行之的。如果把pt_prev去掉，代码可以精简为：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">  for (ptype = ptype_base; ptype != NULL; ptype = ptype-&gt;next)
+  {
+    if ((ptype-&gt;type == type || ptype-&gt;type == htons(ETH_P_ALL)) &amp;&amp; (!ptype-&gt;dev || ptype-&gt;dev==skb-&gt;dev))
+    {
+        /*
+        * We already have a match queued. Deliver
+        * to it and then remember the new match
+        */
+        struct sk_buff *skb2;
+        skb2=skb_clone(skb, GFP_ATOMIC);
+        /*
+        * Kick the protocol handler. This should be fast
+        * and efficient code.
+        */
+        if(skb2)
+            pt_prev-&gt;func(skb2, skb-&gt;dev, pt_prev);
+    }
+} /* End of protocol list loop */
+
+kfree_skb(skb, FREE_WRITE);</pre>
+<p>咋看一下“干净”了很多，不是吗？但我们要记住一点，凡是网上发布的linux内核源代码，都是都是经过众多黑客高手们重重检视并验证过的，人家这么写肯定有十分充足的理由，所以不要太过于相信自己的直觉了，让我们再好好review一下代码吧！看看这段循环里做了什么事情？特别是第592~611行。</p>
+<p>由于从网络上拷贝过来skb是唯一的，而分发的协议对象可能是多个，所以在回调之前要做一次clone动作（注意这里是深度拷贝，相当于一次kmalloc）。分发之后还需要调用kfree_skb释放掉原始skb数据块，它的历史使命到此完成了，没有保留的必要（第622行）。<strong>注意，这两个动作都是存在内核开销的。</strong></p>
+<p>然而这里为啥要pt_prev维护一个后向节点呢？这是有深意的，它的作用就是将当前匹配协议项的回调操作延时了。举个例子，如果链表遍历中找到某个匹配项，当前循环仅仅用pt_prev去记录这个匹配项，除此之外不做任何事情，待到下一次匹配项找到时，才去做上一个匹配项pt_prev的回调操作，直到循环结束，才会去做最后的匹配项的回调（当然pt_prev==NULL表示没有一次匹配，直接释放掉），所以这是一种<strong>拖延战术</strong>。有什么好处呢？就是比原先节省了很多不必要的操作。那么哪些操作是不必要的呢？这里我们逆向思考一下，我们看到clone是在协议字段匹配并且pt_prev!=NULL的前提条件下执行的，而kfree是在pt_prev==NULL的前提条件下执行的。在此可以假设一下，如果ptype链表中存在N项协议与之匹配，那么这段代码只会执行N-1次clone，而没有pt_prev时将会执行N次clone和1次kfree，再如果ptype链表中有且仅有一项协议与之匹配，那么整个循环既不会执行到第601行的clone，也不会执行到第622行的kfree。</p>
+<p>也就是说，<strong>当整个链表至少有一项匹配的一般情况下，pt_prev存在比没有时减少了一次clone和一次kfree的开销；只有全部不匹配的最差情况下，两者都只做一次kfree动作，持平。这就是延迟策略产生的效益</strong>。</p>
+<p>熟悉TCP/IP协议族的开发人员应该知道<strong>MTU（最大传输单元）</strong>这个概念，遵循不同协议的MTU值是不同的。比如以太网帧MTU是1500个字节，802.3帧MTU是1492字节，PPP链路帧MTU是269字节，而超通道MTU理论上是65535字节。要知道在一个高速吞吐量通信网络环境下，在大块数据分片传输线路里，在内核级别代码中，减少一处系统开销意味着什么？</p>
+<p>其实我们完全可以抛开一切网络协议相关知识，这不过是一段极其普通的单向链表操作而已，逻辑并不复杂。但是看看人家顶级黑客是怎么思考和coding的，对比一下自己写过的代码，多少次数据处理是用一个简单的for循环匆匆敷衍了事而没有进一步思考其中的粗陋和不合理之处？面对真正的编程高手这种“心计”与“城府”，你是不是有种莫名不安感？你会怀疑你真的了解怎么去使用和操作C语言中基本的链表数据结构么？如果答案是肯定的，那就开始颤抖吧（哈，别误会，其实上面这段话不过是笔者的自我告解罢了）~~~</p>
+<p>最后，让我们感谢尊敬的<a href="https://en.wikipedia.org/wiki/Alan_Cox" target="_blank">Alan Cox</a>大大对Linux社区卓越精细、无与伦比的贡献！（Alan是图中中部戴红帽子的那位）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="Linux Kernel Team" src="http://old.lwn.net/images/ks/group2.jpg" width="704" height="323"/></p>
+<p><strong>附注：</strong></p>
+<p>最新的Linux-2.6.x版本中协议栈实现部分变动很大，但/net/core/dev.c的netif_receive_skb函数里仍然保留了pt_prev这种用法，目的是一样的，都是为了减少一次系统开销的优化操作。</p>
+<p>关于Alan，他在斯旺西大学工作时，在学校服务器上安装了一个早期的linux版本，供学校使用。他修正了许多的问题，重写了网络系统中的许多部份。随后成为linux内核开发小组中的重要成员。<a href="https://en.wikipedia.org/wiki/Alan_Cox" target="_blank">Alan Cox</a>负责维持2.2版，在2.4版上拥有自己的分支（在版本号上会冠上ac，如 2.4.13-ac1）。他的分支版本非常稳定，修正许多错误，许多厂商都使用他的版本。在他去进修工商管理硕士之前，涉入许多linux内核开发的事务，在社群中有很高的地位，有时会被视为是Linus之下的第二号领导者。</p>
+<p>不过，今年1月28日的时候，Alan因为家庭原因宣布退出Linux项目了，下面是他Google+的声明：</p>
+<blockquote><p>“I’m leaving the Linux world and Intel for a bit for family reasons, I’m aware that ‘family reasons’ is usually management speak for ‘I think the boss is an asshole’ but I’d like to assure everyone that while I frequently think Linus is an asshole (and therefore very good as kernel dictator) I am departing quite genuinely for family reasons and not because I’ve fallen out with Linus or Intel or anyone else. Far from it I’ve had great fun working there.”</p></blockquote>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9859-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Alan Cox</a>, <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Kernel</a>, <a href="javascript:void(0)" rel="tag">Linux</a>, <a href="javascript:void(0)" rel="tag">network</a>, <a href="javascript:void(0)" rel="tag">TCP</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Alan Cox：单向链表中prev指针的妙用</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1707751" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1707751" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9859.html/comment-page-2#comment-1707751"><time datetime="2015-05-16T00:31:53+08:00">2015年05月16日 00:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>涨知识，只有充分了解逻辑模型，才会写出这么有针对性的代码</p>
+</div>
+ </article>
+</li>
+<li id="comment-1710491" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iteaer.com/?p=432" class="url" rel="ugc external nofollow">Docker基础技术：Linux Namespace（下） | IT茶人---茗香燕归来</a> </div>
+</li>
+<li id="comment-1735959" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/17049.html" class="url" rel="ugc">Docker基础技术：Linux CGroup | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1750024" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1073" class="url" rel="ugc external nofollow">Docker基础技术：AUFS | 星达红</a> </div>
+</li>
+<li id="comment-1795187" class="comment even thread-even depth-1">
+<article id="div-comment-1795187" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nswcfd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9859.html/comment-page-2#comment-1795187"><time datetime="2015-11-26T18:52:12+08:00">2015年11月26日 18:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1293102" rel="nofollow">@mario </a><br/>
+可以理解为接口约定吧。<br/>
+比如ip_rcv的最后，无论是送到协议栈还是被ACL丢弃，一定是要free skb的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1795194" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1795194" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0b344e76aeb99da7b7d4ac78d9694a73?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nswcfd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9859.html/comment-page-2#comment-1795194"><time datetime="2015-11-26T18:57:10+08:00">2015年11月26日 18:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-584867" rel="nofollow">@fanhe </a><br/>
+是有复杂度的提高，比如所有可能提前退出的分支（比如handle_bridge\handle_openswitch等，较早版本的内核）都得考虑这个prev。</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9859.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9859.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">9859</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

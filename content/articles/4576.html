@@ -1,0 +1,237 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Linux 2.6.39-rc3的一个插曲 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4576 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4576" class="post-content post-4576 post type-post status-publish format-standard hentry category-unixlinux category-operatingsystem category-story tag-coding tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">Linux 2.6.39-rc3的一个插曲</span>
+<h1 class="entry-title">Linux 2.6.39-rc3的一个插曲</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4576.html" title="08:39" rel="bookmark"><time class="entry-date" datetime="2011-04-27T08:39:26+08:00" pubdate="">2011年04月27日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4576.html#comments" class="comments-link">118 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 60,086 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>2011年4月12日，Linux 2.6.39-rc3发布了，Linus Torvalds写了一个<a href="http://thread.gmane.org/gmane.linux.kernel/1124982">发布邮件</a>，其中包含了一个长长的为这个版本做过贡献的人员名单，这个名单中有很多看上去应该是中国人的名字，我挺为他们感到骄傲的（不知道你是否还记得以前本站的”<a title="谁写了Linux" href="/articles/1360.html" target="_blank">Linux是由谁写的</a>“）。</p>
+<p>不过，没过一会，发现了一个bug，经过大家的调查（2.6.38版没有发现这个问题），很快，找到了原因，是因为一个内存地址的问题，一个叫Yinghai Lu的人（看其名字应该是中国人，其邮件是@kernel.org）<a href="http://thread.gmane.org/gmane.linux.kernel/1124982/focus=1126082" target="_blank">找到了原因</a>—— radeon card使用了一个不正确的内存地址[0xa0000000 – 0xc000000]。Joerg Roedel跟贴说，这个地址超出了4GB的内存，然后他和Alex Deucher聊了一会，觉得不应该是这个问题，因为这个地址应该是GPU的，而不是系统内存的。</p>
+<p>好像，Yinghai Lu没有理会他们说的不应该是这个问题，<a href="http://thread.gmane.org/gmane.linux.kernel/1124982/focus=1126133" target="_blank">给出了个fix</a>：</p>
+<pre data-enlighter-language="diff" class="EnlighterJSRAW">diff --git a/arch/x86/kernel/aperture_64.c b/arch/x86/kernel/aperture_64.c
+index 86d1ad4..3b6a9d5 100644
+--- a/arch/x86/kernel/aperture_64.c
++++ b/arch/x86/kernel/aperture_64.c
+@@ -83,7 +83,7 @@ static u32 __init allocate_aperture(void)
+ 	 * so don&#39;t use 512M below as gart iommu, leave the space for kernel
+ 	 * code for safe
+ 	 */
+-	addr = memblock_find_in_range(0, 1ULL&lt;&lt;32, aper_size, 512ULL&lt;&lt;20);
++	addr = memblock_find_in_range(0, 1ULL&lt;&lt;32, aper_size, 512ULL&lt;&lt;21);
+  	if (addr == MEMBLOCK_ERROR || addr + aper_size &gt; 0xffffffff) {
+ 		printk(KERN_ERR
+ 			&#34;Cannot allocate aperture memory hole (%lx,%uK)\n&#34;,
+</pre>
+<p>看到这个fix，Linus Torvalds不高兴了，他回贴问道：</p>
+<ul>
+<li>为什么全都是Magic Numbers？</li>
+<li>为什么0x80000000就那么特殊？</li>
+<li>为什么我们这样改就行？</li>
+</ul>
+<p>还说了这样一句话——</p>
+<p><span id="more-4576"></span></p>
+<blockquote><p>This kind of “I broke things, so now I will jiggle things randomly until they unbreak” is not acceptable. 这种“我把事搞砸了，就随意地调整直到事情又工作”的方式是不可接受的。</p></blockquote>
+<p>还说，这里即没有说明为什么我们fix在了正确的地方（也没有解释那些Magic Number是什么），也没有回滚那个有问题的patch。还说——</p>
+<blockquote><p>Don’t just make random changes. There really are only two acceptable models of development: “think and analyze” or “years and years of testing on thousands of machines”. Those two really do work.</p>
+<p>不要乱改。那里只有两个可行的开发模式：“思考和分析” 或是 “数年数年地不断地在几千台机器上测试”。这两个方式才是真正可行的。</p></blockquote>
+<p>当然，Yinghai Lu对<a href="http://thread.gmane.org/gmane.linux.kernel/1124982/focus=1126154" target="_blank">其做了解释</a>，说我们的确调查过了，老的代码用的内存地址是0x80000000，新的则是用0xa0000000，而0xa0000000不工作。这又引发了 Linus Torvalds 的<a href="http://thread.gmane.org/gmane.linux.kernel/1124982/focus=1126216" target="_blank">不满的回贴</a>。Linus说——</p>
+<blockquote><p>Yinghai, we have had this discussion before, and dammit, you need to understand the difference between “understanding the problem” and “put in random values until it works on one machine”.</p>
+<p>Yinghai，我们以前谈过这个事，该死的，你真的需要明白“理解一个错误”和“设一个随意的值直到其正常工作”的区别。</p>
+<p>There was absolutely _<span style="text-decoration: underline;">zero</span>_ analysis done. You do not actually understand WHY the numbers matter. You just look at two random numbers, and one works, the other does not. That’s not “analyzing”. That’s just “random number games”.</p>
+<p>这里就根本没有分析。你没有直正的明白<strong>为什么</strong>这些数字能行。你只看了两个随机的数，一个能行，另一个不行。这不是“分析”，这叫“随机数游戏”。</p>
+<p>If you cannot see and understand the difference between an actual analytical solution where you _<span style="text-decoration: underline;">understand</span>_ what the code is doing and  why, and “random numbers that happen to work on one machine”, I don’t know what to tell you.</p>
+<p>一个解决方案真正经过分析了那段代码干什么的为什么的，另一个是“随机数字可以让其在一台机器上运转”，如果你不能看到和理解他们之间的不同，那我不知道要和你说什么了。</p></blockquote>
+<p>然后，Linus Torvalds进行了谆谆教导——（相当的受用啊）</p>
+<blockquote><p>Let me repeat my point one more time.</p>
+<p>让我再一次重复一下我的观点</p>
+<p>You have TWO choices. Not more, not less:</p>
+<p>你有两个选择，不多也不少：</p>
+<p>– choice #1: go back to the old allocation model. It’s tested. It doesn’t regress. Admittedly we may not know exactly _<span style="text-decoration: underline;">why</span>_ it works, and it might not work on all machines, but it doesn’t cause regressions (ie the machines it doesn’t work on it _<span style="text-decoration: underline;">never</span>_ worked on).</p>
+<p>– <strong>选择一</strong>：回滚到老的分配模式。那是测试过的。它过了回归测试。诚然，我们也许不知道<strong>为什么</strong>那样能行，并且，即使是那样也不一定能在所有的机器上工作，但是其没有让回归测试有问题（这个代码<strong>永不可能</strong>在不能运行的系统上运行）</p>
+<p>And this doesn’t mean “old value for that _<span style="text-decoration: underline;">one</span>_ machine”. It means “old value for _<span style="text-decoration: underline;">every</span>_ machine”. So it means we revert the whole bottom-down thing entirely. Not just “change one random number so that the totally different allocation pattern happens to give the same result on one particular machine”.</p>
+<p>这并不代表“老的值只能在一台机器上工作”。这代表“老的值可以工作在每一台机器上”。所以，我们需要回滚整个代码改动。而不只是“为了一个特别的机器去修改一个和以前完全不一样的随机数”。</p>
+<p>– Choice #2: understand exactly _<span style="text-decoration: underline;">what</span>_ goes wrong, and fix it analytically (ie by _<span style="text-decoration: underline;">understanding</span>_ the problem, and being able to solve it exactly, and in a way you can argue about without having to resort to “magic happens”).</p>
+<p>– 选择二：真正搞清楚为什么会错，并且有分析地修改他（理解问题才能真正解决之，并且，只有没有“魔法发生”的时候你才可以来争论）</p>
+<p>Now, the whole analytic approach (aka “computer sciency” approach), where you can actually think about the problem without having any pesky “reality” impact the solution is obviously the one we tend to prefer. Sadly, it’s seldom the one we can use in reality when it comes to things like resource allocation, since we end up starting off with often buggy approximations of what the actual hardware is all about (ie broken firmware tables).</p>
+<p>现在，整个分析方法（亦称作“计算机科学”的方法）应该是你可以在没有在外界干扰下真正思考这个问题而得到的解决方案，这很明显是我们推崇的。只有在极罕见地情况下我们可以在有外界干扰下分析这种资源分配的事，因为我们只有了解倒底是什么样的硬件，我们才能最终远离bug（如：错误的固件表）</p>
+<p>So I’d love to know exactly why one random number works, and why another one doesn’t. But as long as we do _<span style="text-decoration: underline;">not</span>_ know the “Why” of it, we will have to revert.</p>
+<p>所以，我希望你能知道为什么一个随机数能行，而另一个不行。只要我们不知道，那么我们就不得和回滚整个改动。</p>
+<p>It really is that simple. It’s _<span style="text-decoration: underline;">always</span>_ that simple.</p>
+<p>这真的是很简单，而且这<strong>一直</strong>是那么简单。</p>
+<p>So the numbers shouldn’t be “magic”, they should have real explanations. And in the absense of real explanation, the model that works is “this is what we’ve always done”. Including, very much, the whole allocation order. Not just one random number on one random machine.</p>
+<p>所以，那些数不应该是“magic”的，他们应该有真正的说明。在有真正的说明的情况下，我们的开发模式才会工作。其包括了整个分配顺序。不只是那个在任意机器上的随机数。</p>
+<p style="text-align: center;">Linus</p>
+</blockquote>
+<p style="text-align: left;">后面的事不用说了。我没有想到Linux 内核组会有像Yinghai这样工作的方式，毕竟这是一个黑客级的开发团队。我个人对这个乱写代码的人执零容忍的态度，不管你干过什么，不管你哪里毕业的，不管你简历怎么样，不求甚解随意写代码的人我无法接受。我不知道Yinghai Lu会怎么样想，他/她会像我在“<a title="程序员那些悲催的事儿" href="/articles/3980.html" target="_blank">程序员那些悲催的事儿</a>”中谈我经历那样知耻而后勇吗？能得到Linus的教导真是一件很不错的事。虽然，Linus教导的这些东西，都应该是程序员最最最基本的技能。<strong>fix bug一定要fix在root cause上啊</strong>，<strong>了解一个问题，不但要知其然，还要知其所以然啊</strong>，这都是老生长谈了。本站有很多提高程序员能力的文章，比如，<a title="优秀程序员的十个习惯" href="/articles/222.html" target="_blank">这篇</a>，<a title="优质代码的十诫" href="/articles/1007.html" target="_blank">这篇</a>，还有<a title="五个方法成为更好的程序员" href="/articles/2606.html" target="_blank">这篇</a>。</p>
+<p style="text-align: left;">各位朋友，我真心希望你能从这个小插曲中明白点什么。</p>
+<p style="text-align: left;"><strong>—– 更新2011/04/27</strong>—–</p>
+<p style="text-align: left;">从本贴的回复中可以看到有朋友说如果时间紧，没有办法只能在不求甚解的地去fix bug，因为老板催。我认为这是老板的“急功近利”的问题。我想和大家说一下，你得想清楚你属于下面那种人：</p>
+<ol>
+<li>
+<div style="text-align: left;">你的老板给你压力，让你不得不乱fix，</div>
+</li>
+<li>
+<div style="text-align: left;">你认同只要时间紧bug是可以乱fix的。</div>
+</li>
+</ol>
+<p style="text-align: left;">如果你属于1），那我觉得还情由可原，这是管理问题。但这不能成为你对乱fix bug的理由。一般这种问题怎么解决：<strong>首先，给一个hot fix去救火，然后，有时间去调查root cause，最后经过分析和测试，给出一个final 的 offical fix</strong>。这就是应急的做法，根本不存在什么可以乱fix bug的做法。</p>
+<p style="text-align: left;">如果你属于2），那么我只能“过激”地说你没有成为程序员的资质！</p>
+<p>另外，<strong>快速地fix bug，并不等于，不求甚解的fix bug</strong>。大家不要把这两件事等同。</p>
+<p style="text-align: left;"> </p>
+<p style="text-align: left;"><span style="color: #cc0000; font-size: 14px;"><strong>（请勿用于商业用途，转载时请注明作者和出处）</strong></span></p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4576-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Linux 2.6.39-rc3的一个插曲</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-655728" class="comment even thread-even depth-1">
+<article id="div-comment-655728" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c3296c8d171d69355ffbd2d0a9a390cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c3296c8d171d69355ffbd2d0a9a390cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">luke chen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4576.html/comment-page-3#comment-655728"><time datetime="2013-08-13T15:56:33+08:00">2013年08月13日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>至今一直记着初中政治老师说的一句话，可能算是哲学的启蒙？~<br/>
+“是什么、为什么，怎么办”</p>
+<p>在此处就是：<br/>
+我们研究的问题是什么？<br/>
+为什么出现这个问题？<br/>
+怎么去解决这个问题？<br/>
+————-<br/>
+不针对Yinghai Lu，仅针对Linus的态度</p>
+</div>
+ </article>
+</li>
+<li id="comment-1520889" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1520889" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1da2d1ae0939ba91f2f5ea9962361134?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1da2d1ae0939ba91f2f5ea9962361134?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">salars</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4576.html/comment-page-3#comment-1520889"><time datetime="2014-08-27T23:49:30+08:00">2014年08月27日 23:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>敏捷開發 快速迭代 人手不夠 開發時間都缺 別提bug了 拿別人的庫 出bug不是一般難調</p>
+</div>
+ </article>
+</li>
+<li id="comment-1524883" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gshangpin.com/segment/?p=5828" class="url" rel="ugc external nofollow">python Regex:匹配XML标签中内容 | segment-解决方案</a> </div>
+</li>
+<li id="comment-1738558" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1738558" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/39acc222615be7d8028961e6747bc841?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/39acc222615be7d8028961e6747bc841?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Aisen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4576.html/comment-page-3#comment-1738558"><time datetime="2015-07-21T14:33:17+08:00">2015年07月21日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-53092" rel="nofollow">@jack </a><br/>
+怎么会少了Lu先生不少呢</p>
+</div>
+ </article>
+</li>
+<li id="comment-1830190" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/amazon%e7%9a%84%e4%b9%a6%e4%b8%ba%e4%bb%80%e4%b9%88%e5%8d%96%e5%88%b0%e4%ba%862000%e4%b8%87.html" class="url" rel="ugc external nofollow">Amazon的书为什么卖到了$2000万 | | Codeba</a> </div>
+</li>
+<li id="comment-1845372" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2169" class="url" rel="ugc external nofollow">Linux 2.6.39-rc3的一个插曲 – linux运维部落</a> </div>
+</li>
+<li id="comment-1849354" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.54it.top/archives/3948" class="url" rel="ugc external nofollow">Linux 2.6.39-rc3的一个插曲 - 我是IT</a> </div>
+</li>
+<li id="comment-1924723" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://wp.iotor.site/post/learn/fix-a-little/1050.html" class="url" rel="ugc external nofollow">如何写出无法维护的代码</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/4576.html/comment-page-2#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/4576.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/4576.html/comment-page-2#comments">2</a>
+<span aria-current="page" class="page-numbers current">3</span> <span id="cp_post_id">4576</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

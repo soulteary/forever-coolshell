@@ -1,0 +1,179 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>代码优化概要 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2967 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2967" class="post-content post-2967 post type-post status-publish format-standard hentry category-techarticle category-process category-proglanguage tag-coding tag-optimization tag-379">
+<header class="entry-header">
+<span class="screen-reader-text">代码优化概要</span>
+<h1 class="entry-title">代码优化概要</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2967.html" title="08:22" rel="bookmark"><time class="entry-date" datetime="2010-09-20T08:22:31+08:00" pubdate="">2010年09月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2967.html#comments" class="comments-link">64 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 44,292 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文译自Dr. Dobb’s Blogger的Walter Bright写的《<a href="http://www.drdobbs.com/blog/archives/2010/09/overlooked_esse.html" target="_blank">Overlooked Essentials For Optimizing Code</a></p>
+<p>》</p>
+<hr/>
+<p>我编写程序至今有35年了，我做了很多关于程序执行速度方面优化的工(<a href="http://biolpc22.york.ac.uk/wx/wxhatch/wxMSW_Compiler_choice.html">一个示例</a>)，我也看过其它人做的优化。我发现有两个最基本的优化技术总是被人所忽略。 注意，这两个技术并不是避免时机不成熟的优化。并不是把冒泡排序变成快速排序（算法优化）。也不是语言或是编译器的优化。也不是把 i*4写成i&lt;&lt;2 的优化。 这两个技术是：</p>
+<ol>
+<li>使用 一个profiler。</li>
+<li>查看程序执行时的汇编码。</li>
+</ol>
+<p>使用这两个技术的人将会成功地写出运行快的代码，不会使用这两个技术的人则不行。下面让我为你细细道来。</p>
+<h4>使用一个 Profiler</h4>
+<p>我们知道，程序运行时的90%的时间是用在了10%的代码上。我发现这并不准确。一次又一次地，我发现，几乎所有的程序会在1%的代码上花了99%的运行时间。但是，是哪个1%？一个好的Profiler可以告诉你这个答案。就算我们需要使用100个小时在这1%的代码上进行优化，也比使用100个小时在其它99%的代码上优化产生的效益要高得多得多。<span id="more-2967"></span> 问题是什么？人们不用profiler？不是。我工作过的一个地方使用了一个华丽而奢侈的Profiler，但是自从购买这个Profiler后，它的包装3年来还是那么的暂新。为什么人们不用？我真的不知道。有一次，我和我的同事去了一个负载过大的交易所，我同事坚持说他知道哪里是瓶颈，毕竟，他是一个很有经验的专家。最终，我把我的Profiler在他的项目上运行了一下，我们发现那个瓶颈完全在一个意想不到的地方。 就像是赛车一样。团队是赢在传感器和日志上，这些东西提供了所有的一切。你可以调整一下赛车手的裤子以让其在比赛过程中更舒服，但是这不会让你赢得比赛，也不会让你更有竞争力。如果你不知道你的速度上不去是因为引擎、排气装置、空体动力学、轮胎气压，或是赛车手，那么你将无法获胜。编程为什么会不同呢？只要没有测量，你就永远无法进步。 这个世界上有太多可以使用的Profiler了。随便找一个你就可以看到你的函数的调用层次，调用的次数，以前每条代码的时间分解表（甚至可以到汇编级）。我看过太多的程序员回避使用Profiler，而是把时间花在那些无用的，错误的方向上的“优化”，而被其竞争对手所羞辱。（<strong>译者陈皓注</strong>：使用Profiler时，重点需要关注：1）花时间多的函数以优化其算法，2）调用次数巨多的函数——如果一个函数每秒被调用300K次，你只需要优化出0.001毫秒，那也是相当大的优化。这就是作者所谓的1%的代码占用了99%的CPU时间）</p>
+<h4>查看汇编代码</h4>
+<p>几年前，我有一个同事，Mary Bailey，她在华盛顿大学教矫正代数（remedial algebra），有一次，她在黑板上写下： <code>x + 3 = 5</code> 然后问他的学生“求解x”，然后学生们不知道答案。于是她写下： <code>__ + 3 = 5</code> 然后，再问学生“填空”，所有的学生都可以回答了。未知数x就像是一个有魔法的字母让大家都在想“x意味着代数，而我没有学过代数，所以我就不知道这个怎么做”。 汇编程序就是编程世界的代数。如果某人问我“inline函数是否被编译器展开了？”或是问我“如果我写下i*4，编译器会把其优化为左移位操作吗？”。这个时候，我都会建议他们看看编译器的汇编码。这样的回答是不是很粗暴和无用？通常，在我这样回答了提问者后，提问都通常都会说，对不起，我不知道什么是汇编！甚至C++的专家都会这么回答。 汇编语言是最简单的编程语言了（就算是和C++相比也是这样的），如：</p>
+<p style="padding-left: 30px;"><code>ADD ESI,x</code></p>
+<p>就是（C风格的代码）</p>
+<p style="padding-left: 30px;"><code>ESI += x;</code></p>
+<p>而：</p>
+<p style="padding-left: 30px;"><code>CALL foo</code></p>
+<p>则是：</p>
+<p style="padding-left: 30px;"><code>foo();</code></p>
+<p>细节因为CPU的种类而不同，但这就是其如何工作的。有时候，我们甚至都不需要细节，只需要看看汇编码的长啥样，然后和源代码比一比，你就可以知道汇编代码很多很多了。 那么，这又如何帮助代码优化？举个例子，我几年前认识一个程序员认为他应该去发现一个新的更快的算法。他有一个benchmark来证明这个算法，并且其写了一篇非常漂亮的文章关于他的这个算法。但是，有人看了一下其原来算法以及新算法的汇编，发现了他的改进版本的算法允许其编译器把两个除法操作变成了一个。这和算法真的没有什么关系。我们知道除法操作是一个很昂贵的操作，并且在其算法中，这俩个除法操作还在一个内嵌循环中，所以，他的改进版的算法当然要快一些。但，只需要在原来的算法上做一点点小的改动——使用一个除法操作，那么其原来的算法将会和新的一样快。而他的新发现什么也不是。 下一个例子，一个D用户张贴了一个 benchmark 来显示 dmd (Digital Mars D 编译器)在整型算法上的很糟糕，而ldc (LLVM D 编译器) 就好很多了。对于这样的结果，其相当的有意见。我迅速地看了一下汇编，发现两个编译器编译出来相当的一致，并没有什么明显的东西要对2：1这么大的不同而负责。但是我们看到有一个对long型整数的除法，这个除法调用了运行库。而这个库成为消耗时间的杀手，其它所有的加减法都没有速度上的影响。出乎意料地，benchmark 和算法代码生成一点关系也没有，完全就是long型整数的除法的问题。这暴露了在dmd的运行库中的long型除法的实现很差。修正后就可以提高速度。所以，这和编译器没有什么关系，但是如果不看汇编，你将无法发现这一切。 查看汇编代码经常会给你一些意想不到的东西让你知道为什么程序的性能是那样。一些意想不到的函数调用，预料不到的自傲，以及不应该存在的东西，等等其实所有的一切。但也不需要成为一个汇编代码的黑客才能干的事。</p>
+<h4>结论</h4>
+<p>如果你觉得需要程序有更好的执行速度，那么，最基本的方法就是使用一个profiler和愿意去查看一下其汇编代码以找到程序的瓶颈。只有找到了程序的瓶颈，此时才是真正在思考如何去改进的时候，比如思考一个更好的算法，使用更快的语言优化，等等。 常规的做法是制胜法宝是挑选一个最佳的算法而不是进行微优化。虽然这种做法是无可异议的，但是有两件事情是学校没有教给你而需要你重点注意的。第一个也是最重要的，如果你优化的算法没没有参与到你程序性能中的算法，那么你优化他只是在浪费时间和精力，并且还转移了你的注意力让你错过了应该要去优化的部分。第二点，算法的性能总和处理的数据密切相关的，就算是冒泡排序有那么多的笑柄，但是如果其处理的数据基本是排好序的，只有其中几个数据是未排序的，那么冒泡排序也是所有排序算法里性能最好的。所以，担心没有使用好的算法而不去测量，只会浪费时间，无论是你的还是计算机的。 就好像赛车零件的订购速底是不会让你更靠进冠军（就算是你正确安装零件也不会），没有Profiler，你不会知道问题在哪里，不去看汇编，你可能知道问题所在，但你往往不知道为什么。 (全文完)</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2967-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术读物</a>, <a href="javascript:void(0)" rel="category tag">流程方法</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Optimization</a>, <a href="javascript:void(0)" rel="tag">优化</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>代码优化概要</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1495144" class="comment byuser comment-author-yangxier even thread-even depth-1">
+<article id="div-comment-1495144" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3b91f3c6c73ba95a91f55ebb4f69a6e7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3b91f3c6c73ba95a91f55ebb4f69a6e7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yangxier</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2967.html/comment-page-2#comment-1495144"><time datetime="2014-07-14T17:13:38+08:00">2014年07月14日 17:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1587551" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://51itdev.duapp.com/92.html" class="url" rel="ugc external nofollow">陈皓：性能调优攻略 | 51itdev</a> </div>
+</li>
+<li id="comment-1608109" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.coolside.cn/?p=33" class="url" rel="ugc external nofollow">性能调优攻略 | 酷思-CoolSide</a> </div>
+</li>
+<li id="comment-1679711" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weihack.com/?p=10" class="url" rel="ugc external nofollow">性能调优攻略 | 品茶的博客</a> </div>
+</li>
+<li id="comment-1697733" class="comment even thread-even depth-1">
+<article id="div-comment-1697733" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d31f8aa1f9efb961d7382a5e8e07e8a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d31f8aa1f9efb961d7382a5e8e07e8a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">pel</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2967.html/comment-page-2#comment-1697733"><time datetime="2015-04-28T16:53:30+08:00">2015年04月28日 16:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>…美国人真的到了大学都不交代数的么…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1808114" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://peimin.org/?p=137" class="url" rel="ugc external nofollow">读酷壳文章的一些笔记 | peimin</a> </div>
+</li>
+<li id="comment-1882371" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.weirong.li/index.php/2012/06/21/xingnengdiaoyougonglue/" class="url" rel="ugc external nofollow">性能调优攻略 | 围炉网</a> </div>
+</li>
+<li id="comment-1897551" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.gedoce.cn/2016/11/08/%e6%9c%8d%e5%8a%a1%e5%99%a8%e6%80%a7%e8%83%bd%e8%b0%83%e4%bc%98%e6%94%bb%e7%95%a5/" class="url" rel="ugc external nofollow">服务器性能调优攻略 - 慕少艾</a> </div>
+</li>
+<li id="comment-1908841" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://go2live.cn/archives/178702.html" class="url" rel="ugc external nofollow">Python 性能分析大全-演道网</a> </div>
+</li>
+<li id="comment-2001125" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/python/python_49728.html" class="url" rel="ugc external nofollow">Python 性能分析大全 _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2339607" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1862494" class="url" rel="ugc external nofollow">两个容易被人忽视的代码优化问题——转载于陈秋歌 - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/2967.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/2967.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">2967</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Linux磁盘使用命令du的改进 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-822 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-822" class="post-content post-822 post type-post status-publish format-standard hentry category-unixlinux tag-du tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">Linux磁盘使用命令du的改进</span>
+<h1 class="entry-title">Linux磁盘使用命令du的改进</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/822.html" title="16:41" rel="bookmark"><time class="entry-date" datetime="2009-05-15T16:41:29+08:00" pubdate="">2009年05月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/822.html#comments" class="comments-link">5 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 8,285 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>我们知道，在Linux下，如果你想知道当前目录下，每个文件或子目录的尺寸，你可以使用du命令来完成这一动作。如：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$  du -sh *
+</pre>
+<p>这个命令可以以K，M，G的方式显示每个文件和子目录的大小。我们把这种方式叫做，human-readable，也就是可以让人读的方式，如下所示：</p>
+<pre>8.4G Desktop
+2.6G Documents
+12K keys
+12M Pictures
+536K scripts</pre>
+<p><span id="more-822"></span><br/>
+但是，很可惜的是，我们的du并没有提供相关的排序功能，所以，如果在human-readable下，也就是-h参数下，我们很难使用sort命令来排序。因为那变成了字符串排序，小数点，数字的位数，还有单位K，M，G都会让排序变得混乱。那么，我们如何才能即有human-readble这种功能，还能有排序呢。我们得借用一些脚本语言来处理了。</p>
+<p>下面是使用了Perl来达到这一功能：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">du -sk * | sort -n |       #以 K 字节的方式排序
+perl -ne &#39;                 #使用Perl来处理 K M 和 G 单位
+  ($s,$f)=split(m{\t});    #把 尺寸/文件名 分开
+  for (qw(K M G)) {        #以尺寸单位循环
+     if($s&lt;1024) {         #如果 尺寸&lt;1024 那么就输出
+       printf(&#34;%.1f&#34;,$s);  #显示文件尺寸
+       print &#34;$_\t$f&#34;;     #显示文件名
+       last                #换行
+     };
+     $s=$s/1024            #除1024然后进入下一个尺寸单位
+  }
+&#39;
+</pre>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-822-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Unix/Linux</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">du</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Linux磁盘使用命令du的改进</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-7369" class="comment even thread-even depth-1">
+<article id="div-comment-7369" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/41b8f852013b4e5315630ce4e88e7f91?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/41b8f852013b4e5315630ce4e88e7f91?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kee020041</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/822.html#comment-7369"><time datetime="2010-06-30T00:09:08+08:00">2010年06月30日 00:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>for x in K M G; do du -sh * | grep -P “^[1-9]+\.?[0-9]*$x” | sort -n; done</p>
+</div>
+ </article>
+</li>
+<li id="comment-18905" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-18905" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/86990deccec5cf318df82066326c1653?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/86990deccec5cf318df82066326c1653?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rushui999</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/822.html#comment-18905"><time datetime="2010-12-16T16:00:01+08:00">2010年12月16日 16:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>回帖的方法更巧妙，谢谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-61500" class="comment even thread-even depth-1">
+<article id="div-comment-61500" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad8ca8f32c7166a71111b23309595542?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad8ca8f32c7166a71111b23309595542?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">inter1965</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/822.html#comment-61500"><time datetime="2011-06-26T19:54:21+08:00">2011年06月26日 19:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Perl不是Python<br/>
+<code></code></p><code>
+</code><p><code>if not x.has_key(y, z):<br/>
+x[y, z] = 0<br/>
+x[y, z] = x[y, z] + 1<br/>
+</code></p>
+</div>
+ </article>
+</li>
+<li id="comment-125365" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-125365" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/29cad12d19cfe4b4a9d7e62405f26a48?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/29cad12d19cfe4b4a9d7e62405f26a48?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://vifix.cn" class="url" rel="ugc external nofollow">Mac</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/822.html#comment-125365"><time datetime="2012-01-13T11:02:09+08:00">2012年01月13日 11:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如今已经可以 du -sh * | sort -h</p>
+</div>
+ </article>
+</li>
+<li id="comment-202642" class="comment even thread-even depth-1">
+<article id="div-comment-202642" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a62970d11af9a02f3021fb0e6c657668?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a62970d11af9a02f3021fb0e6c657668?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">梧桐树</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/822.html#comment-202642"><time datetime="2012-09-12T15:55:32+08:00">2012年09月12日 15:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-125365" rel="nofollow">@Mac </a><br/>
+还是这个更方便啊</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

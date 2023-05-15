@@ -1,0 +1,220 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>从Gitlab误删除数据库想到的 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17680 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17680" class="post-content post-17680 post type-post status-publish format-standard hentry category-technews category-progdesign category-602 tag-design tag-gitlab tag-high-availability tag-programmer tag-704 tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">从Gitlab误删除数据库想到的</span>
+<h1 class="entry-title">从Gitlab误删除数据库想到的</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17680.html" title="16:11" rel="bookmark"><time class="entry-date" datetime="2017-02-02T16:11:28+08:00" pubdate="">2017年02月02日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17680.html#comments" class="comments-link">67 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 110,992 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright wp-image-17685" src="/uploads/2017/02/gitlab-600.jpg" width="300" height="215" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>昨天，Gitlab.com发生了一个大事，某同学误删了数据库，这个事看似是个低级错误，不过，因为Gitlab把整个过程的细节都全部暴露出来了，所以，可以看到很多东西，而对于类似这样的事情，我自己以前也干过，而在最近的两公司中我也见过（Amazon中见过一次，阿里中见过至少四次），正好通过这个事来说说一下自己的一些感想和观点吧。<strong>我先放个观点：你觉得有备份系统就不会丢数据了吗？</strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%BA%8B%E4%BB%B6%E5%9B%9E%E9%A1%BE" title="事件回顾">事件回顾</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%9B%B8%E5%85%B3%E7%9A%84%E6%80%9D%E8%80%83" title="相关的思考">相关的思考</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%8A%80%E6%9C%AF%E6%96%B9%E9%9D%A2" title="技术方面">技术方面</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%85%B3%E4%BA%8E%E5%A4%87%E4%BB%BD" title="关于备份">关于备份</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E9%9D%9E%E6%8A%80%E6%9C%AF%E6%96%B9%E9%9D%A2" title="非技术方面">非技术方面</a></li></ul></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%BA%8B%E4%BB%B6%E5%9B%9E%E9%A1%BE"></span>事件回顾<span class="ez-toc-section-end"></span></h4>
+<p>整个事件的回顾Gitlab.com在第一时间就放到了<a href="https://docs.google.com/document/d/1GCK53YDcBWQveod9kfzW-VCxIABGiryG7_z_6jHdVik/pub" target="_blank">Google Doc上</a>，事后，又发了<a href="https://about.gitlab.com/2017/02/01/gitlab-dot-com-database-incident/" target="_blank">一篇Blog</a>来说明这个事，在这里，我简单的回顾一下这个事件的过程。</p>
+<p>首先，一个叫YP的同学在给gitlab的线上数据库做一些负载均衡的工作，在做这个工作时的时候突发了一个情况，Gitlab被DDoS攻击，数据库的使用飙高，在block完攻击者的IP后，发现有个staging的数据库(db2.staging)已经落后生产库4GB的数据，于是YP同学在Fix这个staging库的同步问题的时候，发现db2.staging有各种问题都和主库无法同步，在这个时候，YP同学已经工作的很晚了，在尝试过多个方法后，发现db2.staging都hang在那里，无法同步，于是他想把db2.staging的数据库删除了，这样全新启动一个新的复制，结果呢，删除数据库的命令错误的敲在了生产环境上（db1.cluster），结果导致整个生产数据库被误删除。（<strong>陈皓注：这个失败基本上就是 “工作时间过长” + “在多数终端窗口中切换中迷失掉了”</strong>）</p>
+<p><span id="more-17680"></span></p>
+<p>在恢复的过程中，他们发现只有db1.staging的数据库可以用于恢复，而其它的5种备份机制都不可用，第一个是数据库的同步，没有同步webhook，第二个是对硬盘的快照，没有对数据库做，第三个是用pg_dump的备份，发现版本不对（用9.2的版本去dump 9.6的数据）导致没有dump出数据，第四个S3的备份，完全没有备份上，第五个是相关的备份流程是问题百出的，只有几个粗糙的人肉的脚本和糟糕的文档，也就是说，不但是是人肉的，而且还是完全不可执行的。（<strong>陈皓注：就算是这些备份机制都work，其实也有问题，因为这些备份大多数基本上都是24小时干一次，所以，要从这些备份恢复也一定是是要丢数据的了，只有第一个数据库同步才会实时一些</strong>）</p>
+<p>最终，gitlab从db1.staging上把6个小时前的数据copy回来，结果发现速度非常的慢，备份结点只有60Mbits/S，拷了很长时间（<strong>陈皓注：为什么不把db1.staging给直接变成生产机？因为那台机器的性能很差</strong>）。数据现在的恢复了，不过，因为恢复的数据是6小时前的，所以，有如下的数据丢失掉了：</p>
+<ul class="ul1">
+<li class="li1"><span class="s2">粗略估计，有4613 的项目， 74 forks,  和 350 imports 丢失了；但是，因为Git仓库还在，所以，可以从Git仓库反向推导数据库中的数据，但是，项目中的issues等就完全丢失了。</span></li>
+<li class="li1"><span class="s2">大约有±4979 提交记录丢失了（陈皓注：估计也可以用git仓库中反向恢复）。</span></li>
+<li class="li1"><span class="s2">可能有 707  用户丢失了，这个数据来自Kibana的日志。</span></li>
+<li class="li2"><span class="s4">在1月31日17:20 后的Webhooks 丢失了。</span></li>
+</ul>
+<p>因为Gitlab把整个事件的细节公开了出来，所以，也得到了很多外部的帮助，2nd Quadrant的CTO – <span class="s1"><a href="https://www.linkedin.com/in/simonat2ndquadrantdotcom" target="_blank">Simon Riggs</a> 在他的blog上也发布文章 <a href="http://blog.2ndquadrant.com/dataloss-at-gitlab/" target="_blank">Dataloss at Gitlab </a>给了一些非常不错的建议：</span></p>
+<ul>
+<li>关于PostgreSQL 9.6的数据同步hang住的问题，可能有一些Bug，正在fix中。</li>
+<li>PostgreSQL有4GB的同步滞后是正常的，这不是什么问题。</li>
+<li>正常的停止从结点，会让主结点自动释放WALSender的链接数，所以，不应该重新配置主结点的 max_wal_senders 参数。但是，停止从结点时，主结点的复数连接数不会很快的被释放，而新启动的从结点又会消耗更多的链接数。他认为，Gitlab配置的32个链接数太高了，通常来说，2到4个就足够了。</li>
+<li>另外，之前gitlab配置的max_connections=8000太高了，现在降到2000个是合理的。</li>
+<li>pg_basebackup 会先在主结点上建一个checkpoint，然后再开始同步，这个过程大约需要4分钟。</li>
+<li>手动的删除数据库目录是非常危险的操作，这个事应该交给程序来做。推荐使用刚release 的 <a href="https://www.2ndquadrant.com/en/resources/repmgr/" target="_blank">repmgr</a></li>
+<li>恢复备份也是非常重要的，所以，也应该用相应的程序来做。推荐使用 <a href="https://www.2ndquadrant.com/en/resources/barman/" target="_blank">barman</a> （其支持S3）</li>
+<li>测试备份和恢复是一个很重要的过程。</li>
+</ul>
+<p>看这个样子，估计也有一定的原因是——Gitlab的同学对PostgreSQL不是很熟悉。</p>
+<p>随后，Gitlab在其网站上也开了一系列的issues，其issues列表在这里 <a href="https://gitlab.com/gitlab-com/www-gitlab-com/issues/1108" target="_blank">Write post-mortem</a> (这个列表可能还会在不断更新中)</p>
+<ul class="ul1">
+<li class="li1"><span class="s1"><span class="s2"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1094">infrastructure#1094</a> – Update PS1 across all hosts to more clearly differentiate between hosts and environments</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1095">infrastructure#1095</a> – Prometheus monitoring for backups</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1096">infrastructure#1096</a> – Set PostgreSQL’s max_connections to a sane value</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1097">infrastructure#1097</a> – Investigate Point in time recovery &amp; continuous archiving for PostgreSQL</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1098">infrastructure#1098</a> – Hourly LVM snapshots of the production databases</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1099">infrastructure#1099</a> – Azure disk snapshots of production databases</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1100">infrastructure#1100</a> – Move staging to the ARM environment</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1101">infrastructure#1101</a> – Recover production replica(s)</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1102">infrastructure#1102</a> – Automated testing of recovering PostgreSQL database backups</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1103">infrastructure#1103</a> – Improve PostgreSQL replication documentation/runbooks</span></span></li>
+<li class="li1"><span class="s3"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1104">infrastructure#1104</a> – Kick out SSH users inactive for N minutes</span></span></li>
+<li class="li2"><span class="s5"><span class="s4"><a href="https://gitlab.com/gitlab-com/infrastructure/issues/1105">infrastructure#1105</a> – Investigate pgbarman for creating PostgreSQL backups</span></span></li>
+</ul>
+<p>从上面的这个列表中，我们可以看到一些改进措施了。挺好的，不过我觉得还不是很够。</p>
+<h4><span class="ez-toc-section" id="%E7%9B%B8%E5%85%B3%E7%9A%84%E6%80%9D%E8%80%83"></span>相关的思考<span class="ez-toc-section-end"></span></h4>
+<p>因为类似这样的事，我以前也干过（误删除过数据库，在多个终端窗口中迷失掉了自己所操作的机器……），而且我在amazon里也见过一次，在阿里内至少见过四次以上（在阿里人肉运维的误操作的事故是我见过最多的），但是我无法在这里公开分享，私下可以分享。在这里，我只想从非技术和技术两个方面分享一下我的经验和认识。</p>
+<h5><span class="ez-toc-section" id="%E6%8A%80%E6%9C%AF%E6%96%B9%E9%9D%A2"></span>技术方面<span class="ez-toc-section-end"></span></h5>
+<p><strong>人肉运维</strong></p>
+<p>一直以来，我都觉得直接到生产线上敲命令是一种非常不好的习惯。我认为，<strong>一个公司的运维能力的强弱和你上线上环境敲命令是有关的，你越是喜欢上线敲命令你的运维能力就越弱，越是通过自动化来处理问题，你的运维能力就越强</strong>。理由如下：</p>
+<p style="padding-left: 30px;">其一，如果说对代码的改动都是一次发布的话，那么，对生产环境的任何改动（包括硬件、操作系统、网络、软件配置……），也都算是一次发布。那么这样的发布就应该走发布系统和发布流程，要被很好的测试、上线和回滚计划。关键是，走发布过程是可以被记录、追踪和回溯的，而在线上敲命令是完全无法追踪的。没人知道你敲了什么命令。</p>
+<p style="padding-left: 30px;">其二，真正良性的运维能力是——人管代码，代码管机器，而不是人管机器。你敲了什么命令没人知道，但是你写个工具做变更线上系统，这个工具干了什么事，看看工具的源码就知道了。</p>
+<p>另外、有人说，以后不要用rm了，要用mv，还有人说，以后干这样的事时，一个人干，另一个人在旁边看，还有人说，要有一个checklist的强制流程做线上的变更，还有人说要增加一个权限系统。我觉得，这些虽然可以work，但是依然不好，再由如下：</p>
+<p style="padding-left: 30px;">其一、如果要解决一个事情需要加更多的人来做的事，那这事就做成劳动密集型了。今天我们的科技就是在努力消除人力成本，而不是在增加人力成本。而做为一个技术人员，解决问题的最好方式是努力使用技术手段，而不是使用更多的人肉手段。<strong>人类区别于动物的差别就是会发明和使用现代化的工具，而不是使用更多的人力</strong>。另外，<strong>这不仅仅因为是，人都是会有这样或那样的问题（疲惫、情绪化、急燥、冲动……），而机器是单一无脑不知疲惫的，更是因为，机器干活的效率和速度是比人肉高出N多倍的</strong>。</p>
+<p style="padding-left: 30px;">其二、增加一个权限系统或是别的一个watch dog的系统完全是在开倒车，权限系统中的权限谁来维护和审批？不仅仅是因为多出来的系统需要多出来的维护，关键是这个事就没有把问题解决在root上。除了为社会解决就业问题，别无好处，故障依然会发生，有权限的人一样会误操作。对于Gitlab这个问题，正如2nd Quadrant的CTO建议的那样，你需要的是一个自动化的备份和恢复的工具，而不是一个权限系统。</p>
+<p style="padding-left: 30px;">其三、像使用mv而不rm，搞一个checklist和一个更重的流程，更糟糕。这里的逻辑很简单，因为，1）这些规则需要人去学习和记忆，本质上来说，你本来就不相信人，所以你搞出了一些规则和流程，而这些规则和流程的执行，又依赖于人，换汤不换药，2）另外，<strong>写在纸面上的东西都是不可执行的，可以执行的就是只有程序，所以，为什么不把checklist和流程写成代码呢</strong>？（你可能会说程序也会犯错，是的，程序的错误是consistent，而人的错误是inconsistent）</p>
+<p>最关键的是，<strong>数据丢失有各种各样的情况，不单单只是人员的误操作，比如，掉电、磁盘损坏、中病毒等等，在这些情况下，你设计的那些想流程、规则、人肉检查、权限系统、checklist等等统统都不管用了，这个时候，你觉得应该怎么做呢？是的，你会发现，你不得不用更好的技术去设计出一个高可用的系统！别无它法。</strong></p>
+<h4><span class="ez-toc-section" id="%E5%85%B3%E4%BA%8E%E5%A4%87%E4%BB%BD"></span>关于备份<span class="ez-toc-section-end"></span></h4>
+<p>一个系统是需要做数据备份的，但是，你会发现，<strong>Gitlab这个事中，就算所有的备份都可用，也不可避免地会有数据的丢失，或是也会有很多问题</strong>。理由如下：</p>
+<p style="padding-left: 30px;">1）备份通常来说都是周期性的，所以，如果你的数据丢失了，从你最近的备份恢复数据里，从备份时间到故障时间的数据都丢失了。</p>
+<p style="padding-left: 30px;">2）备份的数据会有版本不兼容的问题。比如，在你上次备份数据到故障期间，你对数据的scheme做了一次改动，或是你对数据做了一些调整，那么，你备份的数据就会和你线上的程序出现不兼容的情况。</p>
+<p style="padding-left: 30px;">3）有一些公司或是银行有灾备的数据中心，但是灾备的数据中心没有一天live过。等真正灾难来临需要live的时候，你就会发现，各种问题让你live不起来。你可以读一读几年前的这篇报道好好感受一下《<a href="http://finance.sina.com.cn/money/bank/20140804/091219903553.shtml" target="_blank">以史为鉴 宁夏银行7月系统瘫痪最新解析</a>》</p>
+<p>所以，在灾难来临的时候，你会发现你所设计精良的“备份系统”或是“灾备系统”就算是平时可以工作，但也会导致数据丢失，而且可能长期不用的备份系统很难恢复（比如应用、工具、数据的版本不兼容等问题）。</p>
+<p>我之前写过一篇《<a href="/articles/10910.html" target="_blank">分布式系统的事务处理</a>》，你还记得下面这张图吗？看看 Data Loss 那一行的，在Backups, Master/Slave 和 Master/Master的架构下，都是会丢的。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10942" src="/uploads/2014/01/Transaction-Across-DataCenter.jpg" alt="" width="566" height="255" srcset="" sizes="(max-width: 566px) 100vw, 566px"/></p>
+<p>所以说，<strong>如果你要让你的备份系统随时都可以用，那么你就要让它随时都Live着</strong>，而随时都Live着的多结点系统，基本上就是一个分布式的高可用的系统。因为<strong>，数据丢失的原因有很多种，比如掉电、磁盘损坏、中病毒等等，而那些流程、规则、人肉检查、权限系统、checklist等等都只是让人不要误操作，都不管用，这个时候，你不得不用更好的技术去设计出一个高可用的系统！别无它法。（重要的事，得再说一篇）</strong></p>
+<p>另外，你可以参看我的另一篇《<a href="/articles/17459.html" target="_blank">关于高可用系统</a>》，这篇文章中以MySQL为例，数据库的replication也只能达到 两个9。</p>
+<p><strong>AWS 的 S3 的的高可用是4个加11个9的持久性（</strong>所谓11个9的持久性durability，AWS是这样定义的，如果你存了1万个对象，那么丢一个的时间是1000万年<strong>），这意味着，不仅仅只是硬盘坏，机器掉电，整个机房挂了，其保证可以承受有两个设施的数据丢失，数据还是可用的。试想，如果你把数据的可用性通过技术做到了这个份上，那么，你还怕被人误删一个结点上的数据吗？</strong></p>
+<h5><span class="ez-toc-section" id="%E9%9D%9E%E6%8A%80%E6%9C%AF%E6%96%B9%E9%9D%A2"></span>非技术方面<span class="ez-toc-section-end"></span></h5>
+<p><strong>故障反思</strong></p>
+<p>一般说来，故障都需要反思，在Amazon，S2以上的故障都需要写COE（Correction of Errors），其中一节就是需要Ask 5 Whys，我发现在Gitlab的故障回顾的blog中第一段中也有说要在今天写个Ask 5 Whys。关于Ask 5 Whys，其实并不是亚马逊的玩法，这还是算一个业内常用的玩法，也就是说不断的为自己为为什么，直到找到问题的概本原因，这会逼着所有的当事人去学习和深究很多东西。在Wikipedia上有相关的词条 <a href="https://en.wikipedia.org/wiki/5_Whys" target="_blank">5 Whys</a>，其中罗列了14条规则：</p>
+<ol>
+<li>你需要找到正确的团队来完成这个故障反思。</li>
+<li>使用纸或白板而不是电脑。</li>
+<li>写下整个问题的过程，确保每个人都能看懂。</li>
+<li>区别原因和症状。</li>
+<li>特别注意因果关系。</li>
+<li>说明Root Cause以及相关的证据。</li>
+<li>5个为什么的答案需要是精确的。</li>
+<li>寻找问题根源的步骤，而不是直接跳到结论。</li>
+<li>要基础客观的事实、数据和知识。</li>
+<li>评估过程而不是人。</li>
+<li>千万不要把“人为失误”或是“工作不注意”当成问题的根源。</li>
+<li>培养信任和真诚的气氛和文化。</li>
+<li>不断的问“为什么”直到问题的根源被找到。这样可以保证同一个坑不会掉进去两次。<sup id="cite_ref-7" class="reference"></sup></li>
+<li>当你给出“为什么”的答案时，你应该从用户的角度来回答。</li>
+</ol>
+<p><strong>工程师文化</strong></p>
+<p>上述的这些观点，其实，我在我的以住的博客中都讲过很多遍了，你可以参看《<a href="/articles/17497.html" target="_blank">什么是工程师文化？</a>》以及《<a href="/articles/11656.html" target="_blank">开发团队的效率</a>》。其实，说白了就是这么一个事——<strong>如果你是一个技术公司，你就会更多的相信技术而不是管理。相信技术会用技术来解决问题，相信管理，那就只会有制度、流程和价值观来解决问题</strong>。</p>
+<p>这个道理很简单，<strong>数据丢失有各种各样的情况，不单单只是人员的误操作，比如，掉电、磁盘损坏、中病毒等等，在这些情况下，你设计的那些流程、规则、人肉检查、权限系统、checklist等等统统都不管用，这个时候，你觉得应该怎么做呢？是的，你会发现，你不得不用更好的技术去设计出一个高可用的系统！别无它法。（重要的事得说三遍）</strong></p>
+<p><strong>事件公开</strong></p>
+<p>很多公司基本上都是这样的套路，首先是极力掩盖，如果掩盖不了了就开始撒谎，撒不了谎了，就“文过饰非”、“避重就轻”、“转移视线”。然而，面对危机的最佳方法就是——“多一些真诚，少一些套路”，<strong>所谓的“多一些真诚”的最佳实践就是——“透明公开所有的信息”</strong>，Gitlab此次的这个事给大家树立了非常好的榜样。AWS也会把自己所有的故障和细节都批露出来。</p>
+<p><strong>事情本来就做错了，而公开所有的细节，会让大众少很多猜测的空间，有利于抵制流言和黑公关，同时，还会赢得大众的理解和支持</strong>。看看Gitlab这次还去YouTube上直播整个修复过程，是件很了不起的事，大家可以到他们的blog上看看，对于这样的透明和公开，一片好评。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17680-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术新闻</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">Gitlab</a>, <a href="javascript:void(0)" rel="tag">High Availability</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">分布式</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>从Gitlab误删除数据库想到的</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2026150" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/10/02/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-http%e7%9a%84%e5%89%8d%e4%b8%96%e4%bb%8a%e7%94%9f/" class="url" rel="ugc external nofollow">【酷壳】 HTTP的前世今生 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2043940" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.saomahuodong.com/130788.html" class="url" rel="ugc external nofollow">程序员练级攻略（2018) 与我的专栏 - 扫码活动网!</a> </div>
+</li>
+<li id="comment-2080437" class="comment even thread-even depth-1">
+<article id="div-comment-2080437" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d10ca8d11301c2f4993ac2279ce4b930?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d10ca8d11301c2f4993ac2279ce4b930?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">a</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17680.html/comment-page-2#comment-2080437"><time datetime="2020-03-22T13:10:08+08:00">2020年03月22日 13:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现实的例子是：做了好了，没有功劳，极其特殊情况，功劳太大，藏不住的那种，会有人来分功劳，最后给留点芝麻，之后呢？呵呵，你要继续努力，需要付出和现在一样的努力，但是还拿着和原来一样的微薄的收入。你要继续吗？</p>
+<p>反之：由于你动了东西，出了问题，需要你来背锅。如果不是你导致的，那么黑锅需要有人背，那么就需要论资排辈，看哪个不能得罪不起，最差的那个就是来背黑锅的。</p>
+<p>总结：多干多错，少干少错，你怎么选？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2108415" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hongbaozixun.com/46569.html" class="url" rel="ugc external nofollow">程序员练级攻略（2018) 与我的专栏 - 微信红包网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/17680.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/17680.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">17680</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

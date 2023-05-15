@@ -1,0 +1,921 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>深入浅出单实例Singleton设计模式 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-265 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-265" class="post-content post-265 post type-post status-publish format-standard hentry category-javadev category-progdesign category-proglanguage tag-java tag-singleton tag-24">
+<header class="entry-header">
+<span class="screen-reader-text">深入浅出单实例Singleton设计模式</span>
+<h1 class="entry-title">深入浅出单实例Singleton设计模式</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/265.html" title="16:04" rel="bookmark"><time class="entry-date" datetime="2009-03-26T16:04:43+08:00" pubdate="">2009年03月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/265.html#comments" class="comments-link">53 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 49,226 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>单实例Singleton设计模式可能是被讨论和使用的最广泛的一个设计模式了，这可能也是面试中问得最多的一个设计模式了。这个设计模式主要目的是想在整个系统中只能出现一个类的实例。这样做当然是有必然的，比如你的软件的全局配置信息，或者是一个Factory，或是一个主控类，等等。你希望这个类在整个系统中只能出现一个实例。当然，作为一个技术负责人的你，你当然有权利通过使用非技术的手段来达到你的目的。比如：你在团队内部明文规定，“XX类只能有一个全局实例，如果某人使用两次以上，那么该人将被处于2000元的罚款！”（呵呵），你当然有权这么做。但是如果你的设计的是东西是一个类库，或是一个需要提供给用户使用的API，恐怕你的这项规定将会失效。因为，你无权要求别人会那么做。所以，这就是为什么，我们希望通过使用技术的手段来达成这样一个目的的原因。</p>
+<p>本文会带着你深入整个Singleton的世界，当然，我会放弃使用C++语言而改用Java语言，因为使用Java这个语言可能更容易让我说明一些事情。</p>
+<h4><span id="more-265"></span><br/>
+<strong>Singleton的教学版本</strong></h4>
+<p>这里，我将直接给出一个Singleton的简单实现，因为我相信你已经有这方面的一些基础了。我们姑且把这个版本叫做1.0版</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// version 1.0
+public class Singleton {
+    private static Singleton singleton = null;
+    private Singleton() {  }
+    public static Singleton getInstance() {
+        if (singleton== null) {
+            singleton= new Singleton();
+        }
+        return singleton;
+    }
+}</pre>
+<p>在上面的实例中，我想说明下面几个Singleton的特点：（下面这些东西可能是尽人皆知的，没有什么新鲜的）</p>
+<ol>
+<li>私有（private）的构造函数，表明这个类是不可能形成实例了。这主要是怕这个类会有多个实例。</li>
+<li>即然这个类是不可能形成实例，那么，我们需要一个静态的方式让其形成实例：getInstance()。注意这个方法是在new自己，因为其可以访问私有的构造函数，所以他是可以保证实例被创建出来的。</li>
+<li>在getInstance()中，先做判断是否已形成实例，如果已形成则直接返回，否则创建实例。</li>
+<li>所形成的实例保存在自己类中的私有成员中。</li>
+<li>我们取实例时，只需要使用Singleton.getInstance()就行了。</li>
+</ol>
+<p>当然，如果你觉得知道了上面这些事情后就学成了，那得给你当头棒喝一下了，事情远远没有那么简单。</p>
+<h4><span class="ez-toc-section" id="Singleton%E7%9A%84%E5%AE%9E%E9%99%85%E7%89%88%E6%9C%AC"></span><strong>Singleton的实际版本</strong><span class="ez-toc-section-end"></span></h4>
+<p>上面的这个程序存在比较严重的问题，因为是全局性的实例，所以，在多线程情况下，所有的全局共享的东西都会变得非常的危险，这个也一样，在多线程情况下，如果多个线程同时调用getInstance()的话，那么，可能会有多个进程同时通过 (singleton== null)的条件检查，于是，多个实例就创建出来，并且很可能造成内存泄露问题。嗯，熟悉多线程的你一定会说——“我们需要线程互斥或同步”，没错，我们需要这个事情，于是我们的Singleton升级成1.1版，如下所示：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="8,10">// version 1.1
+public class Singleton
+{
+    private static Singleton singleton = null;
+    private Singleton() {  }
+    public static Singleton getInstance() {
+        if (singleton== null) {
+            synchronized (Singleton.class) {
+                singleton= new Singleton();
+            }
+        }
+        return singleton;
+    }
+}</pre>
+<p>嗯，使用了Java的synchronized方法，看起来不错哦。应该没有问题了吧？！错！这还是有问题！为什么呢？前面已经说过，如果有多个线程同时通过(singleton== null)的条件检查（因为他们并行运行），虽然我们的synchronized方法会帮助我们同步所有的线程，让我们并行线程变成串行的一个一个去new，那不还是一样的吗？同样会出现很多实例。嗯，确实如此！看来，还得把那个判断(singleton== null)条件也同步起来。于是，我们的Singleton再次升级成1.2版本，如下所示：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="7,11">// version 1.2
+public class Singleton
+{
+    private static Singleton singleton = null;
+    private Singleton()  {  }
+    public static Singleton getInstance()  {
+        synchronized (Singleton.class) {
+            if (singleton== null) {
+		singleton= new Singleton();
+            }
+         }
+        return singleton;
+    }
+}</pre>
+<p>不错不错，看似很不错了。在多线程下应该没有什么问题了，不是吗？的确是这样的，1.2版的Singleton在多线程下的确没有问题了，因为我们同步了所有的线程。只不过嘛……，什么？！还不行？！是的，还是有点小问题，我们本来只是想让new这个操作并行就可以了，现在，只要是进入getInstance()的线程都得同步啊，注意，创建对象的动作只有一次，后面的动作全是读取那个成员变量，这些读取的动作不需要线程同步啊。这样的作法感觉非常极端啊，为了一个初始化的创建动作，居然让我们达上了所有的读操作，严重影响后续的性能啊！</p>
+<p>还得改！嗯，看来，在线程同步前还得加一个(singleton== null)的条件判断，如果对象已经创建了，那么就不需要线程的同步了。OK，下面是1.3版的Singleton。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="7,9">// version 1.3
+public class Singleton
+{
+    private static Singleton singleton = null;
+    private Singleton()  {    }
+    public static Singleton getInstance() {
+        if (singleton== null)  {
+            synchronized (Singleton.class) {
+                if (singleton== null)  {
+                    singleton= new Singleton();
+                }
+            }
+        }
+        return singleton;
+    }
+}</pre>
+<p>感觉代码开始变得有点罗嗦和复杂了，不过，这可能是最不错的一个版本了，这个版本又叫“双重检查”Double-Check。下面是说明：</p>
+<ol>
+<li>第一个条件是说，如果实例创建了，那就不需要同步了，直接返回就好了。</li>
+<li>不然，我们就开始同步线程。</li>
+<li>第二个条件是说，如果被同步的线程中，有一个线程创建了对象，那么别的线程就不用再创建了。</li>
+</ol>
+<p>相当不错啊，干得非常漂亮！请大家为我们的1.3版起立鼓掌！</p>
+<p>但是，如果你认为这个版本大攻告成，你就错了。</p>
+<p>主要在于<strong>singleton <code>= new Singleton()</code></strong>这句，这并非是一个原子操作，事实上在 JVM 中这句话大概做了下面 3 件事情。</p>
+<ol>
+<li>给 singleton 分配内存</li>
+<li>调用 Singleton 的构造函数来初始化成员变量，形成实例</li>
+<li>将singleton对象指向分配的内存空间（执行完这步 singleton才是非 null 了）</li>
+</ol>
+<p>但是在 JVM 的即时编译器中存在指令重排序的优化。也就是说上面的第二步和第三步的顺序是不能保证的，最终的执行顺序可能是 1-2-3 也可能是 1-3-2。如果是后者，则在 3 执行完毕、2 未执行之前，被线程二抢占了，这时 instance 已经是非 null 了（但却没有初始化），所以线程二会直接返回 instance，然后使用，然后顺理成章地报错。</p>
+<p>对此，我们只需要把singleton声明成 volatile 就可以了。下面是1.4版：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="4">// version 1.4
+public class Singleton
+{
+    private volatile static Singleton singleton = null;
+    private Singleton()  {    }
+    public static Singleton getInstance()   {
+        if (singleton== null)  {
+            synchronized (Singleton.class) {
+                if (singleton== null)  {
+                    singleton= new Singleton();
+                }
+            }
+        }
+        return singleton;
+    }
+}</pre>
+<p>使用 volatile 有两个功用：</p>
+<p>1）这个变量不会在多个线程中存在复本，直接从内存读取。</p>
+<p>2）这个关键字会禁止指令重排序优化。也就是说，在 volatile 变量的赋值操作后面会有一个内存屏障（生成的汇编代码上），读操作不会被重排序到内存屏障之前。</p>
+<p>但是，这个事情仅在Java 1.5版后有用，1.5版之前用这个变量也有问题，因为老版本的Java的内存模型是有缺陷的。</p>
+<h4><span class="ez-toc-section" id="Singleton_%E7%9A%84%E7%AE%80%E5%8C%96%E7%89%88%E6%9C%AC"></span><strong>Singleton 的简化版本</strong><span class="ez-toc-section-end"></span></h4>
+<p>上面的玩法实在是太复杂了，一点也不优雅，下面是一种更为优雅的方式：</p>
+<p>这种方法非常简单，因为单例的实例被声明成 static 和 final 变量了，在第一次加载类到内存中时就会初始化，所以创建实例本身是线程安全的。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="4">// version 1.5
+public class Singleton
+{
+    private volatile static Singleton singleton = new Singleton();
+    private Singleton()  {    }
+    public static Singleton getInstance()   {
+        return singleton;
+    }
+}</pre>
+<p>但是，这种玩法的最大问题是——当这个类被加载的时候，new Singleton() 这句话就会被执行，就算是getInstance()没有被调用，类也被初始化了。</p>
+<p>于是，<strong>这个可能会与我们想要的行为不一样，比如，我的类的构造函数中，有一些事可能需要依赖于别的类干的一些事（比如某个配置文件，或是某个被其它类创建的资源），我们希望他能在我第一次getInstance()时才被真正的创建。这样，我们可以控制真正的类创建的时刻，而不是把类的创建委托给了类装载器</strong>。</p>
+<p>好吧，我们还得绕一下：</p>
+<p>下面的这个1.6版是老版《Effective Java》中推荐的方式。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="4">// version 1.6
+public class Singleton {
+    private static class SingletonHolder {
+        private static final Singleton INSTANCE = new Singleton();
+    }
+    private Singleton (){}
+    public static final Singleton getInstance() {
+        return SingletonHolder.INSTANCE;
+    }
+}</pre>
+<p>上面这种方式，仍然使用JVM本身机制保证了线程安全问题；由于 SingletonHolder 是私有的，除了 getInstance() 之外没有办法访问它，因此它只有在getInstance()被调用时才会真正创建；同时读取实例的时候不会进行同步，没有性能缺陷；也不依赖 JDK 版本。</p>
+<h4><span class="ez-toc-section" id="Singleton_%E4%BC%98%E9%9B%85%E7%89%88%E6%9C%AC"></span><strong>Singleton 优雅</strong>版本<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public enum Singleton{
+   INSTANCE;
+}</pre>
+<p>居然用枚举！！看上去好牛逼，通过EasySingleton.INSTANCE来访问，这比调用getInstance()方法简单多了。</p>
+<p>默认枚举实例的创建是线程安全的，所以不需要担心线程安全的问题。但是在枚举中的其他任何方法的线程安全由程序员自己负责。还有防止上面的通过反射机制调用私用构造器。</p>
+<p><strong>这个版本基本上消除了绝大多数的问题。代码也非常简单，实在无法不用。这也是新版的《Effective Java》中推荐的模式。</strong></p>
+<h4><span class="ez-toc-section" id="Singleton%E7%9A%84%E5%85%B6%E5%AE%83%E9%97%AE%E9%A2%98"></span><strong>Singleton的其它问题</strong><span class="ez-toc-section-end"></span></h4>
+<p>怎么？还有问题？！当然还有，请记住下面这条规则——“<strong>无论你的代码写得有多好，其只能在特定的范围内工作，超出这个范围就要出Bug了</strong>”，这是“陈式第一定理”，呵呵。你能想一想还有什么情况会让这个我们上面的代码出问题吗？</p>
+<p>在C++下，我不是很好举例，但是在Java的环境下，嘿嘿，还是让我们来看看下面的一些反例和一些别的事情的讨论（<strong>当然，有些反例可能属于钻牛角尖，可能有点学院派，不过也不排除其实际可能性，就算是提个醒吧</strong>）：</p>
+<p><strong>其一、Class Loader</strong>。不知道你对Java的Class Loader熟悉吗？“类装载器”？！C++可没有这个东西啊。这是Java动态性的核心。顾名思义，类装载器是用来把类(class)装载进JVM的。JVM规范定义了两种类型的类装载器：启动内装载器(bootstrap)和用户自定义装载器(user-defined class loader)。 在一个JVM中可能存在多个ClassLoader，每个ClassLoader拥有自己的NameSpace。一个ClassLoader只能拥有一个class对象类型的实例，但是不同的ClassLoader可能拥有相同的class对象实例，这时可能产生致命的问题。如ClassLoaderA，装载了类A的类型实例A1，而ClassLoaderB，也装载了类A的对象实例A2。逻辑上讲A1=A2，但是由于A1和A2来自于不同的ClassLoader，它们实际上是完全不同的，如果A中定义了一个静态变量c，则c在不同的ClassLoader中的值是不同的。</p>
+<p>于是，如果咱们的Singleton 1.3版本如果面对着多个Class Loader会怎么样？呵呵，多个实例同样会被多个Class Loader创建出来，当然，这个有点牵强，不过他确实存在。难道我们还要整出个1.4版吗？可是，我们怎么可能在我的Singleton类中操作Class Loader啊？是的，你根本不可能。在这种情况下，你能做的只有是——“保证多个Class Loader不会装载同一个Singleton”。</p>
+<p><strong>其二、序例化。</strong>如果我们的这个Singleton类是一个关于我们程序配置信息的类。我们需要它有序列化的功能，那么，当反序列化的时候，我们将无法控制别人不多次反序列化。不过，我们可以利用一下Serializable接口的readResolve()方法，比如：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Singleton implements Serializable
+{
+    ......
+    ......
+    protected Object readResolve()
+    {
+        return getInstance();
+    }
+}</pre>
+<p><strong>其三、多个Java虚拟机。</strong>如果我们的程序运行在多个Java的虚拟机中。什么？多个虚拟机？这是一种什么样的情况啊。嗯，这种情况是有点极端，不过还是可能出现，比如EJB或RMI之流的东西。要在这种环境下避免多实例，看来只能通过良好的设计或非技术来解决了。</p>
+<p><strong>其四，volatile变量。</strong>关于volatile这个关键字所声明的变量可以被看作是一种 “程度较轻的同步synchronized”；与 synchronized 块相比，volatile 变量所需的编码较少，并且运行时开销也较少，但是它所能实现的功能也仅是synchronized的一部分。当然，如前面所述，我们需要的Singleton只是在创建的时候线程同步，而后面的读取则不需要同步。所以，volatile变量并不能帮助我们即能解决问题，又有好的性能。而且，这种变量只能在JDK 1.5+版后才能使用。</p>
+<p><strong>其五、关于继承。</strong>是的，继承于Singleton后的子类也有可能造成多实例的问题。不过，因为我们早把Singleton的构造函数声明成了私有的，所以也就杜绝了继承这种事情。</p>
+<p><strong>其六，关于代码重用。</strong>也话我们的系统中有很多个类需要用到这个模式，如果我们在每一个类都中有这样的代码，那么就显得有点傻了。那么，我们是否可以使用一种方法，把这具模式抽象出去？在C++下这是很容易的，因为有模板和友元，还支持栈上分配内存，所以比较容易一些（程序如下所示），Java下可能比较复杂一些，聪明的你知道怎么做吗？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">template class Singleton
+{
+    public:
+        static T&amp; Instance()
+        {
+            static T theSingleInstance; //假设T有一个protected默认构造函数
+            return theSingleInstance;
+        }
+};
+
+class OnlyOne : public Singleton
+{
+    friend class Singleton;
+    int example_data;
+
+    public:
+        int GetExampleData() const {return example_data;}
+    protected:
+        OnlyOne(): example_data(42) {}   // 默认构造函数
+        OnlyOne(OnlyOne&amp;) {}
+};
+
+int main( )
+{
+    cout &lt;&lt; OnlyOne::Instance().GetExampleData() &lt;&lt; endl;
+	return 0;
+}
+</pre>
+<p> </p>
+<p class="MsoNormal" style="margin: 0in 0in 0pt;"><strong style="mso-bidi-font-weight: normal;"><span style="font-family: Times New Roman;">(</span></strong><strong style="mso-bidi-font-weight: normal;"><span lang="ZH-CN" style="font-family: 宋体; mso-ascii-font-family: &#39;Times New Roman&#39;; mso-hansi-font-family: &#39;Times New Roman&#39;;">转载时请注明作者和出处。未经许可，请勿用于商业用途</span><span style="font-family: Times New Roman;">)</span></strong></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-265-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">Singleton</a>, <a href="javascript:void(0)" rel="tag">设计模式</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>深入浅出单实例Singleton设计模式</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-13" class="comment even thread-even depth-1">
+<article id="div-comment-13" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98f204700479e6dc2e42fe5bfc7c60a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98f204700479e6dc2e42fe5bfc7c60a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wahaha</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-13"><time datetime="2009-03-26T16:30:35+08:00">2009年03月26日 16:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>version 1.3中错把if (singleton != null) 写成 if (singleton== null) 了<br/>
+平常一般都是1.0版，学习了~谢</p>
+</div>
+ </article>
+</li>
+<li id="comment-14" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-14" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-14"><time datetime="2009-03-26T17:25:06+08:00">2009年03月26日 17:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-13"><p>
+<strong><a href="#comment-13" rel="nofollow">wahaha </a> :</strong></p>
+<p>version 1.3中错把if (singleton != null) 写成 if (singleton== null) 了<br/>平常一般都是1.0版，学习了~谢</p>
+</blockquote>
+<p>嗯？！可能并没有错哦？你再仔细理解一下哦。：）</p>
+</div>
+ </article>
+</li>
+<li id="comment-16" class="comment even thread-even depth-1">
+<article id="div-comment-16" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0f02b43b002d973bb14234d557a91ae1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0f02b43b002d973bb14234d557a91ae1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">adam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-16"><time datetime="2009-03-27T09:20:32+08:00">2009年03月27日 09:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于Singleton还有一种偷懒的方式你可以提一下，就是放弃这种可能引发一大堆同步问题的new操作，提前加载。<br/>
+比如我可以这么写：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Singleton  
+{  
+    private static final Singleton singleton = new Singleton();  
+  
+    private Singleton()  
+    {  
+    }  
+    public static Singleton getInstance()   {  
+        return singleton;  
+    }  
+}</pre>
+<p>或者可以这么写：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Singleton  
+{  
+    private static final Singleton singleton = null;  
+    
+    static{
+      singleton = new Singleton();
+    }
+    private Singleton()  {   }  
+    public static Singleton getInstance()   {  
+        return singleton;  
+    }  
+}</pre>
+<p>第二种写法在好像某些极端的情况下也会出现同步问题，不过已经是很极端了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-18" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-18" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">耗子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-18"><time datetime="2009-03-27T17:32:45+08:00">2009年03月27日 17:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>to adam: 非常不错！看来，我还是在用C++的方式思考Java，受教了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2531" class="comment even thread-even depth-1">
+<article id="div-comment-2531" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0dcf428c1ab7a49eca5fefbd3272e328?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0dcf428c1ab7a49eca5fefbd3272e328?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sure-one</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-2531"><time datetime="2009-12-18T00:20:05+08:00">2009年12月18日 00:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在《effective JAVA》第一版中作者给出了一个更好的方法：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public class Singleton{
+    private Singleton(){}
+    private static class SingletonHolder{ 
+          static final Singleton instance=new Singleton();
+    }
+    public static Singleton getInstance() {
+          return SingletonHolder.instance;
+    }
+}</pre>
+<p>然后在第二版中给出了一个更好的方案：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public enum Singleton{
+      instance;
+      //other methods
+}</pre>
+<p>当然这些也只是解决多线程的问题，其他的问题还是要靠别的手段来解决的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-100197" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-100197" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cd362596e0d8b91a142b4de03b48049e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cd362596e0d8b91a142b4de03b48049e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Link028</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-100197"><time datetime="2011-11-22T09:19:26+08:00">2011年11月22日 09:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-14" rel="nofollow">@耗子 </a><br/>
+private static final Singleton singleton = null;<br/>
+这个是有问题的，已经初始化了，以后不能再new 了</p>
+</div>
+ </article>
+</li>
+<li id="comment-106943" class="comment even thread-even depth-1">
+<article id="div-comment-106943" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/36c7b38a85ef2734793e17ccd1371bf8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/36c7b38a85ef2734793e17ccd1371bf8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">amwtke</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-106943"><time datetime="2011-12-06T22:15:44+08:00">2011年12月06日 22:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-16" rel="nofollow">@adam </a><br/>
+这种提前加载的方式会在多线程（高并发）环境下造成麻烦。如果private static final Singleton singleton = new Singleton();中的构造方法涉及到异步的网络数据交换如读取服务器配置或者数据库，则此构造过程可能会被操作系统打断而没有完成加载，其他访问singleton实例的线程度脏，而且错误很难查到。</p>
+</div>
+ </article>
+</li>
+<li id="comment-106948" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-106948" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/36c7b38a85ef2734793e17ccd1371bf8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/36c7b38a85ef2734793e17ccd1371bf8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">amwtke</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-106948"><time datetime="2011-12-06T22:24:56+08:00">2011年12月06日 22:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>相对而言Double-Check是正确的做法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-115135" class="comment even thread-even depth-1">
+<article id="div-comment-115135" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1f65d3b46b21d52d3714310e3d4ceb6a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1f65d3b46b21d52d3714310e3d4ceb6a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.hetaoblog.com" class="url" rel="ugc external nofollow">核桃博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-115135"><time datetime="2011-12-23T12:42:37+08:00">2011年12月23日 12:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-106943"><p>
+<strong><a href="#comment-106943" rel="nofollow">amwtke</a> :</strong><br/>
+<a href="#comment-16" rel="nofollow">@adam </a><br/>
+这种提前加载的方式会在多线程（高并发）环境下造成麻烦。如果private static final Singleton singleton = new Singleton();中的构造方法涉及到异步的网络数据交换如读取服务器配置或者数据库，则此构造过程可能会被操作系统打断而没有完成加载，其他访问singleton实例的线程度脏，而且错误很难查到。
+</p></blockquote>
+<p>这个有更详细一点的说明么？为什么构造函数会被操作系统打断？</p>
+<p>我开始学的时候用double check， 后来感觉简单问题复杂化了，直接用提前加载的方式，<br/>
+而且我实际接触的项目里面需要这样用singleton的都很少， 而且基本都是必须一开始就起来的；</p>
+</div>
+ </article>
+</li>
+<li id="comment-191836" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-191836" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a5dd8f907970037a8ae0111d21cfdf6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a5dd8f907970037a8ae0111d21cfdf6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.woodrice.com" class="url" rel="ugc external nofollow">lmyanglei</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-191836"><time datetime="2012-05-17T23:52:58+08:00">2012年05月17日 23:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>的确，修改成“private static final Singleton singleton;”就好了<br/>
+<a href="#comment-100197" rel="nofollow">@Link028 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-196257" class="comment even thread-even depth-1">
+<article id="div-comment-196257" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/61028f85edc2f4ba0eabba285c22e2e1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/61028f85edc2f4ba0eabba285c22e2e1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.jjyao.me" class="url" rel="ugc external nofollow">姚嘉俊</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-196257"><time datetime="2012-06-09T23:41:01+08:00">2012年06月09日 23:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章对C++的double check有很好的说明,scott meyers写的喔 <a href="http://www.aristeia.com/Papers/DDJ_Jul_Aug_2004_revised.pdf" rel="nofollow ugc">http://www.aristeia.com/Papers/DDJ_Jul_Aug_2004_revised.pdf</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-237983" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-237983" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b08e2274bd1cb7422b76d4197eb8a3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b08e2274bd1cb7422b76d4197eb8a3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/54yuri" class="url" rel="ugc external nofollow">54yuri</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-237983"><time datetime="2012-12-14T23:03:46+08:00">2012年12月14日 23:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://www.cnblogs.com/kamome/archive/2010/02/02/1661605.html" rel="nofollow ugc">http://www.cnblogs.com/kamome/archive/2010/02/02/1661605.html</a><br/>
+“双重检测锁”模式。如182页所示，这种看似“聪明”的方式，其实有着巨大的漏洞。简单的说，在1.5之前的JVM中，代码会进行“重整”，单例引用uniqueInstance有时尽管不为null，但是此时所引用的那个“单例对象”，并没有被完全初始化。也就是new Singleton()函数未正式完成其工作之前，JVM可以根据Java规范，重整代码，使得uniqueInstance先获得这个“单例对象”的引用，这样一来，第二个线程直接判定单例已完成实例化，故接下来的客户代码会直接使用单例对象的数据，但是有些数据并没有被正确的初始化，因为new Singleton()尚未正式完成。</p>
+<p>— 也就是说，double check对判断singleton是不是为null没有任何问题，但是在使用上就会有问题！ 第二个线程因为通过double check认为现在的singleton变量已经不是null，可以直接使用了；但是实际上可是第一个线程还未完全初始化好的实例，它仅仅是不为null而已，也就是singleton指向的实例还不可用！但是此时第二个线程如果立刻使用该singleton 可能会出现问题，因为一些资源还没有真正初始化！<br/>
+不过这种状况不知道实际当中多不多，反正我是没遇到过。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-281058" class="comment even thread-even depth-1">
+<article id="div-comment-281058" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/35787ce3edcb7723abbb7fe798d0a860?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/35787ce3edcb7723abbb7fe798d0a860?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sigh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-281058"><time datetime="2013-01-28T13:34:16+08:00">2013年01月28日 13:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>private static final Singleton singleton = null; </p>
+<p>final应该去掉</p>
+</div>
+ </article>
+</li>
+<li id="comment-324685" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-324685" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2fa408468fdb48929e51f8eaeeaeb729?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cnblogs.com/Jack47" class="url" rel="ugc external nofollow">Jack47</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-324685"><time datetime="2013-04-12T16:32:41+08:00">2013年04月12日 16:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-191836" rel="nofollow">@lmyanglei </a><br/>
+去掉赋初值null，修改成“private static final Singleton singleton;”应该也是不行的。final修饰的变量只能在构造函数中或者是声明的时候初始化。而咱们讨论的上下文中，是要用Lazy Initialization的，所以必须去掉final。如果要保留final，可以参照这个方法 <a href="https://en.wikipedia.org/wiki/Singleton_pattern#Static_block_initialization" rel="nofollow ugc">http://en.wikipedia.org/wiki/Singleton_pattern#Static_block_initialization</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-466489" class="comment even thread-even depth-1">
+<article id="div-comment-466489" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27b770d23a07e1b399d9130ce3d1aa1d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27b770d23a07e1b399d9130ce3d1aa1d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">冷兵器</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-466489"><time datetime="2013-05-18T23:14:06+08:00">2013年05月18日 23:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，ssh框架的设计提供了很多模式，不小心就出错</p>
+</div>
+ </article>
+</li>
+<li id="comment-1619149" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yunzl.me/?p=44" class="url" rel="ugc external nofollow">[转]深入浅出单实例Singleton设计模式 | blog</a> </div>
+</li>
+<li id="comment-1621993" class="comment even thread-even depth-1">
+<article id="div-comment-1621993" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c1911af86a39fec8a1797bf6417e8408?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c1911af86a39fec8a1797bf6417e8408?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tina</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1621993"><time datetime="2014-12-05T21:22:42+08:00">2014年12月05日 21:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>version 1.0 里面把singleton定义为final如何再new？ 博主至少应该保证示例代码能够编译通过吧。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638528" class="comment byuser comment-author-haoel bypostauthor odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1638528" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1638528"><time datetime="2015-01-01T13:16:05+08:00">2015年01月01日 13:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1621993" rel="nofollow">@Tina </a><br/>
+谢谢，已修改！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1648040" class="comment even thread-even depth-1">
+<article id="div-comment-1648040" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/de7f6241ed85f8e51098106767eaf078?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/de7f6241ed85f8e51098106767eaf078?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lance</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1648040"><time datetime="2015-01-21T14:48:55+08:00">2015年01月21日 14:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Singleton 优雅版本<br/>
+这个确实是非常牛逼。<br/>
+原来的时候对于enum很不了解。<br/>
+看了之后理解了很多。<br/>
+public enum SingletonEnum {<br/>
+INSTANCE;<br/>
+private int value;<br/>
+private SingletonEnum() {<br/>
+//初始化工作<br/>
+this.value = 10;<br/>
+}<br/>
+public int getValue() {<br/>
+return this.value;<br/>
+}<br/>
+public void doStuff(){<br/>
+System.out.println(“Singleton using Enum:” + this.value);<br/>
+}<br/>
+};</p>
+<p>想问问这样的实现可以吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1659753" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jkeabc.com/p/466562.html" class="url" rel="ugc external nofollow">浅析单例模式与线程安全(Linux环境c++版本) – 剑客|关注科技互联网</a> </div>
+</li>
+<li id="comment-1670899" class="comment even thread-even depth-1">
+<article id="div-comment-1670899" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1fc6f02831c1b9550ef63a771ac5ce7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1fc6f02831c1b9550ef63a771ac5ce7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">libin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1670899"><time datetime="2015-03-05T16:40:34+08:00">2015年03月05日 16:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Singleton 优雅版本<br/>
+public enum Singleton{<br/>
+INSTANCE;<br/>
+}<br/>
+居然用枚举！！看上去好牛逼，通过EasySingleton.INSTANCE来访问，这比调用getInstance()方法简单多了。</p>
+<p>这一段，看了一下， 应该是通过 Singleton.INSTANCE来访问。 不知道 EasySington是哪里来的，这处是笔误吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1714763" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.lezifang.cn/2015/02/%e5%8e%9f%e6%b5%85%e6%9e%90%e5%8d%95%e4%be%8b%e6%a8%a1%e5%bc%8f%e4%b8%8e%e7%ba%bf%e7%a8%8b%e5%ae%89%e5%85%a8linux%e7%8e%af%e5%a2%83c%e7%89%88%e6%9c%ac/" class="url" rel="ugc external nofollow">[原]浅析单例模式与线程安全(Linux环境c++版本)乐滋坊 | 乐滋坊</a> </div>
+</li>
+<li id="comment-1732113" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.programerhome.com/?p=24555" class="url" rel="ugc external nofollow">设计模式(3): 单例模式 | 程序员之家</a> </div>
+</li>
+<li id="comment-1741906" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1741906" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/93e1af16a5a06a43909d6953c5b704ff?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/93e1af16a5a06a43909d6953c5b704ff?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">phil</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1741906"><time datetime="2015-07-30T10:33:09+08:00">2015年07月30日 10:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="http://wuchong.me/blog/2014/08/28/how-to-correctly-write-singleton-pattern/" rel="nofollow ugc">http://wuchong.me/blog/2014/08/28/how-to-correctly-write-singleton-pattern/</a> 这篇文章几乎和您写的这个差不多，原作者是您吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1762513" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1762513" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1762513"><time datetime="2015-09-25T16:26:53+08:00">2015年09月25日 16:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>身为刚刚接触java的小白 理解起来这个问题有点吃力。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1811632" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1811632" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4eaaf343955b941e2e6d9a3267bb37d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4eaaf343955b941e2e6d9a3267bb37d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">蜗牛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1811632"><time datetime="2016-03-07T15:51:37+08:00">2016年03月07日 15:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>新手疑问，version 1.5第4行是不是写错了，上面的描述不是说用final吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1813398" class="comment even thread-even depth-1">
+<article id="div-comment-1813398" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd9d7aaf171fad1b494ad140a56c2c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd9d7aaf171fad1b494ad140a56c2c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">feimi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1813398"><time datetime="2016-03-22T20:30:37+08:00">2016年03月22日 20:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>此文中一句话【1.2版的Singleton在多线程下的确没有问题了，因为我们同步了所有的线程。】，因为改进为1.3版本之后还不行，又来一个 1.4 版本，所以 这句话就不合适，真的是多线程没有问题了吗？即使同步了所有线程？版本1.4的候补，很明显给了这个问题一个否定的答案。</p>
+<p>关联阅读：http://www.race604.com/java-double-checked-singleton/?hmsr=toutiao.io&amp;utm_medium=toutiao.io&amp;utm_source=toutiao.io</p>
+</div>
+ </article>
+</li>
+<li id="comment-1813586" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1813586" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd9d7aaf171fad1b494ad140a56c2c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd9d7aaf171fad1b494ad140a56c2c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">feimi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1813586"><time datetime="2016-03-23T08:55:26+08:00">2016年03月23日 08:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1813398" rel="nofollow">@feimi </a><br/>
+1.3版本也引入了一个非同步的代码 ，就是那句 null 的判断，所以，才需要了1.4版本，【1.2版的Singleton在多线程下的确没有问题了，因为我们同步了所有的线程。】也是没有问题的。。。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1914008" class="comment even depth-2">
+<article id="div-comment-1914008" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a5312aad96e1618cbfa1e29e5982eb4b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a5312aad96e1618cbfa1e29e5982eb4b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">魔力鸟999</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1914008"><time datetime="2017-05-09T16:42:36+08:00">2017年05月09日 16:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问1.3版本的问题出在哪里啊？ 就是说线程1正在执行 singleton= new Singleton(); 的132步中的第2步时，这时线程2执行到第一个判断if (singleton== null)的时候 就会出错吗</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1820026" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://zlshi.blog.ustc.edu.cn/singleton%e8%ae%be%e8%ae%a1%e6%a8%a1%e5%bc%8f/" class="url" rel="ugc external nofollow">Singleton设计模式 – Study</a> </div>
+</li>
+<li id="comment-1856254" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1856254" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/456531a44aad75aa4e548ce2962ae24c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/456531a44aad75aa4e548ce2962ae24c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/kangear" class="url" rel="ugc external nofollow">ShiWaXinGe</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1856254"><time datetime="2016-07-07T14:35:02+08:00">2016年07月07日 14:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于需要带参数的单例只有1.４版本能用了。1.5+不能带参数。这是我目前的看法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913745" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hack.hk.cn/2017/04/12/hi%ef%bc%8c%e6%88%91%e4%bb%ac%e5%86%8d%e6%9d%a5%e8%81%8a%e4%b8%80%e8%81%8ajava%e7%9a%84%e5%8d%95%e4%be%8b%e5%90%a7/" class="url" rel="ugc external nofollow">Hi，我们再来聊一聊Java的单例吧 - 莹莹之色</a> </div>
+</li>
+<li id="comment-1913755" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.barryzhang.com/archives/521" class="url" rel="ugc external nofollow">Hi，我们再来聊一聊Java的单例吧 – Barry&#39;s Blog 张新强的博客</a> </div>
+</li>
+<li id="comment-1913919" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codingblog.cn/blog/43273.html" class="url" rel="ugc external nofollow">怎么样写好Java语言的单例 – CodingBlog</a> </div>
+</li>
+<li id="comment-1914143" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://3qfn.iamgpj.com/2017/05/23/%e8%81%8a%e8%81%8ajava%e7%9a%84%e5%8d%95%e4%be%8b%e6%a8%a1%e5%bc%8f/" class="url" rel="ugc external nofollow">聊聊Java的单例模式 | 失策-三千烦恼风</a> </div>
+</li>
+<li id="comment-1914314" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tilkai.space/2017/06/12/%e5%a6%82%e4%bd%95%e4%bc%98%e9%9b%85%e5%9c%b0%e5%ae%9e%e7%8e%b0%e4%b8%80%e4%b8%aa%e5%8d%95%e4%be%8b/" class="url" rel="ugc external nofollow">如何优雅地实现一个单例? – Blog By TilKai</a> </div>
+</li>
+<li id="comment-1914331" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tilkai.space/2017/06/12/elegance-singleton/" class="url" rel="ugc external nofollow">如何优雅地实现一个单例? - TilKai</a> </div>
+</li>
+<li id="comment-1914341" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tilkai.space/2017/06/13/elegance-singleton/" class="url" rel="ugc external nofollow">如何优雅地实现一个单例? – TilKai</a> </div>
+</li>
+<li id="comment-1917843" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1917843" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b844ff1f4b4c2aa446feb199c8b9c778?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b844ff1f4b4c2aa446feb199c8b9c778?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">雪含</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1917843"><time datetime="2017-09-21T09:39:19+08:00">2017年09月21日 09:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>synchronized 内部会发生指令重排么，作者这个地方觉得是不是讲错了还是我理解错了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1920038" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1920038" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8a992d1cd98f8e9799d14ecd0e9f8f4b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8a992d1cd98f8e9799d14ecd0e9f8f4b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/linsongbin1" class="url" rel="ugc external nofollow">Sam哥哥</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1920038"><time datetime="2017-10-31T13:44:31+08:00">2017年10月31日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>想不到皓子哥对JAVA也这么熟悉。厉害厉害。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1925341" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jqhtml.com/13938.html" class="url" rel="ugc external nofollow">Hi，我们再来聊一聊Java的单例吧 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-1929410" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1929410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c51bc23739f645c7883a45e31879f44?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c51bc23739f645c7883a45e31879f44?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">Jason Tang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1929410"><time datetime="2018-05-26T10:09:45+08:00">2018年05月26日 10:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>首先，非常感谢博主☕️☕️<br/>
+这些都是常见的一些单例模式实现方法，1.6最终版也是最常用，但是还有一种情况未考虑：‘反射’！<br/>
+虽然构造函数私有了，使用暴力反射还是可以实例化新的对象，所以代码可增加一个1.7版本：<br/>
+public class SigletonDemo {<br/>
+private static SigletonDemo instance;<br/>
+private SigletonDemo(){<br/>
+if (instance != null) {<br/>
+throw new RuntimeException(“休想通过暴力反射破解我的单例!!!”);<br/>
+}<br/>
+}<br/>
+private static class Inner{<br/>
+public static SigletonDemo INSTANCE = new SigletonDemo();<br/>
+}<br/>
+public static SigletonDemo getInstance(){<br/>
+instance = Inner.INSTANCE;<br/>
+return instance;<br/>
+}<br/>
+}<br/>
+这样就解决了通过反射来实例化新的对象</p>
+</div>
+ </article>
+</li>
+<li id="comment-1936090" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1936090" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d2f321c407a642585d13736c37e03fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d2f321c407a642585d13736c37e03fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">leiz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1936090"><time datetime="2018-07-31T17:28:01+08:00">2018年07月31日 17:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>synchronized 代码块中不会发生指令重排序。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1938650" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1938650" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8c34d3e6843f9522db35c0bd69181f74?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8c34d3e6843f9522db35c0bd69181f74?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zirui chu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1938650"><time datetime="2018-08-14T16:43:29+08:00">2018年08月14日 16:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>you are sure about that?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1945506" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1945506" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e910164b76ecea02e2299686f2067757?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e910164b76ecea02e2299686f2067757?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Michael Du</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-1945506"><time datetime="2018-11-28T08:23:58+08:00">2018年11月28日 08:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用 enum有个最大的问题是不好写unit test啊！没有好的办法mock它吧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2012000" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/386066/" class="url" rel="ugc external nofollow">Python 中的单例模式 - 算法网</a> </div>
+</li>
+<li id="comment-2076613" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2076613" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7fb1c186fb60c6d2f63c1f3a8c7d187a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7fb1c186fb60c6d2f63c1f3a8c7d187a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小程序猿</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-2076613"><time datetime="2020-03-12T11:49:21+08:00">2020年03月12日 11:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>但是在 JVM 的即时编译器中存在指令重排序的优化。也就是说上面的第二步和第三步的顺序是不能保证的，最终的执行顺序可能是 1-2-3 也可能是 1-3-2。如果是后者，则在 3 执行完毕、2 未执行之前，被线程二抢占了，这时 instance 已经是非 null 了（但却没有初始化），所以线程二会直接返回 instance，然后使用，然后顺理成章地报错。</p>
+<p>这段华中的被线程二抢占了是不是有表达错误，只是线程二过来判断引用是否为空？而不是去跟线程二抢占的关系</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2114823" class="comment odd alt depth-2 parent">
+<article id="div-comment-2114823" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/960874f7ce5b079945a7a8b993d2c2fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/960874f7ce5b079945a7a8b993d2c2fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nanlai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-2114823"><time datetime="2020-06-03T17:57:52+08:00">2020年06月03日 17:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我的理解是，线程1执行完成之前，不会被线程2抢占。因为此时线程1获得了synchronized锁，即使线程1的时间片使用结束，也轮不到线程2来执行。所以不是抢占的问题。<br/>
+再来看关于重排序的问题，确实synchronized关键字只保证原子性和可见性，并不保证有序性。synchronized中指令是可以重排序的，这就是导致文中所说的那个问题，假设发生了指令排序，执行过程变为1-3-2。那么当线程1执行结束后，轮到线程2执行了，这时确实instance已经不是null，可是JVM不能保证instance指向的对象是否已经正确完成实例化。如果没有，那么就会出现问题。<br/>
+当然，这时我的一种猜测，我不确定在对象实例没有彻底完成实例化前，线程1会不会结束。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2115652" class="comment even depth-3">
+<article id="div-comment-2115652" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/960874f7ce5b079945a7a8b993d2c2fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/960874f7ce5b079945a7a8b993d2c2fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nanlai</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/265.html#comment-2115652"><time datetime="2020-06-05T15:15:16+08:00">2020年06月05日 15:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我还是要更正一下错误。<br/>
+由于synchronized关键字并不是加在方法上的，因此，线程1即使没有结束，线程2同样也可以进入到getInstance方法中。如果线程1中单例对象的初始化乱序执行，即先将instance指向 了一段内存空间，然后再去填充这段内存空间。那么线程2在判断instance == null 的时候就会返回false，导致的问题就是线程2直接返回了instance指向的实例，然而这个实例在线程1中还没有初始化完成。这在后续的程序中会导致一些难以察觉的错误。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2106070" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.cary.tech/article/146.html" class="url" rel="ugc external nofollow">Java单例模式 - 星河漫步 | 星河漫步</a> </div>
+</li>
+<li id="comment-2337466" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1829653" class="url" rel="ugc external nofollow">单例模式：茴香豆的七种写法 - 算法网</a> </div>
+</li>
+<li id="comment-2370796" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.johngo689.com/129692/" class="url" rel="ugc external nofollow">没那么简单的单例模式_Johngo学长</a> </div>
+</li>
+<li id="comment-2370880" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.1111down.com/572593.html" class="url" rel="ugc external nofollow">沒那麼簡單的單例模式 – 綜合資源網</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

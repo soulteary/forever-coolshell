@@ -1,0 +1,398 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何免费的让网站启用HTTPS | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-18094 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-18094" class="post-content post-18094 post type-post status-publish format-standard hentry category-webdev category-misc category-netsecurity tag-http tag-https tag-ssl tag-web tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">如何免费的让网站启用HTTPS</span>
+<h1 class="entry-title">如何免费的让网站启用HTTPS</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/18094.html" title="14:06" rel="bookmark"><time class="entry-date" datetime="2017-08-26T14:06:17+08:00" pubdate="">2017年08月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/18094.html#comments" class="comments-link">91 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 99,930 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="aligncenter size-full" src="/uploads/2017/08/enable-https-banner.png" alt="" width="700" height="220" srcset=""/>今天，我把CoolShell变成https的安全访问了。我承认这件事有点晚了，因为之前的HTTP的问题也有网友告诉我，被国内的电信运营商在访问我的网站时加入了一些弹窗广告。另外，HTTP的网站在搜索引擎中的rank会更低。所以，这事早就应该干了。现在用HTTP访问CoolShell会被得到一个 301 的HTTPS的跳转。下面我分享一下启用HTTPS的过程。</p>
+<p>我用的是 <a href="https://letsencrypt.org" target="_blank" rel="noopener noreferrer">Let’s Encrypt</a>这个免费的解决方案。Let’s Encrypt 是一个于2015年推出的数字证书认证机构，将通过旨在消除当前手动创建和安装证书的复杂过程的自动化流程，为安全网站提供免费的SSL/TLS证书。这是由<a href="https://letsencrypt.org/isrg/" target="_blank" rel="noopener noreferrer">互联网安全研究小组</a>（ISRG – Internet Security Research Group，一个公益组织）提供的服务。主要赞助商包括<a title="电子前哨基金会" href="https://www.eff.org" target="_blank" rel="noopener noreferrer">电子前哨基金会</a>，<a class="mw-redirect" title="Mozilla基金会" href="https://www.mozilla.org/foundation/" target="_blank" rel="noopener noreferrer">Mozilla基金会</a>，<a title="Akamai" href="https://www.akamai.com/" target="_blank" rel="noopener noreferrer">Akamai</a>以及Cisco等公司（<a href="https://letsencrypt.org/sponsors/" target="_blank" rel="noopener noreferrer">赞助商列表</a>）。<sup id="cite_ref-3" class="reference"></sup></p>
+<p>2015年6月，Let’s Encrypt得到了一个存储在硬件安全模块中的离线的RSA根证书。这个由IdenTrust证书签发机构交叉签名的根证书被用于签署两个证书。其中一个就是用于签发请求的证书，另一个则是保存在本地的证书，这个证书用于在上一个证书出问题时作备份证书之用。因为IdenTrust的CA根证书目前已被预置于主流浏览器中，所以Let’s Encrypt签发的证书可以从项目开始就被识别并接受，甚至当用户的浏览器中没有信任ISRG的根证书时也可以。</p>
+<p><span id="more-18094"></span></p>
+<p>以上介绍文字来自 Wikipedia 的 <a href="https://zh.wikipedia.org/wiki/Let%27s_Encrypt" target="_blank" rel="noopener noreferrer">Let’s Encrypt 词条</a>。</p>
+<p>为你的网站来安装一个证书十分简单，只需要使用电子子前哨基金会EFF的 <a href="https://certbot.eff.org" target="_blank" rel="noopener noreferrer">Certbot</a>，就可以完成。</p>
+<p style="padding-left: 30px;">1）首先，打开 <a href="https://certbot.eff.org" target="_blank" rel="noopener noreferrer">https://certbot.eff.org</a> 网页。</p>
+<p style="padding-left: 30px;">2）在那个机器上图标下面，你需要选择一下你用的 Web 接入软件 和你的 操作系统。比如，我选的，<code>nginx</code> 和 <code>Ubuntu 14.04</code></p>
+<p style="padding-left: 30px;">3）然后就会跳转到一个安装教程网页。你就照着做一遍就好了。</p>
+<p>以Coolshell.cn为例 – Nginx + Ubuntu</p>
+<p>首先先安装相应的环境：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sudo apt-get update
+$ sudo apt-get install software-properties-common
+$ sudo add-apt-repository ppa:certbot/certbot
+$ sudo apt-get update
+$ sudo apt-get install python-certbot-nginx
+</pre>
+<p>然后，运行如下命令：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">$ sudo certbot --nginx
+</pre>
+<p><code>certbot</code> 会自动检查到你的 <code>nginx.conf</code> 下的配置，把你所有的虚拟站点都列出来，然后让你选择需要开启 https 的站点。你就简单的输入列表编号（用空格分开），然后，certbot 就帮你下载证书并更新 <code>nginx.conf</code> 了。</p>
+<p>你打开你的 <code>nginx.conf</code> 文件 ，你可以发现你的文件中的 <code>server</code> 配置中可能被做了如下的修改：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">listen 443 ssl; # managed by Certbot
+ssl_certificate /etc/letsencrypt/live/coolshell.cn/fullchain.pem; # managed by Certbot
+ssl_certificate_key /etc/letsencrypt/live/coolshell.cn/privkey.pem; # managed by Certbot
+include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot</pre>
+<p>和</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW"> # Redirect non-https traffic to https
+if ($scheme != &#34;https&#34;) {
+  return 301 https://$host$request_uri;
+} # managed by Certbot</pre>
+<p> </p>
+<p>这里建议配置 http2，这要求 Nginx 版本要大于 1.9.5。HTTP2 具有更快的 HTTPS 传输性能，非常值得开启（<a href="http://blog.httpwatch.com/2015/01/16/a-simple-performance-comparison-of-https-spdy-and-http2/" target="_blank" rel="noopener noreferrer">关于性能你可以看一下这篇文章</a>）。需要开启HTTP/2其实很简单，只需要在 <code>nginx.conf</code> 的 <code>listen 443 ssl;</code> 后面加上 <code>http2</code> 就好了。如下所示：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">listen 443 ssl http2; # managed by Certbot 
+ssl_certificate /etc/letsencrypt/live/coolshell.cn/fullchain.pem; # managed by Certbot 
+ssl_certificate_key /etc/letsencrypt/live/coolshell.cn/privkey.pem; # managed by Certbot 
+include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot</pre>
+<p>然后，就 <code>nginx -s reload</code> 就好了。</p>
+<p>但是，<strong>Let’s Encrypt 的证书90天就过期了</strong>，所以，你还要设置上自动化的更新脚本，最容易的莫过于使用 <code>crontab</code> 了。使用 <code>crontab -e</code> 命令加入如下的定时作业（每个月都强制更新一下）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">0 0 1 * * /usr/bin/certbot renew --force-renewal
+5 0 1 * * /usr/sbin/service nginx restart</pre>
+<p>当然，你也可以每天凌晨1点检查一下：</p>
+<p><code data-enlighter-language="shell" class="EnlighterJSRAW">0 1 * * * certbot renew </code></p>
+<p>注：crontab 中有六个字段，其含义如下：</p>
+<ul>
+<li>第1个字段：分钟 (0-59)</li>
+<li>第2个字段：小时 (0-23)</li>
+<li>第3个字段：日期 (1-31)</li>
+<li>第4个字段：月份 (1-12 [12 代表 December])</li>
+<li>第5个字段：一周当中的某天 (0-7 [7 或 0 代表星期天])</li>
+<li>/path/to/command – 计划执行的脚本或命令的名称</li>
+</ul>
+<p><strong>这么方便的同时，我不禁要问，如果是一些恶意的钓鱼网站也让自己的站点变成https的，这个对于一般用来说就有点难以防范了。哎……</strong></p>
+<p>当然，在nginx或apache上启用HTTPS后，还没有结束。因为你可能还需要修改一下你的网站，不然你的网站在浏览时会出现各种问题。</p>
+<p><strong>启用HTTPS后，你的网页中的所有的使用 <code>http://</code> 的方式的地方都要改成 <code>https://</code> 不然你的图片，js， css等非https的连接都会导致浏览器抱怨不安全而被block掉</strong>。所以，你还需要修改你的网页中那些 hard code <code>http://</code> 的地方。</p>
+<p>对于我这个使用wordpress的博客系统来说，有这么几个部分需要做修改。</p>
+<p style="padding-left: 30px;">1）首先是 wordpress的 常规设置中的 “<strong>WordPress 地址</strong>” 和 “<strong>站点地址</strong>” 需要变更为 https 的方式。</p>
+<p style="padding-left: 30px;">2）然后是文章内的图片等资源的链接需要变更为 https 的方式。对此，你可以使用一个叫 “<a href="https://wordpress.org/plugins/search-regex/" target="_blank" rel="noopener noreferrer">Search Regex</a>” 插件来批量更新你历史文章里的图片或别的资源的链接。比如：把 <code>http://coolshell.cn</code> 替换成了 <code>https://coolshell.cn</code></p>
+<p style="padding-left: 30px;">3）如果你像我一样启用了文章缓存（我用的是<a href="https://wordpress.org/plugins/wp-super-cache/" target="_blank" rel="noopener noreferrer">WP-SuperCache</a>插件），你还要去设置一下 “<strong>CDN</strong>” 页面中的 “Site URL” 和 “off-site URL” 确保生成出来的静态网页内是用https做资源链接的。</p>
+<p>基本上就是这些事。希望大家都来把自己的网站更新成 https 的。</p>
+<p>嗯，12306，你什么时候按照这个教程做一下你的证书？</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-18094-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">HTTP</a>, <a href="javascript:void(0)" rel="tag">HTTPS</a>, <a href="javascript:void(0)" rel="tag">SSL</a>, <a href="javascript:void(0)" rel="tag">Web</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何免费的让网站启用HTTPS</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1923717" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1923717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d25fc37b8be93274a7617a9e8c59892f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d25fc37b8be93274a7617a9e8c59892f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">吴吴吴</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1923717"><time datetime="2018-02-02T17:06:49+08:00">2018年02月02日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教个问题：<br/>
+一个80端口可以托管多个网站，https验证是在连接建立阶段，这时候还没有发送http消息，那Nginx是如何知道浏览器是要访问A网站而不是B网站，决定下发A站证书的呢？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1923738" class="comment odd alt depth-2">
+<article id="div-comment-1923738" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cdd5956f8b5cd3adbc5db4600da17167?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cdd5956f8b5cd3adbc5db4600da17167?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Acxuz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1923738"><time datetime="2018-02-03T11:17:40+08:00">2018年02月03日 11:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>在建立连接的时候，客户端就把请求连接的主机名发过去了啊</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1923900" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.52xintaidu.com/?p=16" class="url" rel="ugc external nofollow">Let’s Encrypt 网站启用HTTPS更新 – 52新态度,52xintaidu，世界新态度</a> </div>
+</li>
+<li id="comment-1923954" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codingo.xyz/index.php/2018/02/08/https1/" class="url" rel="ugc external nofollow">HTTPS分析与实战 | Coding狗</a> </div>
+</li>
+<li id="comment-1924147" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1924147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fdf46180ef6e09bb9afbd719fc14cd6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fdf46180ef6e09bb9afbd719fc14cd6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">黄祎洋</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1924147"><time datetime="2018-02-13T17:01:09+08:00">2018年02月13日 17:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大大，这篇文章被抄袭了，还是原文抄袭</p>
+</div>
+ </article>
+</li>
+<li id="comment-1925189" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://dapiqing.cn/2017/11/22/lnmpwordpresslets-encrypt/" class="url" rel="ugc external nofollow">lnmp+wordpress+Let&#39;s Encrypt | 大皮庆</a> </div>
+</li>
+<li id="comment-1925233" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1925233" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6e6fef0ece2dbb2092edd03708963599?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6e6fef0ece2dbb2092edd03708963599?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">乔伯</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1925233"><time datetime="2018-03-13T09:17:55+08:00">2018年03月13日 09:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>实际上12306已经买了正式的证书了，你们是好久没上12306的网页版了吧，看这个地址，https://kyfw.12306.cn/otn/index/init</p>
+</div>
+ </article>
+</li>
+<li id="comment-1925246" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://yanplus.cn/?p=254" class="url" rel="ugc external nofollow">wordpress启用https – 言加法</a> </div>
+</li>
+<li id="comment-1925369" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1925369" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5aff388d5ae9962ec0866a874dc3b3af?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5aff388d5ae9962ec0866a874dc3b3af?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">eroadster</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1925369"><time datetime="2018-03-18T19:02:51+08:00">2018年03月18日 19:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教一下皓子哥和各位，主机在国外，没有备案的话，国内访问是否会被屏蔽？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1943110" class="comment odd alt depth-2">
+<article id="div-comment-1943110" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4e45becad2bd74659b6c910a6f985a4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4e45becad2bd74659b6c910a6f985a4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chenjinxin.xyz/" class="url" rel="ugc external nofollow">cjx</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1943110"><time datetime="2018-11-13T10:05:31+08:00">2018年11月13日 10:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不会啊。走公网IP的，只要不被强行禁止就没问题。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1925514" class="comment even thread-even depth-1">
+<article id="div-comment-1925514" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8406d089bc81b664a2610b8d214c1428?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8406d089bc81b664a2610b8d214c1428?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://sb.sb/" class="url" rel="ugc external nofollow">Showfom</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1925514"><time datetime="2018-03-22T03:30:15+08:00">2018年03月22日 03:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>然而你用的 Ubuntu 14.04 OpenSSL 版本太低了，所以 HTTP/2.0 是不支持的</p>
+<p>修复方法，使用 sury 大佬的 PPA 来安装 Nginx</p>
+<p><a href="https://launchpad.net/~ondrej/+archive/ubuntu/nginx-mainline" rel="nofollow ugc">https://launchpad.net/~ondrej/+archive/ubuntu/nginx-mainline</a></p>
+<p><a href="https://launchpad.net/~ondrej/+archive/ubuntu/nginx" rel="nofollow ugc">https://launchpad.net/~ondrej/+archive/ubuntu/nginx</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1926440" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.tangshuang.net/4586.html" class="url" rel="ugc external nofollow">启用https_唐霜的博客</a> </div>
+</li>
+<li id="comment-1927172" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.irocky.top/articles/228" class="url" rel="ugc external nofollow">如何免费的让网站启用HTTPS | 工作中的智慧</a> </div>
+</li>
+<li id="comment-1928662" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://com-it.tech/archives/41203" class="url" rel="ugc external nofollow">HTTPS分析與實戰 - 程序員的後花園</a> </div>
+</li>
+<li id="comment-1928736" class="comment even thread-even depth-1">
+<article id="div-comment-1928736" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf974ff851e8afe0335c753bd1f7f749?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf974ff851e8afe0335c753bd1f7f749?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://sleepeatcode.com" class="url" rel="ugc external nofollow">truesnow</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1928736"><time datetime="2018-05-12T22:01:38+08:00">2018年05月12日 22:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>谢谢皓哥了~~~我比12306还牛逼了哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1933355" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://myfjdthink.com/2017/08/28/%e4%bd%bf%e7%94%a8-docker-%e6%90%ad%e5%bb%ba-wordpress-%e6%94%af%e6%8c%81-https/" class="url" rel="ugc external nofollow">使用 Docker 搭建 WordPress 支持 https | 天如</a> </div>
+</li>
+<li id="comment-1938222" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://niliu.me/articles/387.html" class="url" rel="ugc external nofollow">CentOS7系统下Nginx网站支持HTTPS笔记 | 逆流而上</a> </div>
+</li>
+<li id="comment-1946707" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://lescode.cn/202.html" class="url" rel="ugc external nofollow">构建更安全的Web：为什么要从HTTP迁移到HTTPS - 快乐码</a> </div>
+</li>
+<li id="comment-1962118" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://njujiang.tech/?p=29" class="url" rel="ugc external nofollow">免费启用https | 天枢星的博客</a> </div>
+</li>
+<li id="comment-1965548" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1965548" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7f4d8e2576e8b379b18559fbd1a72103?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7f4d8e2576e8b379b18559fbd1a72103?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://kaifazhinan.com/" class="url" rel="ugc external nofollow">开发指南</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-1965548"><time datetime="2019-02-18T16:35:16+08:00">2019年02月18日 16:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里有一篇：</p>
+<p>如何在 CentOS 7 上安装 Nginx<br/>
+<a href="https://kaifazhinan.com/how-to-install-nginx-on-centos-7/" rel="nofollow ugc">https://kaifazhinan.com/how-to-install-nginx-on-centos-7/</a></p>
+<p>方法和博主的差不多。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1969067" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.aixue7.com/?p=75" class="url" rel="ugc external nofollow">如何免费的让网站启用HTTPS – 峰回路转</a> </div>
+</li>
+<li id="comment-1975816" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://shadowkong.com/archives/2431" class="url" rel="ugc external nofollow">配置https和ssh+key登陆 | Rect Notes</a> </div>
+</li>
+<li id="comment-1992300" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.lovestudyone.xyz/2019/04/17/%e5%a6%82%e4%bd%95%e5%85%8d%e8%b4%b9%e7%9a%84%e8%ae%a9%e7%bd%91%e7%ab%99%e5%90%af%e7%94%a8https/" class="url" rel="ugc external nofollow">如何免费的让网站启用HTTPS | 爱学湾</a> </div>
+</li>
+<li id="comment-2006288" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.terencexie.com/articles/1171/" class="url" rel="ugc external nofollow">使用Docker部署WordPress - GeekArtT</a> </div>
+</li>
+<li id="comment-2007007" class="comment even thread-even depth-1">
+<article id="div-comment-2007007" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe8d1def061e20dc7668fe16fbd094d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe8d1def061e20dc7668fe16fbd094d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.junlee.net" class="url" rel="ugc external nofollow">李军</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-2007007"><time datetime="2019-07-21T11:04:23+08:00">2019年07月21日 11:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>现在阿里云上搞证书还蛮方便啦。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2010258" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tw.ddrv.cn/a/918/" class="url" rel="ugc external nofollow">Flask 系列之 部署發布 - 算法網</a> </div>
+</li>
+<li id="comment-2038862" class="comment even thread-even depth-1">
+<article id="div-comment-2038862" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/02cd51ac406d6ae3dbea8b6d256d4628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/02cd51ac406d6ae3dbea8b6d256d4628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">honng</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-2038862"><time datetime="2019-11-18T23:02:17+08:00">2019年11月18日 23:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>阿里云现在出售SSL证书了，也有免费的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2145765" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://mrdede.com/?p=3942" class="url" rel="ugc external nofollow">Rocket.Chat 团队合作聊天工具的生产环境下的安装部署 | 织梦先生</a> </div>
+</li>
+<li id="comment-2331064" class="comment even thread-even depth-1">
+<article id="div-comment-2331064" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22e510a1019b4fb1e96514233ca405ce?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22e510a1019b4fb1e96514233ca405ce?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://pzwd.net/" class="url" rel="ugc external nofollow">Pipecraft</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/18094.html/comment-page-2#comment-2331064"><time datetime="2021-11-08T11:49:08+08:00">2021年11月08日 11:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最初也是通过这个文章知道 Let’s Encrypt 的。<br/>
+后来发现下面这个项目以后，配置 HTTPS 简单的不得了（使用 Docker）。</p>
+<p><a href="https://github.com/nginx-proxy/nginx-proxy" rel="nofollow ugc">https://github.com/nginx-proxy/nginx-proxy</a><br/>
+<a href="https://github.com/nginx-proxy/acme-companion" rel="nofollow ugc">https://github.com/nginx-proxy/acme-companion</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-2370939" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://fushengyicheng.com/p/%e7%bd%91%e7%ab%99%e6%b7%bb%e5%8a%a0%e5%85%8d%e8%b4%b9%e7%9a%84-https-%e8%af%81%e4%b9%a6/" class="url" rel="ugc external nofollow">网站添加免费的 https 证书 – 浮生一程</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/18094.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/18094.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">18094</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

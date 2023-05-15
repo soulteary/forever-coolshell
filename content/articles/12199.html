@@ -1,0 +1,495 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++ STL string的Copy-On-Write技术 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-12199 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-12199" class="post-content post-12199 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c tag-stl tag-string">
+<header class="entry-header">
+<span class="screen-reader-text">C++ STL string的Copy-On-Write技术</span>
+<h1 class="entry-title">C++ STL string的Copy-On-Write技术</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12199.html" title="10:36" rel="bookmark"><time class="entry-date" datetime="2004-06-23T10:36:50+08:00" pubdate="">2004年06月23日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12199.html#comments" class="comments-link">16 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 32,814 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>Scott Meyers在《More Effective C++》中举了个例子，不知你是否还记得？在你还在上学的时候，你的父母要你不要看电视，而去复习功课，于是你把自己关在房间里，做出一副正在复习功课的样子，其实你在干着别的诸如给班上的某位女生写情书之类的事，而一旦你的父母出来在你房间要检查你是否在复习时，你才真正捡起课本看书。这就是“拖延战术”，直到你非要做的时候才去做。</p>
+<p>当然，这种事情在现实生活中时往往会出事，但其在编程世界中摇身一变，就成为了最有用的技术，正如C++中的可以随处声明变量的特点一样，Scott Meyers推荐我们，在真正需要一个存储空间时才去声明变量（分配内存），这样会得到程序在运行时最小的内存花销。执行到那才会去做分配内存这种比较耗时的工作，这会给我们的程序在运行时有比较好的性能。必竟，20%的程序运行了80%的时间。</p>
+<p>当然，拖延战术还并不只是这样一种类型，这种技术被我们广泛地应用着，特别是在操作系统当中，当一个程序运行结束时，操作系统并不会急着把其清除出内存，原因是有可能程序还会马上再运行一次（从磁盘把程序装入到内存是个很慢的过程），而只有当内存不够用了，才会把这些还驻留内存的程序清出。</p>
+<p>写时才拷贝（Copy-On-Write）技术，就是编程界“懒惰行为”——拖延战术的产物。举个例子，比如我们有个程序要写文件，不断地根据网络传来的数据写，如果每一次fwrite或是fprintf都要进行一个磁盘的I/O操作的话，都简直就是性能上巨大的损失，因此通常的做法是，每次写文件操作都写在特定大小的一块内存中（磁盘缓存），只有当我们关闭文件时，才写到磁盘上（这就是为什么如果文件不关闭，所写的东西会丢失的原因）。更有甚者是文件关闭时都不写磁盘，而一直等到关机或是内存不够时才写磁盘，Unix就是这样一个系统，如果非正常退出，那么数据就会丢失，文件就会损坏。</p>
+<p>呵呵，为了性能我们需要冒这样大的风险，还好我们的程序是不会忙得忘了还有一块数据需要写到磁盘上的，所以这种做法，还是很有必要的。</p>
+<p><span id="more-12199"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#STL%E7%B1%BBstd_string%E7%9A%84Copy-On-Write" title="STL类std::string的Copy-On-Write">STL类std::string的Copy-On-Write</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%89%B9%E6%80%A7" title="特性">特性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#_%E6%B7%B1%E5%85%A5" title=" 深入"> 深入</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Copy-On-Write%E7%9A%84%E5%8E%9F%E7%90%86%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F" title="Copy-On-Write的原理是什么？">Copy-On-Write的原理是什么？</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#string%E7%B1%BB%E5%9C%A8%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E6%89%8D%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98%E7%9A%84%EF%BC%9F" title="string类在什么情况下才共享内存的？">string类在什么情况下才共享内存的？</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#string%E7%B1%BB%E5%9C%A8%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E8%A7%A6%E5%8F%91%E5%86%99%E6%97%B6%E6%89%8D%E6%8B%B7%E8%B4%9D%EF%BC%88Copy-On-Write%EF%BC%89" title="string类在什么情况下触发写时才拷贝（Copy-On-Write）?">string类在什么情况下触发写时才拷贝（Copy-On-Write）?</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#Copy-On-Write%E6%97%B6%EF%BC%8C%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F" title="Copy-On-Write时，发生了什么？">Copy-On-Write时，发生了什么？</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#Copy-On-Write%E7%9A%84%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%E6%98%AF%E6%80%8E%E4%B9%88%E6%A0%B7%E7%9A%84%EF%BC%9F" title="Copy-On-Write的具体实现是怎么样的？">Copy-On-Write的具体实现是怎么样的？</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E5%89%AF%E4%BD%9C%E7%94%A8" title="副作用">副作用</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%90%8E%E8%AE%B0" title="后记">后记</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="STL%E7%B1%BBstd_string%E7%9A%84Copy-On-Write"></span>STL类std::string的Copy-On-Write<span class="ez-toc-section-end"></span></h4>
+<p>在我们经常使用的STL标准模板库中的string类，也是一个具有写时才拷贝技术的类。C++曾在性能问题上被广泛地质疑和指责过，为了提高性能，STL中的许多类都采用了Copy-On-Write技术。这种偷懒的行为的确使使用STL的程序有着比较高要性能。</p>
+<p>这里，我想从C++类或是设计模式的角度为各位揭开Copy-On-Write技术在string中实现的面纱，以供各位在用C++进行类库设计时做一点参考。</p>
+<p>在讲述这项技术之前，我想简单地说明一下string类内存分配的概念。通过常，string类中必有一个私有成员，其是一个char*，用户记录从堆上分配内存的地址，其在构造时分配内存，在析构时释放内存。因为是从堆上分配内存，所以string类在维护这块内存上是格外小心的，string类在返回这块内存地址时，只返回const char*，也就是只读的，如果你要写，你只能通过string提供的方法进行数据的改写。</p>
+<h4><span class="ez-toc-section" id="%E7%89%B9%E6%80%A7"></span>特性<span class="ez-toc-section-end"></span></h4>
+<p>由表及里，由感性到理性，我们先来看一看string类的Copy-On-Write的表面特征。让我们写下下面的一段程序：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;string&gt;
+using namespace std;
+ 
+main()
+{
+    string str1 = &#34;hello world&#34;;
+    string str2 = str1;
+
+    printf (&#34;Sharing the memory:/n&#34;);
+    printf (&#34;/tstr1&#39;s address: %x/n&#34;, str1.c_str() );
+    printf (&#34;/tstr2&#39;s address: %x/n&#34;, str2.c_str() );
+
+    str1[1]=&#39;q&#39;;
+    str2[1]=&#39;w&#39;;
+
+    printf (&#34;After Copy-On-Write:/n&#34;);
+    printf (&#34;/tstr1&#39;s address: %x/n&#34;, str1.c_str() );
+    printf (&#34;/tstr2&#39;s address: %x/n&#34;, str2.c_str() );
+
+    return 0;
+}</pre>
+<p>这个程序的意图就是让第二个<span lang="EN">string</span>通过第一个<span lang="EN">string</span>构造，然后打印出其存放数据的内存地址，然后分别修改<span lang="EN">str1</span>和<span lang="EN">str2</span>的内容，再查一下其存放内存的地址。程序的输出是这样的（我在<span lang="EN">VC6.0</span>和<span lang="EN">g++ 2.95</span>都得到了同样的结果）：</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">&gt; g++ -o stringTest stringTest.cpp
+&gt; ./stringTest
+Sharing the memory:
+        str1&#39;s address: 343be9
+        str2&#39;s address: 343be9
+After Copy-On-Write:
+        str1&#39;s address: 3407a9
+        str2&#39;s address: 343be9</pre>
+<p>从结果中我们可以看到，在开始的两个语句后，<span lang="EN">str1</span>和<span lang="EN">str2</span>存放数据的地址是一样的，而在修改内容后，<span lang="EN">str1</span>的地址发生了变化，而<span lang="EN">str2</span>的地址还是原来的。从这个例子，我们可以看到<span lang="EN">string</span>类的<span lang="EN">Copy-On-Write</span>技术。</p>
+<h4><span class="ez-toc-section" id="_%E6%B7%B1%E5%85%A5"></span> 深入<span class="ez-toc-section-end"></span></h4>
+<p>在深入这前，通过上述的演示，我们应该知道在string类中，要实现写时才拷贝，需要解决两个问题，一个是内存共享，一个是Copy-On-Wirte，这两个主题会让我们产生许多疑问，还是让我们带着这样几个问题来学习吧：</p>
+<p style="padding-left: 30px;">1、  Copy-On-Write的原理是什么？</p>
+<p style="padding-left: 30px;">2、  string类在什么情况下才共享内存的？</p>
+<p style="padding-left: 30px;">3、  string类在什么情况下触发写时才拷贝（Copy-On-Write）?</p>
+<p style="padding-left: 30px;">4、  Copy-On-Write时，发生了什么？</p>
+<p style="padding-left: 30px;">5、  Copy-On-Write的具体实现是怎么样的？</p>
+<p>喔，你说只要看一看STL中stirng的源码你就可以找到答案了。当然，当然，我也是参考了string的父模板类basic_string的源码。但是，如果你感到看STL的源码就好像看机器码，并严重打击你对C++自信心，乃至产生了自己是否懂C++的疑问，如果你有这样的感觉，那么还是继续往下看我的这篇文章吧。</p>
+<p>OK，让我们一个问题一个问题地探讨吧，慢慢地所有的技术细节都会浮出水面的。</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="Copy-On-Write%E7%9A%84%E5%8E%9F%E7%90%86%E6%98%AF%E4%BB%80%E4%B9%88%EF%BC%9F"></span>Copy-On-Write的原理是什么？<span class="ez-toc-section-end"></span></h4>
+<p>有一定经验的程序员一定知道，Copy-On-Write一定使用了“引用计数”，是的，必然有一个变量类似于RefCnt。当第一个类构造时，string的构造函数会根据传入的参数从堆上分配内存，当有其它类需要这块内存时，这个计数为自动累加，当有类析构时，这个计数会减一，直到最后一个类析构时，此时的RefCnt为1或是0，此时，程序才会真正的Free这块从堆上分配的内存。</p>
+<p>是的，<strong>引用计数就是string类中写时才拷贝的原理</strong>！</p>
+<p>不过，问题又来了，这个RefCnt该存在在哪里呢？如果存放在string类中，那么每个string的实例都有各自的一套，根本不能共有一个RefCnt，如果是声明成全局变量，或是静态成员，那就是所有的string类共享一个了，这也不行，我们需要的是一个“民主和集中”的一个解决方法。这是如何做到的呢？呵呵，人生就是一个糊涂后去探知，知道后和又糊涂的循环过程。别急别急，在后面我会给你一一道来的。</p>
+<p> </p>
+<h4><span class="ez-toc-section" id="string%E7%B1%BB%E5%9C%A8%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E6%89%8D%E5%85%B1%E4%BA%AB%E5%86%85%E5%AD%98%E7%9A%84%EF%BC%9F"></span>string类在什么情况下才共享内存的？<span class="ez-toc-section-end"></span></h4>
+<p> </p>
+<p>这个问题的答案应该是明显的，根据常理和逻辑，如果一个类要用另一个类的数据，那就可以共享被使用类的内存了。这是很合理的，如果你不用我的，那就不用共享，只有你使用我的，才发生共享。</p>
+<p> </p>
+<p>使用别的类的数据时，无非有两种情况，1）以别的类构造自己，2）以别的类赋值。第一种情况时会触发拷贝构造函数，第二种情况会触发赋值操作符。这两种情况我们都可以在类中实现其对应的方法。对于第一种情况，只需要在string类的拷贝构造函数中做点处理，让其引用计数累加；同样，对于第二种情况，只需要重载string类的赋值操作符，同样在其中加上一点处理。</p>
+<p>唠叨几句：</p>
+<p><strong>1）构造和赋值的差别</strong></p>
+<p>对于前面那个例程中的这两句：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">string str1 = &#34;hello world&#34;;
+
+string str2 = str1;</pre>
+<p>不要以为有“=”就是赋值操作，其实，这两条语句等价于：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">string str1 (&#34;hello world&#34;);   //调用的是构造函数
+
+string str2 (str1);            //调用的是拷贝构造函数</pre>
+<p>如果str2是下面的这样情况：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">string str2;      //调用参数默认为空串的构造函数：string str2(“”);
+
+str2 = str1;     //调用str2的赋值操作：str2.operator=(str1);</pre>
+<p><strong>2) 另一种情况</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">char tmp[]=”hello world”;
+
+string str1 = tmp;
+
+string str2 = tmp;</pre>
+<p>这种情况下会触发内存的共享吗？想当然的，应该要共享。可是根据我们前面所说的共享内存的情况，两个string类的声明和初始语句并不符合我前述的两种情况，所以其并不发生内存共享。而且，C++现有特性也无法让我们做到对这种情况进行类的内存共享。</p>
+<h4><span class="ez-toc-section" id="string%E7%B1%BB%E5%9C%A8%E4%BB%80%E4%B9%88%E6%83%85%E5%86%B5%E4%B8%8B%E8%A7%A6%E5%8F%91%E5%86%99%E6%97%B6%E6%89%8D%E6%8B%B7%E8%B4%9D%EF%BC%88Copy-On-Write%EF%BC%89"></span>string类在什么情况下触发写时才拷贝（Copy-On-Write）?<span class="ez-toc-section-end"></span></h4>
+<p>哦，什么时候会发现写时才拷贝？很显然，当然是在共享同一块内存的类发生内容改变时，才会发生Copy-On-Write。比如string类的[]、=、+=、+、操作符赋值，还有一些string类中诸如insert、replace、append等成员函数,包括类的析构时。</p>
+<p>修改数据才会触发Copy-On-Write，不修改当然就不会改啦。这就是托延战术的真谛，非到要做的时候才去做。</p>
+<h4><span class="ez-toc-section" id="Copy-On-Write%E6%97%B6%EF%BC%8C%E5%8F%91%E7%94%9F%E4%BA%86%E4%BB%80%E4%B9%88%EF%BC%9F"></span>Copy-On-Write时，发生了什么？<span class="ez-toc-section-end"></span></h4>
+<p>我们可能根据那个访问计数来决定是否需要拷贝，参看下面的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">If  ( RefCnt&gt;0 ) {
+    char* tmp =  (char*) malloc(strlen(_Ptr)+1);
+    strcpy(tmp, _Ptr);
+    _Ptr = tmp;
+}</pre>
+<p> </p>
+<p>上面的代码是一个假想的拷贝方法，如果有别的类在引用（检查引用计数来获知）这块内存，那么就需要把更改类进行“拷贝”这个动作。</p>
+<p>我们可以把这个拷的运行封装成一个函数，供那些改变内容的成员函数使用。</p>
+<h4><span class="ez-toc-section" id="Copy-On-Write%E7%9A%84%E5%85%B7%E4%BD%93%E5%AE%9E%E7%8E%B0%E6%98%AF%E6%80%8E%E4%B9%88%E6%A0%B7%E7%9A%84%EF%BC%9F"></span>Copy-On-Write的具体实现是怎么样的？<span class="ez-toc-section-end"></span></h4>
+<p>最后的这个问题，我们主要解决的是那个“民主集中”的难题。请先看下面的代码：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">string h1 = “hello”;
+string h2= h1;
+string h3;
+h3 = h2;
+ 
+string w1 = “world”;
+string w2(“”);
+w2=w1;</pre>
+<p>很明显，我们要让h1、h2、h3共享同一块内存，让w1、w2共享同一块内存。因为，在h1、h2、h3中，我们要维护一个引用计数，在w1、w2中我们又要维护一个引用计数。</p>
+<p>如何使用一个巧妙的方法产生这两个引用计数呢？我们想到了string类的内存是在堆上动态分配的，既然共享内存的各个类指向的是同一个内存区，我们为什么不在这块区上多分配一点空间来存放这个引用计数呢？这样一来，所有共享一块内存区的类都有同样的一个引用计数，而这个变量的地址既然是在共享区上的，那么所有共享这块内存的类都可以访问到，也就知道这块内存的引用者有多少了。</p>
+<p>请看下图：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-12200" src="/uploads/2014/12/o_string.jpg" alt="o_string" width="409" height="138" srcset="" sizes="(max-width: 409px) 100vw, 409px"/></p>
+<p>于是，有了这样一个机制，每当我们为<span lang="EN">string</span>分配内存时，我们总是要多分配一个空间用来存放这个引用计数的值，只要发生拷贝构造可是赋值时，这个内存的值就会加一。而在内容修改时，<span lang="EN">string</span>类为查看这个引用计数是否为<span lang="EN">0</span>，如果不为零，表示有人在共享这块内存，那么自己需要先做一份拷贝，然后把引用计数减去一，再把数据拷贝过来。下面的几个程序片段说明了这两个动作：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//构造函数（分存内存）
+    string::string(const char* tmp)
+{
+    _Len = strlen(tmp);
+    _Ptr = new char[_Len+1+1];
+    strcpy( _Ptr, tmp );
+    _Ptr[_Len+1]=0;  // 设置引用计数  
+}
+ 
+//拷贝构造（共享内存）
+    string::string(const string&amp; str)
+    {
+         if (*this != str){
+              this-&gt;_Ptr = str.c_str();   //共享内存
+              this-&gt;_Len = str.szie();
+              this-&gt;_Ptr[_Len+1] ++;  //引用计数加一
+         }
+}
+ 
+//写时才拷贝Copy-On-Write
+char&amp; string::operator[](unsigned int idx)
+{
+    if (idx &gt; _Len || _Ptr == 0 ) {
+         static char nullchar = 0;
+return nullchar;
+          }
+   
+_Ptr[_Len+1]--;   //引用计数减一
+    char* tmp = new char[_Len+1+1];
+    strncpy( tmp, _Ptr, _Len+1);
+    _Ptr = tmp;
+    _Ptr[_Len+1]=0; // 设置新的共享内存的引用计数
+   
+    return _Ptr[idx];
+}
+
+//析构函数的一些处理
+~string()
+{ 
+_Ptr[_Len+1]--;   //引用计数减一
+   
+         // 引用计数为0时，释放内存 
+    if (_Ptr[_Len+1]==0) {
+        delete[] _Ptr;
+         }
+ 
+}</pre>
+<p>哈哈，整个技术细节完全浮出水面。</p>
+<p> </p>
+<p>不过，这和STL中basic_string的实现细节还有一点点差别，在你打开STL的源码时，你会发现其取引用计数是通过这样的访问：_Ptr[-1]，标准库中，把这个引用计数的内存分配在了前面（我给出来的代码是把引用计数分配以了后面，这很不好），分配在前的好处是当string的长度扩展时，只需要在后面扩展其内存，而不需要移动引用计数的内存存放位置，这又节省了一点时间。</p>
+<p>STL中的string的内存结构就像我前面画的那个图一样，_Ptr指着是数据区，而RefCnt则在_Ptr-1 或是_Ptr[-1]处。</p>
+<h4><span class="ez-toc-section" id="%E5%89%AF%E4%BD%9C%E7%94%A8"></span>副作用<span class="ez-toc-section-end"></span></h4>
+<p>是谁说的“有太阳的地方就会有黑暗”？或许我们中的许多人都很迷信标准的东西，认为其是久经考验，不可能出错的。呵呵，千万不要有这种迷信，因为任何设计再好，编码再好的代码在某一特定的情况下都会有Bug，STL同样如此，string类的这个共享内存/写时才拷贝技术也不例外，而且这个Bug或许还会让你的整个程序crash掉！</p>
+<p>不信？！那么让我们来看一个测试案例。假设有一个动态链接库（叫myNet.dll或myNet.so）中有这样一个函数返回的是string类：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">string GetIPAddress(string hostname)
+{
+    static string ip;
+    ……
+    ……
+    return ip;
+}</pre>
+<p>而你的主程序中动态地载入这个动态链接库，并调用其中的这个函数：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">main()
+{
+    //载入动态链接库中的函数
+    hDll = LoadLibraray(…..);
+    pFun =  GetModule(hDll, “GetIPAddress”);
+     
+    //调用动态链接库中的函数
+    string ip = (*pFun)(“host1”);
+    ……
+    ……
+    //释放动态链接库
+    FreeLibrary(hDll);
+    ……
+    cout &lt;&lt; ip &lt;&lt; endl;
+}</pre>
+<p>让我们来看看这段代码，程序以动态方式载入动态链接库中的函数，然后以函数指针的方式调用动态链接库中的函数，并把返回值放在一个string类中，然后释放了这个动态链接库。释放后，输入ip的内容。</p>
+<p>根据函数的定义，我们知道函数是“值返回”的，所以，函数返回时，一定会调用拷贝构造函数，又根据string类的内存共享机制，在主程序中变量ip是和函数内部的那个静态string变量共享内存（这块内存区是在动态链接库的地址空间的）。而我们假设在整个主程序中都没有对ip的值进行修改过。那么在当主程序释放了动态链接库后，那个共享的内存区也随之释放。所以，以后对ip的访问，必然做造成内存地址访问非法，造成程序crash。即使你在以后没有使用到ip这个变量，那么在主程序退出时也会发生内存访问异常，因为程序退出时，ip会析构，在析构时就会发生内存访问异常。</p>
+<p>内存访问异常，意味着两件事：1）无论你的程序再漂亮，都会因为这个错误变得暗淡无光，你的声誉也会因为这个错误受到损失。2）未来的一段时间，你会被这个系统级错误所煎熬（在C++世界中，找到并排除这种内存错误并不是一件容易的事情）。这是C/C++程序员永远的心头之痛，千里之堤，溃于蚁穴。而如果你不清楚string类的这种特征，在成千上万行代码中找这样一个内存异常，简直就是一场噩梦。</p>
+<p>备注：要改正上述的Bug，有很多种方法，这里提供一种仅供参考：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">string ip = (*pFun)(“host1”).cstr();</code></p>
+<h4><span class="ez-toc-section" id="%E5%90%8E%E8%AE%B0"></span>后记<span class="ez-toc-section-end"></span></h4>
+<p> </p>
+<p>文章到这里也应该结束了，这篇文章的主要有以下几个目的：</p>
+<p>1）向大家介绍一下写时才拷贝/内存共享这种技术。<br/>
+2）以STL中的string类为例，向大家介绍了一种设计模式。<br/>
+3）在C++世界中，无论你的设计怎么精巧，代码怎么稳固，都难以照顾到所有的情况。智能指针更是一个典型的例子，无论你怎么设计，都会有非常严重的BUG。<br/>
+4）C++是一把双刃剑，只有了解了原理，你才能更好的使用C++。否则，必将引火烧身。如果你在设计和使用类库时有一种“玩C++就像玩火，必须千万小心”的感觉，那么你就入门了，等你能把这股“火”控制的得心应手时，那才是学成了。</p>
+<p><strong>更新：在最新的STL中，这个特性已经被去掉了。有一个原因是线程不安全！COW其实还是比较危险的。</strong></p>
+<p>（全文完）</p>
+<p> </p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-12199-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">STL</a>, <a href="javascript:void(0)" rel="tag">String</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++ STL string的Copy-On-Write技术</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1752463" class="comment even thread-even depth-1">
+<article id="div-comment-1752463" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8623402bc4a9e90a196e3a10a613d3ea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8623402bc4a9e90a196e3a10a613d3ea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dabao</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1752463"><time datetime="2015-09-01T13:04:52+08:00">2015年09月01日 13:04</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>求大神联系方式，邀请您来金山软件做客。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1801697" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1801697" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cef14a9b685c962a709273948283ed9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cef14a9b685c962a709273948283ed9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/RWruiwen/home?wvr=5" class="url" rel="ugc external nofollow">Ribbon</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1801697"><time datetime="2015-12-21T15:20:08+08:00">2015年12月21日 15:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，在“Copy-On-Write的具体实现是怎么样的”小节中，char&amp; string::operator[](unsigned int idx)函数里面的_Ptr[_Len+1]–; //引用计数减一，该行是否要判断此时引用计数为0？因为如果为0，那么就没有必要进行COW。而且在“特性”的str2值改变的时候，其地址也没有发生变化，也印证了计数为0时，没有进行COW</p>
+</div>
+ </article>
+</li>
+<li id="comment-1820780" class="comment even thread-even depth-1">
+<article id="div-comment-1820780" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed26005b03060ca129bde1ac1322ca06?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed26005b03060ca129bde1ac1322ca06?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nbz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1820780"><time datetime="2016-04-25T22:34:31+08:00">2016年04月25日 22:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大神，打印地址我们都是用 %p</p>
+</div>
+ </article>
+</li>
+<li id="comment-1861156" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1861156" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f715aab3197b9899c2a3ec61d24a843a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f715aab3197b9899c2a3ec61d24a843a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">canjian</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1861156"><time datetime="2016-07-24T22:13:59+08:00">2016年07月24日 22:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大神，那个副作用没看明白啊，为啥动态库释放后，那个共享的内存也随之释放了，它不是采用引用计数的方式吗，按理说它释放后，引用计数减一后还是1，被主程序的ip所引用着。。求解答下</p>
+</div>
+ </article>
+</li>
+<li id="comment-1880851" class="comment even thread-even depth-1">
+<article id="div-comment-1880851" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bc68571b305cb7574f2920848047ce67?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bc68571b305cb7574f2920848047ce67?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1880851"><time datetime="2016-09-11T23:15:22+08:00">2016年09月11日 23:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1861156" rel="nofollow">@canjian </a><br/>
+动态库的整个分配内存都被释放了，自然，为动态库分配的静态内存也释放了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1897617" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1897617" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ac3b9ece0b25590f8c76586c435d214?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ac3b9ece0b25590f8c76586c435d214?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://weibo.com/p/1005053832559121" class="url" rel="ugc external nofollow">Charlie</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1897617"><time datetime="2016-11-08T23:47:02+08:00">2016年11月08日 23:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>大神啊，膜拜</p>
+</div>
+ </article>
+</li>
+<li id="comment-1898995" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1898995" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2251a2b262dee99d18c0e2e41bd70233?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2251a2b262dee99d18c0e2e41bd70233?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xumenger.com" class="url" rel="ugc external nofollow">xumenger</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1898995"><time datetime="2016-11-16T17:55:48+08:00">2016年11月16日 17:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主说在最新的STL中，string的COW特性被去掉了，大概对应VC++、g++的哪些版本？</p>
+<p>另外在VC++6.0中如果我想通过指针获取一个string的引用计数值应该定位到哪个地址？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1909296" class="comment odd alt depth-2">
+<article id="div-comment-1909296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fec05e1ad7bbf3c26226cc4b15b99d6e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xmanxihua</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1909296"><time datetime="2016-12-30T18:26:54+08:00">2016年12月30日 18:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我试了vs2013已经去掉cow了，gcc4.8.2还有。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1917817" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1917817" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/684b4a4367249adb3cdec3ec1b4ed95c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/684b4a4367249adb3cdec3ec1b4ed95c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">maowei117</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1917817"><time datetime="2017-09-20T18:06:56+08:00">2017年09月20日 18:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>按照这种写法，如果同一个对象a,多次调用operator[]，会导致memory leak。<br/>
+应该去检查一下_Ptr[Len + 1] == 0的情况（其实我觉得最好是==1）<br/>
+文章不错，感谢博主，会持续关注~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1922513" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1922513" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fb612cd27923abf0b542309d3422b840?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fb612cd27923abf0b542309d3422b840?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">werfly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1922513"><time datetime="2017-12-27T14:29:39+08:00">2017年12月27日 14:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请教陈皓老师，最后你举的副作用这个结论在linux上成立么？我自己写代码验证之后，发现不会有你说的这个问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923071" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1923071" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ea5ead61a0439423ad72da4c5c67d7e3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ea5ead61a0439423ad72da4c5c67d7e3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://liam0205.me" class="url" rel="ugc external nofollow">Liam Huang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1923071"><time datetime="2018-01-15T18:07:48+08:00">2018年01月15日 18:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我也觉得陈皓这个副作用讲法里举的例子不太好。</p>
+<p>Linux 上验证你可能要注意两件事情。一是 GCC 在 5.x 以上就不在 std::string 里用 COW 了，所以要注意版本号。二是如果编译器对返回值做了 ROV 优化，那么可能也不存在这个问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1923101" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1923101" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a2c69300d3e11f34b82436d1e558b10?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a2c69300d3e11f34b82436d1e558b10?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zwhfly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1923101"><time datetime="2018-01-17T14:45:00+08:00">2018年01月17日 14:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>C++11 不允许 std::string 的 COW，因为 COW 不可能实现出 conforming 的 C++11 std::string（问题暴漏在 operator[]）</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1923102" class="comment even depth-2 parent">
+<article id="div-comment-1923102" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7a2c69300d3e11f34b82436d1e558b10?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7a2c69300d3e11f34b82436d1e558b10?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zwhfly</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1923102"><time datetime="2018-01-17T14:49:13+08:00">2018年01月17日 14:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>忘了贴链接：https://stackoverflow.com/questions/12199710/legality-of-cow-stdstring-implementation-in-c11</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1992318" class="comment odd alt depth-3">
+<article id="div-comment-1992318" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f142e0d718112b9d8ef31c1847838a99?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f142e0d718112b9d8ef31c1847838a99?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2a584f4e754d454e4f446a1b1c1904494547">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12199.html#comment-1992318"><time datetime="2019-04-17T18:46:18+08:00">2019年04月17日 18:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>应该还是和编译器的版本有关吧，我试了G++ 4.7.2的版本，用-std=c++11编译，还是会有COW。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2045014" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liiukingming.cn/?p=184" class="url" rel="ugc external nofollow">C++_string类 (理解深浅拷贝) – 刘庆铭的博客</a> </div>
+</li>
+<li id="comment-2368293" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2203406" class="url" rel="ugc external nofollow">【编程语言】C#中字符串的内存分配 - 算法网</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

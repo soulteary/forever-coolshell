@@ -1,0 +1,465 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>多版本并发控制(MVCC)在分布式系统中的应用 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6790 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6790" class="post-content post-6790 post type-post status-publish format-standard hentry category-progdesign category-602 tag-cas tag-design tag-lock-free tag-mvcc tag-performance">
+<header class="entry-header">
+<span class="screen-reader-text">多版本并发控制(MVCC)在分布式系统中的应用</span>
+<h1 class="entry-title">多版本并发控制(MVCC)在分布式系统中的应用</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6790.html" title="08:36" rel="bookmark"><time class="entry-date" datetime="2012-03-13T08:36:53+08:00" pubdate="">2012年03月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6790.html#comments" class="comments-link">98 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 60,360 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>【<span style="color: #cc0000;">感谢 Todd投递本文 – 微博帐号：</span><a title="weidagang" href="http://weibo.com/weidagang" target="_blank">weidagang</a> 】</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%97%AE%E9%A2%98" title="问题">问题</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%881%EF%BC%9A%E5%9F%BA%E4%BA%8E%E9%94%81%E7%9A%84%E4%BA%8B%E5%8A%A1" title="解决方案1：基于锁的事务">解决方案1：基于锁的事务</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%882%EF%BC%9A%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6" title="解决方案2：多版本并发控制">解决方案2：多版本并发控制</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%82%B2%E8%A7%82%E9%94%81%E5%92%8CMVCC%E5%AF%B9%E6%AF%94" title="悲观锁和MVCC对比">悲观锁和MVCC对比</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%8F%82%E8%80%83" title="参考">参考</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%8B%E6%83%85%E6%8E%A8%E8%8D%90" title="友情推荐">友情推荐</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98"></span>问题<span class="ez-toc-section-end"></span></h4>
+<p>最近项目中遇到了一个分布式系统的并发控制问题。该问题可以抽象为：某分布式系统由一个数据中心D和若干业务处理中心L1，L2 … Ln组成；D本质上是一个key-value存储，它对外提供基于HTTP协议的CRUD操作接口。L的业务逻辑可以抽象为下面3个步骤：</p>
+<ol>
+<li>read: 根据keySet {k1, … kn}从D获取keyValueSet {k1:v1, … kn:vn}</li>
+<li>do: 根据keyValueSet进行业务处理，得到需要更新的数据集keyValueSet’ {k1′:v1′, … km’:vm’} (<strong>注</strong>：读取的keySet和更新的keySet’可能不同)</li>
+<li>update: 把keyValueSet’更新到D （<strong>注</strong>：D保证在一次调用更新多个key的原子性）</li>
+</ol>
+<p>在没有事务支持的情况下，多个L进行并发处理可能会导致数据一致性问题。比如，考虑L1和L2的如下执行顺序：</p>
+<ol>
+<li>L1从D读取key:123对应的值100</li>
+<li>L2从D读取key:123对应的100</li>
+<li>L1将key:123更新为100 + 1</li>
+<li>L2将key:123更新为100 + 2</li>
+</ol>
+<p>如果L1和L2串行执行，key:123对应的值将为103，但上面并发执行中L1的执行效果完全被L2所覆盖，实际key:123所对应的值变成了102。</p>
+<p><span id="more-6790"></span></p>
+<h4><span class="ez-toc-section" id="%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%881%EF%BC%9A%E5%9F%BA%E4%BA%8E%E9%94%81%E7%9A%84%E4%BA%8B%E5%8A%A1"></span>解决方案1：基于锁的事务<span class="ez-toc-section-end"></span></h4>
+<p>为了让L的处理具有可串行化特性(Serializability)，一种最直接的解决方案就是考虑为D加上基于锁的简单事务。让L在进行业务处理前先锁定D，完成以后释放锁。另外，为了防止持有锁的L由于某种原因长时间未提交事务，D还需要具有超时机制，当L尝试提交一个已超时的事务时会得到一个错误响应。</p>
+<p><img decoding="async" src="http://images.cnblogs.com/cnblogs_com/weidagang2046/362318/o_conditional_update_1.PNG" alt=""/><img decoding="async" loading="lazy" class="size-full wp-image-16991 aligncenter" src="/uploads/2012/03/0915536496-0.png" alt="0915536496-0" width="769" height="749" srcset="" sizes="(max-width: 769px) 100vw, 769px"/></p>
+<p>本方案的优点是实现简单，缺点是锁定了整个数据集，粒度太大；时间上包含了L的整个处理时间，跨度太长。虽然我们可以考虑把锁定粒度降低到数据项级别，按key进行锁定，但这又会带来其他的问题。由于更新的keySet’可能是事先不确定的，所以可能无法在开始事务时锁定所有的key；如果分阶段来锁定需要的key，又可能出现死锁(Deadlock)问题。另外，按key锁定在有锁争用的情况下并不能解决锁定时间太长的问题。所以，按key锁定仍然存在重要的不足之处。</p>
+<h4><span class="ez-toc-section" id="%E8%A7%A3%E5%86%B3%E6%96%B9%E6%A1%882%EF%BC%9A%E5%A4%9A%E7%89%88%E6%9C%AC%E5%B9%B6%E5%8F%91%E6%8E%A7%E5%88%B6"></span>解决方案2：多版本并发控制<span class="ez-toc-section-end"></span></h4>
+<p>为了实现可串行化，同时避免锁机制存在的各种问题，我们可以采用基于多版本并发控制（Multiversion concurrency control，MVCC）思想的无锁事务机制。人们一般把基于锁的并发控制机制称成为悲观机制，而把MVCC机制称为乐观机制。这是因为锁机制是一种预防性的，读会阻塞写，写也会阻塞读，当锁定粒度较大，时间较长时并发性能就不会太好；而MVCC是一种后验性的，读不阻塞写，写也不阻塞读，等到提交的时候才检验是否有冲突，由于没有锁，所以读写不会相互阻塞，从而大大提升了并发性能。我们可以借用源代码版本控制来理解MVCC，每个人都可以自由地阅读和修改本地的代码，相互之间不会阻塞，只在提交的时候版本控制器会检查冲突，并提示merge。目前，Oracle、PostgreSQL和MySQL都已支持基于MVCC的并发机制，但具体实现各有不同。</p>
+<p>MVCC的一种简单实现是基于CAS（Compare-and-swap）思想的有条件更新（Conditional Update）。普通的update参数只包含了一个keyValueSet’，Conditional Update在此基础上加上了一组更新条件conditionSet { … data[keyx]=valuex, … }，即只有在D满足更新条件的情况下才将数据更新为keyValueSet’；否则，返回错误信息。这样，L就形成了如下图所示的Try/Conditional Update/(Try again)的处理模式：</p>
+<p><img decoding="async" src="http://images.cnblogs.com/cnblogs_com/weidagang2046/362318/o_mvcc_2.png" alt=""/><img decoding="async" loading="lazy" class="aligncenter  wp-image-16989" src="/uploads/2012/03/0915535U3-1.png" alt="0915535U3-1" width="746" height="483" srcset="" sizes="(max-width: 746px) 100vw, 746px"/></p>
+<p>虽然对单个L来讲不能保证每次都成功更新，但从整个系统来看，总是有任务能够顺利进行。这种方案利用Conditional Update避免了大粒度和长时间的锁定，当各个业务之间资源争用不大的情况下，并发性能很好。不过，由于Conditional Update需要更多的参数，如果condition中value的长度很长，那么每次网络传送的数据量就会比较大，从而导致性能下降。特别是当需要更新的keyValueSet’很小，而condition很大时，就显得非常不经济。</p>
+<p>为了避免condition太大所带来的性能问题，可以为每条数据项增加一个int型的版本号字段，由D维护该版本号，每次数据有更新就增加版本号；L在进行Conditional Update时，通过版本号取代具体的值。</p>
+<p><img decoding="async" src="http://images.cnblogs.com/cnblogs_com/weidagang2046/362318/o_mvcc_3.png" alt=""/><img decoding="async" loading="lazy" class="aligncenter  wp-image-16990" src="/uploads/2012/03/0915533324-2.png" alt="0915533324-2" width="706" height="265" srcset="" sizes="(max-width: 706px) 100vw, 706px"/></p>
+<p>另一个问题是上面的解决方案假设了D是可以支持Conditional Update的；那么，如果D是一个不支持Conditional Update的第三方的key-value存储怎么办呢？这时，我们可以在L和D之间增加一个P作为代理，所有的CRUD操作都必须经过P，让P来进行条件检查，而实际的数据操作放在D。这种方式实现了条件检查和数据操作的分离，但同时降低了性能，需要在P中增加cache，提升性能。由于P是D的唯一客户端；所以，P的cache管理是非常简单的，不必像多客户端情形担心缓存的失效。不过，实际上，据我所知redis和Amazon SimpleDB都已经有了Conditional Update的支持。</p>
+<h4><span class="ez-toc-section" id="%E6%82%B2%E8%A7%82%E9%94%81%E5%92%8CMVCC%E5%AF%B9%E6%AF%94"></span>悲观锁和MVCC对比<span class="ez-toc-section-end"></span></h4>
+<p>上面介绍了悲观锁和MVCC的基本原理，但是对于它们分别适用于什么场合，不同的场合下两种机制优劣具体表现在什么地方还不是很清楚。这里我就对一些典型的应用场景进行简单的分析。需要注意的是下面的分析不针对分布式，悲观锁和MVCC两种机制在分布式系统、单数据库系统、甚至到内存变量各个层次都存在。</p>
+<p>### 场景1：对读的响应速度要求高</p>
+<p>有一类系统更新特别频繁，并且对读的响应速度要求很高，如股票交易系统。在悲观锁机制下，写会阻塞读，那么当有写操作时，读操作的响应速度就会受到影响；而MVCC不存在读写锁，读操作是不受任何阻塞的，所以读的响应速度会更快更稳定。</p>
+<p>### 场景2：读远多于写</p>
+<p>对于许多系统来讲，读操作的比例往往远大于写操作，特别是某些海量并发读的系统。在悲观锁机制下，当有写操作占用锁，就会有大量的读操作被阻塞，影响并发性能；而MVCC可以保持比较高且稳定的读并发能力。</p>
+<p>### 场景3：写操作冲突频繁</p>
+<p>如果系统中写操作的比例很高，且冲突频繁，这时就需要仔细评估。假设两个有冲突的业务L1和L2，它们在单独执行是分别耗时t1，t2。在悲观锁机制下，它们的总时间大约等于串行执行的时间：</p>
+<p>T = t1 + t2</p>
+<p>而在MVCC下，假设L1在L2之前更新，L2需要retry一次，它们的总时间大约等于L2执行两次的时间（这里假设L2的两次执行耗时相等，更好的情况是，如果第1次能缓存下部分有效结果，第二次执行L2耗时是可能减小的）：</p>
+<p>T’ = 2 * t2</p>
+<p>这时关键是要评估retry的代价，如果retry的代价很低，比如，对某个计数器递增，又或者第二次执行可以比第一次快很多，这时采用MVCC机制就比较适合。反之，如果retry的代价很大，比如，报表统计运算需要算几小时甚至一天那就应该采用锁机制避免retry。</p>
+<p>从上面的分析，我们可以简单的得出这样的结论：对读的响应速度和并发性要求比较高的场景适合MVCC；而retry代价越大的场景越适合悲观锁机制。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>本文介绍了一种基于多版本并发控制（MVCC）思想的Conditional Update解决分布式系统并发控制问题的方法。和基于悲观锁的方法相比，该方法避免了大粒度和长时间的锁定，能更好地适应对读的响应速度和并发性要求高的场景。</p>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83"></span>参考<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><a href="https://en.wikipedia.org/wiki/Serializability">Wikipedia – Serializability</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Compare-and-swap">Wikipedia – Compare-and-swap</a></li>
+<li><a href="https://en.wikipedia.org/wiki/Multiversion_concurrency_control">Wikipedia – Multiversion concurrency control</a></li>
+<li><a href="http://blogs.msdn.com/b/oldnewthing/archive/2011/04/12/10152296.aspx">Lock-free algorithms: The try/commit/(try again) pattern</a></li>
+<li><a href="http://aws.amazon.com/simpledb/faqs/#Does_Amazon_SimpleDB_support_transactions">Amazon SimpleDB FAQs – Does Amazon SimpleDB support transactions?</a></li>
+<li><a href="http://redis.io/topics/transactions">redis – Transactions</a></li>
+<li><a href="https://simpledbm.googlecode.com/files/mvcc-survey-1.0.pdf">A Quick Survey of MultiVersion Concurrency Algorithms</a></li>
+<li><a href="http://www.cnblogs.com/jobs/archive/2007/11/13/957446.html">非阻塞算法思想在关系数据库应用程序开发中的使用</a></li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8F%8B%E6%83%85%E6%8E%A8%E8%8D%90"></span>友情推荐<span class="ez-toc-section-end"></span></h4>
+<p>本文的图是用我自己开发的<a href="http://textdiagram.sinaapp.com">TextDiagram</a>工具画的，欢迎试用！如果您喜欢，请推荐给朋友，谢谢！</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6790-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">cas</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">lock-free</a>, <a href="javascript:void(0)" rel="tag">mvcc</a>, <a href="javascript:void(0)" rel="tag">Performance</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>多版本并发控制(MVCC)在分布式系统中的应用</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-198225" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.59n.net/122378.html" class="url" rel="ugc external nofollow">NoSQL 建模技术（转载） | 南龙的小站</a> </div>
+</li>
+<li id="comment-199695" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yanhaidao.sinaapp.com/?p=149" class="url" rel="ugc external nofollow">NoSQL 数据建模技术[转] - 海岛&#39;blog</a> </div>
+</li>
+<li id="comment-201298" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.windten.com/computer-science/software-architecture/129.html" class="url" rel="ugc external nofollow">性能调优攻略 | 风亭</a> </div>
+</li>
+<li id="comment-201408" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=480" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » 性能调优攻略</a> </div>
+</li>
+<li id="comment-201982" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://mxphp.com/?p=57" class="url" rel="ugc external nofollow">NoSQL 数据建模技术 | 梦想PHP</a> </div>
+</li>
+<li id="comment-206106" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://paradata.dazd.cn/?p=83" class="url" rel="ugc external nofollow">NoSQL Data Modeling Techniques |</a> </div>
+</li>
+<li id="comment-214607" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://seo.xxjoke.com/index.php/archives/125" class="url" rel="ugc external nofollow">寒江的博客 » 网站系统性能调优攻略</a> </div>
+</li>
+<li id="comment-219965" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.hongtium.com/simple-guide-of-mvcc-relative/" class="url" rel="ugc external nofollow">Hongtium » Simple guide of MVCC and relative</a> </div>
+</li>
+<li id="comment-222539" class="comment even thread-even depth-1">
+<article id="div-comment-222539" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a6fb90c8dd9ffb5422088ec511c99f4c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a6fb90c8dd9ffb5422088ec511c99f4c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">millis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-222539"><time datetime="2012-11-28T12:59:43+08:00">2012年11月28日 12:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>通俗易懂。其实就是free lock的一种实现</p>
+</div>
+ </article>
+</li>
+<li id="comment-252823" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.hi-yuanpeng.com/?p=259" class="url" rel="ugc external nofollow">转载：NoSQL 数据建模技术 | Yuan Peng`s Tech Blog</a> </div>
+</li>
+<li id="comment-267912" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://argcandargv.com/archives/381" class="url" rel="ugc external nofollow">性能调优攻略 | argc &amp;&amp; argv</a> </div>
+</li>
+<li id="comment-317415" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-317415" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43c82e1686d497dfe95f4f7651b34d16?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43c82e1686d497dfe95f4f7651b34d16?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">icoder</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-317415"><time datetime="2013-03-26T20:08:54+08:00">2013年03月26日 20:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-144715" rel="nofollow">@老栋 </a><br/>
+LSM+AOF 是值啥？</p>
+</div>
+ </article>
+</li>
+<li id="comment-420919" class="comment even thread-even depth-1">
+<article id="div-comment-420919" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f002823adc704a7fb045346b73e6e979?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f002823adc704a7fb045346b73e6e979?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">@流沙河鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-420919"><time datetime="2013-05-14T10:47:43+08:00">2013年05月14日 10:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你的问题就是lost update 吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-420928" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-420928" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f002823adc704a7fb045346b73e6e979?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f002823adc704a7fb045346b73e6e979?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">@流沙河鱼</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-420928"><time datetime="2013-05-14T10:48:34+08:00">2013年05月14日 10:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你的问题就是lost update吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-579332" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.pinklover.net/?p=546" class="url" rel="ugc external nofollow">用Unix的设计思想来应对多变的需求 | news snack</a> </div>
+</li>
+<li id="comment-592773" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.heiboard.com/?p=1180" class="url" rel="ugc external nofollow">[heiBoard技术]陈皓：性能调优攻略 | heiBoard</a> </div>
+</li>
+<li id="comment-594880" class="comment even thread-even depth-1">
+<article id="div-comment-594880" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b32afff3d8a80c44ae148c2e55afcc61?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b32afff3d8a80c44ae148c2e55afcc61?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http:yunnotes.net" class="url" rel="ugc external nofollow">ydzhang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-594880"><time datetime="2013-07-15T22:08:33+08:00">2013年07月15日 22:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-144830" rel="nofollow">@abadcafe </a> 读写都走cache，对于写需要持久化的场景就不适用了</p>
+</div>
+ </article>
+</li>
+<li id="comment-701501" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-701501" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d7fa1fe4cc5130e3e19f23b43d9e6e1d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d7fa1fe4cc5130e3e19f23b43d9e6e1d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mazheng.org" class="url" rel="ugc external nofollow">冰上游鱼</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-701501"><time datetime="2013-08-29T12:00:56+08:00">2013年08月29日 12:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cas思想</p>
+</div>
+ </article>
+</li>
+<li id="comment-707243" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1908" class="url" rel="ugc external nofollow">Technology of Heartbeat #14 | Steve Guan</a> </div>
+</li>
+<li id="comment-863722" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/nosql-%e6%95%b0%e6%8d%ae%e5%bb%ba%e6%a8%a1%e6%8a%80%e6%9c%af" class="url" rel="ugc external nofollow">NoSQL 数据建模技术 - 编程语言综合 - 开发者第1093881个问答</a> </div>
+</li>
+<li id="comment-1055657" class="comment even thread-even depth-1">
+<article id="div-comment-1055657" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/578c65e983e8c5cfb18f9cf0b567813e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/578c65e983e8c5cfb18f9cf0b567813e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">airwing</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-1055657"><time datetime="2013-12-11T16:47:45+08:00">2013年12月11日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>就想问一下，这个例子中的kv store是分布式的吗？如果是，文中讨论的还成立吗。<br/>
+即：<br/>
+L1从D读取key:123对应的值100（123在机器1）<br/>
+L1从D读取key:456对应的值200（456在机器2）<br/>
+L2从D读取key:123对应的100<br/>
+L3从D读取key:456对应的值200<br/>
+L1将key:123更新为100 + 1<br/>
+L2将key:123更新为100 + 2<br/>
+L3将key:456更新为200 + 3</p>
+</div>
+ </article>
+</li>
+<li id="comment-1125976" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.0xsky.com/?p=809" class="url" rel="ugc external nofollow">服务器性能调优攻略 | xSky&#39;s Blog</a> </div>
+</li>
+<li id="comment-1245751" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://5yuns.com/post/134.html" class="url" rel="ugc external nofollow">分布式系统的事务处理 | 乌云博客</a> </div>
+</li>
+<li id="comment-1245989" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://random.phpapps.jp/archives/186" class="url" rel="ugc external nofollow">分布式系统的事务处理 » 随机</a> </div>
+</li>
+<li id="comment-1346364" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.goggb.com/wp/?p=908" class="url" rel="ugc external nofollow">NoSQL特性及发展历史和使用原则 | 移动开发参考书</a> </div>
+</li>
+<li id="comment-1480721" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.aliyun.com/896" class="url" rel="ugc external nofollow">阿里云产品博客 » 性能调优攻略</a> </div>
+</li>
+<li id="comment-1517474" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.daniel-journey.com/archives/848" class="url" rel="ugc external nofollow">Daniel-Journey Weekly Dose -2012/3/25 | Daniel Hu的技术博客</a> </div>
+</li>
+<li id="comment-1541957" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bubble.xuejianbin.com/?p=44" class="url" rel="ugc external nofollow">需求变化与IoC | news snack</a> </div>
+</li>
+<li id="comment-1587553" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://51itdev.duapp.com/92.html" class="url" rel="ugc external nofollow">陈皓：性能调优攻略 | 51itdev</a> </div>
+</li>
+<li id="comment-1608110" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.coolside.cn/?p=33" class="url" rel="ugc external nofollow">性能调优攻略 | 酷思-CoolSide</a> </div>
+</li>
+<li id="comment-1615843" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.chedushi.com/archives/9691" class="url" rel="ugc external nofollow">NoSQL 数据建模技术 | 岭南六少 - 一朵在LAMP架构下挣扎的云</a> </div>
+</li>
+<li id="comment-1679710" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weihack.com/?p=10" class="url" rel="ugc external nofollow">性能调优攻略 | 品茶的博客</a> </div>
+</li>
+<li id="comment-1683044" class="comment even thread-even depth-1">
+<article id="div-comment-1683044" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a9fd7d1dfe949f2fcba9ba692282cb5a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a9fd7d1dfe949f2fcba9ba692282cb5a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">marvelrock</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-1683044"><time datetime="2015-03-30T14:00:43+08:00">2015年03月30日 14:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>据说文章中嵌有图片，我怎么看不到图片呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1724765" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.winroad.net/2012/06/21/%e6%80%a7%e8%83%bd%e8%b0%83%e4%bc%98%e6%94%bb%e7%95%a5/" class="url" rel="ugc external nofollow">性能调优攻略 | 围炉网</a> </div>
+</li>
+<li id="comment-1829936" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/nosql-%e6%95%b0%e6%8d%ae%e5%bb%ba%e6%a8%a1%e6%8a%80%e6%9c%af.html" class="url" rel="ugc external nofollow">NoSQL 数据建模技术 | | Codeba</a> </div>
+</li>
+<li id="comment-1850767" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1850767" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/719de35e619ce8159242b83856f71947?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/719de35e619ce8159242b83856f71947?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaoshi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-1850767"><time datetime="2016-06-22T10:23:59+08:00">2016年06月22日 10:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1055657"><p>
+<strong><a href="#comment-1055657" rel="nofollow">airwing</a> :</strong><br/>
+就想问一下，这个例子中的kv store是分布式的吗？如果是，文中讨论的还成立吗。<br/>
+即：<br/>
+L1从D读取key:123对应的值100（123在机器1）<br/>
+L1从D读取key:456对应的值200（456在机器2）<br/>
+L2从D读取key:123对应的100<br/>
+L3从D读取key:456对应的值200<br/>
+L1将key:123更新为100 + 1<br/>
+L2将key:123更新为100 + 2<br/>
+L3将key:456更新为200 + 3
+</p></blockquote>
+<p>同问，mvcc实现不了分布式事务吧？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1926940" class="comment even depth-2">
+<article id="div-comment-1926940" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bb7449e50c7ba6a44020bc4128dca3d6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bb7449e50c7ba6a44020bc4128dca3d6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">YongXMan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6790.html/comment-page-2#comment-1926940"><time datetime="2018-04-12T10:10:27+08:00">2018年04月12日 10:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分布式事务需要2pc来实现了。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1851267" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jayxu.com/2012/03/13/13326" class="url" rel="ugc external nofollow">也谈MVCC | 程序员的信仰</a> </div>
+</li>
+<li id="comment-1914126" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog-scottwang.rhcloud.com/post/2017/05/21/performance-optimized.html" class="url" rel="ugc external nofollow">性能调优攻略 | Scott-Blog</a> </div>
+</li>
+<li id="comment-1914810" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.hebiace.net/code/serverdev/428.html" class="url" rel="ugc external nofollow">分布式系统常用思想和技术总结 - 杨书清的博客</a> </div>
+</li>
+<li id="comment-1925780" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.nndev.cn/archives/553" class="url" rel="ugc external nofollow">性能调优攻略 – 南宁开发者 – 致力于中小企业信息化方案研究</a> </div>
+</li>
+<li id="comment-1980969" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.nndev.cn/archives/553" class="url" rel="ugc external nofollow">性能调优攻略 – 技术人成长 – 聊技术，话成长</a> </div>
+</li>
+<li id="comment-2034847" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://sunflower.keda.io/linus%ef%bc%9a%e4%b8%ba%e4%bd%95%e5%af%b9%e8%b1%a1%e5%bc%95%e7%94%a8%e8%ae%a1%e6%95%b0%e5%bf%85%e9%a1%bb%e6%98%af%e5%8e%9f%e5%ad%90%e7%9a%84" class="url" rel="ugc external nofollow">Linus：为何对象引用计数必须是原子的 – 可達書院</a> </div>
+</li>
+<li id="comment-2034891" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weicot.com/%e8%a7%a3%e5%86%b3mysql%e6%ad%bb%e9%94%81%e4%b9%8b%e8%b7%af/" class="url" rel="ugc external nofollow">解决MYSQL死锁之路 – (●--●) Hello.My Weicot</a> </div>
+</li>
+<li id="comment-2088647" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codingnote.cc/p/89537" class="url" rel="ugc external nofollow">面试总结：关于MySQL事务的10个问题常见面试问答（FQA） - CodingNote.cc</a> </div>
+</li>
+<li id="comment-2091675" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://shop.naolingyun.com/6593.html" class="url" rel="ugc external nofollow">面试总结：关于MySQL事务的10个问题常见面试问答（FQA）_暴利项目,稳赚项目 – 蛋白云</a> </div>
+</li>
+<li id="comment-2127454" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/74564.html" class="url" rel="ugc external nofollow">面试总结：关于MySQL事务的10个问题常见面试问答（FQA） – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-2370232" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2296716" class="url" rel="ugc external nofollow">关系数据库和nosql - 算法网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/6790.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/6790.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">6790</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

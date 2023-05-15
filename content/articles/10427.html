@@ -1,0 +1,292 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>伙伴分配器的一个极简实现 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10427 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10427" class="post-content post-10427 post type-post status-publish format-standard hentry category-cplusplus category-progdesign category-funny tag-algorithm tag-buddy tag-679">
+<header class="entry-header">
+<span class="screen-reader-text">伙伴分配器的一个极简实现</span>
+<h1 class="entry-title">伙伴分配器的一个极简实现</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10427.html" title="23:10" rel="bookmark"><time class="entry-date" datetime="2013-10-09T23:10:42+08:00" pubdate="">2013年10月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10427.html#comments" class="comments-link">55 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,150 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p>提起buddy system相信很多人不会陌生，它是一种经典的内存分配算法，大名鼎鼎的Linux底层的内存管理用的就是它。这里不探讨内核这么复杂实现，而仅仅是将该算法抽象提取出来，同时给出一份及其简洁的源码实现，以便定制扩展。</p>
+<p>伙伴分配的实质就是一种特殊的<strong>“分离适配”</strong>，即将内存按2的幂进行划分，相当于分离出若干个块大小一致的空闲链表，搜索该链表并给出同需求最佳匹配的大小。其优点是快速搜索合并（O(logN)时间复杂度）以及低外部碎片（最佳适配best-fit）；其缺点是内部碎片，因为按2的幂划分块，如果碰上66单位大小，那么必须划分128单位大小的块。但若需求本身就按2的幂分配，比如可以先分配若干个内存池，在其基础上进一步细分就很有吸引力了。</p>
+<p>可以在<a href="https://en.wikipedia.org/wiki/Buddy_memory_allocation" target="_blank">维基百科</a>上找到该算法的描述，大体如是：</p>
+<p><strong>分配内存：</strong></p>
+<p>1.寻找大小合适的内存块（大于等于所需大小并且最接近2的幂，比如需要27，实际分配32）</p>
+<p style="padding-left: 30px;">1.如果找到了，分配给应用程序。<br/>
+2.如果没找到，分出合适的内存块。</p>
+<p style="padding-left: 60px;">1.对半分离出高于所需大小的空闲内存块<br/>
+2.如果分到最低限度，分配这个大小。<br/>
+3.回溯到步骤1（寻找合适大小的块）<br/>
+4.重复该步骤直到一个合适的块</p>
+<p><span id="more-10427"></span></p>
+<p><strong>释放内存：</strong></p>
+<p>1.释放该内存块</p>
+<p style="padding-left: 30px;">1.寻找相邻的块，看其是否释放了。<br/>
+2.如果相邻块也释放了，合并这两个块，重复上述步骤直到遇上未释放的相邻块，或者达到最高上限（即所有内存都释放了）。</p>
+<p>上面这段文字对你来说可能看起来很费劲，没事，我们看个内存分配和释放的示意图你就知道了：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-10504" alt="" src="/uploads/2013/10/buddy-memory-allocation.jpg" width="598" height="346" srcset="" sizes="(max-width: 598px) 100vw, 598px"/></p>
+<p>上图中，首先我们假设我们一个内存块有1024K，当我们需要给A分配70K内存的时候，</p>
+<ol>
+<li>我们发现1024K的一半大于70K，然后我们就把1024K的内存分成两半，一半512K。</li>
+<li>然后我们发现512K的一半仍然大于70K，于是我们再把512K的内存再分成两半，一半是128K。</li>
+<li>此时，我们发现128K的一半小于70K，于是我们就分配为A分配128K的内存。</li>
+</ol>
+<p>后面的，B，C，D都这样，而释放内存时，则会把相邻的块一步一步地合并起来（合并也必需按分裂的逆操作进行合并）。</p>
+<p>我们可以看见，这样的算法，用二叉树这个数据结构来实现再合适不过了。</p>
+<p>我在网上分别找到<a href="https://github.com/cloudwu/buddy" target="_blank">cloudwu</a>和<a href="https://github.com/wuwenbin/buddy2">wuwenbin</a>写的两份开源实现和测试用例。实际上后一份是对前一份的精简和优化，本文打算从后一份入手讲解，<strong>因为这份实现真正体现了“极简”二字，追求突破常规的，极致简单的设计。</strong>网友对其评价甚高，甚至可用作教科书标准实现，看完之后回过头来看cloudwu的代码就容易理解了。</p>
+<p>分配器的整体思想是，通过一个数组形式的完全二叉树来监控管理内存，二叉树的节点用于标记相应内存块的使用状态，高层节点对应大的块，低层节点对应小的块，在分配和释放中我们就通过这些节点的标记属性来进行块的分离合并。如图所示，假设总大小为16单位的内存，我们就建立一个深度为5的满二叉树，根节点从数组下标[0]开始，监控大小16的块；它的左右孩子节点下标[1~2]，监控大小8的块；第三层节点下标[3~6]监控大小4的块……依此类推。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10502" alt="" src="/uploads/2013/10/伙伴分配器.jpg" width="591" height="347" srcset="" sizes="(max-width: 591px) 100vw, 591px"/></p>
+<p>在分配阶段，首先要搜索大小适配的块，假设第一次分配3，转换成2的幂是4，我们先要对整个内存进行对半切割，从16切割到4需要两步，那么从下标[0]节点开始深度搜索到下标[3]的节点并将其标记为已分配。第二次再分配3那么就标记下标[4]的节点。第三次分配6，即大小为8，那么搜索下标[2]的节点，因为下标[1]所对应的块被下标[3~4]占用了。</p>
+<p>在释放阶段，我们依次释放上述第一次和第二次分配的块，即先释放[3]再释放[4]，当释放下标[4]节点后，我们发现之前释放的[3]是相邻的，于是我们立马将这两个节点进行合并，这样一来下次分配大小8的时候，我们就可以搜索到下标[1]适配了。若进一步释放下标[2]，同[1]合并后整个内存就回归到初始状态。</p>
+<p>还是看一下源码实现吧，首先是伙伴分配器的数据结构：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct buddy2 {
+  unsigned size;
+  unsigned longest[1];
+};</pre>
+<p>这里的成员size表明管理内存的总单元数目（测试用例中是32），成员longest就是二叉树的节点标记，表明所对应的内存块的空闲单位，<strong>在下文中会分析这是整个算法中最精妙的设计。</strong>此处数组大小为1表明这是可以向后扩展的（注：在GCC环境下你可以写成longest[0]，不占用空间，这里是出于可移植性考虑），我们在分配器初始化的buddy2_new可以看到这种用法。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">struct buddy2* buddy2_new( int size ) {
+  struct buddy2* self;
+  unsigned node_size;
+  int i;
+
+  if (size &lt; 1 || !IS_POWER_OF_2(size))
+    return NULL;
+
+  self = (struct buddy2*)ALLOC( 2 * size * sizeof(unsigned));
+  self-&gt;size = size;
+  node_size = size * 2;
+
+  for (i = 0; i &lt; 2 * size - 1; ++i) {
+    if (IS_POWER_OF_2(i+1))
+      node_size /= 2;
+    self-&gt;longest[i] = node_size;
+  }
+  return self;
+}</pre>
+<p>整个分配器的大小就是满二叉树节点数目，即所需管理内存单元数目的2倍。一个节点对应4个字节，longest记录了节点所对应的的内存块大小。</p>
+<p>内存分配的alloc中，入参是分配器指针和需要分配的大小，返回值是内存块索引。alloc函数首先将size调整到2的幂大小，并检查是否超过最大限度。然后进行适配搜索，深度优先遍历，当找到对应节点后，<strong>将其longest标记为0，即分离适配的块出来，</strong>并转换为内存块索引offset返回，依据二叉树排列序号，比如内存总体大小32，我们找到节点下标[8]，内存块对应大小是4，则offset = (8+1)*4-32 = 4，那么分配内存块就从索引4开始往后4个单位。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int buddy2_alloc(struct buddy2* self, int size) {
+  unsigned index = 0;
+  unsigned node_size;
+  unsigned offset = 0;
+
+  if (self==NULL)
+    return -1;
+
+  if (size &lt;= 0)
+    size = 1;
+  else if (!IS_POWER_OF_2(size))
+    size = fixsize(size);
+
+  if (self-&gt;longest[index] &lt; size)
+    return -1;
+
+  for(node_size = self-&gt;size; node_size != size; node_size /= 2 ) {
+    if (self-&gt;longest[LEFT_LEAF(index)] &gt;= size)
+      index = LEFT_LEAF(index);
+    else
+      index = RIGHT_LEAF(index);
+  }
+
+  self-&gt;longest[index] = 0;
+  offset = (index + 1) * node_size - self-&gt;size;
+
+  while (index) {
+    index = PARENT(index);
+    self-&gt;longest[index] =
+      MAX(self-&gt;longest[LEFT_LEAF(index)], self-&gt;longest[RIGHT_LEAF(index)]);
+  }
+
+  return offset;
+}</pre>
+<p>在函数返回之前需要回溯，因为小块内存被占用，大块就不能分配了，比如下标[8]标记为0分离出来，那么其父节点下标[0]、[1]、[3]也需要相应大小的分离。<strong>将它们的longest进行折扣计算，取左右子树较大值，</strong>下标[3]取4，下标[1]取8，下标[0]取16，表明其对应的最大空闲值。</p>
+<p>在内存释放的free接口，我们只要传入之前分配的内存地址索引，并确保它是有效值。之后就跟alloc做反向回溯，从最后的节点开始一直往上找到longest为0的节点，即当初分配块所适配的大小和位置。<strong>我们将longest恢复到原来满状态的值。继续向上回溯，检查是否存在合并的块，依据就是左右子树longest的值相加是否等于原空闲块满状态的大小，如果能够合并，就将父节点longest标记为相加的和</strong>（多么简单！）。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void buddy2_free(struct buddy2* self, int offset) {
+  unsigned node_size, index = 0;
+  unsigned left_longest, right_longest;
+
+  assert(self &amp;&amp; offset &gt;= 0 &amp;&amp; offset &lt; size);
+
+  node_size = 1;
+  index = offset + self-&gt;size - 1;
+
+  for (; self-&gt;longest[index] ; index = PARENT(index)) {
+    node_size *= 2;
+    if (index == 0)
+      return;
+  }
+
+  self-&gt;longest[index] = node_size;
+
+  while (index) {
+    index = PARENT(index);
+    node_size *= 2;
+
+    left_longest = self-&gt;longest[LEFT_LEAF(index)];
+    right_longest = self-&gt;longest[RIGHT_LEAF(index)];
+
+    if (left_longest + right_longest == node_size)
+      self-&gt;longest[index] = node_size;
+    else
+      self-&gt;longest[index] = MAX(left_longest, right_longest);
+  }
+}</pre>
+<p>上面两个成对alloc/free接口的时间复杂度都是O(logN)，保证了程序运行性能。然而这段程序设计的独特之处就在于<strong>使用加权来标记内存空闲状态，而不是一般的有限状态机，实际上longest既可以表示权重又可以表示状态，状态机就毫无必要了，所谓“少即是多”嘛！</strong>反观cloudwu的实现，将节点标记为UNUSED/USED/SPLIT/FULL四个状态机，反而会带来额外的条件判断和管理实现，而且还不如数值那样精确。从逻辑流程上看，wuwenbin的实现简洁明了如同教科书一般，特别是左右子树的走向，内存块的分离合并，块索引到节点下标的转换都是一步到位，不像cloudwu充斥了大量二叉树的深度和长度的间接计算，让代码变得晦涩难读，这些都是longest的功劳。<strong>一个“极简”的设计往往在于你想不到的突破常规思维的地方。</strong></p>
+<p>这份代码唯一的缺陷就是longest的大小是4字节，内存消耗大。但<a href="http://blog.codingnow.com/2011/12/buddy_memory_allocation.html" target="_blank">cloudwu的博客</a>上有人提议用logN来保存值，这样就能实现uint8_t大小了，<strong>看，又是一个“极简”的设计！</strong></p>
+<p>说实话，很难在网上找到比这更简约更优雅的buddy system实现了——至少在Google上如此。</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10427-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">趣味问题</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Algorithm</a>, <a href="javascript:void(0)" rel="tag">Buddy</a>, <a href="javascript:void(0)" rel="tag">内存管理</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>伙伴分配器的一个极简实现</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1892318" class="comment even thread-even depth-1 parent">
+<article id="div-comment-1892318" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/97c8065fc8f60bfd2d22fe554e6c1bd2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/97c8065fc8f60bfd2d22fe554e6c1bd2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">newbee</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10427.html/comment-page-2#comment-1892318"><time datetime="2016-10-16T21:16:46+08:00">2016年10月16日 21:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还是不明白这里alloc出来的offset具体该如何使用？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2046025" class="comment odd alt depth-2">
+<article id="div-comment-2046025" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d02e5f67a43f9e3317e26caa1c443aa6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d02e5f67a43f9e3317e26caa1c443aa6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10427.html/comment-page-2#comment-2046025"><time datetime="2019-12-12T07:52:47+08:00">2019年12月12日 07:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>cloudwu链接里面是有的 <a href="https://blog.codingnow.com/2011/12/buddy_memory_allocation.html" rel="nofollow ugc">https://blog.codingnow.com/2011/12/buddy_memory_allocation.html</a></p>
+<p>buddy这个系统只是一个辅助系统，你自己还需要开辟一个连续的大内存，然后offset是这个大内存的偏移。为了减少碎片，这个大内存的单位大小不能太小，比如1K, 4K这样。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1927687" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1927687" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4bb13922430ad10629e7ba4dfec3e954?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4bb13922430ad10629e7ba4dfec3e954?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">冯</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10427.html/comment-page-2#comment-1927687"><time datetime="2018-04-24T21:58:35+08:00">2018年04月24日 21:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个程序有bug</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2055119" class="comment odd alt depth-2">
+<article id="div-comment-2055119" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bd8f5278bedaecae4ea98b20c5a61d94?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bd8f5278bedaecae4ea98b20c5a61d94?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">何致伟</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10427.html/comment-page-2#comment-2055119"><time datetime="2020-01-10T12:01:16+08:00">2020年01月10日 12:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>确实有bug，在分配内存时，这个程序的思路是找到地址最小的内存块，而不是尺寸最合适的内存块，这样做会强行将大块内存分割成小块内存；我在本地实现的时候没有通过测试，就发现了这个bug，并且进行了修复；修复思路也很简单，在进行搜索时并不是左子树满足条件就沿着左子树搜索，而是需要判断左右子树的最小值是否满足条件，如果满足则沿着最小值所在子树搜索，否则沿着最大值所在子树进行搜索。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2215599" class="comment even thread-even depth-1">
+<article id="div-comment-2215599" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b642b4217b34b1e8d3bd915fc65c4452?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b642b4217b34b1e8d3bd915fc65c4452?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zeki</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10427.html/comment-page-2#comment-2215599"><time datetime="2021-03-08T19:44:50+08:00">2021年03月08日 19:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>只看最小值也不能找到尺寸最合适吧</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10427.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10427.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">10427</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

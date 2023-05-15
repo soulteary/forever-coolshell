@@ -1,0 +1,837 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>面向GC的Java编程 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11541 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11541" class="post-content post-11541 post type-post status-publish format-standard hentry category-javadev tag-gc tag-java tag-jvm">
+<header class="entry-header">
+<span class="screen-reader-text">面向GC的Java编程</span>
+<h1 class="entry-title">面向GC的Java编程</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11541.html" title="11:24" rel="bookmark"><time class="entry-date" datetime="2014-05-07T11:24:38+08:00" pubdate="">2014年05月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/hesey" title="View all posts by 王 晨纯" rel="author">王 晨纯</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11541.html#comments" class="comments-link">46 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 60,405 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 <a href="http://weibo.com/tbmujian" target="_blank">@Hesey小纯纯</a> 投稿  <a href="http://blog.hesey.net/" target="_blank">博客</a> |　<a href="http://blog.hesey.net/2014/05/gc-oriented-java-programming.html" target="_blank">原文链接</a>）</strong></p>
+<p>Java程序员在编码过程中通常不需要考虑内存问题，JVM经过高度优化的GC机制大部分情况下都能够很好地处理堆(Heap)的清理问题。以至于许多Java程序员认为，我只需要关心何时创建对象，而回收对象，就交给GC来做吧！甚至有人说，如果在编程过程中频繁考虑内存问题，是一种退化，这些事情应该交给编译器，交给虚拟机来解决。</p>
+<p>这话其实也没有太大问题，的确，大部分场景下关心内存、GC的问题，显得有点“杞人忧天”了，高老爷说过：</p>
+<p style="padding-left: 30px;">过早优化是万恶之源。</p>
+<p>但另一方面，<strong>什么才是“过早优化”？</strong></p>
+<p style="padding-left: 30px;">If we could do things right for the first time, why not?</p>
+<p>事实上<strong>JVM的内存模型</strong>( <a href="http://www.cs.umd.edu/~pugh/java/memoryModel/" target="_blank">JMM</a> )理应是Java程序员的基础知识，处理过几次JVM线上内存问题之后就会很明显感受到，很多系统问题，都是内存问题。</p>
+<p>对JVM内存结构感兴趣的同学可以看下 <a href="http://blog.hesey.net/2011/04/introduction-to-java-virtual-machine.html" target="_blank">浅析Java虚拟机结构与机制</a> 这篇文章，本文就不再赘述了，本文也并不关注具体的GC算法，相关的文章汗牛充栋，随时可查。</p>
+<p>另外，不要指望GC优化的这些技巧，可以对应用性能有成倍的提高，特别是对I/O密集型的应用，或是实际落在YoungGC上的优化，可能效果只是帮你减少那么一点YoungGC的频率。</p>
+<p>但我认为，<strong>优秀程序员的价值，不在于其所掌握的几招屠龙之术，而是在细节中见真著</strong>，就像前面说的，<strong>如果我们可以一次把事情做对，并且做好，在允许的范围内尽可能追求卓越，为什么不去做呢？</strong><span id="more-11541"></span></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%B8%80%E3%80%81GC%E5%88%86%E4%BB%A3%E7%9A%84%E5%9F%BA%E6%9C%AC%E5%81%87%E8%AE%BE" title="一、GC分代的基本假设">一、GC分代的基本假设</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E4%BA%8C%E3%80%81%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D%E7%9A%84%E4%BC%98%E5%8C%96" title="二、对象分配的优化">二、对象分配的优化</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E4%B8%89%E3%80%81%E4%B8%8D%E5%8F%AF%E5%8F%98%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%A5%BD%E5%A4%84" title="三、不可变对象的好处">三、不可变对象的好处</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%9B%9B%E3%80%81%E5%BC%95%E7%94%A8%E7%BD%AE%E4%B8%BAnull%E7%9A%84%E4%BC%A0%E8%AF%B4" title="四、引用置为null的传说">四、引用置为null的传说</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E4%BA%94%E3%80%81%E6%89%8B%E5%8A%A8%E6%A1%A3%E7%9A%84GC" title="五、手动档的GC">五、手动档的GC</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%85%AD%E3%80%81%E6%8C%87%E5%AE%9A%E5%AE%B9%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96%E5%A4%A7%E5%B0%8F" title="六、指定容器初始化大小">六、指定容器初始化大小</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E4%B8%83%E3%80%81%E5%AF%B9%E8%B1%A1%E6%B1%A0" title="七、对象池">七、对象池</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%85%AB%E3%80%81%E5%AF%B9%E8%B1%A1%E4%BD%9C%E7%94%A8%E5%9F%9F" title="八、对象作用域">八、对象作用域</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#%E4%B9%9D%E3%80%81%E5%90%84%E7%B1%BB%E5%BC%95%E7%94%A8" title="九、各类引用">九、各类引用</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E3%80%81GC%E5%88%86%E4%BB%A3%E7%9A%84%E5%9F%BA%E6%9C%AC%E5%81%87%E8%AE%BE"></span>一、GC分代的基本假设<span class="ez-toc-section-end"></span></h4>
+<p>大部分GC算法，都将堆内存做分代(Generation)处理，但是为什么要分代呢，又为什么不叫内存分区、分段，而要用面向时间、年龄的“代”来表示不同的内存区域？</p>
+<p>GC分代的<strong>基本假设</strong>是：</p>
+<p style="padding-left: 30px;"><strong>绝大部分对象的生命周期都非常短暂，存活时间短。</strong></p>
+<p>而这些短命的对象，恰恰是GC算法需要首先关注的。所以在大部分的GC中，YoungGC（也称作MinorGC）占了绝大部分，对于负载不高的应用，可能跑了数个月都不会发生FullGC。</p>
+<p>基于这个前提，在编码过程中，我们应该<strong>尽可能地缩短对象的生命周期</strong>。在过去，分配对象是一个比较重的操作，所以有些程序员会尽可能地减少new对象的次数，尝试减小堆的分配开销，减少内存碎片。</p>
+<p>但是，短命对象的创建在JVM中比我们想象的性能更好，所以，不要吝啬new关键字，大胆地去new吧。</p>
+<p>当然前提是不做无谓的创建，对象创建的速率越高，那么GC也会越快被触发。</p>
+<p>结论：</p>
+<ul>
+<li>分配小对象的开销分享小，不要吝啬去创建。</li>
+<li>GC最喜欢这种小而短命的对象。</li>
+<li>让对象的生命周期尽可能短，例如在方法体内创建，使其能尽快地在YoungGC中被回收，不会晋升(romote)到年老代(Old Generation)。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E4%BA%8C%E3%80%81%E5%AF%B9%E8%B1%A1%E5%88%86%E9%85%8D%E7%9A%84%E4%BC%98%E5%8C%96"></span>二、对象分配的优化<span class="ez-toc-section-end"></span></h4>
+<p>基于大部分对象都是小而短命，并且不存在多线程的数据竞争。这些小对象的分配，会优先在线程私有的<strong> TLAB</strong> 中分配，TLAB中创建的对象，不存在锁甚至是CAS的开销。</p>
+<p>TLAB占用的空间在Eden Generation。</p>
+<p>当对象比较大，TLAB的空间不足以放下，而JVM又认为当前线程占用的TLAB剩余空间还足够时，就会直接在Eden Generation上分配，此时是存在并发竞争的，所以会有CAS的开销，但也还好。</p>
+<p>当对象大到Eden Generation放不下时，JVM只能尝试去Old Generation分配，这种情况需要尽可能避免，因为一旦在Old Generation分配，这个对象就只能被Old Generation的GC或是FullGC回收了。</p>
+<h4><span class="ez-toc-section" id="%E4%B8%89%E3%80%81%E4%B8%8D%E5%8F%AF%E5%8F%98%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%A5%BD%E5%A4%84"></span>三、不可变对象的好处<span class="ez-toc-section-end"></span></h4>
+<p>GC算法在扫描存活对象时通常需要从ROOT节点开始，扫描所有存活对象的引用，构建出对象图。</p>
+<p>不可变对象对GC的优化，主要体现在Old Generation中。</p>
+<p>可以想象一下，如果存在Old Generation的对象引用了Young Generation的对象，那么在每次YoungGC的过程中，就必须考虑到这种情况。</p>
+<p>Hotspot JVM为了提高YoungGC的性能，避免每次YoungGC都扫描Old Generation中的对象引用，采用了 <strong>卡表(Card Table) </strong>的方式。</p>
+<p>简单来说，当Old Generation中的对象发生对Young Generation中的对象产生新的引用关系或释放引用时，都会在卡表中响应的标记上标记为脏(dirty)，而YoungGC时，只需要扫描这些dirty的项就可以了。</p>
+<p>可变对象对其它对象的引用关系可能会频繁变化，并且有可能在运行过程中持有越来越多的引用，特别是容器。这些都会导致对应的卡表项被频繁标记为dirty。</p>
+<p>而不可变对象的引用关系非常稳定，在扫描卡表时就不会扫到它们对应的项了。</p>
+<p>注意，这里的不可变对象，不是指仅仅自身引用不可变的final对象，而是真正的<strong><span style="color: #ff0000;">Immutable Objects</span></strong>。</p>
+<h4><span class="ez-toc-section" id="%E5%9B%9B%E3%80%81%E5%BC%95%E7%94%A8%E7%BD%AE%E4%B8%BAnull%E7%9A%84%E4%BC%A0%E8%AF%B4"></span>四、引用置为null的传说<span class="ez-toc-section-end"></span></h4>
+<p>早期的很多Java资料中都会提到在方法体中将一个变量置为null能够优化GC的性能，类似下面的代码：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">List&lt;String&gt; list = new ArrayList&lt;String&gt;();
+// some code
+list = null; // help GC
+</pre>
+<p>事实上这种做法对GC的帮助微乎其微，有时候反而会导致代码混乱。</p>
+<p>我记得几年前 @rednaxelafx 在HLL VM小组中详细论述过这个问题，原帖我没找到，结论基本就是：</p>
+<ul>
+<li>在一个非常大的方法体内，对一个较大的对象，将其引用置为null，某种程度上可以帮助GC。</li>
+<li>大部分情况下，这种行为都没有任何好处。</li>
+</ul>
+<p>所以，还是早点放弃这种“优化”方式吧。</p>
+<p>GC比我们想象的更聪明。</p>
+<h4><span class="ez-toc-section" id="%E4%BA%94%E3%80%81%E6%89%8B%E5%8A%A8%E6%A1%A3%E7%9A%84GC"></span>五、手动档的GC<span class="ez-toc-section-end"></span></h4>
+<p>在很多Java资料上都有下面两个奇技淫巧：</p>
+<ul>
+<li>通过<strong>Thread.yield()</strong>让出CPU资源给其它线程。</li>
+<li>通过<strong>System.gc()</strong>触发GC。</li>
+</ul>
+<p>事实上JVM从不保证这两件事，而System.gc()在JVM启动参数中如果允许显式GC，则会<strong>触发FullGC</strong>，对于响应敏感的应用来说，几乎等同于自杀。</p>
+<p>So，让我们牢记两点：</p>
+<ul>
+<li>Never use Thread.yield()。</li>
+<li>Never use System.gc()。除非你真的需要回收Native Memory。</li>
+</ul>
+<p>第二点有个Native Memory的例外，如果你在以下场景：</p>
+<ul>
+<li>使用了NIO或者NIO框架（Mina/Netty）</li>
+<li>使用了DirectByteBuffer分配字节缓冲区</li>
+<li>使用了MappedByteBuffer做内存映射</li>
+</ul>
+<p>由于<strong>Native Memory只能通过FullGC（或是CMS GC）回收</strong>，所以除非你非常清楚这时真的有必要，否则不要轻易调用System.gc()，且行且珍惜。</p>
+<p>另外为了防止某些框架中的System.gc调用（例如NIO框架、Java RMI），建议在启动参数中加上-XX:+DisableExplicitGC来禁用显式GC。</p>
+<p>这个参数有个巨大的坑，如果你禁用了System.gc()，那么上面的3种场景下的内存就无法回收，可能造成OOM，如果你使用了CMS GC，那么可以用这个参数替代：-XX:+ExplicitGCInvokesConcurrent。</p>
+<p>关于System.gc()，可以参考 @bluedavy 的几篇文章：</p>
+<ul>
+<li><a href="http://hellojava.info/?p=56" target="_blank">CMS GC会不会回收Direct ByteBuffer的内存</a></li>
+<li><a href="http://hellojava.info/?p=323" target="_blank">说说在Java启动参数上我犯的错</a></li>
+<li><a href="http://hellojava.info/?p=319" target="_blank">java.lang.OutOfMemoryError:Map failed</a></li>
+</ul>
+<p> </p>
+<h4><span class="ez-toc-section" id="%E5%85%AD%E3%80%81%E6%8C%87%E5%AE%9A%E5%AE%B9%E5%99%A8%E5%88%9D%E5%A7%8B%E5%8C%96%E5%A4%A7%E5%B0%8F"></span>六、指定容器初始化大小<span class="ez-toc-section-end"></span></h4>
+<p>Java容器的一个特点就是可以动态扩展，所以通常我们都不会去考虑初始大小的设置，不够了反正会自动扩容呗。</p>
+<p>但是扩容不意味着没有代价，甚至是很高的代价。</p>
+<p>例如一些基于数组的数据结构，例如StringBuilder、StringBuffer、ArrayList、HashMap等等，在扩容的时候都需要做ArrayCopy，对于不断增长的结构来说，经过若干次扩容，会存在大量无用的老数组，而回收这些数组的压力，全都会加在GC身上。</p>
+<p>这些容器的构造函数中通常都有一个可以指定大小的参数，如果对于某些大小可以预估的容器，建议加上这个参数。</p>
+<p>可是因为容器的扩容并不是等到容器满了才扩容，而是有一定的比例，例如HashMap的扩容阈值和负载因子(loadFactor)相关。</p>
+<p>Google Guava框架对于容器的初始容量提供了非常便捷的工具方法，例如：</p>
+<p>[code lang=”java”]Lists.newArrayListWithCapacity(initialArraySize);</p>
+<p>Lists.newArrayListWithExpectedSize(estimatedSize);</p>
+<p>Sets.newHashSetWithExpectedSize(expectedSize);</p>
+<p>Maps.newHashMapWithExpectedSize(expectedSize);<br/>
+[/code]</p>
+<p>这样我们只要传入预估的大小即可，容量的计算就交给Guava来做吧。</p>
+<p><strong>反例</strong>：如果采用默认无参构造函数，创建一个ArrayList，不断增加元素直到OOM，那么在此过程中会导致：</p>
+<ul>
+<li>多次数组扩容，重新分配更大空间的数组</li>
+<li>多次数组拷贝</li>
+<li>内存碎片</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E4%B8%83%E3%80%81%E5%AF%B9%E8%B1%A1%E6%B1%A0"></span>七、对象池<span class="ez-toc-section-end"></span></h4>
+<p>为了减少对象分配开销，提高性能，可能有人会采取对象池的方式来缓存对象集合，作为复用的手段。</p>
+<p>但是对象池中的对象由于在运行期长期存活，大部分会晋升到Old Generation，因此无法通过YoungGC回收。</p>
+<p>并且通常……没有什么效果。</p>
+<p>对于对象本身：</p>
+<ul>
+<li>如果对象很小，那么分配的开销本来就小，对象池只会增加代码复杂度。</li>
+<li>如果对象比较大，那么晋升到Old Generation后，对GC的压力就更大了。</li>
+</ul>
+<p>从线程安全的角度考虑，通常池都是会被并发访问的，那么你就需要处理好同步的问题，这又是一个大坑，并且<strong>同步带来的开销，未必比你重新创建一个对象小</strong>。</p>
+<p>对于对象池，唯一合适的场景就是<strong>当池中的每个对象的创建开销很大</strong>时，缓存复用才有意义，例如每次new都会创建一个连接，或是依赖一次RPC。</p>
+<p>比如说：</p>
+<ul>
+<li>线程池</li>
+<li>数据库连接池</li>
+<li>TCP连接池</li>
+</ul>
+<p>即使你真的需要实现一个对象池，也请使用成熟的开源框架，例如Apache Commons Pool。</p>
+<p>另外，使用JDK的ThreadPoolExecutor作为线程池，不要重复造轮子，除非当你看过AQS的源码后认为你可以写得比Doug Lea更好。</p>
+<h4><span class="ez-toc-section" id="%E5%85%AB%E3%80%81%E5%AF%B9%E8%B1%A1%E4%BD%9C%E7%94%A8%E5%9F%9F"></span>八、对象作用域<span class="ez-toc-section-end"></span></h4>
+<p>尽可能缩小对象的作用域，即生命周期。</p>
+<ul>
+<li>如果可以在方法内声明的局部变量，就不要声明为实例变量。</li>
+<li>除非你的对象是单例的或不变的，否则尽可能少地声明static变量。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E4%B9%9D%E3%80%81%E5%90%84%E7%B1%BB%E5%BC%95%E7%94%A8"></span>九、各类引用<span class="ez-toc-section-end"></span></h4>
+<p>java.lang.ref.Reference有几个子类，用于处理和GC相关的引用。JVM的引用类型简单来说有几种：</p>
+<ul>
+<li>Strong Reference，最常见的引用</li>
+<li>Weak Reference，当没有指向它的强引用时会被GC回收</li>
+<li>Soft Reference，只当临近OOM时才会被GC回收</li>
+<li>Phantom Reference，主要用于识别对象被GC的时机，通常用于做一些清理工作</li>
+</ul>
+<p>当你需要实现一个缓存时，可以考虑优先使用WeakHashMap，而不是HashMap，当然，更好的选择是使用框架，例如Guava Cache。</p>
+<p>最后，再次提醒，以上的这些未必可以对代码有多少性能上的提升，但是熟悉这些方法，是为了帮助我们写出更卓越的代码，和GC更好地合作。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11541-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">GC</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">JVM</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>面向GC的Java编程</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1455035" class="comment even thread-even depth-1">
+<article id="div-comment-1455035" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2c1429c220d7ddee32cbcac404f5b48f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2c1429c220d7ddee32cbcac404f5b48f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">哈哈</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455035"><time datetime="2014-05-07T12:50:35+08:00">2014年05月07日 12:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455058" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1455058" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/741328c990957dcf2aaf6c0a2c7cf561?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/741328c990957dcf2aaf6c0a2c7cf561?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">黄土高坡</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455058"><time datetime="2014-05-07T13:49:52+08:00">2014年05月07日 13:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>有些错别字，但不影响阅读。浓缩的都是精华，赞一个</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455074" class="comment even thread-even depth-1">
+<article id="div-comment-1455074" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e2cfa61cc1d2c953fbfcd11017fad1db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e2cfa61cc1d2c953fbfcd11017fad1db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://chunyang-wen.github.io" class="url" rel="ugc external nofollow">chunyang.wen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455074"><time datetime="2014-05-07T14:20:07+08:00">2014年05月07日 14:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>过早优化是万恶之源：就像C++中的关键字inline一样，在没有做任何性能分析的时候，不要尝试自己去优化。你知道什么是对的，为什么一开始不做对：怎么知道一开始自己就是对的。真正在代码中反复磨砺，才会积累，才会知道什么是惯用技巧，什么技巧根本没用。哎，constant practice makes perfect work吧。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455191" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1455191" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c338157dd3ea1e386c2e0a0edf53a41a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c338157dd3ea1e386c2e0a0edf53a41a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">invalid</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455191"><time datetime="2014-05-07T17:05:08+08:00">2014年05月07日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>简单说，对卡马克这类大牛来说，第一次写代码就把cache失效之类问题都考虑进去叫“快速实现”，谈不上过早优化。</p>
+<p>而对另一些人来说，第一次写代码用O(N^2)的算法才正常，直接强撑着写成O(N)的就叫过早优化。</p>
+<p>前者的代码一写出来就快如云雀，再找出热点优化后，表现会震惊业界；而后者的代码写出来慢如蜗牛，找出热点优化后就变成了乌龟——和蜗牛比起来算飞快了；但千万别让云雀看到。</p>
+<p>换言之，是不是过早优化，是要看究竟是谁在写代码才能判定的。</p>
+<p>而一个有追求的程序员，应该致力于不断提高自己“过早优化”的判定标准，而不是看见别人写代码前先选择合适容器就大惊小怪说人家过早优化。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2320582" class="comment even depth-2">
+<article id="div-comment-2320582" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/695855fd8f8b3ac47760093bb9497e36?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/695855fd8f8b3ac47760093bb9497e36?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">neilism</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-2320582"><time datetime="2021-10-16T22:37:22+08:00">2021年10月16日 22:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>说的太棒了，非常赞同！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1455207" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1455207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a7d0f7275851df8df5312c37513e60d7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a7d0f7275851df8df5312c37513e60d7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.liuinsect.com" class="url" rel="ugc external nofollow">liuinsect</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455207"><time datetime="2014-05-07T17:40:42+08:00">2014年05月07日 17:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，虽然有点乱，但是完全不影响阅读，另外，对于文章最后对象的可及性上，貌似写得快了点，没说的非常清楚：<br/>
+1. 对象是什么引用类型由指向它的所有引用共同决定。<br/>
+2. “• Weak Reference，当没有指向它的强引用时会被GC回收” 这具有有点容易让人迷惑， 首先是对象是什么应用类型的判断问题，这个在单条引用路径下和多条引用路径下的情况是不同的，其次，如果对象被判定为 Weak Reference后，只要GC线程扫描到这个引用，它会马上被回收。而不是单纯没有强引用指向它，它就会被回收，这是不同的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455232" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1455232" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2ba33d4d5b16adc089e75a513fcf2b8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2ba33d4d5b16adc089e75a513fcf2b8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://adfs.com" class="url" rel="ugc external nofollow">cc</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455232"><time datetime="2014-05-07T18:20:48+08:00">2014年05月07日 18:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>sdfasdfasdf</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455324" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1455324" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60824ace73fb891a2309b27d0df8975f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60824ace73fb891a2309b27d0df8975f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.weaoo.com/cn_beijing/" class="url" rel="ugc external nofollow">天气预报</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455324"><time datetime="2014-05-07T21:47:07+08:00">2014年05月07日 21:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>java,痛</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455438" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1455438" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f91df33c3d07abfb1a43f8a3e45d30ec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f91df33c3d07abfb1a43f8a3e45d30ec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://james0zan.github.io/" class="url" rel="ugc external nofollow">james0zan</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455438"><time datetime="2014-05-08T01:30:52+08:00">2014年05月08日 01:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“引用置为 null” 不一定是没用的，2006 年的 PLDI 上就有一篇文章 “Free-Me: a static analysis for automatic individual object reclamation”通过自动添加 free 减少 GC 开销</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455606" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1455606" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eac9046d4d3fcb13fb55ae0f85c53575?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eac9046d4d3fcb13fb55ae0f85c53575?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.tektea.com" class="url" rel="ugc external nofollow">IT运维那些事儿</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455606"><time datetime="2014-05-08T07:29:02+08:00">2014年05月08日 07:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，学习了。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455669" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://wzzblog.sinaapp.com/static/5597.html" class="url" rel="ugc external nofollow">面向GC的Java编程 | | Evolution UnitEvolution Unit</a> </div>
+</li>
+<li id="comment-1455730" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1455730" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3cccd2b313d9e9e1019f7a6784a6a084?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3cccd2b313d9e9e1019f7a6784a6a084?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.dozer.cc" class="url" rel="ugc external nofollow">Dozer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455730"><time datetime="2014-05-08T10:09:06+08:00">2014年05月08日 10:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“过早优化是万恶之源”，喜欢这句话~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455823" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1455823" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a4acbb263f7950d34b9290695d36262?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://xq.com.nu" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455823"><time datetime="2014-05-08T13:23:39+08:00">2014年05月08日 13:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1455191"><p>
+<strong><a href="#comment-1455191" rel="nofollow">invalid </a> :</strong>简单说，对卡马克这类大牛来说，第一次写代码就把cache失效之类问题都考虑进去叫“快速实现”，谈不上过早优化。<br/>
+而对另一些人来说，第一次写代码用O(N^2)的算法才正常，直接强撑着写成O(N)的就叫过早优化。<br/>
+前者的代码一写出来就快如云雀，再找出热点优化后，表现会震惊业界；而后者的代码写出来慢如蜗牛，找出热点优化后就变成了乌龟——和蜗牛比起来算飞快了；但千万别让云雀看到。<br/>
+换言之，是不是过早优化，是要看究竟是谁在写代码才能判定的。<br/>
+而一个有追求的程序员，应该致力于不断提高自己“过早优化”的判定标准，而不是看见别人写代码前先选择合适容器就大惊小怪说人家过早优化。</p></blockquote>
+<p>的确，小马过河 这个寓言，在IT的很多场合也适用</p>
+</div>
+ </article>
+</li>
+<li id="comment-1455887" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1455887" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/158433c0abfa9466e86d560fc0a0016a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/158433c0abfa9466e86d560fc0a0016a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mashiguang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1455887"><time datetime="2014-05-08T16:06:15+08:00">2014年05月08日 16:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>唉，第二段，完完全全没看懂</p>
+</div>
+ </article>
+</li>
+<li id="comment-1456495" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1456495" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9357b1d5c511254cbb1629a180d8248?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9357b1d5c511254cbb1629a180d8248?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">stallboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1456495"><time datetime="2014-05-09T13:55:16+08:00">2014年05月09日 13:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“当你需要实现一个缓存时，可以考虑优先使用WeakHashMap”<br/>
+1，weakhashmap不适合作为cache，weakhashmap这中用法是合适的，但这个不叫cache吧。<br/>
+2，做cache可考虑用linkedhashmap，concurrenthashmap，softreference</p>
+</div>
+ </article>
+</li>
+<li id="comment-1456498" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1456498" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9357b1d5c511254cbb1629a180d8248?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9357b1d5c511254cbb1629a180d8248?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">stallboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1456498"><time datetime="2014-05-09T13:56:47+08:00">2014年05月09日 13:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>上文系统自动把我些的类型丢了，补充一下，weakhashmap《session, properties》这中用法是合适的，</p>
+</div>
+ </article>
+</li>
+<li id="comment-1456508" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1456508" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9357b1d5c511254cbb1629a180d8248?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9357b1d5c511254cbb1629a180d8248?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">stallboy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1456508"><time datetime="2014-05-09T14:06:46+08:00">2014年05月09日 14:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不可变对象在考虑并发的时候非常有用，比如copyonwritelist<br/>
+请问作者，<br/>
+jvm gc如何判断这个对象为不可变对象？<br/>
+很多时候map，list用的时候得记住这个不可变，这样并发才对，这个gc如何判断。<br/>
+java没有标记来说明白不可变类，final只能辅助，<br/>
+难道java会有算法来计算这个类的不可变性，求作者答疑，谢谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1456594" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1456594" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ad2761d3a84a1b29276b995d7719e694?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ad2761d3a84a1b29276b995d7719e694?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.hesey.net" class="url" rel="ugc external nofollow">HeseyWang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1456594"><time datetime="2014-05-09T15:35:01+08:00">2014年05月09日 15:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1456508" rel="nofollow">@stallboy </a><br/>
+文中提到了，其实GC关心的不是对象是否可变，而是知道对象持有的引用是否变了，这个会反映到卡表上，不可变对象对应的卡表项的脏比可变对象少得多，借此减小GC扫描的开销</p>
+</div>
+ </article>
+</li>
+<li id="comment-1457756" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1457756" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d4af88a9407f30422e39a9e73c976f0c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">MOsky</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1457756"><time datetime="2014-05-10T18:03:07+08:00">2014年05月10日 18:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章是不是说，别瞎折腾了，忘了GC吧，然后写代码，这就是最好的GC优化了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1458682" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1458682" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ef8adf22fa3e6cb468e384370bb0c726?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ef8adf22fa3e6cb468e384370bb0c726?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://landerlyoung.github.io" class="url" rel="ugc external nofollow">Young</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1458682"><time datetime="2014-05-11T17:26:08+08:00">2014年05月11日 17:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一节最后的“分配小对象的开销分享小，不要吝啬去创建。”疑似错别字，改正为“分配小对象的开销非常小，不要吝啬去创建。”。（估计是拼音输入法的错误）</p>
+</div>
+ </article>
+</li>
+<li id="comment-1459310" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1459310" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/77af11bfbcdf565bf3d49d7fcb2f9809?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/77af11bfbcdf565bf3d49d7fcb2f9809?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.xiaoleilu.com" class="url" rel="ugc external nofollow">Looly</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1459310"><time datetime="2014-05-12T11:06:19+08:00">2014年05月12日 11:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>对于第四部分引用为null这里必须得强调一下，不是所有的引用为null都是没用的，如果你在一个类方法（静态方法）里引用了一个对象，例如数据库连接，如果不在使用完毕后引用为null还是不能被垃圾回收的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1459453" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1459453" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e650c6e1924db12d88b3a9d9b8b4755f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e650c6e1924db12d88b3a9d9b8b4755f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">飒飒飒飒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1459453"><time datetime="2014-05-12T14:30:06+08:00">2014年05月12日 14:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么我们非要以优秀的程序员自诩呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1459455" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1459455" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e650c6e1924db12d88b3a9d9b8b4755f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e650c6e1924db12d88b3a9d9b8b4755f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">飒飒飒飒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1459455"><time datetime="2014-05-12T14:31:11+08:00">2014年05月12日 14:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我国的技术男们怎么素质都这么差呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1459456" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1459456" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e650c6e1924db12d88b3a9d9b8b4755f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e650c6e1924db12d88b3a9d9b8b4755f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">飒飒飒飒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1459456"><time datetime="2014-05-12T14:31:39+08:00">2014年05月12日 14:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不出来牛一下你就白活了么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1459574" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1459574" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eabd8f0d958895c8ef747940180fc4a5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eabd8f0d958895c8ef747940180fc4a5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kof99</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1459574"><time datetime="2014-05-12T17:18:58+08:00">2014年05月12日 17:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1455438" rel="nofollow">@james0zan </a><br/>
+你也知道是2006年的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1460650" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1460650" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e5c464fee4285ea5400879379e1dc1c0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e5c464fee4285ea5400879379e1dc1c0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.lianzifang.com/" class="url" rel="ugc external nofollow">恋字坊</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1460650"><time datetime="2014-05-13T20:39:03+08:00">2014年05月13日 20:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从松松博客过来的，贵站做的真心不错，有很多的干货，值得一看，我和大学同学也刚做了一个网站，欢迎站长朋友过来看看，能给我提点建议的话就感激不尽了，我的网站是恋字坊http://www.lianzifang.com/</p>
+</div>
+ </article>
+</li>
+<li id="comment-1460973" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1460973" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/04ea8a893def728a74734e837c517a40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/04ea8a893def728a74734e837c517a40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lcywood</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1460973"><time datetime="2014-05-14T09:38:34+08:00">2014年05月14日 09:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GC本身就是万恶之源，做好资源管理本身就是程序员的基本功。有了shared_ptr为什么还要GC呢，当然避免循环是不可少的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1462611" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1462611" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/031db4b79427bead422deb4f0b199847?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/031db4b79427bead422deb4f0b199847?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tree2</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1462611"><time datetime="2014-05-16T17:58:28+08:00">2014年05月16日 17:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文章！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1462992" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1462992" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0feb795bd3806cc727fd6fcce387ef18?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0feb795bd3806cc727fd6fcce387ef18?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.iaisleep.com/" class="url" rel="ugc external nofollow">aisleep</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1462992"><time datetime="2014-05-17T08:48:32+08:00">2014年05月17日 08:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>挺有创造性的建议，值得一看http://www.iaisleep.com/</p>
+</div>
+ </article>
+</li>
+<li id="comment-1464812" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1464812" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/71a63208f564f9a1cc23172ea24bb489?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/71a63208f564f9a1cc23172ea24bb489?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">latecomer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1464812"><time datetime="2014-05-19T16:52:12+08:00">2014年05月19日 16:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之前我看到有文章说作者广泛读书，想知道都读写什么书啊，另外，作者是毕业于什么学校呢，很想听听作者的传记。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1466486" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1466486" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/84fd0a4ec9e04a98e48a0364565f091e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/84fd0a4ec9e04a98e48a0364565f091e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sjinny</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1466486"><time datetime="2014-05-21T22:32:03+08:00">2014年05月21日 22:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得有两点应该强调：<br/>
+1.对于成员变量，如果它不再需要引用某个对象，就应该置为NULL，因为如果继续持有这个对象的引用，GC没法猜出你实际上已经用不到它了。<br/>
+2.不要把函数里的临时变量写成对象的成员变量！这个我真见过这么干的！对象变大了，而且本来同步的逻辑在代码层面变成了异步的……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1490066" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1490066" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/31422e469320faf134cf68340421c5a2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/31422e469320faf134cf68340421c5a2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kero</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1490066"><time datetime="2014-07-03T09:10:06+08:00">2014年07月03日 09:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1466486" rel="nofollow">@sjinny </a><br/>
+强烈BS对于你强调“引入null”的作用，这样会教坏很多人，请参照楼主的说法，也是国外公认的说，请谨慎发言！！！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1499383" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1499383" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c516d0943d6ebd54aafd7f471e85be20?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c516d0943d6ebd54aafd7f471e85be20?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">云</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1499383"><time datetime="2014-07-23T10:40:20+08:00">2014年07月23日 10:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>设置为null，我在我们的疲劳测试中验证了是可以解决问题的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1499387" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1499387" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c516d0943d6ebd54aafd7f471e85be20?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c516d0943d6ebd54aafd7f471e85be20?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">云</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1499387"><time datetime="2014-07-23T10:41:46+08:00">2014年07月23日 10:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1499383"><p>
+<strong><a href="#comment-1499383" rel="nofollow">云</a> :</strong><br/>
+设置为null，我在我们的疲劳测试中验证了是可以解决问题的
+</p></blockquote>
+<p>临时变量用完以后设置为null</p>
+</div>
+ </article>
+</li>
+<li id="comment-1508653" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1508653" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2b241bb0a535dae903ebe7fbc73887e8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2b241bb0a535dae903ebe7fbc73887e8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.ithomer.net/" class="url" rel="ugc external nofollow">ithomer</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1508653"><time datetime="2014-08-06T22:11:35+08:00">2014年08月06日 22:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>经验性总结，如果有项目实例支撑说明下，将会更赞！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1519381" class="comment byuser comment-author-0x0bject odd alt thread-even depth-1">
+<article id="div-comment-1519381" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/749b5f537c5c5647f73563162930ff53?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/749b5f537c5c5647f73563162930ff53?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">0x0bject</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1519381"><time datetime="2014-08-26T09:16:51+08:00">2014年08月26日 09:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>算是提供了一个引子吧，具体的还是需要在项目中感悟。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1720418" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1720418" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a352fed9f5cdb7f71eaaece5d1a932fc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a352fed9f5cdb7f71eaaece5d1a932fc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">TracyZhang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1720418"><time datetime="2015-06-11T14:45:30+08:00">2015年06月11日 14:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于Reference可以有更详细的讲解，比如一个对象既有WeakReference又有SoftReference这些情况，有更强的引用时也是回收不了的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1772589" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1772589" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d7d2b60beadf55a1105f5a4cb38dc014?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d7d2b60beadf55a1105f5a4cb38dc014?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">辰采星</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1772589"><time datetime="2015-10-12T20:02:45+08:00">2015年10月12日 20:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>虽然没验证过，但是感觉是认真的一篇心得，那句“优秀程序员的价值，不在于其所掌握的几招屠龙之术，而是在细节中见真著”有感触。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1818758" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1818758" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e818a8e4fb5f64573e2831d89940679f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e818a8e4fb5f64573e2831d89940679f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fishstaic</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1818758"><time datetime="2016-04-10T19:59:08+08:00">2016年04月10日 19:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“除非当你看过AQS的源码后认为你可以写得比Doug Lea更好。” 哈哈哈哈哈</p>
+</div>
+ </article>
+</li>
+<li id="comment-1819613" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1819613" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c74fc77b9a0a9b0e0232e8bf9a912cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c74fc77b9a0a9b0e0232e8bf9a912cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">albertww</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1819613"><time datetime="2016-04-15T13:45:03+08:00">2016年04月15日 13:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于=null那条，个人认为还是有用的，对于临时变量局部变量可能作用不大，但对于类对象可能作用巨大。<br/>
+比如在游戏中，使用hashmap保存登陆玩家，id作为key，玩家对象作为value，玩家下线后我可以选择从hashmap remove这个key和value，虽然无法确保gc会立即调用回收，但是我能做的是告诉gc我不再需要这个对象了，你爱啥时候回收旧啥时候回收。反之，如果我一直把这个对象保存在hashmap中，有一个强引用，jvm会认为我还需要它。=null的做法，虽然gc我无法控制，但至少我能让系统回收那些我不再需要的内存。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1872148" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1872148" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/775fa64ef24fc68540dbabf68403fcda?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/775fa64ef24fc68540dbabf68403fcda?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ais</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1872148"><time datetime="2016-08-23T00:15:23+08:00">2016年08月23日 00:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没干货这一篇文章，。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1891499" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1891499" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d51031bc944d946e98b0ab986f35ac59?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d51031bc944d946e98b0ab986f35ac59?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Laohaoren</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1891499"><time datetime="2016-10-11T17:08:21+08:00">2016年10月11日 17:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不是都说 不该发明 null这个玩意儿么</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914128" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog-scottwang.rhcloud.com/post/2017/05/21/%e9%9d%a2%e5%90%91gc%e7%9a%84java%e7%bc%96%e7%a8%8b.html" class="url" rel="ugc external nofollow">面向GC的JAVA编程 | Scott-Blog</a> </div>
+</li>
+<li id="comment-1945550" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1945550" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df713ed5f70e3919077ca5d9e31b7ae7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df713ed5f70e3919077ca5d9e31b7ae7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">陈世文</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-1945550"><time datetime="2018-11-28T15:54:10+08:00">2018年11月28日 15:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔, 你这个引用404了 ‘浅析Java虚拟机结构与机制’</p>
+</div>
+ </article>
+</li>
+<li id="comment-2162724" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2162724" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ae616aa37bd80c11833d004faf2e052?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ae616aa37bd80c11833d004faf2e052?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">一位不愿露面的网友</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-2162724"><time datetime="2020-10-16T17:25:09+08:00">2020年10月16日 17:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好！一位不愿露面的网友前来捧场！</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2162726" class="comment odd alt depth-2">
+<article id="div-comment-2162726" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb5d083ece3f7652aab20ee0895d1d29?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb5d083ece3f7652aab20ee0895d1d29?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">一位愿意露面的网友</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11541.html#comment-2162726"><time datetime="2020-10-16T17:27:31+08:00">2020年10月16日 17:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一位愿意露面的网友前来捧场！</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

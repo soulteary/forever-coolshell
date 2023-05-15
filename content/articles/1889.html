@@ -1,0 +1,401 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>SQL的Where语句 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1889 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1889" class="post-content post-1889 post type-post status-publish format-standard hentry category-proglanguage category-story tag-database tag-php tag-sql">
+<header class="entry-header">
+<span class="screen-reader-text">SQL的Where语句</span>
+<h1 class="entry-title">SQL的Where语句</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1889.html" title="13:48" rel="bookmark"><time class="entry-date" datetime="2009-12-01T13:48:25+08:00" pubdate="">2009年12月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1889.html#comments" class="comments-link">20 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 15,632 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>某DBA在查看自己的数库日志的时候，看到了数据库服务器上出现了很多很怪异的SQL的Where条件语句，是下面这个样子：（所有的where语句前都有了一个叫“1=1”的子条件）呵呵。</p>
+<p style="text-align: center;"><img decoding="async" class="alignnone size-full wp-image-1890" title="SQL Where Clause" src="/uploads/2009/12/sql.where_.clause.jpg" alt="SQL Where Clause" width="460" height="631" srcset="" sizes="(max-width: 460px) 100vw, 460px"/></p>
+<p>要理解这个事情的原因其实并不难。只要你是一个编写数据库的程序员，你就会知道——动态生成where后的条件的“麻烦”，那就是条件的“分隔”-and或or。下面听我慢慢说来。</p>
+<p><span id="more-1889"></span></p>
+<p>我们知道，大多数的查询表单都需要用户输出一堆查询条件，然后我们的程序在后台要把这些子条件用and组合起来。于是，把and加在各个条件的中间就成为了一件“难事”，因为你的程序需要判断：</p>
+<ul>
+<li>如果没有条件的话，则不需要where</li>
+<li>如果只有一个条件的话，不需要and.</li>
+<li>如果有多个条件的话，
+<ul>
+<li>如果and是持续加在每个条件后面的话，那么就要判断是否是最后一个条件，因为最后一个不能加and.</li>
+<li>同样，如果and是要加在每个条件前面的话，你就需要判断是否是第一个，如果是，那就不加。</li>
+</ul>
+</li>
+</ul>
+<p>真是TMD太烦了，所以，编程“大拿”引入了“1=1”条件语句。于是，编程的难度大幅度下降，你可以用单一的方式来处理这若干的查询子条件了。而1=1应该会被数据库引擎优化时给去掉了。</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">&lt;pre&gt;&lt;code&gt;$query = &#34;SELECT name FROM table WHERE 1=1 &#34;;
+
+foreach($clauses as $key =&gt; $value){
+    $query .= &#34; AND &#34;.escape($key).&#34;=&#34;.escape($value).&#34; &#34;;
+}
+&lt;/code&gt;&lt;/pre&gt;
+</pre>
+<p>呵呵，<strong>DBA怎么能够理解我们疯狂程序员的用心良苦啊</strong>。</p>
+<p>另外，在这里说一下，这样的做法看似很愚蠢，但很有效，在PHP的世界中，也有人使用下面这样的做法——使用了PHP的implode函数。</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">&lt;pre&gt;&lt;code&gt;/**
+ * @param string $base base of query, e.g. UPDATE table SET
+ * @param string $logic logic for concatenating $assoc, e.g. AND
+ * @param array $assoc associative array of `field`=&gt;&#39;value&#39; pairs to concatenate and append to $base
+ * @param string $suffix additional clauses, e.g. LIMIT 0,30
+ * @return string
+ */
+function construct_sql($base, $logic, $clauses, $suffix=&#39;&#39;)
+{
+    // initialise array to avoid warnings/notices on some PHP installations
+    $queries = array();
+
+    // create array of strings to be glued together by logic
+    foreach($clauses as $key =&gt; $value)
+        $queries[] = &#34;`&#34; . escape($key) . &#34;`=&#39;&#34; . escape($value) . &#34;&#39;&#34;;
+
+    // add a space in case $base doesn&#39;t have a space at the end and glue clauses together
+    $query .= &#34; &#34; . implode(&#34; $logic &#34;,$queries) . &#34; &#34; . $suffix . &#34;;&#34;;
+
+    return $query;
+}
+
+/**
+ * @param string $str string to escape for intended use
+ * @return string
+ */
+function escape($str)
+{
+    return mysql_real_escape_string($str);
+}
+&lt;/code&gt;&lt;/pre&gt;
+</pre>
+<p>于是，我们可以这样使用：（<code>为什么我们要在update语句后加上“Limit 1”呢？这个关系到性能问题，关于这方面的话题，你可以查看本站的《<a title="MySQL性能优化的最佳20+条经验" href="/articles/1846.html">MySQL性能优化的最佳20+条经验</a>》</code>）</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">&lt;pre&gt;&lt;code&gt;$updates = array(
+    &#39;field1&#39;=&gt;&#39;val1&#39;
+    &#39;field2&#39;=&gt;&#39;val2&#39;
+);
+$wheres = array(
+    &#39;field1&#39;=&gt;&#39;cond1&#39;,
+    &#39;field2&#39;=&gt;&#39;cond2&#39;
+);
+echo construct_sql(construct_sql(&#34;UPDATE table SET&#34;, &#34;, &#34;, $updates) . &#34; WHERE &#34;, &#34; AND &#34;, $wheres),&#34;LIMIT 1&#34;);
+&lt;/code&gt;&lt;/pre&gt;
+&lt;pre&gt;&lt;/pre&gt;
+</pre>
+<p><code>下面是输出结果：</code></p>
+<p><code data-enlighter-language="php" class="EnlighterJSRAW">UPDATE table SET `field1`=&#39;val1&#39;, `field2`=&#39;val2&#39; WHERE `field1`=&#39;cond1&#39; AND `field2`=&#39;cond2&#39; LIMIT 1;</code></p>
+<p> </p>
+<p><code>（全文完）</code></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1889-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">轶事趣闻</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Database</a>, <a href="javascript:void(0)" rel="tag">PHP</a>, <a href="javascript:void(0)" rel="tag">SQL</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>SQL的Where语句</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2190" class="comment even thread-even depth-1">
+<article id="div-comment-2190" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5c4420ad6a9cea4a1d3dc552cda23437?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5c4420ad6a9cea4a1d3dc552cda23437?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.yongfa365.com/" class="url" rel="ugc external nofollow">yongfa365</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2190"><time datetime="2009-12-01T15:00:49+08:00">2009年12月01日 15:00</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>哈哈，这可是个好东西，</p>
+<p>还有一种用法，以前看很多人ASP时，直接select * from article然后在程序里插入内容，<br/>
+我们可以换成select * from article where 1=2</p>
+</div>
+ </article>
+</li>
+<li id="comment-2214" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2214" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/126a74605422e6e6310df96f6e01bb88?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/126a74605422e6e6310df96f6e01bb88?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://bbs.be10.com" class="url" rel="ugc external nofollow">i_amok</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2214"><time datetime="2009-12-02T13:39:03+08:00">2009年12月02日 13:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>但是这样的话，会造成索引没法利用。因为索引没法跨and，需要复合索引才可以跨and，如果第一个条件是1=1就啥索引都没法用了，具体还要看explain的分析。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2233" class="comment even thread-even depth-1">
+<article id="div-comment-2233" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/be24b063ea4f5106839b08a30780923b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/be24b063ea4f5106839b08a30780923b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://upsuper.org.cn/" class="url" rel="ugc external nofollow">upsuper</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2233"><time datetime="2009-12-02T22:02:49+08:00">2009年12月02日 22:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-2214" rel="nofollow">@i_amok</a><br/>
+理论上说，根据mysql的官方文档，常数比较会被直接优化为true或false，索引的选取应该与此无关……</p>
+</div>
+ </article>
+</li>
+<li id="comment-2246" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2246" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/126a74605422e6e6310df96f6e01bb88?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/126a74605422e6e6310df96f6e01bb88?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://bbs.be10.com" class="url" rel="ugc external nofollow">i_amok</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2246"><time datetime="2009-12-03T11:53:59+08:00">2009年12月03日 11:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-2233" rel="nofollow">@upsuper</a> </p>
+<p>恩，测试过了，你是正确的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2249" class="comment even thread-even depth-1">
+<article id="div-comment-2249" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/35ccdffb5fa05db9057f1874f8be5967?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/35ccdffb5fa05db9057f1874f8be5967?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sunseesiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2249"><time datetime="2009-12-03T15:07:45+08:00">2009年12月03日 15:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>呵呵，一直这么用的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2313" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2313" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5d171de090fb487838930ef4f7f92c26?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5d171de090fb487838930ef4f7f92c26?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gugaotianshi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2313"><time datetime="2009-12-07T10:06:38+08:00">2009年12月07日 10:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>python 中有一个连接 list 的 join 函数，作用于类似 and 多个条件的情形，很好用，HOHO～～</p>
+</div>
+ </article>
+</li>
+<li id="comment-2485" class="comment even thread-even depth-1">
+<article id="div-comment-2485" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fcbe45011bb9a1ba32d3e8e9120a0b07?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fcbe45011bb9a1ba32d3e8e9120a0b07?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">阿段</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2485"><time datetime="2009-12-15T22:37:44+08:00">2009年12月15日 22:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>为什么不 where true and XXX ?</p>
+</div>
+ </article>
+</li>
+<li id="comment-2509" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2509" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96e0106dccde46f7395da1e8b23aff8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96e0106dccde46f7395da1e8b23aff8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fayaa.com" class="url" rel="ugc external nofollow">半瓶墨水</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2509"><time datetime="2009-12-16T20:15:16+08:00">2009年12月16日 20:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我用过一种字符串查找的方法，跟这个神似：</p>
+<p>存储tag的时候经常遇到用空格分割的一长串，比如“abcd bcd bcde”</p>
+<p>现在要找单词”bcd”，很难办，因为要区分是不是单独的单词，abcd和bcde是不算的</p>
+<p>于是先在前后加上空格，然后在搜索词前后加上空格，就变成了在” abcd bcd bcde ” 里面查找 ” bcd “，一个find函数就搞定了</p>
+</div>
+ </article>
+</li>
+<li id="comment-2510" class="comment even thread-even depth-1">
+<article id="div-comment-2510" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96e0106dccde46f7395da1e8b23aff8b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96e0106dccde46f7395da1e8b23aff8b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fayaa.com" class="url" rel="ugc external nofollow">半瓶墨水</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2510"><time datetime="2009-12-16T20:17:39+08:00">2009年12月16日 20:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>（没写完，续上）</p>
+<p>后来干脆存储的时候就加上空格，比如：” abcd bcd bcde “，这样找起来就方便了，但是看起来有点怪异，跟楼主文中描述的很相近</p>
+</div>
+ </article>
+</li>
+<li id="comment-2715" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2715" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bbb6cfea6bcb30a73793aef257ea4581?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bbb6cfea6bcb30a73793aef257ea4581?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xLight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-2715"><time datetime="2009-12-28T10:23:54+08:00">2009年12月28日 10:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>根本没必要 1=1 ，就 where 1 后面跟AND就行了，<br/>
+看来这些程序员还是不够懒</p>
+</div>
+ </article>
+</li>
+<li id="comment-4757" class="comment even thread-even depth-1">
+<article id="div-comment-4757" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a540f9ecac55d5f97825b6196397e02?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a540f9ecac55d5f97825b6196397e02?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vvtommy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-4757"><time datetime="2010-01-27T15:09:12+08:00">2010年01月27日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-2715" rel="nofollow">@xLight</a><br/>
+我承认我很懒……</p>
+</div>
+ </article>
+</li>
+<li id="comment-22344" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-22344" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3eda6fcd3204ef285fa52176c28c4d3e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3eda6fcd3204ef285fa52176c28c4d3e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mark3536</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-22344"><time datetime="2011-01-08T23:05:32+08:00">2011年01月08日 23:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-2214"><p>
+<strong><a href="#comment-2214" rel="nofollow">i_amok</a> :</strong><br/>
+但是这样的话，会造成索引没法利用。因为索引没法跨and，需要复合索引才可以跨and，如果第一个条件是1=1就啥索引都没法用了，具体还要看explain的分析。
+</p></blockquote>
+<p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="fd94a29c909296bd9e9e9b">[email protected]</a>?<br/>
+pgsql 规划器会自动判断and条件是否需要走索引然后分解成多个单条搜索最后UNION起来。</p>
+</div>
+ </article>
+</li>
+<li id="comment-22346" class="comment even thread-even depth-1">
+<article id="div-comment-22346" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3eda6fcd3204ef285fa52176c28c4d3e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3eda6fcd3204ef285fa52176c28c4d3e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">mark3536</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-22346"><time datetime="2011-01-08T23:06:49+08:00">2011年01月08日 23:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-2715"><p>
+<strong><a href="#comment-2715" rel="nofollow">xLight</a> :</strong><br/>
+根本没必要 1=1 ，就 where 1 后面跟AND就行了，<br/>
+看来这些程序员还是不够懒
+</p></blockquote>
+<p>WHERE TRUE 更通用，而 WHERE 1 在MYSQL上正常，在pgsql上出错。</p>
+</div>
+ </article>
+</li>
+<li id="comment-25239" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-25239" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9db7011aaaf79c8353b3453ed73b2bb1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9db7011aaaf79c8353b3453ed73b2bb1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bzhu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-25239"><time datetime="2011-01-26T14:35:56+08:00">2011年01月26日 14:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-22346" rel="nofollow">@mark3536 </a><br/>
+在Oracle上 where true 和 where 1 都非法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-78790" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cnsst.com/wordpress/?p=73" class="url" rel="ugc external nofollow">PHP分页技术的代码和示例 | 零度领域的博客-我的一米阳光</a> </div>
+</li>
+<li id="comment-107410" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-107410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5869ee81dadb86d4244fbd1cb8092cb5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5869ee81dadb86d4244fbd1cb8092cb5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ayanmw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-107410"><time datetime="2011-12-07T18:18:45+08:00">2011年12月07日 18:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>where 1=1<br/>
+and condition<br/>
+那 本文的核心思想 是 支持 这样写法了…easy for 程序员,easy for 可读性.</p>
+</div>
+ </article>
+</li>
+<li id="comment-190234" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/nosql-data-modeling-techniques.html" class="url" rel="ugc external nofollow">Definite Digest » NoSQL 数据建模技术</a> </div>
+</li>
+<li id="comment-191044" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.goocake.com/?p=182" class="url" rel="ugc external nofollow">NoSQL 数据建模技术 | 好豆饼</a> </div>
+</li>
+<li id="comment-192399" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cwyalpha.wordpress.com/2012/05/18/thought-this-was-cool-nosql-%e6%95%b0%e6%8d%ae%e5%bb%ba%e6%a8%a1%e6%8a%80%e6%9c%af/" class="url" rel="ugc external nofollow">Thought this was cool: NoSQL 数据建模技术 « CWYAlpha</a> </div>
+</li>
+<li id="comment-199977" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-199977" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60457c69cfabea213f45801d3fa2991c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://dabentu.com" class="url" rel="ugc external nofollow">大笨兔</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/1889.html#comment-199977"><time datetime="2012-07-28T11:48:00+08:00">2012年07月28日 11:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这是一个好技巧</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,425 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>酷壳 – CoolShell.cn - Part 11</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="home blog paged paged-11 group-blog">
+
+<div id="page" class="hfeed site">
+<header id="masthead" role="banner">
+
+<div id="cc_spacer"></div>
+<div class="site-header">
+
+<div class="site-branding">
+<a class="home-link" href="/" title="酷 壳 – CoolShell" rel="home">
+<h1 class="site-title">酷 壳 – CoolShell</h1>
+<h2 class="site-description">享受编程和技术所带来的快乐 – Coding Your Ambition</h2>
+</a>
+</div>
+</div>
+</header>
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" class="site-main" role="main">
+<article id="post-10910" class="post-content post-10910 post type-post status-publish format-standard hentry category-progdesign category-602 tag-2pc tag-3pc tag-consistency tag-design tag-nwr tag-paxos tag-performance tag-vector-clock tag-704">
+<header class="entry-header">
+<span class="screen-reader-text">分布式系统的事务处理</span>
+<h2 class="entry-title">
+<a href="/articles/10910.html" rel="bookmark">分布式系统的事务处理</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10910.html" title="11:08" rel="bookmark"><time class="entry-date" datetime="2014-01-20T11:08:16+08:00" pubdate="">2014年01月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10910.html#comments" class="comments-link">181 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 284,443 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-10946" alt="" src="/uploads/2014/01/trade-off.jpg" width="251" height="200" srcset=""/>当我们在生产线上用一台服务器来提供数据服务的时候，我会遇到如下的两个问题：</p>
+<p style="padding-left: 30px;">1）一台服务器的性能不足以提供足够的能力服务于所有的网络请求。</p>
+<p style="padding-left: 30px;">2）我们总是害怕我们的这台服务器停机，造成服务不可用或是数据丢失。</p>
+<p>于是我们不得不对我们的服务器进行扩展，加入更多的机器来分担性能上的问题，以及来解决单点故障问题。 通常，我们会通过两种手段来扩展我们的数据服务：</p>
+<p style="padding-left: 30px;">1）<strong>数据分区</strong>：就是把数据分块放在不同的服务器上（如：uid % 16，一致性哈希等）。</p>
+<p style="padding-left: 30px;">2）<strong>数据镜像</strong>：让所有的服务器都有相同的数据，提供相当的服务。</p>
+<p>对于第一种情况，我们无法解决数据丢失的问题，单台服务器出问题时，会有部分数据丢失。所以，<strong>数据服务的高可用性只能通过第二种方法来完成——数据的冗余存储</strong>（一般工业界认为比较安全的备份数应该是3份，如：Hadoop和Dynamo）<strong>。 但是，加入更多的机器，会让我们的数据服务变得很复杂，尤其是跨服务器的事务处理，也就是跨服务器的数据一致性</strong>。这个是一个很难的问题。 让我们用最经典的Use Case：“A帐号向B帐号汇钱”来说明一下，熟悉RDBMS事务的都知道从帐号A到帐号B需要6个操作：</p>
+<ol>
+<li>从A帐号中把余额读出来。</li>
+<li>对A帐号做减法操作。</li>
+<li>把结果写回A帐号中。</li>
+<li>从B帐号中把余额读出来。</li>
+<li>对B帐号做加法操作。</li>
+<li>把结果写回B帐号中。</li>
+</ol>
+<p>为了数据的一致性，这6件事，要么都成功做完，要么都不成功，而且这个操作的过程中，对A、B帐号的其它访问必需锁死，所谓锁死就是要排除其它的读写操作，不然会有脏数据的问题，这就是事务。那么，我们在加入了更多的机器后，这个事情会变得复杂起来：</p>
+<p> <a href="/articles/10910.html#more-10910" class="more-link">…</a></p><a href="/articles/10910.html#more-10910" class="more-link">
+</a><p class="read-more"><a href="/articles/10910.html#more-10910" class="more-link"></a><a class="btn btn-default" href="/articles/10910.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10910-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10822" class="post-content post-10822 post type-post status-publish format-standard hentry category-pythondev category-progdesign category-proglanguage tag-functional tag-javascript tag-pythondev tag-697">
+<header class="entry-header">
+<span class="screen-reader-text">函数式编程</span>
+<h2 class="entry-title">
+<a href="/articles/10822.html" rel="bookmark">函数式编程</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10822.html" title="08:11" rel="bookmark"><time class="entry-date" datetime="2013-12-27T08:11:03+08:00" pubdate="">2013年12月27日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10822.html#comments" class="comments-link">194 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 214,368 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" loading="lazy" class="alignright size-medium wp-image-10861" src="/uploads/2013/12/yoda-lambda-204x300.png" alt="" width="204" height="300" srcset=""/>当我们说起函数式编程来说，我们会看到如下函数式编程的长相：</p>
+<ul>
+<li>函数式编程的三大特性：
+<ul>
+<li><strong>immutable data 不可变数据</strong>：像Clojure一样，默认上变量是不可变的，如果你要改变变量，你需要把变量copy出去修改。这样一来，可以让你的程序少很多Bug。因为，程序中的状态不好维护，在并发的时候更不好维护。（你可以试想一下如果你的程序有个复杂的状态，当以后别人改你代码的时候，是很容易出bug的，在并行中这样的问题就更多了）</li>
+<li><strong>first class functions</strong>：这个技术可以让你的函数就像变量一样来使用。也就是说，你的函数可以像变量一样被创建，修改，并当成变量一样传递，返回或是在函数中嵌套函数。这个有点像Javascript的Prototype（参看<a title="再谈javascript面向对象编程" href="/articles/6668.html" target="_blank" rel="noopener noreferrer">Javascript的面向对象编程</a>）</li>
+<li><strong>尾递归优化</strong>：我们知道递归的害处，那就是如果递归很深的话，stack受不了，并会导致性能大幅度下降。所以，我们使用尾递归优化技术——每次递归时都会重用stack，这样一来能够提升性能，当然，这需要语言或编译器的支持。Python就不支持。</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li>函数式编程的几个技术
+<ul>
+<li><strong>map &amp; reduce</strong> ：这个技术不用多说了，函数式编程最常见的技术就是对一个集合做Map和Reduce操作。这比起过程式的语言来说，在代码上要更容易阅读。（传统过程式的语言需要使用for/while循环，然后在各种变量中把数据倒过来倒过去的）这个很像C++中的STL中的foreach，find_if，count_if之流的函数的玩法。</li>
+<li><strong>pipeline</strong>：这个技术的意思是，把函数实例成一个一个的action，然后，把一组action放到一个数组或是列表中，然后把数据传给这个action list，数据就像一个pipeline一样顺序地被各个函数所操作，最终得到我们想要的结果。</li>
+<li><strong>recursing 递归</strong> ：递归最大的好处就简化代码，他可以把一个复杂的问题用很简单的代码描述出来。注意：递归的精髓是描述问题，而这正是函数式编程的精髓。</li>
+<li><strong>currying</strong>：把一个函数的多个参数分解成多个函数， 然后把函数多层封装起来，每层函数都返回一个函数去接收下一个参数这样，可以简化函数的多个参数。在C++中，这个很像STL中的bind_1st或是bind2nd。</li>
+<li><strong>higher order function 高阶函数</strong>：所谓高阶函数就是函数当参数，把传入的函数做一个封装，然后返回这个封装函数。现象上就是函数传进传出，就像面向对象对象满天飞一样。</li>
+</ul>
+</li>
+</ul>
+<p> <a href="/articles/10822.html#more-10822" class="more-link">…</a></p><a href="/articles/10822.html#more-10822" class="more-link">
+</a><p class="read-more"><a href="/articles/10822.html#more-10822" class="more-link"></a><a class="btn btn-default" href="/articles/10822.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10822-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10804" class="post-content post-10804 post type-post status-publish format-standard hentry category-misc tag-programmer tag-question tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">X-Y Problem</span>
+<h2 class="entry-title">
+<a href="/articles/10804.html" rel="bookmark">X-Y Problem</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10804.html" title="10:22" rel="bookmark"><time class="entry-date" datetime="2013-12-16T10:22:37+08:00" pubdate="">2013年12月16日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10804.html#comments" class="comments-link">135 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 170,480 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<h4><img decoding="async" loading="lazy" class="alignright size-medium wp-image-10809" alt="" src="/uploads/2013/12/x-y.problem-231x300.jpg" width="231" height="300" srcset=""/>X-Y Problem</h4>
+<p>对于X-Y Problem的意思如下：</p>
+<p>1）有人想解决问题X<br/>
+2）他觉得Y可能是解决X问题的方法<br/>
+3）但是他不知道Y应该怎么做<br/>
+4）于是他去问别人Y应该怎么做？</p>
+<p>简而言之，<strong>没有去问怎么解决问题X，而是去问解决方案Y应该怎么去实现和操作</strong>。于是乎：</p>
+<p>1）热心的人们帮助并告诉这个人Y应该怎么搞，但是大家都觉得Y这个方案有点怪异。<br/>
+2）在经过大量地讨论和浪费了大量的时间后，热心的人终于明白了原始的问题X是怎么一回事。<br/>
+3）于是大家都发现，Y根本就不是用来解决X的合适的方案。</p>
+<p>X-Y Problem最大的严重的问题就是：<strong>在一个根本错误的方向上浪费他人大量的时间和精力</strong>！</p>
+<h4>示例</h4>
+<p>举个两个例子：</p>
+<blockquote><p>Q) 我怎么用Shell取得一个字符串的后3位字符？<br/>
+A1) 如果这个字符的变量是$foo，你可以这样来 echo ${foo:-3}<br/>
+A2) 为什么你要取后3位？你想干什么？<br/>
+Q) 其实我就想取文件的扩展名<br/>
+A1) 我靠，原来你要干这事，那我的方法不对，文件的扩展名并不保证一定有3位啊。<br/>
+A1) 如果你的文件必然有扩展名的话，你可以这来样来：echo ${foo##*.}</p></blockquote>
+<p> <a href="/articles/10804.html#more-10804" class="more-link">…</a></p><a href="/articles/10804.html#more-10804" class="more-link">
+</a><p class="read-more"><a href="/articles/10804.html#more-10804" class="more-link"></a><a class="btn btn-default" href="/articles/10804.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10804-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10739" class="post-content post-10739 post type-post status-publish format-standard hentry category-misc category-tools category-proglanguage tag-c tag-javascript tag-lua">
+<header class="entry-header">
+<span class="screen-reader-text">Lua简明教程</span>
+<h2 class="entry-title">
+<a href="/articles/10739.html" rel="bookmark">Lua简明教程</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10739.html" title="08:29" rel="bookmark"><time class="entry-date" datetime="2013-12-03T08:29:06+08:00" pubdate="">2013年12月03日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10739.html#comments" class="comments-link">125 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 269,083 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright" title="welcome!" alt="The Programming Language Lua" src="http://www.lua.org/images/lua.gif"/>这几天系统地学习了一下<a href="http://www.lua.org" target="_blank">Lua这个脚本语言</a>，Lua脚本是一个很轻量级的脚本，也是号称性能最高的脚本，用在很多需要性能的地方，比如：游戏脚本，nginx，wireshark的脚本，当你把他的源码下下来编译后，你会发现解释器居然不到200k，这是多么地变态啊（/bin/sh都要1M，MacOS平台），而且能和C语言非常好的互动。我很好奇得浏览了一下Lua解释器的源码，这可能是我看过最干净的C的源码了。</p>
+<p>我不想写一篇大而全的语言手册，一方面是因为已经有了（见本文后面的链接），重要的原因是，因为大篇幅的文章会挫败人的学习热情，我始终觉得好的文章读起来就像拉大便一样，能一口气很流畅地搞完，才会让人爽（这也是我为什么不想写书的原因）。所以，这必然又是一篇“入厕文章”，还是那句话，我希望本文能够让大家利用上下班，上厕所大便的时间学习一个技术。呵呵。</p>
+<p>相信你现在已经在厕所里脱掉裤子露出屁股已经准备好大便了，那就让我们畅快地排泄吧……</p>
+<h4>运行</h4>
+<p>首先，我们需要知道，Lua是类C的，所以，他是大小写字符敏感的。</p>
+<p>下面是Lua的Hello World。注意：Lua脚本的语句的分号是可选的，这个和<a title="Go 语言简介（上）— 语法" href="/articles/8460.html" target="_blank">GO语言很类似</a>。</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">print(&#34;Hello World&#34;)</code></p>
+<p>你可以像python一样，在命令行上运行lua命令后进入lua的shell中执行语句。</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">chenhao-air:lua chenhao$ lua
+Lua 5.2.2  Copyright (C) 1994-2013 Lua.org, PUC-Rio
+&gt; print(&#34;Hello, World&#34;)
+Hello, World
+&gt; </pre>
+<p> <a href="/articles/10739.html#more-10739" class="more-link">…</a></p><a href="/articles/10739.html#more-10739" class="more-link">
+</a><p class="read-more"><a href="/articles/10739.html#more-10739" class="more-link"></a><a class="btn btn-default" href="/articles/10739.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10739-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10688" class="post-content post-10688 post type-post status-publish format-standard hentry category-misc category-career tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">编程能力与编程年龄</span>
+<h2 class="entry-title">
+<a href="/articles/10688.html" rel="bookmark">编程能力与编程年龄</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10688.html" title="08:21" rel="bookmark"><time class="entry-date" datetime="2013-11-13T08:21:45+08:00" pubdate="">2013年11月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10688.html#comments" class="comments-link">472 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 416,156 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>程序员这个职业究竟可以干多少年，在中国这片神奇的土地上，很多人都说只能干到30岁，然后就需要转型，就像《<a title="程序员技术练级攻略 - 354,806 人阅读" href="/articles/4990.html" target="_blank">程序员技术练级攻略</a>》这篇文章很多人回复到这种玩法会玩死人的一样。我在很多面试中，问到应聘者未来的规划都能听到好些应聘都说程序员是个青春饭。因为，大多数程序员都认为，编程这个事只能干到30岁，最多35岁吧。每每我听到这样的言论，都让我感到相当的无语，大家都希望能像《<a title="“21天教你学会C++”" href="/articles/2250.html" target="_blank">21天速成C++</a>》那样速成，好多时候超级有想和他们争论的冲动，但后来想想算了，因为<strong>你无法帮助那些只想呆在井底思维封闭而且想走捷径速成的人</strong>。</p>
+<p>今天，我们又来谈这个老话题，因为我看到一篇论文，但是也一定会有很多人都会找出各种理由来论证这篇论文的是错的，无所谓了，我把这篇文章送给那些和我一样准备为技术和编程执着和坚持的人。</p>
+<h4>论文</h4>
+<p>首先，我们先来看一篇论文《<a href="http://people.engr.ncsu.edu/ermurph3/papers/msr13.pdf" target="_blank">Is Programming Knowledge Related to Age?</a>》（PDF链接），这篇论文是两个北卡罗莱纳州立大学计算机科学系的两个人Patrick Morrison 和 Emerson Murphy-Hill 对StackOverflow.com上的用户做了相关的数据挖掘得出来的一些数据。（我们知道StackOverflow.com上的数据是公开的，任何人都可以用来分析和统计，所以这篇论文的真实性是有的）</p>
+<p>数据采样和清洗条件如下：（数据全量是1694981用户，平均年龄30.3岁）</p>
+<ul>
+<li>15-70岁之间的用户（这年龄段的用户被称做“Working age”），当然，有很多用户没有输入年龄，这些用户都被过滤了。</li>
+<li>用户在2012年内都回答过问题。因为StackOverflow在2012年对问题和答案的质量要求得比以前高了一倍，所以更能反映程序员的真实水平。</li>
+<li>Reputation声望在2-100K之间。（注：StackOverflow的用户Reputation是得到社会认可的，在面试和招聘中是硬通货币。比大学的学分更有价值）</li>
+</ul>
+<p>上述的条件一共过滤出84,248名程序员，平均年龄：29.02岁，平均Reputaion在1073.9分。</p>
+<p> <a href="/articles/10688.html#more-10688" class="more-link">…</a></p><a href="/articles/10688.html#more-10688" class="more-link">
+</a><p class="read-more"><a href="/articles/10688.html#more-10688" class="more-link"></a><a class="btn btn-default" href="/articles/10688.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10688-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10652" class="post-content post-10652 post type-post status-publish format-standard hentry category-proglanguage">
+<header class="entry-header">
+<span class="screen-reader-text">程序的本质复杂性和元语言抽象</span>
+<h2 class="entry-title">
+<a href="/articles/10652.html" rel="bookmark">程序的本质复杂性和元语言抽象</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10652.html" title="08:00" rel="bookmark"><time class="entry-date" datetime="2013-10-31T08:00:09+08:00" pubdate="">2013年10月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10652.html#comments" class="comments-link">97 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 47,481 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢 <a href="http://weibo.com/weidagang" target="_blank">@文艺复兴记</a>（todd） 投递此文）</strong></p>
+<h4>组件复用技术的局限性</h4>
+<p>常听到有人讲“我写代码很讲究，一直严格遵循<a href="https://en.wikipedia.org/wiki/Don&#39;t_repeat_yourself">DRY原则</a>，把重复使用的功能都封装成可复用的组件，使得代码简短优雅，同时也易于理解和维护”。显然，DRY原则和组件复用技术是最常见的改善代码质量的方法，不过，在我看来以这类方法为指导，能帮助我们写出“不错的程序”，但还不足以帮助我们写出简短、优雅、易理解、易维护的“好程序”。对于熟悉Martin Fowler《重构》和GoF《设计模式》的程序员，我常常提出这样一个问题帮助他们进一步加深对程序的理解：</p>
+<blockquote><p>如果目标是代码“简短、优雅、易理解、易维护”，组件复用技术是最好的方法吗？这种方法有没有根本性的局限？</p></blockquote>
+<p>虽然基于函数、类等形式的组件复用技术从一定程度上消除了冗余，提升了代码的抽象层次，但是这种技术却有着本质的局限性，其根源在于 <strong>每种组件形式都代表了特定的抽象维度，组件复用只能在其维度上进行抽象层次的提升</strong>。比如，我们可以把常用的HashMap等功能封装为类库，但是不管怎么封装复用类永远是类，封装虽然提升了代码的抽象层次，但是它永远不会变成Lambda，而实际问题所代表的抽象维度往往与之并不匹配。</p>
+<p>以常见的二进制消息的解析为例，组件复用技术所能做到的只是把读取字节，检查约束，计算CRC等功能封装成函数，这是远远不够的。比如，下面的表格定义了二进制消息X的格式：</p>
+<p> <a href="/articles/10652.html#more-10652" class="more-link">…</a></p><a href="/articles/10652.html#more-10652" class="more-link">
+</a><p class="read-more"><a href="/articles/10652.html#more-10652" class="more-link"></a><a class="btn btn-default" href="/articles/10652.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10652-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10590" class="post-content post-10590 post type-post status-publish format-standard hentry category-misc category-progdesign tag-algorithm tag-qr tag-693">
+<header class="entry-header">
+<span class="screen-reader-text">二维码的生成细节和原理</span>
+<h2 class="entry-title">
+<a href="/articles/10590.html" rel="bookmark">二维码的生成细节和原理</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10590.html" title="08:32" rel="bookmark"><time class="entry-date" datetime="2013-10-29T08:32:35+08:00" pubdate="">2013年10月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10590.html#comments" class="comments-link">165 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 393,579 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>二维码又称QR Code，QR全称Quick Response，是一个近几年来移动设备上超流行的一种编码方式，它比传统的Bar Code条形码能存更多的信息，也能表示更多的数据类型：比如：字符，数字，日文，中文等等。这两天学习了一下二维码图片生成的相关细节，觉得这个玩意就是一个密码算法，在此写一这篇文章 ，揭露一下。供好学的人一同学习之。</p>
+<p>关于QR Code Specification，可参看这个PDF：<a href="http://raidenii.net/files/datasheets/misc/qr_code.pdf" target="_blank">http://raidenii.net/files/datasheets/misc/qr_code.pdf </a></p>
+<h4>基础知识</h4>
+<p>首先，我们先说一下二维码一共有40个尺寸。官方叫版本Version。Version 1是21 x 21的矩阵，Version 2是 25 x 25的矩阵，Version 3是29的尺寸，每增加一个version，就会增加4的尺寸，公式是：(V-1)*4 + 21（V是版本号） 最高Version 40，(40-1)*4+21 = 177，所以最高是177 x 177 的正方形。</p>
+<p>下面我们看看一个二维码的样例：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10592" alt="" src="/uploads/2013/10/QR-Code-Overview.jpeg" width="616" height="370" srcset="" sizes="(max-width: 616px) 100vw, 616px"/></p>
+<p style="text-align: left;"> <a href="/articles/10590.html#more-10590" class="more-link">…</a></p><a href="/articles/10590.html#more-10590" class="more-link">
+</a><p class="read-more"><a href="/articles/10590.html#more-10590" class="more-link"></a><a class="btn btn-default" href="/articles/10590.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10590-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10427" class="post-content post-10427 post type-post status-publish format-standard hentry category-cplusplus category-progdesign category-funny tag-algorithm tag-buddy tag-679">
+<header class="entry-header">
+<span class="screen-reader-text">伙伴分配器的一个极简实现</span>
+<h2 class="entry-title">
+<a href="/articles/10427.html" rel="bookmark">伙伴分配器的一个极简实现</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10427.html" title="23:10" rel="bookmark"><time class="entry-date" datetime="2013-10-09T23:10:42+08:00" pubdate="">2013年10月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10427.html#comments" class="comments-link">55 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,152 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 </strong><a href="http://weibo.com/fullofbull" target="_blank"><strong>@我的上铺叫路遥</strong></a><strong> 投稿）</strong></p>
+<p>提起buddy system相信很多人不会陌生，它是一种经典的内存分配算法，大名鼎鼎的Linux底层的内存管理用的就是它。这里不探讨内核这么复杂实现，而仅仅是将该算法抽象提取出来，同时给出一份及其简洁的源码实现，以便定制扩展。</p>
+<p>伙伴分配的实质就是一种特殊的<strong>“分离适配”</strong>，即将内存按2的幂进行划分，相当于分离出若干个块大小一致的空闲链表，搜索该链表并给出同需求最佳匹配的大小。其优点是快速搜索合并（O(logN)时间复杂度）以及低外部碎片（最佳适配best-fit）；其缺点是内部碎片，因为按2的幂划分块，如果碰上66单位大小，那么必须划分128单位大小的块。但若需求本身就按2的幂分配，比如可以先分配若干个内存池，在其基础上进一步细分就很有吸引力了。</p>
+<p>可以在<a href="https://en.wikipedia.org/wiki/Buddy_memory_allocation" target="_blank">维基百科</a>上找到该算法的描述，大体如是：</p>
+<p><strong>分配内存：</strong></p>
+<p>1.寻找大小合适的内存块（大于等于所需大小并且最接近2的幂，比如需要27，实际分配32）</p>
+<p style="padding-left: 30px;">1.如果找到了，分配给应用程序。<br/>
+2.如果没找到，分出合适的内存块。</p>
+<p style="padding-left: 60px;">1.对半分离出高于所需大小的空闲内存块<br/>
+2.如果分到最低限度，分配这个大小。<br/>
+3.回溯到步骤1（寻找合适大小的块）<br/>
+4.重复该步骤直到一个合适的块</p>
+<p> <a href="/articles/10427.html#more-10427" class="more-link">…</a></p><a href="/articles/10427.html#more-10427" class="more-link">
+</a><p class="read-more"><a href="/articles/10427.html#more-10427" class="more-link"></a><a class="btn btn-default" href="/articles/10427.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10427-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10476" class="post-content post-10476 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-lambda">
+<header class="entry-header">
+<span class="screen-reader-text">C++11的Lambda使用一例：华容道求解</span>
+<h2 class="entry-title">
+<a href="/articles/10476.html" rel="bookmark">C++11的Lambda使用一例：华容道求解</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10476.html" title="15:50" rel="bookmark"><time class="entry-date" datetime="2013-10-09T15:50:21+08:00" pubdate="">2013年10月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/solstice" title="View all posts by Solstice" rel="author">Solstice</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10476.html#comments" class="comments-link">12 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 41,778 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 <a href="http://weibo.com/u/1701018393?source=webim" target="_blank"><img decoding="async" alt="" src="http://tp2.sinaimg.cn/1701018393/50/1297990315/1"/></a><a title="bnu_chenshuo" href="http://weibo.com/u/1701018393?source=webim" target="_blank"> @bnu_chenshuo </a>投稿）</strong></p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="wp-image-10490 alignright" alt="" src="/uploads/2013/10/huarong.png" width="365" height="227" srcset="" sizes="(max-width: 365px) 100vw, 365px"/></p>
+<p>华容道是一个有益的智力游戏，游戏规则不再赘述。用计算机求解华容道也是一道不错的编程练习题，为了寻求最少步数，求解程序一般用广度优先搜索算法。华容道的一种常见开局如图 1 所示。</p>
+<p>广度优先搜索算法求解华容道的基本步骤：</p>
+<ol>
+<li>准备两个“全局变量”，队列 Q 和和集合 S，S 代表“已知局面”。初时 Q 和 S 皆为空。</li>
+<li>将初始局面加入队列 Q 的末尾，并将初始局面设为已知。</li>
+<li>当队列不为空时，从 Q 的队首取出当前局面 <code>curr</code>。如果队列为空则结束搜索，表明无解。</li>
+<li>如果 <code>curr</code> 是最终局面（曹操位于门口，图 2），则结束搜索，否则继续到第 5 步。</li>
+<li>考虑 <code>curr</code> 中每个可以移动的棋子，试着上下左右移动一步，得到新局面 <code>next</code>，如果新局面未知（<code>next</code> ∉ S），则把它加入队列 Q，并设为已知。这一步可能产生多个新局面。</li>
+<li>回到第2步。</li>
+</ol>
+<p>其中“局面已知”并不要求每个棋子的位置相同，而是指棋子的投影的形状相同（代码中用 mask 表示），例如交换图 1 中的张飞和赵云并不产生新局面，这一规定可以大大缩小搜索空间。</p>
+<p>以上步骤很容易转换为 C++ 代码，这篇文章重点关注的是第 5 步的实现。</p>
+<p> <a href="/articles/10476.html#more-10476" class="more-link">…</a></p><a href="/articles/10476.html#more-10476" class="more-link">
+</a><p class="read-more"><a href="/articles/10476.html#more-10476" class="more-link"></a><a class="btn btn-default" href="/articles/10476.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10476-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-10478" class="post-content post-10478 post type-post status-publish format-standard hentry category-cplusplus tag-c tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">C++面试中string类的一种正确写法</span>
+<h2 class="entry-title">
+<a href="/articles/10478.html" rel="bookmark">C++面试中string类的一种正确写法</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10478.html" title="15:40" rel="bookmark"><time class="entry-date" datetime="2013-10-09T15:40:38+08:00" pubdate="">2013年10月09日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/solstice" title="View all posts by Solstice" rel="author">Solstice</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10478.html#comments" class="comments-link">40 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 66,011 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（感谢网友 <a href="http://weibo.com/u/1701018393?source=webim" target="_blank"><img decoding="async" alt="" src="http://tp2.sinaimg.cn/1701018393/50/1297990315/1"/></a><a title="bnu_chenshuo" href="http://weibo.com/u/1701018393?source=webim" target="_blank"> @bnu_chenshuo </a>投稿）</strong></p>
+<p>C++ 的一个常见面试题是让你实现一个 String 类，限于时间，不可能要求具备 std::string 的功能，但至少要求能正确管理资源。具体来说：</p>
+<ol>
+<li>能像 int 类型那样定义变量，并且支持赋值、复制。</li>
+<li>能用作函数的参数类型及返回类型。</li>
+<li>能用作标准库容器的元素类型，即 vector/list/deque 的 value_type。（用作 std::map 的 key_type 是更进一步的要求，本文从略）。</li>
+</ol>
+<p>换言之，你的 String 能让以下代码编译运行通过，并且没有内存方面的错误。</p>
+<pre data-enlighter-language="cpp" class="EnlighterJSRAW">void foo(String x)
+{
+}
+
+void bar(const String&amp; x)
+{
+}
+
+String baz()
+{
+  String ret(&#34;world&#34;);
+  return ret;
+}
+
+int main()
+{
+  String s0;
+  String s1(&#34;hello&#34;);
+  String s2(s0);
+  String s3 = s1;
+  s2 = s1;
+
+  foo(s1);
+  bar(s1);
+  foo(&#34;temporary&#34;);
+  bar(&#34;temporary&#34;);
+  String s4 = baz();
+
+  std::vector&lt;String&gt; svec;
+  svec.push_back(s0);
+  svec.push_back(s1);
+  svec.push_back(baz());
+  svec.push_back(&#34;good job&#34;);
+}</pre>
+<p> <a href="/articles/10478.html#more-10478" class="more-link">…</a></p><a href="/articles/10478.html#more-10478" class="more-link">
+</a><p class="read-more"><a href="/articles/10478.html#more-10478" class="more-link"></a><a class="btn btn-default" href="/articles/10478.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-10478-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+<div class="row">
+<div class="wp-pagenavi" role="navigation">
+<span class="pages">第 11 / 74 页</span><a class="first" aria-label="First Page" href="/">« 首页</a><a class="previouspostslink" rel="prev" aria-label="上一页" href="/page/10.html">«</a><span class="extend">...</span><a class="page smaller" title="第 7 页" href="/page/7.html">7</a><a class="page smaller" title="第 8 页" href="/page/8.html">8</a><a class="page smaller" title="第 9 页" href="/page/9.html">9</a><a class="page smaller" title="第 10 页" href="/page/10.html">10</a><span aria-current="page" class="current">11</span><a class="page larger" title="第 12 页" href="/page/12.html">12</a><a class="page larger" title="第 13 页" href="/page/13.html">13</a><a class="page larger" title="第 14 页" href="/page/14.html">14</a><a class="page larger" title="第 15 页" href="/page/15.html">15</a><a class="page larger" title="第 16 页" href="/page/16.html">16</a><span class="extend">...</span><a class="larger page" title="第 30 页" href="/page/30.html">30</a><a class="larger page" title="第 40 页" href="/page/40.html">40</a><a class="larger page" title="第 50 页" href="/page/50.html">50</a><a class="larger page" title="第 60 页" href="/page/60.html">60</a><a class="larger page" title="第 70 页" href="/page/70.html">70</a><span class="extend">...</span><a class="nextpostslink" rel="next" aria-label="下一页" href="/page/12.html">»</a><a class="last" aria-label="Last Page" href="/page/74.html">末页 »</a>
+</div>
+</div>
+</div>
+</nav>
+</main>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

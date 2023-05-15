@@ -1,0 +1,440 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C语言的谜题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-945 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-945" class="post-content post-945 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C语言的谜题</span>
+<h1 class="entry-title">C语言的谜题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/945.html" title="17:39" rel="bookmark"><time class="entry-date" datetime="2009-05-31T17:39:58+08:00" pubdate="">2009年05月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/945.html#comments" class="comments-link">162 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 143,397 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>这几天，本站推出了几篇关于C语言的很多文章如下所示：</p>
+<ul>
+<li><strong>语言的歧义</strong> [<a href="/articles/830.html" target="_blank">酷壳链接</a>] [<a href="http://blog.csdn.net/haoel/archive/2009/05/18/4197010.aspx" target="_blank">CSDN链接</a>]</li>
+<li><strong>谁说C语言很简单？</strong> [<a href="/articles/873.html" target="_blank">酷壳链接</a>] [<a href="http://blog.csdn.net/haoel/archive/2009/05/26/4217950.aspx" target="_blank">CSDN链接</a>]</li>
+<li><strong>6个变态的C语言Hello World程序</strong> [<a href="/articles/914.html" target="_blank">酷壳链接</a>] [<a href="http://blog.csdn.net/haoel/archive/2009/05/26/4217565.aspx" target="_blank">CSDN链接</a>]</li>
+<li><strong>如何加密/弄乱C源代码</strong> [<a href="/articles/933.html" target="_blank">酷壳链接</a>] [<a href="http://blog.csdn.net/haoel/archive/2009/05/30/4225974.aspx" target="_blank">CSDN链接</a>]</li>
+<li><strong>C语言的谜题</strong> [<a href="/articles/945.html" target="_blank">酷壳链接</a>] [<a href="http://blog.csdn.net/haoel/archive/2009/06/01/4231029.aspx" target="_blank">CSDN链接</a>]</li>
+</ul>
+<p>我们可以看到很多C语言相关的一些东西。比如《语言的歧义》主要告诉了大家C语言中你意想不到的错误以及一些歧义上的东西。而《谁说C语言很简单》则通过一些看似你从来不可能写出的代码来告诉大家C语言并不是一件容易事情。《6个变态的hello world》和《如何弄乱C的源代码》则以一种极端的方式告诉大家，不要以为咱们自己写不出混乱的代码，每个程序员其实都有把代码搞得一团乱的潜质。通过这些文章，相信你对编程或是你觉得很简单的C语言有了一些了解。是的，很不容易吧，以前是不是低估了编程和C语言？今天是否我们又在低估C++和Java呢？</p>
+<p>本篇文章《C语言的谜题》展示了14个C语言的迷题以及答案，代码应该是足够清楚的，而且我也相信有相当的一些例子可能是我们日常工作可能会见得到的。通过这些迷题，希望你能更了解C语言。如果你不看答案，不知道是否有把握回答各个谜题？让我们来试试。</p>
+<p><span id="more-945"></span></p>
+<p><strong>1、下面的程序并不见得会输出 hello-std-out，你知道为什么吗？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;unistd.h&gt;
+int main()  
+{
+    while(1)
+    {
+        fprintf(stdout,&#34;hello-std-out&#34;);
+        fprintf(stderr,&#34;hello-std-err&#34;);
+        sleep(1);
+    }
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：stdout和stderr是不是同设备描述符。stdout是块设备，stderr则不是。对于块设备，只有当下面几种情况下才会被输入，1）遇到回车，2）缓冲区满，3）flush被调用。而stderr则不会。</p>
+<p><strong>2、下面的程序看起来是正常的，使用了一个逗号表达式来做初始化。</strong>可惜这段程序是有问题的。你知道为什么呢？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+
+int main()
+{
+    int a = 1,2;
+    printf(&#34;a : %d\n&#34;,a);
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：这个程序会得到编译出错（语法出错），逗号表达式是没错，可是在初始化和变量声明时，逗号并不是逗号表达式的意义。这点要区分，要修改上面这个程序，你需要加上括号： int a = (1,2);</p>
+<p><strong>3、下面的程序会有什么样的输出呢？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()
+{
+    int i=43;
+    printf(&#34;%d\n&#34;,printf(&#34;%d&#34;,printf(&#34;%d&#34;,i)));
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：程序会输出4321，你知道为什么吗？要知道为什么，你需要知道printf的返回值是什么。printf返回值是输出的字符个数。</p>
+<p><strong>4、下面的程序会输出什么？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{
+    float a = 12.5;
+    printf(&#34;%d\n&#34;, a);
+    printf(&#34;%d\n&#34;, (int)a);
+    printf(&#34;%d\n&#34;, *(int *)&amp;a);
+    return 0;  
+}
+</pre>
+<p><strong>参考答案</strong>：<br/>
+该项程序输出如下所示，<br/>
+0<br/>
+12<br/>
+1095237632<br/>
+原因是：浮点数是4个字节，12.5f 转成二进制是：01000001010010000000000000000000，十六进制是：0x41480000，十进制是：1095237632。所以，第二和第三个输出相信大家也知道是为什么了。而对于第一个，为什么会输出0，我们需要了解一下float和double的内存布局，如下：</p>
+<ul>
+<li><strong>float</strong>: 1位符号位(s)、8位指数(e)，23位尾数(m,共32位) </li>
+<li><strong>double</strong>: 1位符号位(s)、11位指数(e)，52位尾数(m,共64位)</li>
+</ul>
+<p>然后，我们还需要了解一下printf由于类型不匹配，所以，会把float直接转成double，注意，12.5的float和double的内存二进制完全不一样。别忘了在x86芯片下使用是的反字节序，高位字节和低位字位要反过来。所以：</p>
+<ul>
+<li><strong>float版</strong>：0x41480000 (在内存中是：00 00 48 41)</li>
+<li><strong>double版</strong>：0x4029000000000000 (在内存中是：00 00 00 00 00 00 29 40)</li>
+</ul>
+<p>而我们的%d要求是一个4字节的int，对于double的内存布局，我们可以看到前四个字节是00，所以输出自然是0了。</p>
+<p>这个示例向我们说明printf并不是类型安全的，这就是为什么C++要引如cout的原因了。</p>
+<p><strong>5、下面，我们再来看一个交叉编译的事情，下面的两个文件可以编译通过吗？如果可以通过，结果是什么？</strong></p>
+<p>file1.c </p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">  int arr[80];
+</pre>
+<p>file2.c </p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">extern int *arr;
+int main()  
+{      
+    arr[1] = 100;
+    printf(&#34;%d\n&#34;, arr[1]);
+    return 0;  
+}
+</pre>
+<p><strong>参考答案</strong>：该程序可以编译通过，但运行时会出错。为什么呢？原因是，在另一个文件中用 extern int *arr来外部声明一个数组并不能得到实际的期望值，因为他们的类型并不匹配。所以导致指针实际并没有指向那个数组。注意：一个指向数组的指针，并不等于一个数组。修改：extern int arr[]。（参考：ISO C语言 6.5.4.2 节）</p>
+<p><strong>6、请说出下面的程序输出是多少？并解释为什么？</strong>（注意，该程序并不会输出 “b is 20″）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{      
+    int a=1;      
+    switch(a)      
+    {   
+        int b=20;          
+        case 1: 
+            printf(&#34;b is %d\n&#34;,b);
+            break;
+        default:
+            printf(&#34;b is %d\n&#34;,b);
+            break;
+    }
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：该程序在编译时，可能会出现一条warning: unreachable code at beginning of switch statement。我们以为进入switch后，变量b会被初始化，其实并不然，因为switch-case语句会把变量b的初始化直接就跳过了。所以，程序会输出一个随机的内存值。</p>
+<p><strong>7、请问下面的程序会有什么潜在的危险？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{      
+    char str[80];
+    printf(&#34;Enter the string:&#34;);
+    scanf(&#34;%s&#34;,str);
+    printf(&#34;You entered:%s\n&#34;,str);
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：本题很简单了。这个程序的潜在问题是，如果用户输入了超过80个长度的字符，那么就会有数组越界的问题了，你的程序很有可以及会crash了。</p>
+<p><strong>8、请问下面的程序输出什么？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{
+    int i;
+    i = 10;
+    printf(&#34;i : %d\n&#34;,i);
+    printf(&#34;sizeof(i++) is: %d\n&#34;,sizeof(i++));
+    printf(&#34;i : %d\n&#34;,i);
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：如果你觉得输出分别是，10，4，11，那么你就错了，错在了第三个，第一个是10没有什么问题，第二个是4，也没有什么问题，因为是32位机上一个int有4个字节。但是第三个为什么输出的不是11呢？居然还是10？原因是，sizeof不是一个函数，是一个操作符，其求i++的类型的size，这是一件可以在程序运行前（编译时）完全的事情，所以，sizeof(i++)直接就被4给取代了，在运行时也就不会有了i++这个表达式。</p>
+<p><strong>9、请问下面的程序的输出值是什么？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+
+#define SIZEOF(arr) (sizeof(arr)/sizeof(arr[0]))
+#define PrintInt(expr) printf(&#34;%s:%d\n&#34;,#expr,(expr))
+
+int main()
+{
+    /* The powers of 10 */
+    int pot[] = {
+                    0001,
+                    0010,
+                    0100,
+                    1000
+                };
+
+    int i;
+    for(i=0;i&lt;SIZEOF(pot);i++)
+        PrintInt(pot[i]);
+        
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：好吧，如果你对于PrintInt这个宏有问题的话，你可以去看一看《<a href="/articles/830.html">语言的歧义</a>》中的第四个示例。不过，本例的问题不在这里，本例的输出会是：1，8，64，1000，其实很简单了，以C/C++中，以0开头的数字都是八进制的。</p>
+<p><strong>10、请问下面的程序输出是什么？（绝对不是10）</strong></p>
+<pre>#include <stdio.h>
+#define PrintInt(expr) printf(&#34;%s : %dn&#34;,#expr,(expr))
+
+int main()  
+{
+    int y = 100;
+    int *p;
+    p = malloc(sizeof(int));
+    *p = 10;
+    y = y/*p; /*dividing y by *p */;
+    PrintInt(y);
+    return 0;
+}
+</stdio.h></pre>
+<p><strong>参考答案</strong>：本题输出的是100。为什么呢？问题就出在 y = y/*p;上了，我们本来想的是 y / (*p) ，然而，我们没有加入空格和括号，结果y/*p中的 /*被解释成了注释的开始。于是，这也是整个恶梦的开始。</p>
+<p><strong>11、下面的输出是什么？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{
+    int i = 6;
+    if( ((++i &lt; 7) &amp;&amp; ( i++/6)) || (++i &lt;= 9))
+        ;
+
+    printf(&#34;%d\n&#34;,i);
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：本题并不简单的是考前缀++或反缀++，本题主要考的是&amp;&amp;和||的短路求值的问题。所为短路求值：对于（条件1 &amp;&amp; 条件2），如果“条件1”是false，那“条件2”的表达式会被忽略了。对于（条件1 || 条件2），如果“条件1”为true，而“条件2”的表达式则被忽略了。所以，我相信你会知道本题的答案是什么了。</p>
+<p><strong>12、下面的C程序是合法的吗？如果是，那么输出是什么？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{ 
+    int a=3, b = 5;
+
+    printf(&amp;a[&#34;Ya!Hello! how is this? %s\n&#34;], &amp;b[&#34;junk/super&#34;]);
+    
+    printf(&amp;a[&#34;WHAT%c%c%c  %c%c  %c !\n&#34;], 1[&#34;this&#34;],
+        2[&#34;beauty&#34;],0[&#34;tool&#34;],0[&#34;is&#34;],3[&#34;sensitive&#34;],4[&#34;CCCCCC&#34;]);
+        
+    return 0;  
+}
+</pre>
+<p><strong>参考答案</strong>：<br/>
+本例是合法的，输出如下：</p>
+<blockquote><p> Hello! how is this? super<br/>
+That is C !</p></blockquote>
+<p>本例主要展示了一种另类的用法。下面的两种用法是相同的：</p>
+<blockquote><p> “hello”[2]<br/>
+2[“hello”]</p></blockquote>
+<p>如果你知道：a[i] 其实就是 *(a+i)也就是 *(i+a)，所以如果写成 i[a] 应该也不难理解了。</p>
+<p><strong>13、请问下面的程序输出什么？</strong>（假设：输入 Hello, World）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+int main()  
+{ 
+    char dummy[80];
+    printf(&#34;Enter a string:\n&#34;);
+    scanf(&#34;%[^r]&#34;,dummy);
+    printf(&#34;%s\n&#34;,dummy);
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：本例的输出是“Hello, Wo”，scanf中的”%[^r]”是从中作梗的东西。意思是遇到字符r就结束了。</p>
+<p><strong>14、下面的程序试图使用“位操作”来完成“乘5”的操作，不过这个程序中有个BUG，你知道是什么吗？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#define PrintInt(expr) printf(&#34;%s : %d\n&#34;,#expr,(expr))
+int FiveTimes(int a)  
+{
+    int t;
+    t = a&lt;&lt;2 + a;
+    return t;
+}
+
+int main()  
+{
+    int a = 1, b = 2,c = 3;
+    PrintInt(FiveTimes(a));
+    PrintInt(FiveTimes(b));
+    PrintInt(FiveTimes(c));
+    return 0;
+}
+</pre>
+<p><strong>参考答案</strong>：本题的问题在于函数FiveTimes中的表达式“t = a&lt;&lt;2 + a;”，对于a&lt;&lt;2这个位操作，优先级要比加法要低，所以这个表达式就成了“t = a &lt;&lt; (2+a)”，于是我们就得不到我们想要的值。该程序修正如下：
+</p><pre data-enlighter-language="c" class="EnlighterJSRAW">int FiveTimes(int a)  
+{
+    int t;
+    t = (a&lt;&lt;2) + a;
+    return t;
+}
+</pre>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-945-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C语言的谜题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1840535" class="comment even thread-even depth-1">
+<article id="div-comment-1840535" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ce8b94491d720ada0ed6425cc819011?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ce8b94491d720ada0ed6425cc819011?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.52coder.net" class="url" rel="ugc external nofollow">我哎程序员</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/945.html/comment-page-4#comment-1840535"><time datetime="2016-06-01T09:11:56+08:00">2016年06月01日 09:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第6题，为何我这输出b is 20 windows gcc</p>
+</div>
+ </article>
+</li>
+<li id="comment-1868974" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2141" class="url" rel="ugc external nofollow">如何学好C语言 – linux运维部落</a> </div>
+</li>
+<li id="comment-1910110" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yang.lol/2017/01/06/c-%e8%af%ad%e8%a8%80%e7%bb%93%e6%9e%84%e4%bd%93%e9%87%8c%e7%9a%84%e6%88%90%e5%91%98%e6%95%b0%e7%bb%84%e5%92%8c%e6%8c%87%e9%92%88/" class="url" rel="ugc external nofollow">C 语言结构体里的成员数组和指针 – lol</a> </div>
+</li>
+<li id="comment-1914129" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog-scottwang.rhcloud.com/post/2017/05/21/how-to-study-c-well.html" class="url" rel="ugc external nofollow">如何学好C语言 | Scott-Blog</a> </div>
+</li>
+<li id="comment-1914837" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iszhou.com/2017/07/03/%e5%a6%82%e4%bd%95%e5%ad%a6%e5%a5%bdc%e8%af%ad%e8%a8%80/" class="url" rel="ugc external nofollow">如何学好C语言-iszhou</a> </div>
+</li>
+<li id="comment-1919527" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1919527" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e9014a9ebea885d66824d794543e9dd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e9014a9ebea885d66824d794543e9dd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wuduer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/945.html/comment-page-4#comment-1919527"><time datetime="2017-10-23T09:45:39+08:00">2017年10月23日 09:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>12有错误<br/>
+printf(&amp;a[“WHAT%c%c%c %c%c %c !\n”], 1[“this”],<br/>
+第一个参数不支持这种形式了。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1919528" class="comment even depth-2">
+<article id="div-comment-1919528" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e9014a9ebea885d66824d794543e9dd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e9014a9ebea885d66824d794543e9dd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wuduer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/945.html/comment-page-4#comment-1919528"><time datetime="2017-10-23T09:54:42+08:00">2017年10月23日 09:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不好意思 看错了 这个没问题</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1940131" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/7965.html" class="url" rel="ugc">一个fork的面试题 | | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-1949193" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1949193" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a8135c58dccb7da48ae1ce7b9c2513f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="07706269746f6669607d6f6869606372473631342964686a">[email protected]</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/945.html/comment-page-4#comment-1949193"><time datetime="2018-12-25T15:36:08+08:00">2018年12月25日 15:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这些谜题, 其实都不算什么, 也算不上谜题, 有的是c语言本身语法有缺陷, 比如 y/*p , 这个就是注释的语法有缺陷,放到ide里看就很清楚了. 有的是linux操作系统的问题,比如块设备和字符设备的缓冲,不是c语言的问题.<br/>
+还有的题目有点谭浩强的意思 ++i++, 这本身就是不应该出现再代码里的.还有的是运算符优先级的问题,总之我感觉这些问题本身只能说明c语言有缺陷,而不能说明c语言有多强.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1998853" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://pintouge.online/?p=616" class="url" rel="ugc external nofollow">当printf(“-“)遇上fork() —某公司招聘笔试题目 – 平头哥个人博客</a> </div>
+</li>
+<li id="comment-2219746" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2219746" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a599948510a45795c44d1c0b43a8628d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a599948510a45795c44d1c0b43a8628d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Kyle</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/945.html/comment-page-4#comment-2219746"><time datetime="2021-03-18T19:37:30+08:00">2021年03月18日 19:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我记得APUE里面说块设备只有缓冲区满或者fflush时才会执行IO吧。</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/945.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/945.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/945.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/945.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">945</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

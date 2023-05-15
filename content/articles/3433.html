@@ -1,0 +1,221 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>6个有用的MySQL语句 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-3433 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-3433" class="post-content post-3433 post type-post status-publish format-standard hentry category-datebase tag-mysql tag-sql">
+<header class="entry-header">
+<span class="screen-reader-text">6个有用的MySQL语句</span>
+<h1 class="entry-title">6个有用的MySQL语句</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/3433.html" title="08:29" rel="bookmark"><time class="entry-date" datetime="2010-12-31T08:29:35+08:00" pubdate="">2010年12月31日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/3433.html#comments" class="comments-link">9 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 19,895 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>以前本站给大家介绍过《<a rel="bookmark" href="/articles/1846.html" target="_blank">MySQL性能优化的最佳20+条经验</a>》，今天给大家介绍六条比较有用的MySQL的SQL语句，可能很多人都通过PHP来实现这些功能。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#1_%E8%AE%A1%E7%AE%97%E5%B9%B4%E6%95%B0" title="1. 计算年数">1. 计算年数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#2_%E4%B8%A4%E4%B8%AA%E6%97%B6%E9%97%B4%E7%9A%84%E5%B7%AE" title="2. 两个时间的差">2. 两个时间的差</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#3_%E6%98%BE%E7%A4%BA%E6%9F%90%E4%B8%80%E5%88%97%E5%87%BA%E7%8E%B0%E8%BF%87N%E6%AC%A1%E7%9A%84%E5%80%BC" title="3. 显示某一列出现过N次的值">3. 显示某一列出现过N次的值</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#4_%E8%AE%A1%E7%AE%97%E4%B8%A4%E4%B8%AA%E6%97%A5%E5%AD%90%E9%97%B4%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%97%A5" title="4. 计算两个日子间的工作日">4. 计算两个日子间的工作日</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#5_%E6%9F%A5%E6%89%BE%E8%A1%A8%E4%B8%AD%E7%9A%84%E4%B8%BB%E9%94%AE" title="5. 查找表中的主键">5. 查找表中的主键</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#6_%E6%9F%A5%E7%9C%8B%E4%BD%A0%E7%9A%84%E6%95%B0%E5%BA%93%E6%9C%89%E5%A4%9A%E5%A4%A7" title="6. 查看你的数库有多大">6. 查看你的数库有多大</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="1_%E8%AE%A1%E7%AE%97%E5%B9%B4%E6%95%B0"></span>1. 计算年数<span class="ez-toc-section-end"></span></h4>
+<p>你想通过生日来计算这个人有几岁了。</p>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">
+
+SELECT DATE_FORMAT(FROM_DAYS(TO_DAYS(now()) - TO_DAYS(@dateofbirth)), &#39;%Y&#39;) + 0;
+</pre>
+<h4><span class="ez-toc-section" id="2_%E4%B8%A4%E4%B8%AA%E6%97%B6%E9%97%B4%E7%9A%84%E5%B7%AE"></span>2. 两个时间的差<span class="ez-toc-section-end"></span></h4>
+<p>取得两个 datetime 值的差。假设 dt1 和 dt2 是 datetime 类型，其格式为 ‘yyyy-mm-dd hh:mm:ss’，那么它们之间所差的秒数为：</p>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">
+
+UNIX_TIMESTAMP( dt2 ) - UNIX_TIMESTAMP( dt1 )
+</pre>
+<p>除以60就是所差的分钟数，除以3600就是所差的小时数，再除以24就是所差的天数。</p>
+<h4><span class="ez-toc-section" id="3_%E6%98%BE%E7%A4%BA%E6%9F%90%E4%B8%80%E5%88%97%E5%87%BA%E7%8E%B0%E8%BF%87N%E6%AC%A1%E7%9A%84%E5%80%BC"></span>3. 显示某一列出现过N次的值<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">
+
+SELECT id
+FROM tbl
+GROUP BY id
+HAVING COUNT(*) = N;
+</pre>
+<p><span id="more-3433"></span></p>
+<h4><span class="ez-toc-section" id="4_%E8%AE%A1%E7%AE%97%E4%B8%A4%E4%B8%AA%E6%97%A5%E5%AD%90%E9%97%B4%E7%9A%84%E5%B7%A5%E4%BD%9C%E6%97%A5"></span>4. 计算两个日子间的工作日<span class="ez-toc-section-end"></span></h4>
+<p>所谓工作日就是除出周六周日和节假日。</p>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">
+
+SELECT COUNT(*)
+FROM calendar
+WHERE d BETWEEN Start AND Stop
+  AND DAYOFWEEK(d) NOT IN(1,7)
+  AND holiday=0;
+</pre>
+<h4><span class="ez-toc-section" id="5_%E6%9F%A5%E6%89%BE%E8%A1%A8%E4%B8%AD%E7%9A%84%E4%B8%BB%E9%94%AE"></span>5. 查找表中的主键<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">
+
+SELECT k.column_name
+FROM information_schema.table_constraints t
+JOIN information_schema.key_column_usage k
+USING (constraint_name,table_schema,table_name)
+WHERE t.constraint_type=&#39;PRIMARY KEY&#39;
+  AND t.table_schema=&#39;db&#39;
+  AND t.table_name=tbl&#39;
+</pre>
+<h4><span class="ez-toc-section" id="6_%E6%9F%A5%E7%9C%8B%E4%BD%A0%E7%9A%84%E6%95%B0%E5%BA%93%E6%9C%89%E5%A4%9A%E5%A4%A7"></span>6. 查看你的数库有多大<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="sql" class="EnlighterJSRAW">
+
+SELECT
+  table_schema AS &#39;Db Name&#39;,
+  Round( Sum( data_length + index_length ) / 1024 / 1024, 3 ) AS &#39;Db Size (MB)&#39;,
+  Round( Sum( data_free ) / 1024 / 1024, 3 ) AS &#39;Free Space (MB)&#39;
+FROM information_schema.tables
+GROUP BY table_schema ;
+</pre>
+<p>希望对你有帮助。</p>
+<p>文章：<a href="http://www.codeforest.net/6-useful-mysql-queries" target="_blank">来源</a></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-3433-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">数据库</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">MySQL</a>, <a href="javascript:void(0)" rel="tag">SQL</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>6个有用的MySQL语句</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-20979" class="comment even thread-even depth-1">
+<article id="div-comment-20979" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/70a70ac07d8e569e1ec7820db6989971?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/70a70ac07d8e569e1ec7820db6989971?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">a</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3433.html#comment-20979"><time datetime="2010-12-31T12:57:28+08:00">2010年12月31日 12:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>6. 查看你的数库有多大</p>
+<p>中间居然有一个分号, 害死人不偿命啊.</p>
+</div>
+ </article>
+</li>
+<li id="comment-20986" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-20986" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/afacb76ed98a7e2b0e6cc48687158440?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/afacb76ed98a7e2b0e6cc48687158440?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://liuxidong.myfreephp.tk" class="url" rel="ugc external nofollow">无缺</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3433.html#comment-20986"><time datetime="2010-12-31T13:47:42+08:00">2010年12月31日 13:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-20979" rel="nofollow">@a </a><br/>
+这真是低级错误啊…</p>
+</div>
+ </article>
+</li>
+<li id="comment-21614" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://digest.dallaslu.com/7/" class="url" rel="ugc external nofollow">6个有用的MySQL语句 | 精品文摘</a> </div>
+</li>
+<li id="comment-22115" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-22115" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/28dea8107c627c0655a4a074598f08db?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/28dea8107c627c0655a4a074598f08db?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kilnt</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3433.html#comment-22115"><time datetime="2011-01-07T12:44:29+08:00">2011年01月07日 12:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>4. 计算两个日子间的工作日 </p>
+<p> 实际中没法用,各种法定假期,各国假期,都是没准的.不是算法解决的事情要查对照表.</p>
+</div>
+ </article>
+</li>
+<li id="comment-23571" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jaceju.net/blog/archives/1562" class="url" rel="ugc external nofollow">網站製作學習誌 » [Web] 連結分享</a> </div>
+</li>
+<li id="comment-25292" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.wangxuntian.com/?p=715" class="url" rel="ugc external nofollow">资讯分享2011.1——知识学习 – Wang Xuntian&#39;s blog</a> </div>
+</li>
+<li id="comment-197207" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://winjiejie.com/xing-neng-diao-you-gong-lve-zi-dong-zhuan/" class="url" rel="ugc external nofollow">性能调优攻略 [自动转] | 胜利结界</a> </div>
+</li>
+<li id="comment-1470299" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://bfire201314.sinaapp.com/archives/141" class="url" rel="ugc external nofollow">6个有用的MySQL语句 - bfire</a> </div>
+</li>
+<li id="comment-1760771" class="comment even thread-even depth-1">
+<article id="div-comment-1760771" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/01f8c9977a9e9b680ae926ca209c34f2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/01f8c9977a9e9b680ae926ca209c34f2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/3433.html#comment-1760771"><time datetime="2015-09-21T15:26:18+08:00">2015年09月21日 15:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-20979" rel="nofollow">@a </a><br/>
+第六条 查看数据库有多大 那条语句在MySQL验证是正确的</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

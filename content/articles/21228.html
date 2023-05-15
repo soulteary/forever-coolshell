@@ -1,0 +1,473 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Go编程模式：Pipeline | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-21228 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-21228" class="post-content post-21228 post type-post status-publish format-standard hentry category-go- category-progdesign category-proglanguage tag-channel tag-go tag-golang tag-pipeline series-go">
+<header class="entry-header">
+<span class="screen-reader-text">Go编程模式：Pipeline</span>
+<h1 class="entry-title">Go编程模式：Pipeline</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/21228.html" title="17:04" rel="bookmark"><time class="entry-date" datetime="2020-12-26T17:04:59+08:00" pubdate="">2020年12月26日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/21228.html#comments" class="comments-link">14 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 49,716 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="aligncenter wp-image-21258 size-large" src="/uploads/2020/12/go.line_.-1024x191.png" alt="" width="640" height="119" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>本篇文章，我们着重介绍Go编程中的Pipeline模式。对于Pipeline用过Unix/Linux命令行的人都不会陌生，他是一种把各种命令拼接起来完成一个更强功能的技术方法。在今天，流式处理，函数式编程，以及应用网关对微服务进行简单的API编排，其实都是受pipeline这种技术方式的影响，Pipeline这种技术在可以很容易的把代码按单一职责的原则拆分成多个高内聚低耦合的小模块，然后可以很方便地拼装起来去完成比较复杂的功能。</p>
+<section class="post-series"><h3 class="post-series-title">本文是全系列中第8 / 10篇：<a href="/articles/series/go%e7%bc%96%e7%a8%8b%e6%a8%a1%e5%bc%8f">Go编程模式</a></h3><ul class="post-series-list"><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21128.html">Go编程模式：切片，接口，时间和性能</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21140.html">Go 编程模式：错误处理</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21146.html">Go 编程模式：Functional Options</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21214.html">Go编程模式：委托和反转控制</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21164.html">Go编程模式：Map-Reduce</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21179.html">Go 编程模式：Go Generation</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/17929.html">Go编程模式：修饰器</a></span></li><li class="post-series-item-current post-series-item"><span class="post-series-item-title">Go编程模式：Pipeline</span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21263.html">Go 编程模式：k8s Visitor 模式</a></span></li><li class="post-series-item"><span class="post-series-item-title"><a href="/articles/21615.html">Go编程模式 ： 泛型编程</a></span></li></ul><nav class="post-series-nav"><span class="post-series-nav-prev">« <a href="/articles/17929.html" rel="prev" title="Go编程模式：修饰器">上一篇文章</a></span><span class="post-series-nav-next"><a href="/articles/21263.html" rel="next" title="Go 编程模式：k8s Visitor 模式">下一篇文章</a> »</span></nav></section>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#HTTP_%E5%A4%84%E7%90%86" title="HTTP 处理">HTTP 处理</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Channel_%E7%AE%A1%E7%90%86" title="Channel 管理">Channel 管理</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-3" href="#Channel%E8%BD%AC%E5%8F%91%E5%87%BD%E6%95%B0" title="Channel转发函数">Channel转发函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%B9%B3%E6%96%B9%E5%87%BD%E6%95%B0" title="平方函数">平方函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E8%BF%87%E6%BB%A4%E5%A5%87%E6%95%B0%E5%87%BD%E6%95%B0" title="过滤奇数函数">过滤奇数函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%B1%82%E5%92%8C%E5%87%BD%E6%95%B0" title="求和函数">求和函数</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#Fan_inOut" title="Fan in/Out">Fan in/Out</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB" title="延伸阅读">延伸阅读</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="HTTP_%E5%A4%84%E7%90%86"></span>HTTP 处理<span class="ez-toc-section-end"></span></h4>
+<p>这种Pipeline的模式，我们在《<a title="Go编程模式：修饰器" href="/articles/17929.html" target="_blank" rel="noopener">Go编程模式：修饰器</a>》中有过一个示例，我们在这里再重温一下。在那篇文章中，我们有一堆如 <code>WithServerHead()</code> 、<code>WithBasicAuth()</code> 、<code>WithDebugLog()</code>这样的小功能代码，在我们需要实现某个HTTP API 的时候，我们就可以很容易的组织起来。</p>
+<p>原来的代码是下面这个样子：</p>
+<p><span id="more-21228"></span></p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">http.HandleFunc(&#34;/v1/hello&#34;, WithServerHeader(WithAuthCookie(hello)))
+http.HandleFunc(&#34;/v2/hello&#34;, WithServerHeader(WithBasicAuth(hello)))
+http.HandleFunc(&#34;/v3/hello&#34;, WithServerHeader(WithBasicAuth(WithDebugLog(hello))))</pre>
+<p>通过一个代理函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">type HttpHandlerDecorator func(http.HandlerFunc) http.HandlerFunc
+func Handler(h http.HandlerFunc, decors ...HttpHandlerDecorator) http.HandlerFunc {
+    for i := range decors {
+        d := decors[len(decors)-1-i] // iterate in reverse
+        h = d(h)
+    }
+    return h
+}</pre>
+<p>我们就可以移除不断的嵌套像下面这样使用了：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="generic">http.HandleFunc(&#34;/v4/hello&#34;, Handler(hello,
+                WithServerHeader, WithBasicAuth, WithDebugLog))</pre>
+<h4><span class="ez-toc-section" id="Channel_%E7%AE%A1%E7%90%86"></span>Channel 管理<span class="ez-toc-section-end"></span></h4>
+<p>当然，如果你要写出一个<a href="/articles/17929.html#%E6%B3%9B%E5%9E%8B%E7%9A%84%E4%BF%AE%E9%A5%B0%E5%99%A8" target="_blank" rel="noopener">泛型的pipeline框架</a>并不容易，而使用<a title="GO 编程模式：Go Generation" href="/articles/21179.html" target="_blank" rel="noopener">Go Generation</a>，但是，我们别忘了Go语言最具特色的 Go Routine 和 Channel 这两个神器完全也可以被我们用来构造这种编程。</p>
+<p>Rob Pike在 <a href="https://blog.golang.org/pipelines" target="_blank" rel="noopener">Go Concurrency Patterns: Pipelines and cancellation</a> 这篇blog中介绍了如下的一种编程模式。</p>
+<h5><span class="ez-toc-section" id="Channel%E8%BD%AC%E5%8F%91%E5%87%BD%E6%95%B0"></span>Channel转发函数<span class="ez-toc-section-end"></span></h5>
+<p>首先，我们需一个 <code>echo()</code>函数，其会把一个整型数组放到一个Channel中，并返回这个Channel</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func echo(nums []int) &lt;-chan int {
+  out := make(chan int)
+  go func() {
+    for _, n := range nums {
+      out &lt;- n
+    }
+    close(out)
+  }()
+  return out
+}</pre>
+<p>然后，我们依照这个模式，我们可以写下这个函数。</p>
+<h5><span class="ez-toc-section" id="%E5%B9%B3%E6%96%B9%E5%87%BD%E6%95%B0"></span>平方函数<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func sq(in &lt;-chan int) &lt;-chan int {
+  out := make(chan int)
+  go func() {
+    for n := range in {
+      out &lt;- n * n
+    }
+    close(out)
+  }()
+  return out
+}
+</pre>
+<h5><span class="ez-toc-section" id="%E8%BF%87%E6%BB%A4%E5%A5%87%E6%95%B0%E5%87%BD%E6%95%B0"></span>过滤奇数函数<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func odd(in &lt;-chan int) &lt;-chan int {
+  out := make(chan int)
+  go func() {
+    for n := range in {
+      if n%2 != 0 {
+        out &lt;- n
+      }
+    }
+    close(out)
+  }()
+  return out
+}
+</pre>
+<h5><span class="ez-toc-section" id="%E6%B1%82%E5%92%8C%E5%87%BD%E6%95%B0"></span>求和函数<span class="ez-toc-section-end"></span></h5>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func sum(in &lt;-chan int) &lt;-chan int {
+  out := make(chan int)
+  go func() {
+    var sum = 0
+    for n := range in {
+      sum += n
+    }
+    out &lt;- sum
+    close(out)
+  }()
+  return out
+}</pre>
+<p>然后，我们的用户端的代码如下所示：（注：<strong>你可能会觉得，<code>sum()</code>，<code>odd()</code> 和 <code>sq()</code>太过于相似。你其实可以通过我们之前的<a href="/articles/21164.html" target="_blank" rel="noopener">Map/Reduce编程模式</a>或是<a href="/articles/21179.html" target="_blank" rel="noopener">Go Generation的方式</a>来合并一下</strong>）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var nums = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}
+for n := range sum(sq(odd(echo(nums)))) {
+  fmt.Println(n)
+}</pre>
+<p>上面的代码类似于我们执行了Unix/Linux命令： <code>echo $nums | sq | sum</code></p>
+<p>同样，如果你不想有那么多的函数嵌套，你可以使用一个代理函数来完成。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">type EchoFunc func ([]int) (&lt;- chan int) 
+type PipeFunc func (&lt;- chan int) (&lt;- chan int) 
+
+func pipeline(nums []int, echo EchoFunc, pipeFns ... PipeFunc) &lt;- chan int {
+  ch  := echo(nums)
+  for i := range pipeFns {
+    ch = pipeFns[i](ch)
+  }
+  return ch
+}</pre>
+<p>然后，就可以这样做了：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">var nums = []int{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}    
+for n := range pipeline(nums, gen, odd, sq, sum) {
+    fmt.Println(n)
+  }</pre>
+<h4><span class="ez-toc-section" id="Fan_inOut"></span>Fan in/Out<span class="ez-toc-section-end"></span></h4>
+<p>动用Go语言的 Go Routine和 Channel还有一个好处，就是可以写出1对多，或多对1的pipeline，也就是Fan In/ Fan Out。下面，我们来看一个Fan in的示例：</p>
+<p>我们想通过并发的方式来对一个很长的数组中的质数进行求和运算，我们想先把数组分段求和，然后再把其集中起来。</p>
+<p>下面是我们的主函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func makeRange(min, max int) []int {
+  a := make([]int, max-min+1)
+  for i := range a {
+    a[i] = min + i
+  }
+  return a
+}
+
+func main() {
+  nums := makeRange(1, 10000)
+  in := echo(nums)
+
+  const nProcess = 5
+  var chans [nProcess]&lt;-chan int
+  for i := range chans {
+    chans[i] = sum(prime(in))
+  }
+
+  for n := range sum(merge(chans[:])) {
+    fmt.Println(n)
+  }
+}</pre>
+<p>再看我们的 <code>prime()</code> 函数的实现 ：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func is_prime(value int) bool {
+  for i := 2; i &lt;= int(math.Floor(float64(value) / 2)); i++ {
+    if value%i == 0 {
+      return false
+    }
+  }
+  return value &gt; 1
+}
+
+func prime(in &lt;-chan int) &lt;-chan int {
+  out := make(chan int)
+  go func ()  {
+    for n := range in {
+      if is_prime(n) {
+        out &lt;- n
+      }
+    }
+    close(out)
+  }()
+  return out
+}</pre>
+<p>我们可以看到，</p>
+<ul>
+<li>我们先制造了从1到10000的一个数组，</li>
+<li>然后，把这堆数组全部 <code>echo</code>到一个channel里 – <code>in</code></li>
+<li>此时，生成 5 个 Channel，然后都调用 <code>sum(prime(in))</code> ，于是每个Sum的Go Routine都会开始计算和</li>
+<li>最后再把所有的结果再求和拼起来，得到最终的结果。</li>
+</ul>
+<p>其中的merge代码如下：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="golang">func merge(cs []&lt;-chan int) &lt;-chan int {
+  var wg sync.WaitGroup
+  out := make(chan int)
+
+  wg.Add(len(cs))
+  for _, c := range cs {
+    go func(c &lt;-chan int) {
+      for n := range c {
+        out &lt;- n
+      }
+      wg.Done()
+    }(c)
+  }
+  go func() {
+    wg.Wait()
+    close(out)
+  }()
+  return out
+}</pre>
+<p>用图片表示一下，整个程序的结构如下所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-21231" src="/uploads/2020/12/pipeline-1024x425.png" alt="" width="640" height="266" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<h4><span class="ez-toc-section" id="%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"></span>延伸阅读<span class="ez-toc-section-end"></span></h4>
+<p>如果你还想了解更多的这样的与并发相关的技术，可以参看下面这些资源：</p>
+<ul>
+<li><b>Go</b> <b>Concurrency</b> <b>Patterns</b><b></b> – <b>Rob</b> <b>Pike –</b> 2012 Google I/O <b><br/>
+</b>presents the basics of Go‘s concurrency primitives and several ways to apply them.<br/>
+<u><a href="https://www.youtube.com/watch?v=f6kdp27TYZs">https://www.youtube.com/watch?v=f6kdp27TYZs</a></u></li>
+<li><b>Advanced Go Concurrency Patterns </b>– <b>Rob</b> <b>Pike</b> – 2013 Google I/O <b><br/>
+</b>covers more complex uses of Go’s primitives, especially select.<br/>
+<a href="https://blog.golang.org/advanced-go-concurrency-patterns">https://blog.golang.org/advanced-go-concurrency-patterns</a></li>
+<li><b>Squinting at Power Series </b>– <b>Douglas McIlroy</b>‘s paper <b><br/>
+</b>shows how Go-like concurrency provides elegant support for complex calculations.<br/>
+<a href="https://swtch.com/~rsc/thread/squint.pdf">https://swtch.com/~rsc/thread/squint.pdf</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-21228-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Go 语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">channel</a>, <a href="javascript:void(0)" rel="tag">Go</a>, <a href="javascript:void(0)" rel="tag">golang</a>, <a href="javascript:void(0)" rel="tag">pipeline</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Go编程模式：Pipeline</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2190765" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2190765" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d990833521d6d144acad059776657d0d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d990833521d6d144acad059776657d0d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tzongw</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2190765"><time datetime="2021-01-04T01:47:22+08:00">2021年01月04日 01:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>fan in/out一节的例子，虽然中间分成5个channel和goroutine，但是最后又merge成一个channel。真正处理数据只会有一个goroutine，其余4个都是阻塞住的，没有并发起来。不知我理解的对不对？</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2191406" class="comment odd alt depth-2 parent">
+<article id="div-comment-2191406" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1aa31906d338c22eeb4fbf29f29a0fdc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1aa31906d338c22eeb4fbf29f29a0fdc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刘</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2191406"><time datetime="2021-01-05T17:06:22+08:00">2021年01月05日 17:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>也有此疑问。使用buffered channel可否提高并发性</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2191697" class="comment byuser comment-author-haoel bypostauthor even depth-3">
+<article id="div-comment-2191697" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2191697"><time datetime="2021-01-06T10:40:39+08:00">2021年01月06日 10:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>merge就是需要待所有的channel都处理完成了。但是计算的事都并行完了，所以，在计算上是并发的，在merge上并不是。但真正耗时的是计算而不是merge，所以，并发是有用的。</p>
+<p>另，使不使用buffered channel都差不多，无非就是阻塞在merge还是merge后而已。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2273498" class="comment odd alt depth-3">
+<article id="div-comment-2273498" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4fce2f18b5d39c137efe72e88d3c72ea?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4fce2f18b5d39c137efe72e88d3c72ea?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.nizhuanqian.com" class="url" rel="ugc external nofollow">网赚博客</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2273498"><time datetime="2021-07-04T18:32:15+08:00">2021年07月04日 18:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>网赚博客：www.nizhuanqian.com</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2191757" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2191757" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3d5b3da29cb84642756e3bc4e714c01?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">wardenlym</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2191757"><time datetime="2021-01-06T15:07:55+08:00">2021年01月06日 15:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>same logic written in Elixir:</p>
+<p>result =<br/>
+input<br/>
+|&gt; prime<br/>
+|&gt; sum<br/>
+|&gt; merge</p>
+</div>
+ </article>
+</li>
+<li id="comment-2204503" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2204503" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f6002b55fb770634f23759df60237611?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f6002b55fb770634f23759df60237611?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">乌龟阿白</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2204503"><time datetime="2021-02-09T16:36:13+08:00">2021年02月09日 16:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子哥，可以打招聘广告么……不行您就删了哈</p>
+<p>如果对耗子哥这几篇go编程模式都掌握的炉火纯青，热爱并熟悉函数式，热爱并熟悉函数式，热爱并熟悉函数式，又在寻找新的工作机会的同学。欢迎私聊 wx: starc_mo 坐标深圳，海外电商 SaaS 赛道，薪酬可与 BAT 竞争，寻找有野心的技术人入局。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2250403" class="comment even depth-2">
+<article id="div-comment-2250403" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b5252d3c06bde37d6017112a054d7c7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b5252d3c06bde37d6017112a054d7c7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Bourne</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2250403"><time datetime="2021-05-20T22:53:57+08:00">2021年05月20日 22:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不会是shopee吧，哈哈哈</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2207930" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2207930" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f36dcbe690dcdde04759e50ce3f730e2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f36dcbe690dcdde04759e50ce3f730e2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">绝了</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2207930"><time datetime="2021-02-17T23:14:57+08:00">2021年02月17日 23:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>merge时是否使用buffered chan在这个demo里没多大区别。因为merge是将5个no buffered chan合并到一个no buffered chan，并最终使用sum消费这个chan。瓶颈在最后一步的sum操作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2210535" class="comment even thread-even depth-1">
+<article id="div-comment-2210535" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6338e356cd96e06ca75d187c02bfec45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6338e356cd96e06ca75d187c02bfec45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.gov-bid.com/" class="url" rel="ugc external nofollow">商机文库</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2210535"><time datetime="2021-02-24T18:03:47+08:00">2021年02月24日 18:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>介绍的很详细</p>
+</div>
+ </article>
+</li>
+<li id="comment-2212225" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2212225" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/155cb6c30337ec70fc31a06d80bf3a45?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/155cb6c30337ec70fc31a06d80bf3a45?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bdws</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2212225"><time datetime="2021-02-28T11:20:07+08:00">2021年02月28日 11:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>快递刷单单号购买www.chaojidanhao.cn</p>
+</div>
+ </article>
+</li>
+<li id="comment-2219791" class="comment even thread-even depth-1">
+<article id="div-comment-2219791" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4e2957c8c6d227675178bd0cc89b4abc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.neohope.com" class="url" rel="ugc external nofollow">neohope</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2219791"><time datetime="2021-03-18T21:53:21+08:00">2021年03月18日 21:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>第一次调用sum时启动了5个goroutine，然后在merge中等待5个goroutine全部完成。</p>
+<p>第二次调用sum就没有用到并发了。而且第二次的goroutine编号，与第一次的没有任何重叠。</p>
+<p>虽然是pipeline，其实每次调用都用了不同的goroutine，这和多线程编程是不一样的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2248265" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2248265" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/175f4191203609cfa8a1606c35bceebd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/175f4191203609cfa8a1606c35bceebd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">就是玩</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2248265"><time datetime="2021-05-16T22:28:06+08:00">2021年05月16日 22:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>多goroutine 加int,不是线程安全的，需要使用atomic执行加法</p>
+</div>
+ </article>
+</li>
+<li id="comment-2286626" class="comment even thread-even depth-1">
+<article id="div-comment-2286626" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/caea916f17c27e475bd6c4dce4312351?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/caea916f17c27e475bd6c4dce4312351?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dwqdwqd</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2286626"><time datetime="2021-08-13T09:48:02+08:00">2021年08月13日 09:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>带我去的无群多</p>
+</div>
+ </article>
+</li>
+<li id="comment-2342339" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2342339" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/17dd9f1ea3168a672ea49619d8514ca4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/17dd9f1ea3168a672ea49619d8514ca4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">小超人</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/21228.html#comment-2342339"><time datetime="2021-11-30T19:18:48+08:00">2021年11月30日 19:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问is_prime中的实现，int(math.Floor(float64(value)/2))为什么要这么写啊？我自己验证发现效果和value/2一样。</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

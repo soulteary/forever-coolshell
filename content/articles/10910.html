@@ -1,0 +1,393 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>分布式系统的事务处理 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-10910 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-10910" class="post-content post-10910 post type-post status-publish format-standard hentry category-progdesign category-602 tag-2pc tag-3pc tag-consistency tag-design tag-nwr tag-paxos tag-performance tag-vector-clock tag-704">
+<header class="entry-header">
+<span class="screen-reader-text">分布式系统的事务处理</span>
+<h1 class="entry-title">分布式系统的事务处理</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/10910.html" title="11:08" rel="bookmark"><time class="entry-date" datetime="2014-01-20T11:08:16+08:00" pubdate="">2014年01月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/10910.html#comments" class="comments-link">181 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 284,445 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-full wp-image-10946" alt="" src="/uploads/2014/01/trade-off.jpg" width="251" height="200" srcset=""/>当我们在生产线上用一台服务器来提供数据服务的时候，我会遇到如下的两个问题：</p>
+<p style="padding-left: 30px;">1）一台服务器的性能不足以提供足够的能力服务于所有的网络请求。</p>
+<p style="padding-left: 30px;">2）我们总是害怕我们的这台服务器停机，造成服务不可用或是数据丢失。</p>
+<p>于是我们不得不对我们的服务器进行扩展，加入更多的机器来分担性能上的问题，以及来解决单点故障问题。 通常，我们会通过两种手段来扩展我们的数据服务：</p>
+<p style="padding-left: 30px;">1）<strong>数据分区</strong>：就是把数据分块放在不同的服务器上（如：uid % 16，一致性哈希等）。</p>
+<p style="padding-left: 30px;">2）<strong>数据镜像</strong>：让所有的服务器都有相同的数据，提供相当的服务。</p>
+<p>对于第一种情况，我们无法解决数据丢失的问题，单台服务器出问题时，会有部分数据丢失。所以，<strong>数据服务的高可用性只能通过第二种方法来完成——数据的冗余存储</strong>（一般工业界认为比较安全的备份数应该是3份，如：Hadoop和Dynamo）<strong>。 但是，加入更多的机器，会让我们的数据服务变得很复杂，尤其是跨服务器的事务处理，也就是跨服务器的数据一致性</strong>。这个是一个很难的问题。 让我们用最经典的Use Case：“A帐号向B帐号汇钱”来说明一下，熟悉RDBMS事务的都知道从帐号A到帐号B需要6个操作：</p>
+<ol>
+<li>从A帐号中把余额读出来。</li>
+<li>对A帐号做减法操作。</li>
+<li>把结果写回A帐号中。</li>
+<li>从B帐号中把余额读出来。</li>
+<li>对B帐号做加法操作。</li>
+<li>把结果写回B帐号中。</li>
+</ol>
+<p>为了数据的一致性，这6件事，要么都成功做完，要么都不成功，而且这个操作的过程中，对A、B帐号的其它访问必需锁死，所谓锁死就是要排除其它的读写操作，不然会有脏数据的问题，这就是事务。那么，我们在加入了更多的机器后，这个事情会变得复杂起来：</p>
+<p><span id="more-10910"></span></p>
+<p style="padding-left: 30px;">1）<strong>在数据分区的方案中</strong>：如果A帐号和B帐号的数据不在同一台服务器上怎么办？我们需要一个跨机器的事务处理。也就是说，如果A的扣钱成功了，但B的加钱不成功，我们还要把A的操作给回滚回去。这在跨机器的情况下，就变得比较复杂了。</p>
+<p style="padding-left: 30px;">2）<strong>在数据镜像的方案中</strong>：A帐号和B帐号间的汇款是可以在一台机器上完成的，但是别忘了我们有多台机器存在A帐号和B帐号的副本。如果对A帐号的汇钱有两个并发操作（要汇给B和C），这两个操作发生在不同的两台服务器上怎么办？也就是说，在数据镜像中，在不同的服务器上对同一个数据的写操作怎么保证其一致性，保证数据不冲突？</p>
+<p>同时，我们还要考虑性能的因素，如果不考虑性能的话，事务得到保证并不困难，系统慢一点就行了。除了考虑性能外，我们还要考虑可用性，也就是说，一台机器没了，数据不丢失，服务可由别的机器继续提供。 于是，我们需要重点考虑下面的这么几个情况：</p>
+<p style="padding-left: 30px;">1）<strong>容灾</strong>：数据不丢、结点的Failover</p>
+<p style="padding-left: 30px;">2）<strong>数据的一致性</strong>：事务处理</p>
+<p style="padding-left: 30px;">3）<strong>性能：吞吐量 、 响应时间</strong></p>
+<p>前面说过，要解决数据不丢，只能通过数据冗余的方法，就算是数据分区，每个区也需要进行数据冗余处理。这就是数据副本：当出现某个节点的数据丢失时可以从副本读到，数据副本是分布式系统解决数据丢失异常的唯一手段。所以，在这篇文章中，简单起见，我们只讨论在数据冗余情况下考虑数据的一致性和性能的问题。简单说来：</p>
+<p style="padding-left: 30px;"><strong>1）要想让数据有高可用性，就得写多份数据。</strong></p>
+<p style="padding-left: 30px;"><strong>2）写多份的问题会导致数据一致性的问题。</strong></p>
+<p style="padding-left: 30px;"><strong>3）数据一致性的问题又会引发性能问题</strong></p>
+<p>这就是软件开发，按下了葫芦起了瓢。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B" title="一致性模型">一致性模型</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Master-Slave" title="Master-Slave">Master-Slave</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Master-Master" title="Master-Master">Master-Master</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#TwoThree_Phase_Commit" title="Two/Three Phase Commit">Two/Three Phase Commit</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#Two_Generals_Problem%EF%BC%88%E4%B8%A4%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98%EF%BC%89" title="Two Generals Problem（两将军问题）">Two Generals Problem（两将军问题）</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Paxos%E7%AE%97%E6%B3%95" title="Paxos算法">Paxos算法</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#NWR%E6%A8%A1%E5%9E%8B" title="NWR模型">NWR模型</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E4%B8%80%E8%87%B4%E6%80%A7%E6%A8%A1%E5%9E%8B"></span>一致性模型<span class="ez-toc-section-end"></span></h4>
+<p>说起数据一致性来说，简单说有三种类型（当然，如果细分的话，还有很多一致性模型，如：顺序一致性，FIFO一致性，会话一致性，单读一致性，单写一致性，但为了本文的简单易读，我只说下面三种）：</p>
+<p style="padding-left: 30px;">1）<strong>Weak 弱一致性</strong>：当你写入一个新值后，读操作在数据副本上可能读出来，也可能读不出来。比如：某些cache系统，网络游戏其它玩家的数据和你没什么关系，VOIP这样的系统，或是百度搜索引擎（呵呵）。</p>
+<p style="padding-left: 30px;">2）<strong>Eventually 最终一致性</strong>：当你写入一个新值后，有可能读不出来，但在某个时间窗口之后保证最终能读出来。比如：DNS，电子邮件、Amazon S3，Google搜索引擎这样的系统。</p>
+<p style="padding-left: 30px;">3）<strong>Strong 强一致性</strong>：新的数据一旦写入，在任意副本任意时刻都能读到新值。比如：文件系统，RDBMS，Azure Table都是强一致性的。</p>
+<p>从这三种一致型的模型上来说，我们可以看到，Weak和Eventually一般来说是异步冗余的，而Strong一般来说是同步冗余的，异步的通常意味着更好的性能，但也意味着更复杂的状态控制。同步意味着简单，但也意味着性能下降。 好，让我们由浅入深，一步一步地来看有哪些技术：</p>
+<h4><span class="ez-toc-section" id="Master-Slave"></span>Master-Slave<span class="ez-toc-section-end"></span></h4>
+<p>首先是Master-Slave结构，对于这种加构，Slave一般是Master的备份。在这样的系统中，一般是如下设计的：</p>
+<p style="padding-left: 30px;">1）读写请求都由Master负责。</p>
+<p style="padding-left: 30px;">2）写请求写到Master上后，由Master同步到Slave上。</p>
+<p>从Master同步到Slave上，你可以使用异步，也可以使用同步，可以使用Master来push，也可以使用Slave来pull。 通常来说是Slave来周期性的pull，所以，是最终一致性。这个设计的问题是，如果Master在pull周期内垮掉了，那么会导致这个时间片内的数据丢失。如果你不想让数据丢掉，Slave只能成为Read-Only的方式等Master恢复。</p>
+<p>当然，如果你可以容忍数据丢掉的话，你可以马上让Slave代替Master工作（对于只负责计算的结点来说，没有数据一致性和数据丢失的问题，Master-Slave的方式就可以解决单点问题了） 当然，Master Slave也可以是强一致性的， 比如：当我们写Master的时候，Master负责先写自己，等成功后，再写Slave，两者都成功后返回成功，整个过程是同步的，如果写Slave失败了，那么两种方法，一种是标记Slave不可用报错并继续服务（等Slave恢复后同步Master的数据，可以有多个Slave，这样少一个，还有备份，就像前面说的写三份那样），另一种是回滚自己并返回写失败。（注：一般不先写Slave，因为如果写Master自己失败后，还要回滚Slave，此时如果回滚Slave失败，就得手工订正数据了）你可以看到，如果Master-Slave需要做成强一致性有多复杂。</p>
+<h4><span class="ez-toc-section" id="Master-Master"></span>Master-Master<span class="ez-toc-section-end"></span></h4>
+<p>Master-Master，又叫<a href="https://en.wikipedia.org/wiki/Multi-master_replication" target="_blank">Multi-master</a>，是指一个系统存在两个或多个Master，每个Master都提供read-write服务。这个模型是Master-Slave的加强版，数据间同步一般是通过Master间的异步完成，所以是最终一致性。 Master-Master的好处是，一台Master挂了，别的Master可以正常做读写服务，他和Master-Slave一样，当数据没有被复制到别的Master上时，数据会丢失。很多数据库都支持Master-Master的Replication的机制。</p>
+<p>另外，如果多个Master对同一个数据进行修改的时候，这个模型的恶梦就出现了——对数据间的冲突合并，这并不是一件容易的事情。看看Dynamo的Vector Clock的设计（记录数据的版本号和修改者）就知道这个事并不那么简单，而且Dynamo对数据冲突这个事是交给用户自己搞的。就像我们的SVN源码冲突一样，对于同一行代码的冲突，只能交给开发者自己来处理。（在本文后后面会讨论一下Dynamo的Vector Clock）</p>
+<h4><span class="ez-toc-section" id="TwoThree_Phase_Commit"></span>Two/Three Phase Commit<span class="ez-toc-section-end"></span></h4>
+<p>这个协议的缩写又叫2PC，中文叫两阶段提交。在分布式系统中，每个节点虽然可以知晓自己的操作时成功或者失败，却无法知道其他节点的操作的成功或失败。当一个事务跨越多个节点时，为了保持事务的ACID特性，需要引入一个作为<strong>协调者</strong>的组件来统一掌控所有节点(称作<b>参与者</b>)的操作结果并最终指示这些节点是否要把操作结果进行真正的提交(比如将更新后的数据写入磁盘等等)。 两阶段提交的算法如下：</p>
+<p><strong> 第一阶段</strong>：</p>
+<ol>
+<li>协调者会问所有的参与者结点，是否可以执行提交操作。</li>
+<li>各个参与者开始事务执行的准备工作：如：为资源上锁，预留资源，写undo/redo log……</li>
+<li>参与者响应协调者，如果事务的准备工作成功，则回应“可以提交”，否则回应“拒绝提交”。</li>
+</ol>
+<p><strong>第二阶段</strong>：</p>
+<ul>
+<li>如果所有的参与者都回应“可以提交”，那么，协调者向所有的参与者发送“正式提交”的命令。参与者完成正式提交，并释放所有资源，然后回应“完成”，协调者收集各结点的“完成”回应后结束这个Global Transaction。</li>
+</ul>
+<ul>
+<li>如果有一个参与者回应“拒绝提交”，那么，协调者向所有的参与者发送“回滚操作”，并释放所有资源，然后回应“回滚完成”，协调者收集各结点的“回滚”回应后，取消这个Global Transaction。</li>
+</ul>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10929" alt="" src="/uploads/2014/01/Two-phase_commit.png" width="518" height="195" srcset="" sizes="(max-width: 518px) 100vw, 518px"/></p>
+<p>我们可以看到，2PC说白了就是第一阶段做Vote，第二阶段做决定的一个算法，也可以看到2PC这个事是强一致性的算法。在前面我们讨论过Master-Slave的强一致性策略，和2PC有点相似，只不过2PC更为保守一些——先尝试再提交。 2PC用的是比较多的，在一些系统设计中，会串联一系列的调用，比如：A -&gt; B -&gt; C -&gt; D，每一步都会分配一些资源或改写一些数据。比如我们B2C网上购物的下单操作在后台会有一系列的流程需要做。如果我们一步一步地做，就会出现这样的问题，如果某一步做不下去了，那么前面每一次所分配的资源需要做反向操作把他们都回收掉，所以，操作起来比较复杂。现在很多处理流程（Workflow）都会借鉴2PC这个算法，使用 try -&gt; confirm的流程来确保整个流程的能够成功完成。 举个通俗的例子，西方教堂结婚的时候，都有这样的桥段：</p>
+<p style="padding-left: 30px;">1）牧师分别问新郎和新娘：你是否愿意……不管生老病死……（询问阶段）</p>
+<p style="padding-left: 30px;">2）当新郎和新娘都回答愿意后（锁定一生的资源），牧师就会说：我宣布你们……（事务提交）</p>
+<p>这是多么经典的一个两阶段提交的事务处理。 另外，我们也可以看到其中的一些问题， A）其中一个是同步阻塞操作，这个事情必然会非常大地影响性能。 B）另一个主要的问题是在TimeOut上，比如，</p>
+<p style="padding-left: 30px;">1）如果第一阶段中，参与者没有收到询问请求，或是参与者的回应没有到达协调者。那么，需要协调者做超时处理，一旦超时，可以当作失败，也可以重试。</p>
+<p style="padding-left: 30px;">2）如果第二阶段中，正式提交发出后，如果有的参与者没有收到，或是参与者提交/回滚后的确认信息没有返回，一旦参与者的回应超时，要么重试，要么把那个参与者标记为问题结点剔除整个集群，这样可以保证服务结点都是数据一致性的。</p>
+<p style="padding-left: 30px;">3）糟糕的情况是，第二阶段中，如果参与者收不到协调者的commit/fallback指令，参与者将处于“状态未知”阶段，参与者完全不知道要怎么办，比如：如果所有的参与者完成第一阶段的回复后（可能全部yes，可能全部no，可能部分yes部分no），如果协调者在这个时候挂掉了。那么所有的结点完全不知道怎么办（问别的参与者都不行）。为了一致性，要么死等协调者，要么重发第一阶段的yes/no命令。</p>
+<p>两段提交最大的问题就是第3）项，<strong>如果第一阶段完成后，参与者在第二阶没有收到决策，那么数据结点会进入“不知所措”的状态，这个状态会block住整个事务</strong>。也就是说，协调者Coordinator对于事务的完成非常重要，Coordinator的可用性是个关键。 因些，我们引入三段提交，三段提交在<a href="https://en.wikipedia.org/wiki/Three-phase_commit_protocol" target="_blank">Wikipedia</a>上的描述如下，他把二段提交的第一个段break成了两段：询问，然后再锁资源。最后真正提交。三段提交的示意图如下：</p>
+<p style="padding-left: 30px;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2014/01/Three-phase_commit_diagram.png" width="611" height="321" srcset=""/></p>
+<p>三段提交的核心理念是：<strong>在询问的时候并不锁定资源，除非所有人都同意了，才开始锁资源</strong>。</p>
+<p style="text-align: left;">理论上来说，如果第一阶段所有的结点返回成功，那么有理由相信成功提交的概率很大。这样一来，可以降低参与者Cohorts的状态未知的概率。也就是说，一旦参与者收到了PreCommit，意味他知道大家其实都同意修改了。这一点很重要。下面我们来看一下3PC的状态迁移图：（<strong>注意图中的虚线，那些F,T是Failuer或Timeout</strong>，其中的：状态含义是 q – Query，a – Abort，w – Wait，p – PreCommit，c – Commit）</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10931" alt="" src="/uploads/2014/01/Three-phase_commit_status.png" width="614" height="374" srcset="" sizes="(max-width: 614px) 100vw, 614px"/></p>
+<p style="text-align: left;">从上图的状态变化图我们可以从虚线（那些F,T是Failuer或Timeout）看到——<strong>如果结点处在P状态（PreCommit）的时候发生了F/T的问题，三段提交比两段提交的好处是，三段提交可以继续直接把状态变成C状态（Commit），而两段提交则不知所措</strong>。</p>
+<p style="text-align: left;">其实，三段提交是一个很复杂的事情，实现起来相当难，而且也有一些问题。</p>
+<p style="text-align: left;">看到这里，我相信你有很多很多的问题，你一定在思考2PC/3PC中各种各样的失败场景，<strong>你会发现Timeout是个非常难处理的事情，因为网络上的Timeout在很多时候让你无所事从，你也不知道对方是做了还是没有做。于是你好好的一个状态机就因为Timeout成了个摆设</strong>。</p>
+<p style="text-align: left;"><strong>一个网络服务会有三种状态：1）Success，2）Failure，3）Timeout，第三个绝对是恶梦，尤其在你需要维护状态的时候</strong>。</p>
+<h4><span class="ez-toc-section" id="Two_Generals_Problem%EF%BC%88%E4%B8%A4%E5%B0%86%E5%86%9B%E9%97%AE%E9%A2%98%EF%BC%89"></span>Two Generals Problem（两将军问题）<span class="ez-toc-section-end"></span></h4>
+<p><a href="https://en.wikipedia.org/wiki/Two_Generals&#39;_Problem" target="_blank">Two Generals Problem</a> 两将军问题是这么一个思维性实验问题： 有两支军队，它们分别有一位将军领导，现在准备攻击一座修筑了防御工事的城市。这两支军队都驻扎在那座城市的附近，分占一座山头。一道山谷把两座山分隔开来，并且两位将军唯一的通信方式就是派各自的信使来往于山谷两边。不幸的是，这个山谷已经被那座城市的保卫者占领，并且存在一种可能，那就是任何被派出的信使通过山谷是会被捕。 请注意，虽然两位将军已经就攻击那座城市达成共识，但在他们各自占领山头阵地之前，并没有就进攻时间达成共识。两位将军必须让自己的军队同时进攻城市才能取得成功。因此，他们必须互相沟通，以确定一个时间来攻击，并同意就在那时攻击。如果只有一个将军进行攻击，那么这将是一个灾难性的失败。 这个思维实验就包括考虑他们如何去做这件事情。下面是我们的思考：</p>
+<p style="padding-left: 30px;">1）第一位将军先发送一段消息“让我们在上午9点开始进攻”。然而，一旦信使被派遣，他是否通过了山谷，第一位将军就不得而知了。任何一点的不确定性都会使得第一位将军攻击犹豫，因为如果第二位将军不能在同一时刻发动攻击，那座城市的驻军就会击退他的军队的进攻，导致他的军对被摧毁。</p>
+<p style="padding-left: 30px;">2）知道了这一点，第二位将军就需要发送一个确认回条：“我收到您的邮件，并会在9点的攻击。”但是，如果带着确认消息的信使被抓怎么办？所以第二位将军会犹豫自己的确认消息是否能到达。</p>
+<p style="padding-left: 30px;">3）于是，似乎我们还要让第一位将军再发送一条确认消息——“我收到了你的确认”。然而，如果这位信使被抓怎么办呢？</p>
+<p style="padding-left: 30px;">4）这样一来，是不是我们还要第二位将军发送一个“确认收到你的确认”的信息。</p>
+<p>靠，于是你会发现，这事情很快就发展成为不管发送多少个确认消息，都没有办法来保证两位将军有足够的自信自己的信使没有被敌军捕获。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-10933" alt="" src="/uploads/2014/01/two-generals-problems.jpg" width="538" height="251" srcset="" sizes="(max-width: 538px) 100vw, 538px"/></p>
+<p style="text-align: left;"><strong style="line-height: 1.5em;">这个问题是无解的</strong><span style="line-height: 1.5em;">。</span><span style="line-height: 1.5em;">两个将军问题和它的无解证明首先由E.A.Akkoyunlu,K.Ekanadham和R.V.Huber于1975年在《一些限制与折衷的网络通信设计》一文中发表，就在这篇文章的第73页中一段描述两个黑帮之间的通信中被阐明。 1978年，在Jim Gray的《数据库操作系统注意事项》一书中（从第465页开始）被命名为两个将军悖论。作为两个将军问题的定义和无解性的证明的来源，这一参考被广泛提及。</span></p>
+<p style="text-align: left;">这个实验意在阐明：试图通过建立在一个不可靠的连接上的交流来协调一项行动的隐患和设计上的巨大挑战。</p>
+<p style="text-align: left;">从工程上来说，一个解决两个将军问题的实际方法是使用一个能够承受通信信道不可靠性的方案，并不试图去消除这个不可靠性，但要将不可靠性削减到一个可以接受的程度。比如，第一位将军排出了100位信使并预计他们都被捕的可能性很小。在这种情况下，不管第二位将军是否会攻击或者受到任何消息，第一位将军都会进行攻击。另外，第一位将军可以发送一个消息流，而第二位将军可以对其中的每一条消息发送一个确认消息，这样如果每条消息都被接收到，两位将军会感觉更好。然而我们可以从证明中看出，他们俩都不能肯定这个攻击是可以协调的。他们没有算法可用（比如，收到4条以上的消息就攻击）能够确保防止仅有一方攻击。再者，第一位将军还可以为每条消息编号，说这是1号，2号……直到n号。这种方法能让第二位将军知道通信信道到底有多可靠，并且返回合适的数量的消息来确保最后一条消息被接收到。如果信道是可靠的话，只要一条消息就行了，其余的就帮不上什么忙了。最后一条和第一条消息丢失的概率是相等的。</p>
+<p> 两将军问题可以扩展成更变态的<strong>拜占庭将军问题 (Byzantine Generals Problem)</strong>，其故事背景是这样的：拜占庭位于现在土耳其的伊斯坦布尔，是东罗马帝国的首都。由于当时拜占庭罗马帝国国土辽阔，为了防御目的，因此每个军队都分隔很远，将军与将军之间只能靠信差传消息。 在战争的时候，拜占庭军队内所有将军必需达成一致的共识，决定是否有赢的机会才去攻打敌人的阵营。但是，军队可能有叛徒和敌军间谍，这些叛徒将军们会扰乱或左右决策的过程。这时候，在已知有成员谋反的情况下，其余忠诚的将军在不受叛徒的影响下如何达成一致的协议，这就是拜占庭将军问题。</p>
+<h4><span class="ez-toc-section" id="Paxos%E7%AE%97%E6%B3%95"></span>Paxos算法<span class="ez-toc-section-end"></span></h4>
+<p><a href="https://en.wikipedia.org/wiki/Paxos_(computer_science)" target="_blank">Wikipedia上的各种Paxos算法</a>的描述非常详细，大家可以去围观一下。</p>
+<p>Paxos 算法解决的问题是在一个可能发生上述异常的分布式系统中如何就某个值达成一致，保证不论发生以上任何异常，都不会破坏决议的一致性。一个典型的场景是，在一个分布式数据库系统中，如果各节点的初始状态一致，每个节点都执行相同的操作序列，那么他们最后能得到一个一致的状态。为保证每个节点执行相同的命令序列，需要在每一条指令上执行一个「一致性算法」以保证每个节点看到的指令一致。一个通用的一致性算法可以应用在许多场景中，是分布式计算中的重要问题。从20世纪80年代起对于一致性算法的研究就没有停止过。</p>
+<p><strong>Notes</strong>：Paxos算法是莱斯利·兰伯特（Leslie Lamport，就是 LaTeX 中的”La”，此人现在在微软研究院）于1990年提出的一种基于消息传递的一致性算法。由于算法难以理解起初并没有引起人们的重视，使Lamport在八年后1998年重新发表到ACM Transactions on Computer Systems上（<a href="http://research.microsoft.com/users/lamport/pubs/lamport-paxos.pdf" rel="nofollow">The Part-Time Parliament</a>）。即便如此paxos算法还是没有得到重视，2001年Lamport 觉得同行无法接受他的幽默感，于是用容易接受的方法重新表述了一遍（<a href="http://research.microsoft.com/users/lamport/pubs/paxos-simple.pdf" rel="nofollow">Paxos Made Simple</a>）。可见Lamport对Paxos算法情有独钟。近几年Paxos算法的普遍使用也证明它在分布式一致性算法中的重要地位。2006年Google的三篇论文初现“云”的端倪，其中的Chubby Lock服务使用Paxos作为Chubby Cell中的一致性算法，Paxos的人气从此一路狂飙。（Lamport 本人在 <a href="http://research.microsoft.com/users/lamport/pubs/pubs.html#lamport-paxos" target="_blank">他的blog 中</a>描写了他用9年时间发表这个算法的前前后后）</p>
+<p>注：Amazon的AWS中，所有的云服务都基于一个ALF（Async Lock Framework）的框架实现的，这个ALF用的就是Paxos算法。我在Amazon的时候，看内部的分享视频时，设计者在内部的Principle Talk里说他参考了ZooKeeper的方法，但他用了另一种比ZooKeeper更易读的方式实现了这个算法。</p>
+<p>简单说来，Paxos的目的是让整个集群的结点对某个值的变更达成一致。Paxos算法基本上来说是个民主选举的算法——大多数的决定会成个整个集群的统一决定。任何一个点都可以提出要修改某个数据的提案，是否通过这个提案取决于这个集群中是否有超过半数的结点同意（所以Paxos算法需要集群中的结点是单数）。</p>
+<p><span style="line-height: 1.5em;">这个算法有两个阶段（假设这个有三个结点：A，B，C）：</span></p>
+<p style="padding-left: 30px;"><strong>第一阶段：Prepare阶段</strong></p>
+<p style="padding-left: 30px;">A把申请修改的请求Prepare Request发给所有的结点A，B，C。注意，Paxos算法会有一个Sequence Number（你可以认为是一个提案号，这个数不断递增，而且是唯一的，也就是说A和B不可能有相同的提案号），这个提案号会和修改请求一同发出，任何结点在“Prepare阶段”时都会拒绝其值小于当前提案号的请求。所以，结点A在向所有结点申请修改请求的时候，需要带一个提案号，越新的提案，这个提案号就越是是最大的。</p>
+<p style="padding-left: 30px;">如果接收结点收到的提案号n大于其它结点发过来的提案号，这个结点会回应Yes（本结点上最新的被批准提案号），并保证不接收其它&lt;n的提案。这样一来，结点上在Prepare阶段里总是会对最新的提案做承诺。</p>
+<p style="padding-left: 30px;">优化：在上述 prepare 过程中，如果任何一个结点发现存在一个更高编号的提案，则需要通知 提案人，提醒其中断这次提案。</p>
+<p style="padding-left: 30px;"><strong>第二阶段：Accept阶段</strong></p>
+<p style="padding-left: 30px;">如果提案者A收到了超过半数的结点返回的Yes，然后他就会向所有的结点发布Accept Request（同样，需要带上提案号n），如果没有超过半数的话，那就返回失败。</p>
+<p style="padding-left: 30px;">当结点们收到了Accept Request后，如果对于接收的结点来说，n是最大的了，那么，它就会修改这个值，如果发现自己有一个更大的提案号，那么，结点就会拒绝修改。</p>
+<p>我们可以看以，这似乎就是一个“两段提交”的优化。其实，<strong>2PC/3PC都是分布式一致性算法的残次版本，Google Chubby的作者Mike Burrows说过这个世界上只有一种一致性算法，那就是Paxos，其它的算法都是残次品。</strong></p>
+<p><strong></strong>我们还可以看到：对于同一个值的在不同结点的修改提案就算是在接收方被乱序收到也是没有问题的。</p>
+<p>关于一些实例，你可以看一下Wikipedia中文中的“<a href="https://zh.wikipedia.org/zh/Paxos%E7%AE%97%E6%B3%95#.E5.AE.9E.E4.BE.8B" target="_blank">Paxos样例</a>”一节，我在这里就不再多说了。对于Paxos算法中的一些异常示例，大家可以自己推导一下。你会发现基本上来说只要保证有半数以上的结点存活，就没有什么问题。</p>
+<p>多说一下，自从Lamport在1998年发表Paxos算法后，对Paxos的各种改进工作就从未停止，其中动作最大的莫过于2005年发表的<a href="http://research.microsoft.com/apps/pubs/default.aspx?id=64624" target="_blank">Fast Paxos</a>。无论何种改进，其重点依然是在消息延迟与性能、吞吐量之间作出各种权衡。为了容易地从概念上区分二者，称前者Classic Paxos，改进后的后者为Fast Paxos。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<div id="Msg_18730">下图来自：Google App Engine的co-founder Ryan Barrett在2009年的google i/o上的演讲《<a href="http://snarfed.org/transactions_across_datacenters_io.html" target="_blank">Transaction Across DataCenter</a>》（视频： <a title="阿里旺旺无法确定该链接的安全性" href="https://www.youtube.com/watch?v=srOgpXECblk" target="_blank">http://www.youtube.com/watch?v=srOgpXECblk</a>）</div>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-10942" alt="" src="/uploads/2014/01/Transaction-Across-DataCenter.jpg" width="566" height="255" srcset="" sizes="(max-width: 566px) 100vw, 566px"/></p>
+<p style="text-align: left;">前面，我们说过，要想让数据有高可用性，就需要冗余数据写多份。写多份的问题会带来一致性的问题，而一致性的问题又会带来性能问题。从上图我们可以看到，我们基本上来说不可以让所有的项都绿起来，这就是著名的CAP理论：一致性，可用性，分区容忍性，你只可能要其中的两个。</p>
+<h4><span class="ez-toc-section" id="NWR%E6%A8%A1%E5%9E%8B"></span>NWR模型<span class="ez-toc-section-end"></span></h4>
+<p><strong>最后我还想提一下Amazon Dynamo的NWR模型。这个NWR模型把CAP的选择权交给了用户，让用户自己的选择你的CAP中的哪两个</strong>。</p>
+<p>所谓NWR模型。N代表N个备份，W代表要写入至少W份才认为成功，R表示至少读取R个备份。<strong>配置的时候要求W+R &gt; N</strong>。 因为W+R &gt; N， 所以 R &gt; N-W 这个是什么意思呢？就是读取的份数一定要比总备份数减去确保写成功的倍数的差值要大。</p>
+<p>也就是说，每次读取，都至少读取到一个最新的版本。从而不会读到一份旧数据。当我们需要高可写的环境的时候，我们可以配置W = 1 如果N=3 那么R = 3。 这个时候只要写任何节点成功就认为成功，但是读的时候必须从所有的节点都读出数据。如果我们要求读的高效率，我们可以配置 W=N R=1。这个时候任何一个节点读成功就认为成功，但是写的时候必须写所有三个节点成功才认为成功。</p>
+<p>NWR模型的一些设置会造成脏数据的问题，因为这很明显不是像Paxos一样是一个强一致的东西，所以，可能每次的读写操作都不在同一个结点上，于是会出现一些结点上的数据并不是最新版本，但却进行了最新的操作。</p>
+<p>所以，Amazon Dynamo引了数据版本的设计。也就是说，如果你读出来数据的版本是v1，当你计算完成后要回填数据后，却发现数据的版本号已经被人更新成了v2，那么服务器就会拒绝你。版本这个事就像“乐观锁”一样。</p>
+<p>但是，对于分布式和NWR模型来说，版本也会有恶梦的时候——就是版本冲的问题，比如：我们设置了N=3 W=1，如果A结点上接受了一个值，版本由v1 -&gt; v2，但还没有来得及同步到结点B上（异步的，应该W=1，写一份就算成功），B结点上还是v1版本，此时，B结点接到写请求，按道理来说，他需要拒绝掉，但是他一方面并不知道别的结点已经被更新到v2，另一方面他也无法拒绝，因为W=1，所以写一分就成功了。于是，出现了严重的版本冲突。</p>
+<p>Amazon的Dynamo把版本冲突这个问题巧妙地回避掉了——版本冲这个事交给用户自己来处理。</p>
+<p>于是，Dynamo引入了Vector Clock（矢量钟？!）这个设计。这个设计让每个结点各自记录自己的版本信息，也就是说，对于同一个数据，需要记录两个事：1）谁更新的我，2）我的版本号是什么。</p>
+<p>下面，我们来看一个操作序列：</p>
+<p style="padding-left: 30px;">1）一个写请求，第一次被节点A处理了。节点A会增加一个版本信息(A，1)。我们把这个时候的数据记做D1(A，1)。 然后另外一个对同样key的请求还是被A处理了于是有D2(A，2)。这个时候，D2是可以覆盖D1的，不会有冲突产生。</p>
+<p style="padding-left: 30px;">2）现在我们假设D2传播到了所有节点(B和C)，B和C收到的数据不是从客户产生的，而是别人复制给他们的，所以他们不产生新的版本信息，所以现在B和C所持有的数据还是D2(A，2)。于是A，B，C上的数据及其版本号都是一样的。</p>
+<p style="padding-left: 30px;">3）如果我们有一个新的写请求到了B结点上，于是B结点生成数据D3(A,2; B,1)，意思是：数据D全局版本号为3，A升了两新，B升了一次。这不就是所谓的代码版本的log么？</p>
+<p style="padding-left: 30px;">4）如果D3没有传播到C的时候又一个请求被C处理了，于是，以C结点上的数据是D4(A,2; C,1)。</p>
+<p style="padding-left: 30px;">5）好，最精彩的事情来了：如果这个时候来了一个读请求，我们要记得，我们的W=1 那么R=N=3，所以R会从所有三个节点上读，此时，他会读到三个版本：</p>
+<ul>
+<ul>
+<li>A结点：D2(A,2)</li>
+<li>B结点：D3(A,2;  B,1);</li>
+<li>C结点：D4(A,2;  C,1)</li>
+</ul>
+</ul>
+<p style="padding-left: 30px;">6）这个时候可以判断出，D2已经是旧版本（已经包含在D3/D4中），可以舍弃。</p>
+<p style="padding-left: 30px;">7）但是D3和D4是明显的版本冲突。于是，交给调用方自己去做版本冲突处理。就像源代码版本管理一样。</p>
+<p>很明显，上述的Dynamo的配置用的是CAP里的A和P。</p>
+<p>我非常推大家都去看看这篇论文：《<a href="http://www.read.seas.harvard.edu/~kohler/class/cs239-w08/decandia07dynamo.pdf" target="_blank">Dynamo：Amazon’s Highly Available Key-Value Store</a>》，如果英文痛苦，你可以<a href="http://vdisk.weibo.com/s/AKRQZMLLc1ol  " target="_blank">看看译文</a>（译者不详）。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-10910-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">2PC</a>, <a href="javascript:void(0)" rel="tag">3PC</a>, <a href="javascript:void(0)" rel="tag">Consistency</a>, <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">NWR</a>, <a href="javascript:void(0)" rel="tag">Paxos</a>, <a href="javascript:void(0)" rel="tag">Performance</a>, <a href="javascript:void(0)" rel="tag">Vector Clock</a>, <a href="javascript:void(0)" rel="tag">分布式</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>分布式系统的事务处理</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2041795" class="comment even thread-even depth-1">
+<article id="div-comment-2041795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ddcdf7b94a05f9b3eac9bf81a1128c19?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ddcdf7b94a05f9b3eac9bf81a1128c19?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">吴伟程</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10910.html/comment-page-4#comment-2041795"><time datetime="2019-11-28T11:25:04+08:00">2019年11月28日 11:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了，可以多读几遍</p>
+</div>
+ </article>
+</li>
+<li id="comment-2053491" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2053491" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6479dc5deaa24f14b6b7fcd1656c0e8d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6479dc5deaa24f14b6b7fcd1656c0e8d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">robert</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10910.html/comment-page-4#comment-2053491"><time datetime="2020-01-05T20:31:46+08:00">2020年01月05日 20:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-2085205" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.52xintaidu.com/middleware/1148.html" class="url" rel="ugc external nofollow">图解分布式一致性协议Paxos-52新态度</a> </div>
+</li>
+<li id="comment-2100248" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2100248" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b35f9dad5e3de0081ff71037879ac882?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b35f9dad5e3de0081ff71037879ac882?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://nicksxs.me" class="url" rel="ugc external nofollow">nicksxs</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10910.html/comment-page-4#comment-2100248"><time datetime="2020-05-05T19:55:08+08:00">2020年05月05日 19:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文末的资料链接失效了，能否再传一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-2145931" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codingskill.one/archives/7641" class="url" rel="ugc external nofollow">什麼是分散式？什麼是CAP？不看你就後悔去吧 – CodingSkill</a> </div>
+</li>
+<li id="comment-2177296" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2177296" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/49ef40b65faa1404f039a9a5bcc8da5f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/49ef40b65faa1404f039a9a5bcc8da5f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://hurryking.github.io" class="url" rel="ugc external nofollow">宁金</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10910.html/comment-page-4#comment-2177296"><time datetime="2020-11-29T18:36:33+08:00">2020年11月29日 18:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了,多谢前辈</p>
+</div>
+ </article>
+</li>
+<li id="comment-2198861" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/p/01449753.html" class="url" rel="ugc external nofollow">分布式系统难点 – FIXBBS</a> </div>
+</li>
+<li id="comment-2291043" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1013859" class="url" rel="ugc external nofollow">分布式系统的常用技术和理论总结 - 算法网</a> </div>
+</li>
+<li id="comment-2291046" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1013867" class="url" rel="ugc external nofollow">分布式系统常用思想和技术总结 - 算法网</a> </div>
+</li>
+<li id="comment-2291057" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1014161" class="url" rel="ugc external nofollow">分布式事务解决方案总结 - 算法网</a> </div>
+</li>
+<li id="comment-2291072" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1014418" class="url" rel="ugc external nofollow">分布式系统中数据一致性问题 - 算法网</a> </div>
+</li>
+<li id="comment-2291080" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1014545" class="url" rel="ugc external nofollow">图解分布式一致性协议Paxos - 算法网</a> </div>
+</li>
+<li id="comment-2294281" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1041935" class="url" rel="ugc external nofollow">从GITLAB误删除数据库想到的 - 算法网</a> </div>
+</li>
+<li id="comment-2303975" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://tis.ac.cn/blog/kongdeyou/database_of_kbe/" class="url" rel="ugc external nofollow">游戏服务器数据库及kbEngine中的数据库 - HUA Blog</a> </div>
+</li>
+<li id="comment-2310105" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1296330" class="url" rel="ugc external nofollow">分布式架构之难点 - 算法网</a> </div>
+</li>
+<li id="comment-2348747" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.52tect.com/db/redis/2021/12/15/259.html" class="url" rel="ugc external nofollow">缓存更新的套路 - 提升认知-提升认知</a> </div>
+</li>
+<li id="comment-2348750" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.52tect.com/db/2021/12/15/266.html" class="url" rel="ugc external nofollow">分布式系统的事务处理 - 提升认知-提升认知</a> </div>
+</li>
+<li id="comment-2350936" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21672.html" class="url" rel="ugc">我做系统架构的一些原则 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2360982" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2124526" class="url" rel="ugc external nofollow">分布式系统理论之两阶段提交协议 | 算法网</a> </div>
+</li>
+<li id="comment-2370201" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370201" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1db795e7e94d18fe11a16a7e2be66624?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1db795e7e94d18fe11a16a7e2be66624?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">onlysun</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/10910.html/comment-page-4#comment-2370201"><time datetime="2022-03-01T00:50:11+08:00">2022年03月01日 00:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>您好：<br/>
+关于本文中在3PC中提到“三段提交的核心理念是：在询问的时候并不锁定资源，除非所有人都同意了，才开始锁资源。”这个观点 我存在一些疑问，<br/>
+如果3PC在can commit阶段不对资源资源进行加锁，那RM哪怕再can commit阶段返回yes，其在pre commit阶段的状态也可能因资源抢占而失败，所以是不是应该在can commit阶段就对资源进行加锁？<br/>
+希望得到您的指导。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370309" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2380561" class="url" rel="ugc external nofollow">分布式系统的基本术语之有状态、无状态 - 算法网</a> </div>
+</li>
+<li id="comment-2370410" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2439815" class="url" rel="ugc external nofollow">聊聊系统设计：有状态、无状态 - 算法网</a> </div>
+</li>
+<li id="comment-2370580" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://mapcoding.cn/%e8%bd%ac%e8%bd%bd%e6%88%91%e5%81%9a%e7%b3%bb%e7%bb%9f%e6%9e%b6%e6%9e%84%e7%9a%84%e4%b8%80%e4%ba%9b%e5%8e%9f%e5%88%99/" class="url" rel="ugc external nofollow">我做系统架构的一些原则 - 程序员的自我修养</a> </div>
+</li>
+<li id="comment-2370599" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/22263.html" class="url" rel="ugc">从一次经历谈 TIME_WAIT 的那些事 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2370847" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2590557" class="url" rel="ugc external nofollow">搞懂分布式技术15：缓存更新的套路 - 算法网</a> </div>
+</li>
+<li id="comment-2370848" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/723216" class="url" rel="ugc external nofollow">搞懂分布式技术15：缓存更新的套路 - 内存网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/10910.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/10910.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/10910.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/10910.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">10910</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

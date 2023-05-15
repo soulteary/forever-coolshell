@@ -1,0 +1,1255 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>如何重构“箭头型”代码 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-17757 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-17757" class="post-content post-17757 post type-post status-publish format-standard hentry category-cplusplus category-progdesign category-proglanguage tag-code-review tag-programming tag-refactory">
+<header class="entry-header">
+<span class="screen-reader-text">如何重构“箭头型”代码</span>
+<h1 class="entry-title">如何重构“箭头型”代码</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/17757.html" title="18:07" rel="bookmark"><time class="entry-date" datetime="2017-04-05T18:07:14+08:00" pubdate="">2017年04月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/17757.html#comments" class="comments-link">56 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 103,472 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>本文主要起因是，一次在微博上和朋友关于嵌套好几层的if-else语句的代码重构的讨论（<a href="http://weibo.com/1401880315/ECmCW0oy2" target="_blank" rel="noopener noreferrer">微博原文</a>），在微博上大家有各式各样的问题和想法。按道理来说这些都是编程的基本功，似乎不太值得写一篇文章，不过我觉得很多东西可以从一个简单的东西出发，到达本质，所以，我觉得有必要在这里写一篇的文章。不一定全对，只希望得到更多的讨论，因为有了更深入的讨论才能进步。</p>
+<p>文章有点长，我在文章最后会给出相关的思考和总结陈词，你可以跳到结尾。</p>
+<p>所谓箭头型代码，基本上来说就是下面这个图片所示的情况。</p>
+<p><img decoding="async" class="aligncenter wp-image-17758 size-full" src="/uploads/2017/04/IMG_7411.jpg" alt="" width="720" height="511" srcset="" sizes="(max-width: 720px) 100vw, 720px"/></p>
+<p>那么，这样“箭头型”的代码有什么问题呢？看上去也挺好看的，有对称美。但是……</p>
+<p>关于箭头型代码的问题有如下几个：</p>
+<p><span id="more-17757"></span></p>
+<p>1）我的显示器不够宽，箭头型代码缩进太狠了，需要我来回拉水平滚动条，这让我在读代码的时候，相当的不舒服。</p>
+<p>2）除了宽度外还有长度，有的代码的<code>if-else</code>里的<code>if-else</code>里的<code>if-else</code>的代码太多，读到中间你都不知道中间的代码是经过了什么样的层层检查才来到这里的。</p>
+<p>总而言之，<strong>“箭头型代码”如果嵌套太多，代码太长的话，会相当容易让维护代码的人（包括自己）迷失在代码中，因为看到最内层的代码时，你已经不知道前面的那一层一层的条件判断是什么样的，代码是怎么运行到这里的，所以，箭头型代码是非常难以维护和Debug的</strong>。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%BE%AE%E5%8D%9A%E4%B8%8A%E7%9A%84%E6%A1%88%E4%BE%8B_%E4%B8%8E_Guard_Clauses" title="微博上的案例 与 Guard Clauses">微博上的案例 与 Guard Clauses</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E6%8A%BD%E5%8F%96%E6%88%90%E5%87%BD%E6%95%B0" title="抽取成函数">抽取成函数</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%B5%8C%E5%A5%97%E7%9A%84_if_%E5%A4%96%E7%9A%84%E4%BB%A3%E7%A0%81" title="嵌套的 if 外的代码">嵌套的 if 外的代码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%8A%B6%E6%80%81%E6%A3%80%E6%9F%A5%E5%B5%8C%E5%A5%97" title="状态检查嵌套">状态检查嵌套</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%BB%B6%E4%BC%B8%E6%80%9D%E8%80%83" title="延伸思考">延伸思考</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%A3%80%E6%9F%A5%E9%94%99%E8%AF%AF" title="检查错误">检查错误</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E6%A3%80%E6%9F%A5%E7%8A%B6%E6%80%81" title="检查状态">检查状态</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%BE%AE%E5%8D%9A%E4%B8%8A%E7%9A%84%E6%A1%88%E4%BE%8B_%E4%B8%8E_Guard_Clauses"></span>微博上的案例 与 Guard Clauses<span class="ez-toc-section-end"></span></h4>
+<p>OK，我们先来看一下微博上的那个示例，代码量如果再大一点，嵌套再多一点，你很容易会在条件中迷失掉（下面这个示例只是那个“大箭头”下的一个小箭头）</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">FOREACH(Ptr&lt;WfExpression&gt;, argument, node-&gt;arguments) {
+    int index = manager-&gt;expressionResolvings.Keys().IndexOf(argument.Obj());
+    if (index != -1) {
+        auto type = manager-&gt;expressionResolvings.Values()[index].type;
+        if (! types.Contains(type.Obj())) {
+            types.Add(type.Obj());
+            if (auto group = type-&gt;GetTypeDescriptor()-&gt;GetMethodGroupByName(L&#34;CastResult&#34;, true)) {
+                int count = group-&gt;GetMethodCount();
+                for (int i = 0; i &lt; count; i++) { auto method = group-&gt;GetMethod(i);
+                    if (method-&gt;IsStatic()) {
+                        if (method-&gt;GetParameterCount() == 1 &amp;&amp;
+                            method-&gt;GetParameter(0)-&gt;GetType()-&gt;GetTypeDescriptor() == description::GetTypeDescriptor&lt;DescriptableObject&gt;() &amp;&amp;
+                            method-&gt;GetReturn()-&gt;GetTypeDescriptor() != description::GetTypeDescriptor&lt;void&gt;() ) {
+                            symbol-&gt;typeInfo = CopyTypeInfo(method-&gt;GetReturn());
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+</pre>
+<p>上面这段代码，可以把条件反过来写，然后就可以把箭头型的代码解掉了，重构的代码如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">FOREACH(Ptr&lt;WfExpression&gt;, argument, node-&gt;arguments) {
+    int index = manager-&gt;expressionResolvings.Keys().IndexOf(argument.Obj());
+    if (index == -1)  continue;
+    
+    auto type = manager-&gt;expressionResolvings.Values()[index].type;
+    if ( types.Contains(type.Obj()))  continue;
+    
+    types.Add(type.Obj());
+
+    auto group = type-&gt;GetTypeDescriptor()-&gt;GetMethodGroupByName(L&#34;CastResult&#34;, true);
+    if  ( ! group ) continue;
+ 
+    int count = group-&gt;GetMethodCount();
+    for (int i = 0; i &lt; count; i++) { auto method = group-&gt;GetMethod(i);
+        if (! method-&gt;IsStatic()) continue;
+       
+        if ( method-&gt;GetParameterCount() == 1 &amp;&amp;
+               method-&gt;GetParameter(0)-&gt;GetType()-&gt;GetTypeDescriptor() == description::GetTypeDescriptor&lt;DescriptableObject&gt;() &amp;&amp;
+               method-&gt;GetReturn()-&gt;GetTypeDescriptor() != description::GetTypeDescriptor&lt;void&gt;() ) {
+            symbol-&gt;typeInfo = CopyTypeInfo(method-&gt;GetReturn());
+            break;
+        }
+    }
+}
+</pre>
+<p>这种代码的重构方式叫 <strong>Guard Clauses</strong></p>
+<ul>
+<li><a href="https://martinfowler.com/" target="_blank" rel="noopener noreferrer">Martin Fowler</a> 的 Refactoring 的网站上有相应的说明《<a href="https://refactoring.com/catalog/replaceNestedConditionalWithGuardClauses.html" target="_blank" rel="noopener noreferrer">Replace Nested Conditional with Guard Clauses</a>》。</li>
+</ul>
+<ul>
+<li><a href="https://blog.codinghorror.com/" target="_blank" rel="noopener noreferrer">Coding Horror</a> 上也有一篇文章讲了这种重构的方式 —— 《<a href="https://blog.codinghorror.com/flattening-arrow-code/" target="_blank" rel="noopener noreferrer">Flattening Arrow Code</a>》</li>
+</ul>
+<ul>
+<li><a href="http://stackoverflow.com/" target="_blank" rel="noopener noreferrer">StackOverflow</a> 上也有相关的问题说了这种方式 —— 《<a href="http://stackoverflow.com/questions/356121/refactor-nested-if-statement-for-clarity" target="_blank" rel="noopener noreferrer">Refactor nested IF statement for clarity</a>》</li>
+</ul>
+<p>这里的思路其实就是，<strong>让出错的代码先返回，前面把所有的错误判断全判断掉，然后就剩下的就是正常的代码了</strong>。</p>
+<h4><span class="ez-toc-section" id="%E6%8A%BD%E5%8F%96%E6%88%90%E5%87%BD%E6%95%B0"></span>抽取成函数<span class="ez-toc-section-end"></span></h4>
+<p>微博上有些人说，continue 语句破坏了阅读代码的通畅，我觉得他们一定没有好好读这里面的代码，其实，我们可以看到，所有的 if 语句都是在判断是否出错的情况，所以，在维护代码的时候，你可以完全不理会这些 if 语句，因为都是出错处理的，而剩下的代码都是正常的功能代码，反而更容易阅读了。当然，一定有不是上面代码里的这种情况，那么，不用continue ，我们还能不能重构呢？</p>
+<p>当然可以，抽成函数：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">bool CopyMethodTypeInfo(auto &amp;method, auto &amp;group, auto &amp;symbol) 
+{
+    if (! method-&gt;IsStatic()) {
+        return true;
+    }
+    if ( method-&gt;GetParameterCount() == 1 &amp;&amp;
+           method-&gt;GetParameter(0)-&gt;GetType()-&gt;GetTypeDescriptor() == description::GetTypeDescriptor&lt;DescriptableObject&gt;() &amp;&amp;
+           method-&gt;GetReturn()-&gt;GetTypeDescriptor() != description::GetTypeDescriptor&lt;void&gt;() ) {
+        symbol-&gt;typeInfo = CopyTypeInfo(method-&gt;GetReturn());
+        return false;
+    }
+    return true;
+}
+
+void ExpressionResolvings(auto &amp;manager, auto &amp;argument, auto &amp;symbol) 
+{
+    int index = manager-&gt;expressionResolvings.Keys().IndexOf(argument.Obj());
+    if (index == -1) return;
+    
+    auto type = manager-&gt;expressionResolvings.Values()[index].type;
+    if ( types.Contains(type.Obj())) return;
+
+    types.Add(type.Obj());
+    auto group = type-&gt;GetTypeDescriptor()-&gt;GetMethodGroupByName(L&#34;CastResult&#34;, true);
+    if  ( ! group ) return;
+
+    int count = group-&gt;GetMethodCount();
+    for (int i = 0; i &lt; count; i++) { auto method = group-&gt;GetMethod(i);
+        if ( ! CopyMethodTypeInfo(method, group, symbol) ) break;
+    }
+}
+
+...
+...
+FOREACH(Ptr&lt;WfExpression&gt;, argument, node-&gt;arguments) {
+    ExpressionResolvings(manager, arguments, symbol)
+}
+...
+...
+</pre>
+<p>你发出现，抽成函数后，代码比之前变得更容易读和更容易维护了。不是吗？</p>
+<p>有人说：“如果代码不共享，就不要抽取成函数！”，持有这个观点的人太死读书了。函数是代码的封装或是抽象，并不一定用来作代码共享使用，函数用于屏蔽细节，让其它代码耦合于接口而不是细节实现，这会让我们的代码更为简单，简单的东西都能让人易读也易维护。这才是函数的作用。</p>
+<h4><span class="ez-toc-section" id="%E5%B5%8C%E5%A5%97%E7%9A%84_if_%E5%A4%96%E7%9A%84%E4%BB%A3%E7%A0%81"></span>嵌套的 if 外的代码<span class="ez-toc-section-end"></span></h4>
+<p>微博上还有人问，原来的代码如果在各个 if 语句后还有要执行的代码，那么应该如何重构。比如下面这样的代码。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">//原版
+for(....) {
+    do_before_cond1()
+    if (cond1) {
+        do_before_cond2();
+        if (cond2) {
+            do_before_cond3();
+            if (cond3) {
+                do_something();
+            }
+            do_after_cond3();
+        }
+        do_after_cond2();
+    }
+    do_after_cond1();
+}</pre>
+<p>上面这段代码中的那些 <code>do_after_condX()</code> 是无论条件成功与否都要执行的。所以，我们拉平后的代码如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">//重构第一版
+for(....) {
+    do_before_cond1();
+    if ( !cond1 ) {
+        do_after_cond1();
+        continue
+    } 
+    do_after_cond1();
+
+    do_before_cond2();
+    if ( !cond2 ) { 
+        do_after_cond2();
+        continue;
+    }
+    do_after_cond2();
+
+    do_before_cond3();
+    if ( !cond3 ) {
+        do_after_cond3();
+        continue;
+    }
+    do_after_cond3();
+
+    do_something();  
+}</pre>
+<p>你会发现，上面的 <code>do_after_condX</code> 出现了两份。<strong>如果 if 语句块中的代码改变了某些<code>do_after_condX</code>依赖的状态，那么这是最终版本。</strong></p>
+<p>但是，如果它们之前没有依赖关系的话，根据 DRY 原则，我们就可以只保留一份，那么直接掉到 if 条件前就好了，如下所示：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">//重构第二版
+for(....) {
+    do_before_cond1();
+    do_after_cond1();
+    if ( !cond1 ) continue;
+ 
+    do_before_cond2();
+    do_after_cond2();
+    if ( !cond2 ) continue;
+
+    do_before_cond3();
+    do_after_cond3();
+    if ( !cond3 ) continue;
+
+    do_something();  
+}</pre>
+<p>此时，你会说，我靠，居然，改变了执行的顺序，把条件放到 <code>do_after_condX()</code> 后面去了。这会不会有问题啊？</p>
+<p>其实，你再分析一下之前的代码，你会发现，本来，cond1 是判断 do_before_cond1() 是否出错的，如果有成功了，才会往下执行。而 do_after_cond1() 是无论如何都要执行的。从逻辑上来说，do_after_cond1()其实和do_before_cond1()的执行结果无关，而 cond1 却和是否去执行 do_before_cond2() 相关了。如果我把断行变成下面这样，反而代码逻辑更清楚了。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">//重构第三版
+for(....) {
+
+    do_before_cond1();
+    do_after_cond1();
+
+
+    if ( !cond1 ) continue;  // &lt;-- cond1 成了是否做第二个语句块的条件
+    do_before_cond2();
+    do_after_cond2();
+
+    if ( !cond2 ) continue; // &lt;-- cond2 成了是否做第三个语句块的条件
+    do_before_cond3();
+    do_after_cond3();
+
+    if ( !cond3 ) continue; //&lt;-- cond3 成了是否做第四个语句块的条件
+    do_something(); 
+ 
+}
+</pre>
+<p>于是乎，在未来维护代码的时候，维护人一眼看上去就明白，代码在什么时候会执行到哪里。 这个时候，你会发现，把这些语句块抽成函数，代码会干净的更多，再重构一版：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">//重构第四版
+bool do_func3() {
+   do_before_cond2();
+   do_after_cond2();
+   return cond3;
+}
+
+bool do_func2() {
+   do_before_cond2();
+   do_after_cond2();
+   return cond2;
+}
+
+bool do_func1() {
+   do_before_cond1();
+   do_after_cond1();
+   return cond1;
+}
+
+// for-loop 你可以重构成这样
+for (...) {
+    bool cond = do_func1();
+    if (cond) cond = do_func2();
+    if (cond) cond = do_func3();
+    if (cond) do_something();
+}
+
+// for-loop 也可以重构成这样
+for (...) {
+    if ( ! do_func1() ) continue;
+    if ( ! do_func2() ) continue;
+    if ( ! do_func3() ) continue;
+    do_something();
+}
+</pre>
+<p>上面，我给出了两个版本的for-loop，你喜欢哪个？我喜欢第二个。这个时候，因为for-loop里的代码非常简单，就算你不喜欢 continue ，这样的代码阅读成本已经很低了。</p>
+<h4><span class="ez-toc-section" id="%E7%8A%B6%E6%80%81%E6%A3%80%E6%9F%A5%E5%B5%8C%E5%A5%97"></span>状态检查嵌套<span class="ez-toc-section-end"></span></h4>
+<p>接下来，我们再来看另一个示例。下面的代码的伪造了一个场景——把两个人拉到一个一对一的聊天室中，因为要检查双方的状态，所以，代码可能会写成了“箭头型”。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">int ConnectPeer2Peer(Conn *pA, Conn* pB, Manager *manager)
+{
+    if ( pA-&gt;isConnected() ) {
+        manager-&gt;Prepare(pA);
+        if ( pB-&gt;isConnected() ) {
+            manager-&gt;Prepare(pB);
+            if ( manager-&gt;ConnectTogther(pA, pB) ) {
+                pA-&gt;Write(&#34;connected&#34;);
+                pB-&gt;Write(&#34;connected&#34;);
+                return S_OK;
+            }else{
+                return S_ERROR;
+            }
+
+        }else {
+            pA-&gt;Write(&#34;Peer is not Ready, waiting...&#34;);
+            return S_RETRY;
+        }
+    }else{
+        if ( pB-&gt;isConnected() ) {
+            manager-&gt;Prepare();
+            pB-&gt;Write(&#34;Peer is not Ready, waiting...&#34;);
+            return S_RETRY;
+        }else{
+            pA-&gt;Close();
+            pB-&gt;Close();
+            return S_ERROR;
+        }
+    }
+    //Shouldn&#39;t be here!
+    return S_ERROR;
+}</pre>
+<p>重构上面的代码，我们可以先分析一下上面的代码，说明了，上面的代码就是对 PeerA 和 PeerB 的两个状态 “连上”， “未连上” 做组合 “状态” （注：实际中的状态应该比这个还要复杂，可能还会有“断开”、“错误”……等等状态）， 于是，我们可以把代码写成下面这样，合并上面的嵌套条件，对于每一种组合都做出判断。这样一来，逻辑就会非常的干净和清楚。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">int ConnectPeer2Peer(Conn *pA, Conn* pB, Manager *manager)
+{
+    if ( pA-&gt;isConnected() ) {
+        manager-&gt;Prepare(pA);
+    }
+
+    if ( pB-&gt;isConnected() ) {
+        manager-&gt;Prepare(pB);
+    }
+
+    // pA = YES &amp;&amp; pB = NO
+    if (pA-&gt;isConnected() &amp;&amp; ! pB-&gt;isConnected()  ) {
+        pA-&gt;Write(&#34;Peer is not Ready, waiting&#34;);
+        return S_RETRY;
+    // pA = NO &amp;&amp; pB = YES
+    }else if ( !pA-&gt;isConnected() &amp;&amp; pB-&gt;isConnected() ) {
+        pB-&gt;Write(&#34;Peer is not Ready, waiting&#34;);
+        return S_RETRY;
+    // pA = YES &amp;&amp; pB = YES
+    }else if (pA-&gt;isConnected() &amp;&amp; pB-&gt;isConnected()  ) {
+        if ( ! manager-&gt;ConnectTogther(pA, pB) ) {
+            return S_ERROR;
+        }
+        pA-&gt;Write(&#34;connected&#34;);
+        pB-&gt;Write(&#34;connected&#34;);
+        return S_OK;
+    }
+
+    // pA = NO, pB = NO
+    pA-&gt;Close();
+    pB-&gt;Close();
+    return S_ERROR;
+}</pre>
+<h4><span class="ez-toc-section" id="%E5%BB%B6%E4%BC%B8%E6%80%9D%E8%80%83"></span>延伸思考<span class="ez-toc-section-end"></span></h4>
+<p>对于 <code>if-else</code> 语句来说，一般来说，就是检查两件事：<strong>错误</strong> 和 <strong>状态</strong>。</p>
+<h5><span class="ez-toc-section" id="%E6%A3%80%E6%9F%A5%E9%94%99%E8%AF%AF"></span>检查错误<span class="ez-toc-section-end"></span></h5>
+<p>对于检查错误来说，使用 Guard Clauses 会是一种标准解，但我们还需要注意下面几件事：</p>
+<p style="padding-left: 30px;">1）当然，出现错误的时候，还会出现需要释放资源的情况。你可以使用 <code>goto fail;</code> 这样的方式，但是最优雅的方式应该是C++面向对象式的 RAII 方式。</p>
+<p style="padding-left: 30px;">2）以错误码返回是一种比较简单的方式，这种方式有很一些问题，比如，如果错误码太多，判断出错的代码会非常复杂，另外，正常的代码和错误的代码会混在一起，影响可读性。所以，在更为高组的语言中，使用 <code>try-catch</code> 异常捕捉的方式，会让代码更为易读一些。</p>
+<h5><span class="ez-toc-section" id="%E6%A3%80%E6%9F%A5%E7%8A%B6%E6%80%81"></span>检查状态<span class="ez-toc-section-end"></span></h5>
+<p>对于检查状态来说，实际中一定有更为复杂的情况，比如下面几种情况：</p>
+<p style="padding-left: 30px;">1）像TCP协议中的两端的状态变化。</p>
+<p style="padding-left: 30px;">2）像shell各个命令的命令选项的各种组合。</p>
+<p style="padding-left: 30px;">3）像游戏中的状态变化（一棵非常复杂的状态树）。</p>
+<p style="padding-left: 30px;">4）像语法分析那样的状态变化。</p>
+<p>对于这些复杂的状态变化，其本上来说，你需要先定义一个状态机，或是一个子状态的组合状态的查询表，或是一个状态查询分析树。</p>
+<p><strong>写代码时，代码的运行中的控制状态或业务状态是会让你的代码流程变得混乱的一个重要原因，重构“箭头型”代码的一个很重要的工作就是重新梳理和描述这些状态的变迁关系</strong>。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>好了，下面总结一下，把“箭头型”代码重构掉的几个手段如下：</p>
+<p>1）<strong>使用 Guard Clauses </strong>。 尽可能的让出错的先返回， 这样后面就会得到干净的代码。</p>
+<p>2）<strong>把条件中的语句块抽取成函数</strong>。 有人说：“如果代码不共享，就不要抽取成函数！”，持有这个观点的人太死读书了。函数是代码的封装或是抽象，并不一定用来作代码共享使用，函数用于屏蔽细节，让其它代码耦合于接口而不是细节实现，这会让我们的代码更为简单，简单的东西都能让人易读也易维护，<strong>写出让人易读易维护的代码才是重构代码的初衷</strong>！</p>
+<p>3）<strong>对于出错处理，使用try-catch异常处理和<a href="http://stackoverflow.com/questions/2321511/what-is-meant-by-resource-acquisition-is-initialization-raii" target="_blank" rel="noopener noreferrer">RAII机制</a></strong>。返回码的出错处理有很多问题，比如：A) 返回码可以被忽略，B) 出错处理的代码和正常处理的代码混在一起，C) 造成函数接口污染，比如像atoi()这种错误码和返回值共用的糟糕的函数。</p>
+<p>4）<strong>对于多个状态的判断和组合，如果复杂了，可以使用“组合状态表”，或是状态机加Observer的状态订阅的设计模式</strong>。这样的代码即解了耦，也干净简单，同样有很强的扩展性。</p>
+<p>5） <strong>重构“箭头型”代码其实是在帮你重新梳理所有的代码和逻辑，这个过程非常值得为之付出</strong>。重新整思路去想尽一切办法简化代码的过程本身就可以让人成长。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-17757-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Code Review</a>, <a href="javascript:void(0)" rel="tag">Programming</a>, <a href="javascript:void(0)" rel="tag">Refactory</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>如何重构“箭头型”代码</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1913678" class="comment even thread-even depth-1">
+<article id="div-comment-1913678" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f517c8043744e658c847554916f3b6b9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f517c8043744e658c847554916f3b6b9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mrsu.me" class="url" rel="ugc external nofollow">mrsu</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913678"><time datetime="2017-04-05T18:24:13+08:00">2017年04月05日 18:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你们都在看浩哥文章学习，我却在抢沙发，好惭愧……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913679" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1913679" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/54a410dd2ea5c7a26aca2d0631d49a7d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/54a410dd2ea5c7a26aca2d0631d49a7d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://xqin.net/" class="url" rel="ugc external nofollow">小秦</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913679"><time datetime="2017-04-05T19:13:01+08:00">2017年04月05日 19:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那么问题来了. 文章最上面的那副图里的代码怎么重构.</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913680" class="comment even depth-2">
+<article id="div-comment-1913680" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.lilydjwg.me/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913680"><time datetime="2017-04-05T21:07:45+08:00">2017年04月05日 21:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那有什么问题，提前返回就可以了嘛。</p>
+<p>其实我从来没有写成过这么大的箭头，因为我的窗口宽度有限～</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1913681" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913681" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/53074202448334d8165f96b5ca2441a7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/53074202448334d8165f96b5ca2441a7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Thomas Lau</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913681"><time datetime="2017-04-05T21:29:51+08:00">2017年04月05日 21:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>示例：原版到第一版的重构正确的前提是各个方法独立吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913684" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913684" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8311b98c30ff3c1438cd851919a8408a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8311b98c30ff3c1438cd851919a8408a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">riaqn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913684"><time datetime="2017-04-06T07:37:34+08:00">2017年04月06日 07:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用Haskell的Except Monad…</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913685" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1913685" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ad8f0ce9b7391eef4ad8aa15d0a96a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ad8f0ce9b7391eef4ad8aa15d0a96a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jln</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913685"><time datetime="2017-04-06T09:26:38+08:00">2017年04月06日 09:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“嵌套的 if 外的代码”一节，<br/>
+do_before_cond1()<br/>
+if (cond1) {…}<br/>
+do_after_cond1();<br/>
+重构成<br/>
+do_before_cond1()<br/>
+do_after_cond1();<br/>
+if (!cond1) continue;<br/>
+…<br/>
+有问题吧，如果if (condX) {…} 代码块里改变了某些状态，而do_after_condX()的逻辑依赖于这些状态的话。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913686" class="comment even depth-2">
+<article id="div-comment-1913686" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d219af79b45e5891507fda4c4c2139a0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d219af79b45e5891507fda4c4c2139a0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">易宝</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913686"><time datetime="2017-04-06T09:40:54+08:00">2017年04月06日 09:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>太死板了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913707" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2 parent">
+<article id="div-comment-1913707" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913707"><time datetime="2017-04-08T21:07:16+08:00">2017年04月08日 21:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>如果 if 语句块中的代码改变了某些 do_after_condX() 依赖的状态，那么，原文中的重构第一版就是最终版本。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913726" class="comment even depth-3">
+<article id="div-comment-1913726" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eba1d68794731dbc5b424ad42efda26c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eba1d68794731dbc5b424ad42efda26c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">red.snapper</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913726"><time datetime="2017-04-10T16:55:51+08:00">2017年04月10日 16:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>do_before_cond2如果改变了do_after_cond1所依赖的状态，重构第一版也是不对的。<br/>
+不过这样的程序应该重新设计，各种before，after函数的模块化的意义几乎没有。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1913688" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1913688" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4188c579273e64414a3c7179b451c882?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4188c579273e64414a3c7179b451c882?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">haozipika</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913688"><time datetime="2017-04-06T10:28:48+08:00">2017年04月06日 10:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>短路的方案也有不好的方面，说一个非短路的方案。<br/>
+嵌套可以理解为强依赖，整个大逻辑上是有状态的，要把子逻辑解耦，需要一个context（这个可以设计成函数参数传递来使函数变成无状态），context承载了每个子逻辑的条件，为了可读性和约束性，这些条件可以设计为context的属性和方法，然后每个子逻辑从context获取input，也可以output到context，这样在主逻辑线上就看不到if else了<br/>
+context = build_context(…)<br/>
+messages = {} # 逻辑清楚一点就不把messages放在context里面<br/>
+process1(context, messages)<br/>
+process2(context, messages)<br/>
+process3(context, messages)<br/>
+…<br/>
+同时，既然设计了context，还可以进一步考虑context的domain意义，可以抽象一些逻辑到context中完成，从另一个维度去重构代码。<br/>
+第一个例子感觉是为了举例而举例，重构的方案不只是解决if else的问题，而是功能职责的问题。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913718" class="comment even depth-2">
+<article id="div-comment-1913718" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://59ZS" class="url" rel="ugc external nofollow">Danny Wang</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913718"><time datetime="2017-04-10T12:14:59+08:00">2017年04月10日 12:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我就这样做过, 结果Code Review整整多花了三天, 后面的事情不说了, 反正大家都不开心</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1913689" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913689" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f730d1fbbfd97b3b237175f5744967d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f730d1fbbfd97b3b237175f5744967d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://delphi.zijinshi.org" class="url" rel="ugc external nofollow">Frank</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913689"><time datetime="2017-04-06T10:57:06+08:00">2017年04月06日 10:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于Clean Code这块，学校里不可能教的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913690" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1913690" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/67fd2ae1b30f83f6001714bb33dbb9d4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/67fd2ae1b30f83f6001714bb33dbb9d4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Tomas</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913690"><time datetime="2017-04-06T11:21:12+08:00">2017年04月06日 11:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一般情况下，我都会用下列形式来处理多判断:</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">do {
+    if (! condition1) {
+        break;
+    }
+    do_work1();
+    if (! condition2) {
+        break;
+    }
+    do_work2();
+} while(0);
+do_clean_up();</pre>
+<p>这种形式可以保证一个函数只有一个入口和一个出口，可以保证所有的出错都会在while(0)的后面得到clean_up()</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913706" class="comment byuser comment-author-haoel bypostauthor odd alt depth-2 parent">
+<article id="div-comment-1913706" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913706"><time datetime="2017-04-08T21:05:53+08:00">2017年04月08日 21:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个是为了去除 <code>goto fail;</code> 这样的语句。老实说我个人更喜欢 goto</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1916096" class="comment even depth-3">
+<article id="div-comment-1916096" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/0ae5219469bf3d3ae818b145f58f588b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/0ae5219469bf3d3ae818b145f58f588b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">KING</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1916096"><time datetime="2017-08-10T14:52:28+08:00">2017年08月10日 14:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>GOTO和中途return这种,感觉.确实有碍于对整段代码的理解.</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1913695" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1913695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/93d6df6cd5c09c67f579cf7c37a44691?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/93d6df6cd5c09c67f579cf7c37a44691?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">riophae</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913695"><time datetime="2017-04-06T21:47:58+08:00">2017年04月06日 21:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我个人的观点是这样的，愿意把代码写清晰写漂亮的人，只要碰到脏的代码就总会想办法把代码改好；不在乎的人，逼着他去写好，他也还是写不太好。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913697" class="comment even depth-2 parent">
+<article id="div-comment-1913697" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/60ad2d5a2362456c6469f0e0d11ae8bb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/60ad2d5a2362456c6469f0e0d11ae8bb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">m31271n</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913697"><time datetime="2017-04-06T21:51:05+08:00">2017年04月06日 21:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>事实是这样的。所以我什么都不说。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-1913869" class="comment odd alt depth-3">
+<article id="div-comment-1913869" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5cfdfdf84edac320e36fd9e59c9ab93?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5cfdfdf84edac320e36fd9e59c9ab93?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hello2t</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913869"><time datetime="2017-04-19T10:45:47+08:00">2017年04月19日 10:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>所以我也懒得说</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-1913703" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913703" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/23062310363b8606a0fe803539367d58?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/23062310363b8606a0fe803539367d58?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://morefreeze.github.io/" class="url" rel="ugc external nofollow">Freeze</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913703"><time datetime="2017-04-07T14:33:51+08:00">2017年04月07日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>嵌套的 if 外的代码 那段的重构是得假设do_after_condX的执行没有顺序关系，如果像最后重构那版的话，原版代码cond1 &amp;&amp; cond2 &amp;&amp; cond3 == true的话，执行顺序是<br/>
+do_before_cond1()<br/>
+do_before_cond2()<br/>
+do_before_cond3()<br/>
+do_after_cond3()<br/>
+do_after_cond2()<br/>
+do_after_cond1()<br/>
+但重构后的哪一版都不是这个顺序，而且重构后都把do_before_condX和do_after_condX放在一起写了，为啥不直接重构成一个函数do_condX？<br/>
+这个重构是有问题的</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913704" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913704" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a2af3425b28c540839f25c7d54a66751?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a2af3425b28c540839f25c7d54a66751?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mindthink.me" class="url" rel="ugc external nofollow">mindthink</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913704"><time datetime="2017-04-07T19:53:06+08:00">2017年04月07日 19:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>学习了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913717" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913717" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4a5d22bdd9635bfcc12a7b93e32a908?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Danny Wang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913717"><time datetime="2017-04-10T12:09:57+08:00">2017年04月10日 12:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>之前有过类似的C++开发经历, 仅供大家参考,</p>
+<p>当时C11还不允许在组内使用.<br/>
+我将一部分实现抽成函数, 结果带来几个麻烦:<br/>
+1. 函数中有大量上下文需要传递. 比如do_after_cond1中需要输出<br/>
+do_after_cond2中需要的条件(而且不是主要条件)<br/>
+2. 大量的一次性函数, 以为不能使用匿名函数, 单单起一个合适的名字就成问题.一旦名字不合适就导致这个函数的误用.<br/>
+3.很多单一函数方便不能解决上下文绑定的问题,<br/>
+因为不能使用std::bind,也不能擅自引入boost库, 写了大量的伪函数类. 以至于声明的部分长度甚至超过原来函数的尺寸.<br/>
+4. Code Review的不必要麻烦, 原本一个复杂逻辑很容易被Reviewer直接忽略, 而多了很多静态声明后,Reviewer会不停的检查一下函数的基本问题, 比如输入输出检查, 函数名是否合适等等.</p>
+<p>最后那个项目写的很痛苦, 知道我后来开始转到一个前端项目, 用了一段时间JS和Type Script才慢慢好转.<br/>
+最近有一个项目开始用C++03了, 唉</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913720" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913720" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2289c3621c190faea83707c5ead5b6cc?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2289c3621c190faea83707c5ead5b6cc?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">lyz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913720"><time datetime="2017-04-10T13:15:27+08:00">2017年04月10日 13:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写得很好，清晰易懂，真心不错，我做了四年的游戏开发，最终复杂的程序基本用的状态机实现的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913722" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913722" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/61d2ab97a3d77e9e7bfee4b995ca0da1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/61d2ab97a3d77e9e7bfee4b995ca0da1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">strucoder</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913722"><time datetime="2017-04-10T13:24:28+08:00">2017年04月10日 13:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>经常出现这样的箭头形代码往往是程序员缺乏对自己所要写的代码的思考，思考多了，考虑的角度多了自然就不会出现这样难维护可读性差的代码了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913724" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913724" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/eba1d68794731dbc5b424ad42efda26c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/eba1d68794731dbc5b424ad42efda26c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">red.snapper</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913724"><time datetime="2017-04-10T16:50:25+08:00">2017年04月10日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>else的pb的prepare调用少了一个pb这个参数<br/>
+manager-&gt;Prepare();</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913736" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913736" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e96976dd4820719e26be1703078c5d32?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e96976dd4820719e26be1703078c5d32?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">dilex</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913736"><time datetime="2017-04-11T10:37:02+08:00">2017年04月11日 10:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一样, 我现在都是会用try{ …if… }catch{}</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913746" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913746" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f3085d21f285a7c2fbf472f6908be6e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f3085d21f285a7c2fbf472f6908be6e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://toutiao.io" class="url" rel="ugc external nofollow">开发者头条</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913746"><time datetime="2017-04-12T17:23:35+08:00">2017年04月12日 17:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢分享！已推荐到《开发者头条》：https://toutiao.io/posts/hqoj3c 欢迎点赞支持！<br/>
+欢迎订阅《后端攻城狮》https://toutiao.io/subject/57935</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913759" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913759" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f2e690bbaaa39cec34f7fbd4e03e6e5e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f2e690bbaaa39cec34f7fbd4e03e6e5e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Parker Liu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913759"><time datetime="2017-04-13T15:09:43+08:00">2017年04月13日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>多用Haskell的方式来写代码，自然就会想到这些更好的形式。这些重构都是属于抽象数据类型应用的基本形式。<br/>
+如下这个就是Maybe Monad的典型应用。<br/>
+// for-loop 也可以重构成这样<br/>
+for (…) {<br/>
+if ( ! do_func1() ) continue;<br/>
+if ( ! do_func2() ) continue;<br/>
+if ( ! do_func3() ) continue;<br/>
+do_something();<br/>
+}</p>
+<p>ConnectPeer2Peer这个函数的最后形式就是对应Haskell的guard形式。</p>
+<p>函数式编程的思维在这些方面能帮助我们编写风格良好的代码。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913760" class="comment byuser comment-author-jkand1 odd alt thread-even depth-1">
+<article id="div-comment-1913760" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913760"><time datetime="2017-04-13T15:47:06+08:00">2017年04月13日 15:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一直使用“出错退出”的方式，goto fail 也是在动态释放的时候屡试不爽。if…else结构多了确实很头疼。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913889" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913889" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fe2514895fd94e2106804ff764c76206?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fe2514895fd94e2106804ff764c76206?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tidus</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913889"><time datetime="2017-04-21T11:26:22+08:00">2017年04月21日 11:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“嵌套的 if 外的代码”一节，示例代码含义不够清晰吧。<br/>
+/////////////////////////////////////////////////////<br/>
+do_before_cond1()<br/>
+if (cond1) {<br/>
+..}<br/>
+do_after_cond1();<br/>
+}<br/>
+重构第一版<br/>
+for(….) {<br/>
+do_before_cond1();<br/>
+if ( !cond1 ) {<br/>
+do_after_cond1();<br/>
+continue<br/>
+}<br/>
+do_after_cond1();<br/>
+/////////////////////////////////////////////////////<br/>
+如果 cond1 == true ，原代码是要先执行 do_before_cond2();<br/>
+而改后的代码是先执行do_after_cond1();<br/>
+所以，这种修改，只有函数调用顺序独立，没有关联性才可以。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913947" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913947" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b968ad3e6f4942769ca61139309194ac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b968ad3e6f4942769ca61139309194ac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Eric Wang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913947"><time datetime="2017-05-02T00:07:16+08:00">2017年05月02日 00:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最后的总结还是很到位的，尤其是第2条，函数和共享本质上还是两回事的，封装实现细节对外提供功能才是函数的本质。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913967" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1913967" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/883079bda66f4ad94113a19df531d363?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/883079bda66f4ad94113a19df531d363?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnoz.org/0_296/" class="url" rel="ugc external nofollow">最强基因</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913967"><time datetime="2017-05-04T00:49:14+08:00">2017年05月04日 00:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>拜读，写的很好，我很认同。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913980" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1913980" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cc0aeddd427cf5b9a8b2c5918a04539?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cc0aeddd427cf5b9a8b2c5918a04539?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张魏</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1913980"><time datetime="2017-05-05T12:14:45+08:00">2017年05月05日 12:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我只想说，理想很丰满，现实很骨感。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914038" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1914038" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/75e215cea7a9364665ca688b5a23a58a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/75e215cea7a9364665ca688b5a23a58a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.465400.net" class="url" rel="ugc external nofollow">春熙路</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1914038"><time datetime="2017-05-11T17:05:08+08:00">2017年05月11日 17:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢大神分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914073" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914073" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2ecd957c063fa20e3759fdcc2b1ea75e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2ecd957c063fa20e3759fdcc2b1ea75e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://maifangjisuanqi.com" class="url" rel="ugc external nofollow">maifangjisuanqi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1914073"><time datetime="2017-05-16T21:30:22+08:00">2017年05月16日 21:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>&gt;&gt; 函数是代码的封装或是抽象，并不一定用来作代码共享使用，函数用于屏蔽细节，让其它代码耦合于接口而不是细节实现，这会让我们的代码更为简单，简单的东西都能让人易读也易维护。这才是函数的作用。<br/>
+这句话太赞同了，函数的存在就是为了代码更易读</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914133" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1914133" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5f7216a1ed60f47891e74611f11a5aed?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5f7216a1ed60f47891e74611f11a5aed?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.refuli.com/" class="url" rel="ugc external nofollow">热福利</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1914133"><time datetime="2017-05-22T01:21:12+08:00">2017年05月22日 01:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢分享。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914147" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914147" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed5be8df950116a5df98ccf6f834a633?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed5be8df950116a5df98ccf6f834a633?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jack.lxh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1914147"><time datetime="2017-05-24T10:53:28+08:00">2017年05月24日 10:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个人对于if else continue的处理的思路也不错<br/>
+<a href="http://www.yinwang.org/blog-cn/2015/11/21/programming-philosophy" rel="nofollow ugc">http://www.yinwang.org/blog-cn/2015/11/21/programming-philosophy</a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1914161" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1914161" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3be4d82904d3c4e60b89b82d1a813bbe?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3be4d82904d3c4e60b89b82d1a813bbe?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">PCGuy</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1914161"><time datetime="2017-05-26T09:52:56+08:00">2017年05月26日 09:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>写这么好的代码不仅仅是技术问题，里面包含了美学，道德，职业等诸多因素的，我不做开发，会写些perl，python，改改PHP,jscript。 最近做ansible，看到旁边人写的烂代码，不忍心用，一切自己来</p>
+</div>
+ </article>
+</li>
+<li id="comment-1914548" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1914548" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2c2e9b09007904468a6a8d8dcc776721?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2c2e9b09007904468a6a8d8dcc776721?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张龙</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1914548"><time datetime="2017-06-24T03:36:10+08:00">2017年06月24日 03:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>利用机器学习自动化这样的重构靠谱嘛</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916736" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1916736" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e4c5b6322c1c0c131a8298a5a8cec56d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e4c5b6322c1c0c131a8298a5a8cec56d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.zouzhenzhong.com" class="url" rel="ugc external nofollow">邹振忠</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1916736"><time datetime="2017-08-24T17:49:09+08:00">2017年08月24日 17:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这样类似的代码看过很多，以前也不知所措。老师总结深刻。见微知著，nice!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1916830" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1916830" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8efc2bdc3cb5c45f76a13020d720f5d2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8efc2bdc3cb5c45f76a13020d720f5d2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">陈曦</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1916830"><time datetime="2017-08-26T18:34:01+08:00">2017年08月26日 18:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>干货! 有些地方需要在实践里面细细体会。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917407" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1917407" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cloudkit.net" class="url" rel="ugc external nofollow">Coffee</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1917407"><time datetime="2017-09-07T14:13:55+08:00">2017年09月07日 14:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>首先这个你要用扁平化管理去思考，不符合条件你就RETURN吧！</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917409" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1917409" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c686fc5f47cc68bc795a7c212afa011?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://cloudkit.net" class="url" rel="ugc external nofollow">Coffee</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1917409"><time datetime="2017-09-07T14:17:14+08:00">2017年09月07日 14:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>还有一种方法嵌套太深的代码也是可耻的！！然道就不会用并列句么？？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1917639" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1917639" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64f3b6ad1c322714c401210e8e9a280e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64f3b6ad1c322714c401210e8e9a280e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大风起兮</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1917639"><time datetime="2017-09-15T20:32:05+08:00">2017年09月15日 20:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>修正：</p>
+<p>原版</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">for(....) {
+    do_before_cond1()
+    if (cond1) {
+        do_before_cond2();
+        if (cond2) {
+            do_before_cond3();
+            if (cond3) {
+                do_something();
+            }
+            do_after_cond3();
+        }
+        do_after_cond2();
+    }
+    do_after_cond1();
+}</pre>
+<p>重构第一版</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">for(....) {
+    do_before_cond1();
+    if ( !cond1 ) {
+        do_after_cond1();
+        continue
+    } 
+
+    do_before_cond2();
+    if ( !cond2 ) { 
+        do_after_cond2();
+        continue;
+    }
+   
+ 
+    do_before_cond3();
+    if ( !cond3 ) {
+        do_after_cond3();
+        continue;
+    }
+    do_something();  
+   do_after_cond3();
+   do_after_cond2();
+   do_after_cond1();
+}</pre>
+</div>
+ </article>
+</li>
+<li id="comment-1934987" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-1934987" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96c562d22798bb44e204223561e10c97?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96c562d22798bb44e204223561e10c97?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">除名</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1934987"><time datetime="2018-07-24T14:05:42+08:00">2018年07月24日 14:05</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>居然没说最主要的原因， 是 复杂度太深。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2045490" class="comment even depth-2">
+<article id="div-comment-2045490" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/219186166de2e80b187a0545a8892236?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/219186166de2e80b187a0545a8892236?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yanek</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-2045490"><time datetime="2019-12-10T11:19:27+08:00">2019年12月10日 11:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个叫 认知复杂度高</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1942965" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1942965" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f2e4960dbd57f03c8259d3bf0fb6717?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f2e4960dbd57f03c8259d3bf0fb6717?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">charlonger</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1942965"><time datetime="2018-11-12T13:44:13+08:00">2018年11月12日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>文中的建议用try {}catch(){}方式，</p>
+<pre data-enlighter-language="php" class="EnlighterJSRAW">$msg = &#34;&#34;;
+try {
+      if($a){throw new Exception(&#34;aaaa&#34;);}
+      if($b){throw new Exception(&#34;bbbb&#34;);}
+      if($c){throw new Exception(&#34;cccc&#34;);}
+} catch (\Exception $e) {
+      $msg = $e-&gt;getMessage();
+}
+if(!empty($msg)){
+  // 报错
+} else {
+ // 执行业务
+}</pre>
+</div>
+ </article>
+</li>
+<li id="comment-1944151" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://photo.itmeseji.com/2018/11/19/%e5%89%8d%e7%ab%af%e5%91%a8%e5%88%8a%e7%ac%ac51%e6%9c%9f%ef%bc%9a1000%e4%b8%aa%e5%8c%85%e7%9a%84%e7%94%b7%e4%ba%ba-vue-js-react-native-%e5%a5%87%e6%8a%80%e6%b7%ab%" class="url" rel="ugc external nofollow">前端周刊第51期：1000个包的男人 + Vue.js + React Native + 奇技淫巧 – 1</a> </div>
+</li>
+<li id="comment-1983457" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/37884.html" class="url" rel="ugc external nofollow">C++ Tips – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-1985241" class="comment byuser comment-author-cyberknight even thread-even depth-1">
+<article id="div-comment-1985241" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/869f65015bc6a4a3bd565807d8199676?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/869f65015bc6a4a3bd565807d8199676?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cyberknight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1985241"><time datetime="2019-03-31T21:47:28+08:00">2019年03月31日 21:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>慢慢看</p>
+</div>
+ </article>
+</li>
+<li id="comment-1985242" class="comment byuser comment-author-cyberknight odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1985242" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/869f65015bc6a4a3bd565807d8199676?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/869f65015bc6a4a3bd565807d8199676?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cyberknight</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-1985242"><time datetime="2019-03-31T21:48:23+08:00">2019年03月31日 21:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔厉害，慢慢看</p>
+</div>
+ </article>
+</li>
+<li id="comment-2001778" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.js-code.com/cpp/cpp_61116.html" class="url" rel="ugc external nofollow">C++ Tips _ 脚本宝典</a> </div>
+</li>
+<li id="comment-2003718" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2003718" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f1525831405537ae5f524cbfbf23600c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f1525831405537ae5f524cbfbf23600c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://technologymoon.com/" class="url" rel="ugc external nofollow">deepti sharma</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-2003718"><time datetime="2019-06-26T14:21:49+08:00">2019年06月26日 14:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>SUCH A GREAT ARTICLE AND VERY INFORMATIVE<br/>
+THANK YOU FOR SHARING THIS</p>
+</div>
+ </article>
+</li>
+<li id="comment-2031908" class="comment even thread-even depth-1">
+<article id="div-comment-2031908" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c4f7dc45704b0cb89ae7ad434507915?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c4f7dc45704b0cb89ae7ad434507915?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">David Thomas</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-2031908"><time datetime="2019-10-21T13:44:18+08:00">2019年10月21日 13:44</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>look slowly</p>
+</div>
+ </article>
+</li>
+<li id="comment-2035078" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2035078" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/219186166de2e80b187a0545a8892236?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/219186166de2e80b187a0545a8892236?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yanek</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/17757.html#comment-2035078"><time datetime="2019-11-04T09:45:39+08:00">2019年11月04日 09:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>卫语句使用比较多,使用策略模式结合工厂模式，对if else 优化也是常用的一种常用的方式。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2155206" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fixbbs.com/a/2199515.html" class="url" rel="ugc external nofollow">前端周刊第51期：1000个包的男人 + Vue.js + React Native + 奇技淫巧 – FIXBBS</a> </div>
+</li>
+<li id="comment-2280045" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cmgo.xyz/index.php/2021/07/27/%e4%bc%98%e5%8c%96%e4%bd%a0%e7%9a%84%e5%ba%94%e7%94%a8%e7%bb%93%e6%9e%84%e5%92%8c%e5%ae%9e%e7%8e%b0redis%e7%bc%93%e5%ad%98/" class="url" rel="ugc external nofollow">优化你的应用结构和实现Redis缓存 | 编程实战</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,427 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>酷壳 – CoolShell.cn - Part 21</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="home blog paged paged-21 group-blog">
+
+<div id="page" class="hfeed site">
+<header id="masthead" role="banner">
+
+<div id="cc_spacer"></div>
+<div class="site-header">
+
+<div class="site-branding">
+<a class="home-link" href="/" title="酷 壳 – CoolShell" rel="home">
+<h1 class="site-title">酷 壳 – CoolShell</h1>
+<h2 class="site-description">享受编程和技术所带来的快乐 – Coding Your Ambition</h2>
+</a>
+</div>
+</div>
+</header>
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" class="site-main" role="main">
+<article id="post-6193" class="post-content post-6193 post type-post status-publish format-standard hentry category-itnews tag-csdn tag-password tag-320 tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">CSDN明文口令泄露的启示</span>
+<h2 class="entry-title">
+<a href="/articles/6193.html" rel="bookmark">CSDN明文口令泄露的启示</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6193.html" title="12:08" rel="bookmark"><time class="entry-date" datetime="2011-12-22T12:08:27+08:00" pubdate="">2011年12月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6193.html#comments" class="comments-link">145 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 72,414 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>2011年12月21日晚，某计算机专业的大学生寝室，某同学大叫到：“兄弟们，最新的日本XX女星的AV片已经下好，大家快过来看啊，相当精彩啊~~~”，然而，这个寝室里的其它同学似乎没有听到这哥们的呼喊，于是，这哥们又叫了三次，没有人理他，因为大家都在眉飞色舞地谈论着CSDN的明文密码和用户帐号泄露的事情，并在网上查找着下载CSDN那600万的用户数据……上面这个故事是我编的，只是想描述一下昨晚的情形。</p>
+<p>其实，CSDN明文密码并不是什么稀奇的事情，我是2000年注册CSDN的吧，当时找回口令的机制就是把口令直接传回来了，这一定是明文了。去年去CSDN参加移动互联网沙龙的时候，范凯和蒋涛说过明文密码的事，不过他们说的是很早以前的事了，而且一笔带过了。1年后的今天，事情又暴了，可见，“出来混的，迟早是要还的”这句话是几近真理的。</p>
+<p>我在以前的BLOG里就提到过CSDN的明文密码（在“<a title="你会做Web上的用户登录功能吗？" href="/articles/5353.html">如何设计用户登录功能</a>”一文）和 帐号泄露（“<a title="如何管理并设计你的口令" href="/articles/2428.html">如何设计自己的口令</a>”） 的事（<strong>由此可见，酷壳里的很多文章里的事都应验了</strong>，因为我知道“出来混的，迟早是要还的”）</p>
+<p>（<strong>可悲吧？还是程序员的网站呢，明文口令和用户信息泄露有悖于一个程序员网站的称号</strong>）</p>
+<h4>泄露的密码分析</h4>
+<p>我昨晚下载了<a href="http://www.csdn.net.sql">www.csdn.net.sql</a>文件，并分析了一下这个文件，经过各种awk, grep, sort, uniq, sed后，下面是我看到的东西：</p>
+<ul>
+<li>有近45万的用户使用 123456789 和 12345678 做口令。</li>
+<li>有近40万的用户使用自己的生日做口令。</li>
+<li>有近15万的用户使用自己的手机号做口令。</li>
+<li>有近25万的用户使用自己的QQ号做口令。</li>
+<li>设置成弱口令的用户占了590万，也就是那种就算你用MD5或是SHA散列的也能很快就被暴力破解出来的口令。</li>
+<li>只有8000多个用户的口令里在8个长度以上，并有大写字母，小写字母，数字，并不在字典表里。</li>
+</ul>
+<p>（很好，这回泄露的还不单单只是明文用户密码和用户邮件，还有用户的手机号，生日和QQ号。挺好的）</p>
+<p>下面，我们来看一下top 100的口令是什么？（第一列是采用这个密码个数，第二列是密码，我擦 dearbook是什么啊）简单地看了一下，top 一万的口令都很SB。比如什么woshishui, 123abc, aaa123456，01010101，haohaoxuexi，msconfig 相当的2B，还有<a href="/cdn-cgi/l/email-protection#6838281b1b1f581a0c"><span class="__cf_email__" data-cfemail="a0f0e0d3d3d790d2c4">[email protected]</span></a>，q1w2e3r4t5，看似文艺，实际很2的口令…. （<strong>可悲吧？还是程序员的网站呢，自己设的口令有悖于一个程序员的称号</strong>）</p>
+<p> <a href="/articles/6193.html#more-6193" class="more-link">…</a></p><a href="/articles/6193.html#more-6193" class="more-link">
+</a><p class="read-more"><a href="/articles/6193.html#more-6193" class="more-link"></a><a class="btn btn-default" href="/articles/6193.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-6193-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-6142" class="post-content post-6142 post type-post status-publish format-standard hentry category-career tag-amazon tag-job tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">三个事和三个问题</span>
+<h2 class="entry-title">
+<a href="/articles/6142.html" rel="bookmark">三个事和三个问题</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6142.html" title="08:39" rel="bookmark"><time class="entry-date" datetime="2011-12-20T08:39:41+08:00" pubdate="">2011年12月20日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6142.html#comments" class="comments-link">296 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 164,075 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>从9月份开始，是很多在校毕业生的择业时期，有很多很多朋友写邮件给我让我帮他们参考如何选择工作（对不起我无法在第一时间回信，因为实在是太多了，我那繁忙工作和生活都没办法让我能即时回复），并且还有一个已经工作了多年的技术很强的朋友因为跳槽没有跳好，也和我说了很多他 的感受。从这个过程中让我有了很多感触和想法想和大家分享，本来这篇文章1个月前就想写的，只是要写下来时不知道如何整理这么多的东西和思绪。今天也不知道，但是一定要写了，不然，我的这些感触和想法就会越来越不新鲜了。</p>
+<p><strong>注：这篇文章里的所有的故事都是真实的</strong>，<strong>其不可避免地会加上我</strong><strong></strong><strong></strong><strong>强烈的</strong>个人情怀和个<strong></strong><strong>人色彩</strong>，<strong>叙述的过程可能比较乱，但我能确保这些都是我的肺腑之言</strong>。</p>
+<h4>第一个事：网友的来信</h4>
+<p>第一个故事是一个杭州的学生的故事，其有两个offer，一个是北京的（雅虎研发中心），另一个是杭州的一个做商业智能软件的公司，也是美国的上市公司。他在给我的来信内心纠结地说：</p>
+<blockquote><p>雅虎其实很想去，虽然这几年雅虎走下坡，但还是大公司，牌子硬，里面牛人也多，有助于自己水平的提升。但感觉北京环境不好，生活不是那么舒坦，也搞不定户口，所以我去的话也只能干个三五年就得考虑跳槽到别的城市安家落户了。这么一跳，在北京积累的各种资源却又带不走 。</p>
+<p>杭州，比北京更适合生活，户口不是问题，朋友多，这个公司也比较宽松，有较多的业余时间跟朋友们一起搞点东西。而且这些年这个公司上升的势头，在国内设研发中心也才4年，规模不大，公司本身规模也还不大，我觉得机会还不错。再加上离家近，对家人大概可以多些照应。</p>
+<p>关于未来换工作，雅虎做的是搜索，广告，移动互联这几个方面的，东西在互联网企业里面都比较通用，以后跳槽的话，面相对比较宽。杭州的那个做商业智能的公司，据了解其他做的比较好的也就几个大公司如SAP，IBM有这方面的业务。</p></blockquote>
+<p>我和这个同学发了邮件，也打了长途电话，我基本上是这样回复的——</p>
+<p> <a href="/articles/6142.html#more-6142" class="more-link">…</a></p><a href="/articles/6142.html#more-6142" class="more-link">
+</a><p class="read-more"><a href="/articles/6142.html#more-6142" class="more-link"></a><a class="btn btn-default" href="/articles/6142.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-6142-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-6043" class="post-content post-6043 post type-post status-publish format-standard hentry category-webdev category-misc tag-css tag-javascript tag-seo tag-web tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">Web开发中需要了解的东西</span>
+<h2 class="entry-title">
+<a href="/articles/6043.html" rel="bookmark">Web开发中需要了解的东西</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6043.html" title="08:29" rel="bookmark"><time class="entry-date" datetime="2011-12-07T08:29:49+08:00" pubdate="">2011年12月07日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6043.html#comments" class="comments-link">150 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 176,894 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>在StackExchange上有人问了这样一个问题：<a href="http://programmers.stackexchange.com/questions/46716/what-should-every-programmer-know-about-web-development" target="_blank">What should every programmer know about web development?</a>（关于Web开发，什么是所有程序员需要知道的？）里面给出的答案非常不错，所以，我翻译转载过来。 顺便说一下，StackExchange真是非常好，大家可以对同一个答案做贡献和修订，看看这个问题的<a href="http://programmers.stackexchange.com/posts/46760/revisions" target="_blank">修订过程</a>你就知道了——专业的问答网站应该怎么去做。这就是我在这篇文章中也说过<a title="腾讯，竞争力 和 用户体验" href="/articles/5901.html" target="_blank">真正的用户体验是什么样的</a>。</p>
+<p>好了，下面是正文（我对原文做了一些批注，也许不对或有误导，请大家指正）</p>
+<p>下面的这些东西可能对于大多数人并不陌生，但是可能会有些东西你以前并没有看过，或是没有完全搞懂，甚至都没有听说过。（陈皓注：我相信当你看完这个列表后，你会觉得对于我国的Web开发有点弱了，还是那句话，表面上的东西永远是肤浅的）</p>
+<h4><strong>接口和用户体验</strong></h4>
+<ul>
+<li>小心浏览器的实现标准上的不一致，确信让你的网站能够适当地跨浏览器。至少，你的网站需要测试一下下面的浏览器：</li>
+</ul>
+<ul>
+<li>最新的 <a href="https://en.wikipedia.org/wiki/Gecko_%28layout_engine%29" rel="nofollow">Gecko</a> 引擎 (<a href="http://firefox.com/" rel="nofollow">Firefox</a>)，</li>
+<li>一个 Webkit 引擎 (<a href="http://www.apple.com/safari/" rel="nofollow">Safari</a>, <a href="https://www.google.com/chrome" rel="nofollow">Chrome</a>, 或是其它的移动设备上的浏览器)</li>
+<li> <a href="https://en.wikipedia.org/wiki/Internet_Explorer" rel="nofollow">IE 浏览器</a> (测试IE的兼容性你可以使用微软IE的 <a href="http://www.microsoft.com/Downloads/details.aspx?FamilyID=21eabb90-958f-4b64-b5f1-73d0a413c8ef&amp;displaylang=en" rel="nofollow">Application Compatibility VPC Images</a>)</li>
+<li> <a href="http://www.opera.com/" rel="nofollow">Opera</a> 浏览器。</li>
+</ul>
+<p style="padding-left: 30px;">最后，你可以使用一下<a href="http://www.browsershots.org/" rel="nofollow">这个工具</a> 来看看你的网页在不同的浏览器下是怎么被显示出来的（陈皓注：这个工具就是以前本站介绍过的<a title="如何检查网页浏览器的兼容性" href="/articles/757.html" target="_blank">在不同浏览器和平台上检查你的网站的兼容性</a>）</p>
+<ul>
+<li>多考虑一下人们是怎么来访问你的网站而不是那些主流的浏览器：手机，读屏软件和搜索引擎，例如：一些Accessibility的东西： <a href="http://www.w3.org/WAI/" rel="nofollow">WAI</a> 和  <a href="https://www.section508.gov/" rel="nofollow">Section508</a>, 移动设备开发：<a href="http://mobiforge.com/" rel="nofollow">MobiForge</a>.</li>
+</ul>
+<ul>
+<li>部署Staging：怎么部署网站的更新而不会影响用户的访问。 <a href="http://programmers.stackexchange.com/questions/46716/what-should-a-developer-know-before-building-a-public-web-site/46738#46738">Ed Lucas的答案</a> 可以让你了解一些（陈皓注：Ed说了一些如版本控制，自动化build，备份，回滚等机制）。</li>
+</ul>
+<ul>
+<li>千万不要直接给用户显示不友好的错误信息。</li>
+</ul>
+<div> <a href="/articles/6043.html#more-6043" class="more-link">…<p></p>
+</a><p class="read-more"><a href="/articles/6043.html#more-6043" class="more-link"></a><a class="btn btn-default" href="/articles/6043.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p></div>
+<div id="post-ratings-6043-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-6010" class="post-content post-6010 post type-post status-publish format-standard hentry category-cplusplus category-javadev category-pythondev category-techarticle category-misc category-proglanguage tag-algorithm tag-c tag-77">
+<header class="entry-header">
+<span class="screen-reader-text">一些有意思的算法代码</span>
+<h2 class="entry-title">
+<a href="/articles/6010.html" rel="bookmark">一些有意思的算法代码</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6010.html" title="11:11" rel="bookmark"><time class="entry-date" datetime="2011-11-29T11:11:07+08:00" pubdate="">2011年11月29日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6010.html#comments" class="comments-link">45 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,715 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>Keith Schwarz是一个斯坦福大学计算机科学系的讲师。他对编程充满了热情。他的主页上他自己正在实现各种各样的有意思的算法和数据结构，<a href="http://www.keithschwarz.com/interesting/">http://www.keithschwarz.com/interesting/</a>， 目前这个网页上有88个（见下面的列表），但这位大哥要干135个，你可以看看他的<a href="http://www.keithschwarz.com/interesting/" target="_blank">To-Do List</a>。</p>
+<p>从这个列表上，我们可以看到，他从去年7月份就在自己实现这些东西了，我把他实现的这些算法转过来，</p>
+<ul>
+<li>一方面我们可以学习一下这些算法和代码，因为很多东西对我来说都比较新，我以前<a href="/articles/2583.html" target="_blank">列举过一些经典的算法</a>，<a title="链接：算法和数据结构词典" href="/articles/1499.html" rel="bookmark">算法和数据结构词典</a>，还有<a title="链接：可视化的数据结构和算法" href="/articles/4671.html" rel="bookmark">可视化的数据结构和算法</a>， 不过感觉都没有这个全。</li>
+</ul>
+<ul>
+<li>另一方面我希望这个事可以影响到一些正在学习编程的人。看看别人是怎么学习编程的，希望对你有借鉴作用。</li>
+</ul>
+<table width="100%" border="0" cellspacing="0" cellpadding="6">
+<thead>
+<tr>
+<th>Name</th>
+<th>Link</th>
+<th>Date Added</th>
+<th>Language</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Binomial Heap</td>
+<td><a href="http://www.keithschwarz.com/interesting/code/?dir=binomial-heap">(link)</a></td>
+<td>7‑24‑2010</td>
+<td>C++</td>
+<td>An implementation of a <a href="https://en.wikipedia.org/wiki/Binomial_heap">binomial heap</a> data structure for use as a priority queue.</td>
+</tr>
+<tr>
+<td>Bounded Priority Queue</td>
+<td><a href="http://www.keithschwarz.com/interesting/code/?dir=bounded-pqueue">(link)</a></td>
+<td>7‑24‑2010</td>
+<td>C++</td>
+<td>An implementation of a <a href="https://en.wikipedia.org/wiki/Priority_queue">priority queue</a> with a fixed upper limit to its size..</td>
+</tr>
+<tr>
+<td>Matrix</td>
+<td><a href="http://www.keithschwarz.com/interesting/code/?dir=matrix">(link)</a></td>
+<td>7‑24‑2010</td>
+<td>C++</td>
+<td>A collection of classes for manipulating <a href="https://en.wikipedia.org/wiki/Matrix_%28mathematics%29">matrices</a>.</td>
+</tr>
+<tr>
+<td>VList</td>
+<td><a href="http://www.keithschwarz.com/interesting/code/?dir=vlist">(link)</a></td>
+<td>8‑16‑2010</td>
+<td>Java</td>
+<td>An implementation of the <tt>List</tt> abstraction backed by a <a href="https://en.wikipedia.org/wiki/VList">VList</a>.</td>
+</tr>
+<tr>
+<td>Function Wrapper</td>
+<td><a href="http://www.keithschwarz.com/interesting/code/?dir=function">(link)</a></td>
+<td>8‑16‑2010</td>
+<td>C++</td>
+<td>A C++ wrapper class around unary functions.</td>
+</tr>
+<tr>
+<td>String</td>
+<td><a href="http://www.keithschwarz.com/interesting/code/?dir=string">(link)</a></td>
+<td>8‑17‑2010</td>
+<td>C++</td>
+<td>An implementation of a <a href="https://en.wikipedia.org/wiki/String_(computer_science)">string</a> abstraction that uses the small string optimization.</td>
+</tr>
+</tbody>
+</table>
+<p> <a href="/articles/6010.html#more-6010" class="more-link">…</a></p><a href="/articles/6010.html#more-6010" class="more-link">
+</a><p class="read-more"><a href="/articles/6010.html#more-6010" class="more-link"></a><a class="btn btn-default" href="/articles/6010.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-6010-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-5987" class="post-content post-5987 post type-post status-publish format-standard hentry category-misc category-progdesign category-netsecurity tag-qq tag-ux tag-web tag-318 tag-591 tag-589">
+<header class="entry-header">
+<span class="screen-reader-text">如何设计“找回用户帐号”功能</span>
+<h2 class="entry-title">
+<a href="/articles/5987.html" rel="bookmark">如何设计“找回用户帐号”功能</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5987.html" title="08:34" rel="bookmark"><time class="entry-date" datetime="2011-11-28T08:34:30+08:00" pubdate="">2011年11月28日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5987.html#comments" class="comments-link">271 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 84,957 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>因为《<a title="腾讯帐号申诉的用户体验" href="/articles/5966.html" target="_blank">腾讯帐号申诉的用户体验</a>》一文中好多人觉得腾讯申诉是世界级先进的，并让我拿出一个找回用户的帐号的功能来。本来不想写的，因为大家看看其它系统的就行的，但是，很明显有些人就是很懒，也不会思考，而且不会观察，所以，我就只好写下这篇科普性常识性的文章。</p>
+<p>在行文之前，我得先感谢腾讯公司的至少30名员工在《<a title="腾讯帐号申诉的用户体验" href="/articles/5966.html" target="_blank">腾讯帐号申诉的用户体验</a>》一文后的回帖（我STFG（Search The Fucking Google）看到了你们使用的那个固定IP在各个大学论坛上的腾讯的招聘广告），我感谢你们主要有两点：</p>
+<ol>
+<li>你们有半数以上的人留下的是gmail而不是QQMail/Foxmail的电子邮件，这点让我感到很欣慰。</li>
+<li>你们在加班到晚上11点的时候都能在本站回复，的确如你们的Andy Pan所说，你们的核心竞争力很强，包括水军方面。</li>
+</ol>
+<p>好了，让我正式谈谈这个设计。找回用户帐号通常就用三个事就可以了：<strong>邮箱</strong>，<strong>安全问答</strong>，<strong>手机</strong>。</p>
+<h4><strong>邮箱</strong>，<strong>安全问答</strong>，<strong>手机</strong></h4>
+<p>大多数的系统都会使用邮箱和安全问答，这足够了，很多系统直接用邮箱做帐号名（Apple ID，Facebook，新浪微博 ….），这样一来，就算你的系统口令被盗，帐号的是改不掉的，于是你可以用邮箱找回（注：这些系统都会验证你的邮箱是否正确）。但是，如果用邮箱做帐号，会导致你的邮箱暴露了，这样为成为垃圾邮件的受害者，而且如果你还比较2的把邮箱的口令和帐号的口令设置成一样的，那么就相当坑爹了（你可以看看本站的这篇文章——<a title="如何管理并设计你的口令" href="/articles/2428.html" target="_blank">如何设计你的口令</a>）。所以，但凡是用邮箱用为帐号的系统都不会让人看到你的注册邮箱，比如，大家就不知道我新浪微博帐号注册的邮箱，就算是知道也应该是受信的人知道（新浪微博帐号的邮箱地址的默认可见度是“你关注的人”）。</p>
+<p> <a href="/articles/5987.html#more-5987" class="more-link">…</a></p><a href="/articles/5987.html#more-5987" class="more-link">
+</a><p class="read-more"><a href="/articles/5987.html#more-5987" class="more-link"></a><a class="btn btn-default" href="/articles/5987.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-5987-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-5966" class="post-content post-5966 post type-post status-publish format-standard hentry category-misc category-netsecurity tag-qq tag-ux tag-318 tag-589">
+<header class="entry-header">
+<span class="screen-reader-text">腾讯帐号申诉的用户体验</span>
+<h2 class="entry-title">
+<a href="/articles/5966.html" rel="bookmark">腾讯帐号申诉的用户体验</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5966.html" title="08:27" rel="bookmark"><time class="entry-date" datetime="2011-11-25T08:27:09+08:00" pubdate="">2011年11月25日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5966.html#comments" class="comments-link">166 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 70,931 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>前面写过一篇“<a href="/articles/5901.html" rel="bookmark" target="_blank">腾讯，竞争力 和 用户体验</a>”批评了腾讯，于是在<a href="http://weibo.com/haoel" target="_blank">我的微博</a>上和<a href="https://coolshell.cn" target="_blank">博客</a>上收到了一些反对意见，基本上是说腾讯产品的用户体验做得很好，很方便，等等，还列举了N多的例子，以及说过什么用户数量为王的言论，让我感到我应该写一篇博客。当然，如果我们只看某个技术层面的东西的话，我同意，QQ的一些产品还是很易用的。但是我们还是要看得更深一些。Effective C++的作者Scott Meyers 在《More Effective C++》中说过——“美丽的是肤浅的表现”。   我借用一下这句话，认为QQ是好的产品的观点是肤浅的认识。</p>
+<p>网上有大量的文章说<a href="http://handsome4215.blog.sohu.com/154141629.html" target="_blank">QQ扫描硬盘</a>啊，说<a href="http://hi.baidu.com/kernone/blog/item/db7218d9c1756f3933fa1cb5.html" target="_blank">QQ收集用户信息</a>啊，你可能忘了这些。前段时间的3Q大战的那个“艰难的决定”，你好像也忘了。还有狗日的腾讯，你也忘了。包括<a href="http://www.cnr.cn/newscenter/kjxw/201111/t20111103_508725677.shtml" target="_blank">QQ可以预防犯罪的新闻</a>，你可能也忘（这本就是一个容易忘事的民族）。你已经被QQ的用户体验迷住你的双眼，觉得QQ无敌于天下，就像<a href="http://weibo.com/1577826897/xyZ6vpv2y" target="_blank">这个微博</a> 以及微博里的回复一样在赞叹QQ注重细节一样，那些人在看到QQ的Mac版上向Steve Jobs感谢的字样激动不已。我感到你被一块红布蒙住了双眼也蒙住了天，我问你看见了什么，你说你看见了幸福 ，这个感觉真让你舒服……（对不起，一不小心我就在唱歌了，So So Sorry）</p>
+<p>回到正题，你会说，我们在谈技术，不谈这些非技术的。好吧，我们来看看技术上的东西。我和大家说一下这两天我的真实经历。</p>
+<p>两天前，我的QQ号被“恶意投诉”，封了号。腾讯让我走申诉流程，于是我看到了下面这些步骤：</p>
+<ol>
+<li>填入我的真实姓名，身份证号，地址等我的真实信息。 （盗号者也可以填）</li>
+<li>填入我的手机号，并要用这个手机号向腾讯发个短信以收取验证码。（盗号者的手机）</li>
+<li>填入我以前曾经使用过的QQ密码 （盗号者盗到的密码）</li>
+<li>填入我是什么时候，在哪里注册的QQ （盗号者可以填忘记了）</li>
+<li>填入最近3年来，我在哪里使用过QQ （盗号者也可以填忘 记了）</li>
+<li>邀请QQ好友来帮助申诉，越多越好，需要填号好友的QQ号和真实姓名。 （盗号者也可以用自己的小号，这些小号可以加你为好友）</li>
+</ol>
+<p><strong>这已经是非同寻常的流程了…… 从这个申请过程中你看到了什么？</strong>你是否看到了这些东西：</p>
+<p> <a href="/articles/5966.html#more-5966" class="more-link">…</a></p><a href="/articles/5966.html#more-5966" class="more-link">
+</a><p class="read-more"><a href="/articles/5966.html#more-5966" class="more-link"></a><a class="btn btn-default" href="/articles/5966.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-5966-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-5537" class="post-content post-5537 post type-post status-publish format-standard hentry category-webdev category-techarticle category-misc category-tools category-story tag-design-pattern tag-game tag-html tag-javascript tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">一些文章资源和趣闻</span>
+<h2 class="entry-title">
+<a href="/articles/5537.html" rel="bookmark">一些文章资源和趣闻</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5537.html" title="12:39" rel="bookmark"><time class="entry-date" datetime="2011-11-24T12:39:04+08:00" pubdate="">2011年11月24日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5537.html#comments" class="comments-link">81 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 42,777 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>下面是我这段时间来收集的一些有意思的东西。本站这样的文章还很多，如<a title="一些文章和各种资源" href="/articles/5224.html" target="_blank">这个</a>，<a href="/articles/3013.html" target="_blank">这个</a>，<a href="/articles/3903.html" target="_blank">这个</a>。</p>
+<p>Javascript Garden，这是学习Javascript最好的网站了。<a href="https://bonsaiden.github.com/JavaScript-Garden">http://bonsaiden.github.com/JavaScript-Garden</a>，这个文档由两具StackOverflow的人写成, <a href="http://stackoverflow.com/users/170224/ivo-wetzel">Ivo Wetzel</a>(Writing) 和 <a href="http://stackoverflow.com/users/313758/yi-jiang">Zhang Yi Jiang</a> (Design)，表示敬意。</p>
+<p>想看看Web开发有哪些技术吗？你得看看这个网站：<a href="http://stackparts.com/">http://stackparts.com/</a>，他对目前几乎所有Web上用得到的技术都分了个类。下面是个抓图。</p>
+<p><a href="http://stackparts.com"><img decoding="async" class="aligncenter size-full wp-image-5950" title="各种Web开发用到的技术" src="/uploads/2011/11/stackparts.com_.png" alt="" width="513" height="414" srcset="" sizes="(max-width: 513px) 100vw, 513px"/></a></p>
+<p>Mozilla的安全编程规范 <a href="https://wiki.mozilla.org/WebAppSec/Secure_Coding_Guidelines">https://wiki.mozilla.org/WebAppSec/Secure_Coding_Guidelines</a> <a href="http://research.microsoft.com/apps/dp/sq.aspx?a=47204&amp;sq=dl#a=!77148!80820!132314!81593!77135!103269!77072!138731!77112!131133!149403!77128!78088!143130!77023!139171!138997!141118&amp;p=1&amp;ps=36">Downloads associated to Software development</a></p>
+<p>PHP,Perl, Ruby, Python语法比较<a href="http://hyperpolyglot.org/scripting?utm_source">http://hyperpolyglot.org/scripting?utm_source</a></p>
+<p> <a href="/articles/5537.html#more-5537" class="more-link">…</a></p><a href="/articles/5537.html#more-5537" class="more-link">
+</a><p class="read-more"><a href="/articles/5537.html#more-5537" class="more-link"></a><a class="btn btn-default" href="/articles/5537.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-5537-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-5901" class="post-content post-5901 post type-post status-publish format-standard hentry category-itnews category-misc tag-amazon tag-apple tag-qq tag-589">
+<header class="entry-header">
+<span class="screen-reader-text">腾讯，竞争力 和 用户体验</span>
+<h2 class="entry-title">
+<a href="/articles/5901.html" rel="bookmark">腾讯，竞争力 和 用户体验</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5901.html" title="08:29" rel="bookmark"><time class="entry-date" datetime="2011-11-22T08:29:24+08:00" pubdate="">2011年11月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5901.html#comments" class="comments-link">215 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 84,855 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>自从<a title="来信， 创业 和 移动互联网" href="/articles/5815.html" target="_blank">那篇rant了一堆公司都的文章</a>发布来，得到了大家的关注，有些朋友让我写一下腾讯，在我的微博上（<a href="http://weibo.com/haoel" target="_blank">@左耳朵耗子</a>）还有位腾讯的朋友让我也评价一下腾讯。本来不想写的，觉得腾讯没啥好说的，但是因为下面的几个原因，让我有点坐不住了：</p>
+<ol>
+<li>这两天知乎上的一个“<a href="http://www.zhihu.com/question/19920338" target="_blank">腾讯的核心竞争力</a>”的贴子在微博上被很多人所推崇。</li>
+<li>还有一个网友发邮件给我说让我别rant了，宁可C2C也比rant有意义。</li>
+<li>我周末的时候去豆瓣和他们交流了一些关于产品和用户体验方面的话题。</li>
+<li>还看到了Jeff Bezos的访谈文章《<a href="http://tech.sina.com.cn/i/2011-11-17/15546337096.shtml" target="_blank">贝佐斯：亚马逊是科技界唯一一家低利润公司</a>》</li>
+</ol>
+<p>于是就有了这篇文章，但不想再rant了，我希望这篇文章更有价值一些，但是我喜欢的调侃的风格依然，因为这是我觉得能让文章有趣味的方式。</p>
+<h4>腾讯的“价值”</h4>
+<p>首先我想说说腾讯的价值。根据我<a title="来信， 创业 和 移动互联网" href="/articles/5815.html" target="_blank">那篇 rant 的文章</a>来说，我觉得人要活得有价值，事业也要做得有价值。我不太待见那些没有价值的东西。所以，我在那篇文章里让大家都思考了一个问题，我们做这个事的价值在哪里？所以，要评论腾讯，就得想想他的价值。众所周知，腾讯的起家是通过IM软件QQ，当然，他有段时间几乎快不行了。不过挺过来了，造就了这么一个帝国。所以，腾讯的价值应该是即时通讯，让大家的沟通变得更顺畅，这点腾讯的确做得非常强大，视频，音频，涂鸦，抓屏，表情，Q币，共享，群聊，新闻，弹窗，离线文件，远程协助…… 的确做得非常地体贴用户。除了扫描硬盘文件有点那个。</p>
+<p>但是，最近的腾讯变了（当然有人说他也没有变，QQ本来就是抄来的），有什么就抄什么，没有创意，山寨大王，成了腾讯的代名词。马云也说过：“现在腾讯拍拍网最大的问题就是没有创新，所有的东西都是抄来的”。网上还有很多，什么“一直在抄袭，从未超越过”或是“<a href="http://weibo.com/2093492691/xwYpFB9IK" target="_blank">一直在山寨，从没反省过</a>”等等的话，还有“<a href="http://tieba.baidu.com/f?kz=1007979914" target="_blank">自从有了XXX，腾讯就出了XXX</a>”的文体。</p>
+<p><strong>但是，你们都错了，包括马云，我不同意你们，我觉得这正是腾讯的价值所在</strong>。</p>
+<p> <a href="/articles/5901.html#more-5901" class="more-link">…</a></p><a href="/articles/5901.html#more-5901" class="more-link">
+</a><p class="read-more"><a href="/articles/5901.html#more-5901" class="more-link"></a><a class="btn btn-default" href="/articles/5901.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-5901-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-5815" class="post-content post-5815 post type-post status-publish format-standard hentry category-itnews category-misc tag-amazon tag-google tag-programmer tag-web tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">来信， 创业 和 移动互联网</span>
+<h2 class="entry-title">
+<a href="/articles/5815.html" rel="bookmark">来信， 创业 和 移动互联网</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5815.html" title="08:31" rel="bookmark"><time class="entry-date" datetime="2011-11-15T08:31:21+08:00" pubdate="">2011年11月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5815.html#comments" class="comments-link">243 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 114,481 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>上一篇博文<a title="SteveY对Amazon和Google平台的长篇大论" href="/articles/5701.html" target="_blank">翻译了Steve Yegge的rant</a>，这两天有一些事让我也想rant一下（所谓rant就是一篇巨长无比的抱怨和说教），不过无论是从见解还是恶搞来说肯定没有SteveY的水平高，所以，这篇博文只是单纯的rant，看标题就知道了，就像“<strong>篱笆，女人和狗</strong>”一样，乡土味实足。所以，下述的一些观点未必正确，也未必靠谱，也就是我的个人唠叨罢了，我想到哪里说到哪里。（篇幅较长，见谅）</p>
+<h4>引子</h4>
+<p>我前两天，收到一封邮件，一位快要毕业的的大学生问我，是去百度，还是去创新工场？他在来信中说，从个人道德价值观来说，他想去创新工场，要远离流氓企业，不然会有狼狈为奸、助纣为虐的感觉，对不起自己。但是创新工场那边情况不熟悉， 不知道怎么选择，并问我现在比较热的移动互联网靠不靠谱。</p>
+<p>正好这两天我在微博里看到大家转贴李开复的几个让毕业生创业的微博，比如，<a href="http://weibo.com/1197161814/xwjDfAcf6" target="_blank">这个微博</a>，还有 <a href="http://weibo.com/1197161814/xw46V0Cz4" target="_blank">这个微博</a>。呵呵。</p>
+<blockquote><p><strong>李开复</strong>：有关毕业生高科技创业,我的建议：1）创业需要理解趋势、汇集精英、实践经验,因此大学毕业不要主导创业,只能参加创业公司,2）最好远在毕业前就寻找创业公司实习机会（无偿亦可）,因为也许创业并不适合你或你想象那样,3）毕业时若想学习创业,最好到创业公司。到大公司学习能学技术但不够针对性。</p></blockquote>
+<p>还有前两天的“移动开发者大会”，然后，又有一个以前的同事和我谈了一下他创业的事以及他的想法，正好又在网上看到罗永浩同学的那个“<a href="http://v.youku.com/v_show/id_XMzE3OTIyMzg0.html" target="_blank">一个理想者创业的故事</a>”的演讲。还有一些做blog插件的团队希望我能在酷壳上安装一下他们的插件。等等，等等。所以，让我有了这个可以rant的写作情绪。</p>
+<p> <a href="/articles/5815.html#more-5815" class="more-link">…</a></p><a href="/articles/5815.html#more-5815" class="more-link">
+</a><p class="read-more"><a href="/articles/5815.html#more-5815" class="more-link"></a><a class="btn btn-default" href="/articles/5815.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-5815-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<article id="post-5826" class="post-content post-5826 post type-post status-publish format-standard hentry category-datebase category-story tag-10gen tag-database tag-mongodb">
+<header class="entry-header">
+<span class="screen-reader-text">千万别用MongoDB？真的吗？！</span>
+<h2 class="entry-title">
+<a href="/articles/5826.html" rel="bookmark">千万别用MongoDB？真的吗？！</a>
+</h2>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5826.html" title="08:28" rel="bookmark"><time class="entry-date" datetime="2011-11-10T08:28:26+08:00" pubdate="">2011年11月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5826.html#comments" class="comments-link">32 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 78,878 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>某人发了一篇<a href="http://pastebin.com/raw.php?i=FD3xe6Jt" target="_blank">Don’t use MongoDB</a>的血泪控诉，我把原文翻译如下，你可以看看。不过，我想我们还要去看看10gen <a href="http://news.ycombinator.com/item?id=3202081" target="_blank">CTO的对此事的回复</a>，我们还要去在<a href="http://www.reddit.com/r/programming/comments/m2b2b/dont_use_mongodb/" target="_blank">Reddit上</a>看看大家的说法，10gen <a href="http://news.ycombinator.com/item?id=3202081" target="_blank">CTO的对此事的回复</a>后面也有一堆人在讨论这个事，还有一些程序员开始去读MongoDB的源码了，呵呵。看样子，说MongoDB的这些事并不是真的。</p>
+<p>10gen CTO 对此事的并不完全知道，其在回复，对些文中的每一条都做了回复。我把其回复的大体意思也放在原文中。不过，很有意思的是那些程序员的讨论。建议大家看看。</p>
+<h3>正文</h3>
+<p>因为各种政治原因，我这段时间没有说什么，但是现在我觉得因为要对社会负责，所以我要阻止大家不要把你们的业务放在MongoDB上。</p>
+<p>我的团队在一个有巨大用户量（一个有千万用户级的大型的公司）系统上使用的MongoDB，这个系统上让MongoDB有非常大的负载。早期，我们以为使用MongoDB会像10gen公司（MongoDB背后的公司）宣扬其在长期性能扩展有很多好处。但是，我们错了，而这个rant(长篇抱怨)就是为了让你不要相信那些所谓的成功经验而和我们一样犯了大错。如果有人能避免你上当，那么就得我写这么多。希望能警醒更多的人。</p>
+<p>注意，对于和10gen打交道的经历来说，他们给予了我们充分了热情和帮助，而且非常地好。但是这并不能成为我不告诉大家他们的产品失败的理由。</p>
+<p> <a href="/articles/5826.html#more-5826" class="more-link">…</a></p><a href="/articles/5826.html#more-5826" class="more-link">
+</a><p class="read-more"><a href="/articles/5826.html#more-5826" class="more-link"></a><a class="btn btn-default" href="/articles/5826.html"> 阅读全文<span class="screen-reader-text"> Read More</span></a></p>
+<p></p>
+<div id="post-ratings-5826-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+</footer>
+</article>
+<nav class="navigation posts-navigation" role="navigation">
+<h2 class="screen-reader-text">Posts navigation</h2>
+<div class="nav-links">
+<div class="row">
+<div class="wp-pagenavi" role="navigation">
+<span class="pages">第 21 / 74 页</span><a class="first" aria-label="First Page" href="/">« 首页</a><a class="previouspostslink" rel="prev" aria-label="上一页" href="/page/20.html">«</a><span class="extend">...</span><a class="smaller page" title="第 10 页" href="/page/10.html">10</a><span class="extend">...</span><a class="page smaller" title="第 17 页" href="/page/17.html">17</a><a class="page smaller" title="第 18 页" href="/page/18.html">18</a><a class="page smaller" title="第 19 页" href="/page/19.html">19</a><a class="page smaller" title="第 20 页" href="/page/20.html">20</a><span aria-current="page" class="current">21</span><a class="page larger" title="第 22 页" href="/page/22.html">22</a><a class="page larger" title="第 23 页" href="/page/23.html">23</a><a class="page larger" title="第 24 页" href="/page/24.html">24</a><a class="page larger" title="第 25 页" href="/page/25.html">25</a><a class="page larger" title="第 26 页" href="/page/26.html">26</a><span class="extend">...</span><a class="larger page" title="第 40 页" href="/page/40.html">40</a><a class="larger page" title="第 50 页" href="/page/50.html">50</a><a class="larger page" title="第 60 页" href="/page/60.html">60</a><a class="larger page" title="第 70 页" href="/page/70.html">70</a><span class="extend">...</span><a class="nextpostslink" rel="next" aria-label="下一页" href="/page/22.html">»</a><a class="last" aria-label="Last Page" href="/page/74.html">末页 »</a>
+</div>
+</div>
+</div>
+</nav>
+</main>
+</div>
+
+</div>
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

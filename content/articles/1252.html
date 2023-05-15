@@ -1,0 +1,162 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>G1新型垃圾回收器一瞥 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-1252 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-1252" class="post-content post-1252 post type-post status-publish format-standard hentry category-javadev category-proglanguage tag-g1 tag-gc tag-java">
+<header class="entry-header">
+<span class="screen-reader-text">G1新型垃圾回收器一瞥</span>
+<h1 class="entry-title">G1新型垃圾回收器一瞥</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/1252.html" title="21:54" rel="bookmark"><time class="entry-date" datetime="2009-08-13T21:54:26+08:00" pubdate="">2009年08月13日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/1252.html#comments" class="comments-link">6 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 11,551 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#G1%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8" title="G1垃圾回收器">G1垃圾回收器</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%B1%9E%E6%80%A7" title="属性">属性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E6%8F%8F%E8%BF%B0" title="描述">描述</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E4%BD%BF%E7%94%A8_G1" title="使用 G1">使用 G1</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%8A%B6%E6%80%81" title="状态">状态</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%9B%B8%E5%85%B3%E8%B5%84%E6%BA%90" title="相关资源">相关资源</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="G1%E5%9E%83%E5%9C%BE%E5%9B%9E%E6%94%B6%E5%99%A8"></span>G1垃圾回收器<span class="ez-toc-section-end"></span></h4>
+<p>“G1垃圾回收”的英文全称是 <em>Garbage-First Garbage Collector</em> （又被称作G1 GC），这是一个新型的垃圾回收器，由JDK 7中的Java HotSpot VM 引入。这个技术曾经在Java SE 6 Update 14版本中出现过一个试验性的，然后 G1 被 HotSpot的 反应快速（low-latency）的 <em>Concurrent Mark-Sweep</em> GC （简称 <em>CMS</em>）长期取代。</p>
+<h4><span class="ez-toc-section" id="%E5%B1%9E%E6%80%A7"></span>属性<span class="ez-toc-section-end"></span></h4>
+<p>G1 是一个“服务器风格（server-style）”的垃圾回收器，它主要有下面的这些属性：</p>
+<p><span id="more-1252"></span></p>
+<ul>
+<li><strong>并行和并发。</strong> G1 可以从今天最新的硬件中获得并行的能力。它能够使用所有可用的CPU（CPU多核，硬件多线程，等）来加速它的 “stop-the-world” 机制（这个机制简称STW，即，在执行垃圾收集算法时，Java应用程序的其他所有除了垃圾收集帮助器线程之外的线程都被挂起）。</li>
+<li><strong>分代处理。</strong> 就像其它的HotSpot 垃圾回收器，G1 是分代的，也就是说，它在处理新分配的对象（年轻代）和已经生存了一段时间的对象（年老代）时会不同，它会更多地考虑一些新创建的对象实例，因为越新创建的就越有最大的可能性被回收，老对象只是偶尔访问一下。对于大多数的Java应用来说，这个机制可以极大地提高回收效率。</li>
+<li><strong>紧凑内存（碎片整理）。</strong> 不像CMS，G1 会对堆进行内存整理。压缩可以消除潜在的内存碎片的问题，这样程序就可以更长时间的平滑运行。</li>
+<li><strong>预见性的。</strong> G1 比起 CMS 来有更多的预见性。这个主要还是用来消除内存碎片的问题。内存的碎片少了，Stop-the-World的暂停时间也会被减少。</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E6%8F%8F%E8%BF%B0"></span>描述<span class="ez-toc-section-end"></span></h4>
+<p>比起其它的HotSpot 垃圾回收器来说，G1 使用了一种非常不同寻常的方法来管理堆内存的布局。在G1中，在对象新生代和老一代上没有在物理上把他们分隔开来。取而代之的是，它把一个连续的堆内存拆分成了几个相同大小的区域。新产生的对象和老的对象都会被放在一系列可能不会连续的区域中。之所以这样做，就是为了让G1可以更灵活地移动老对象所占用的资源给新的对象。</p>
+<p>G1中的内存收集会发生 “疏散暂停”，当内存从一系例区域开始回收时，这些区域所引用的 <em>collection set</em> 会被疏散到另一些区域中，这样，我们会有一整块的内存来重新被申请。疏散会发生整个程序的暂停，但“疏散”这些内存可以被并行运行，当然，你要有多核或多线程技术来支持。绝大多数的“疏散暂停”会去收集那些可用的比较新的内存区域，因此，这和其它的 HotSpot 垃圾回收器是相同的。偶而才会去查看一下老区域中的内存是否可以回收。</p>
+<p>在 CMS中，其周期性的执行一个 <em>concurrent marking phase</em>。 这个phase中最主要的事情是，识别哪些老的区域中充满了可以回收的对象，因为这是最有效率和最合适的回收。但在G1中，G1不会执行那个所谓的 <em>concurrent sweeping phase</em>， 取而代之的是，去识别那些的最合适的老的区域是在并发的“疏散暂停”中进行的（后面会做介绍）。</p>
+<h4><span class="ez-toc-section" id="%E4%BD%BF%E7%94%A8_G1"></span>使用 G1<span class="ez-toc-section-end"></span></h4>
+<p>G1 目前仍然还在试验阶段，使用下面两个参数可以打开G1机制：</p>
+<p><code>-XX:+UnlockExperimentalVMOptions -XX:+UseG1GC</code></p>
+<p>下面是设置垃圾回收器的暂停时间：</p>
+<p><code>-XX:MaxGCPauseMillis =50</code> (设置暂停时间为 50ms)</p>
+<p>在G1中，你还可以给垃圾回收器的暂停设置一个时间间隔：</p>
+<p><code>-XX:GCPauseIntervalMillis =200</code> (设置暂停时间间隔 200ms)</p>
+<p>注意，上面的两个参数只是代表目标，回收器并不保证。他们可能在某些情况下工作地很好，也可能在其它情况下不行，所以，垃圾回收器并不总是服从这两个参数设置。</p>
+<p>另外，新生代的内存大小可以被设置，这个参数同样会影响“疏散暂停”的时间：</p>
+<p><code>-XX:+G1YoungGenSize=512m</code> (设置新生代内存为 512兆字节)</p>
+<p>G1 同样可以使用survivor 空间，是的，这就是多少个区域。大小可以由通用的参数所指定(如： <code>-XX:SurvivorRatio=6</code>).</p>
+<p>最后，如果你要发挥G1的所有潜能，你可以尝试设置下面两个参数，它们默认上是关闭的，因为在一些很稀有的情况下，这两个参数会发生race condition（竞争条件）:</p>
+<p><code>-XX:+G1ParallelRSetUpdatingEnabled<br/>
+-XX:+G1ParallelRSetScanningEnabled</code></p>
+<p>还有一件事是G1能够报告比其它垃圾回收站更详细的信息，当然，你需要设置下面这个参数：</p>
+<p> <code>-XX:+PrintGCDetails</code></p>
+<p>这个参数会输出很多有用的信息供你查看性能与以 trouble-shooting。如果你想要简单的日志，你可以把这个开关设置到 <code>-verbosegc</code> 。</p>
+<h4><span class="ez-toc-section" id="%E7%8A%B6%E6%80%81"></span>状态<span class="ez-toc-section-end"></span></h4>
+<p>G1 开发目前主要关注于解决一些残留的稳定性的问题，以及提高性能，并且去除下面的限制：</p>
+<ul>
+<li>G1 并不完全支持 JVM Tool Interface (JVM TI) 或 Java Management Extensions (JMX)，所以，这些监控和管理工具无法正确地作用于G1。</li>
+<li>G1 不支持增量的永生代collection。如果一个应用在卸载很多的类，因些需要很多的永生代Collection，目前的G1还不支持，不过最终版会支持。</li>
+<li>关于垃圾回收器的暂停时间，G1的表现比起CMS来说是时好时坏。所以，还有很多工作需要让G1的表现更加稳定，绝不能比CMS还差，不然G1还有什么意思呢？</li>
+</ul>
+<h4><span class="ez-toc-section" id="%E7%9B%B8%E5%85%B3%E8%B5%84%E6%BA%90"></span>相关资源<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li>Description of HotSpot GCs: Memory Management in the Java HotSpot Virtual Machine White Paper: <a href="https://coolshell.cn/j2se/reference/whitepapers/memorymanagement_whitepaper.pdf">http://java.sun.com/j2se/reference/whitepapers/memorymanagement_whitepaper.pdf</a></li>
+<li>The original CMS paper: Printezis, T. and Detlefs, D. 2000. A generational mostly-concurrent garbage collector. In <em>Proceedings of the 2nd international Symposium on Memory Management</em> (Minneapolis, Minnesota, United States, October 15 – 16, 2000). <a href="http://portal.acm.org/citation.cfm?id=362422.362480" target="_blank">http://portal.acm.org/citation.cfm?id=362422.362480</a> (requires access to ACM’s portal)</li>
+<li>The original G1 paper: Detlefs, D., Flood, C., Heller, S., and Printezis, T. 2004. Garbage-first garbage collection. In Proceedings of the 4th international Symposium on Memory Management (Vancouver, BC, Canada, October 24 – 25, 2004). <a href="http://portal.acm.org/citation.cfm?id=1029879" target="_blank">http://portal.acm.org/citation.cfm?id=1029879</a> (requires access to ACM’s portal)</li>
+<li>G1 talk from JavaOne 2008: <a href="http://developers.sun.com/learning/javaoneonline/j1sessn.jsp?sessn=TS-5419&amp;yr=2008">http://developers.sun.com/learning/javaoneonline/j1sessn.jsp?sessn=TS-5419&amp;yr=2008</a></li>
+</ul>
+<p>文章：<a href="http://java.sun.com/javase/technologies/hotspot/gc/g1_intro.jsp" target="_blank">来源</a></p>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-1252-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">G1</a>, <a href="javascript:void(0)" rel="tag">GC</a>, <a href="javascript:void(0)" rel="tag">Java</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>G1新型垃圾回收器一瞥</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-72471" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://202.120.40.124/xyf/?p=167" class="url" rel="ugc external nofollow">coolshell资源汇总 | 黑客的白板</a> </div>
+</li>
+<li id="comment-564049" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=245" class="url" rel="ugc external nofollow">Java GC | Steve Guan</a> </div>
+</li>
+<li id="comment-1455107" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://demo.zengine.info/?p=1091" class="url" rel="ugc external nofollow">面向GC的Java编程 | zengine</a> </div>
+</li>
+<li id="comment-1455483" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=984" class="url" rel="ugc external nofollow">面向GC的Java编程 | 星达红</a> </div>
+</li>
+<li id="comment-1483686" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10880.html" class="url" rel="ugc external nofollow">面向GC的Java编程 - IT牛人博客聚合</a> </div>
+</li>
+<li id="comment-1513606" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.makaidong.com/blog/30768.html" class="url" rel="ugc external nofollow">面向GC的Java编程 – 马开东博客</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

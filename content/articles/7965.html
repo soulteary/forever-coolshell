@@ -1,0 +1,289 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>一个fork的面试题 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-7965 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-7965" class="post-content post-7965 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux category-operatingsystem category-proglanguage category-funny tag-c tag-fork tag-puzzle tag-unix tag-interview">
+<header class="entry-header">
+<span class="screen-reader-text">一个fork的面试题</span>
+<h1 class="entry-title">一个fork的面试题</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/7965.html" title="08:20" rel="bookmark"><time class="entry-date" datetime="2012-08-01T08:20:46+08:00" pubdate="">2012年08月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/7965.html#comments" class="comments-link">223 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 170,585 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>前两天有人问了个关于Unix的fork()系统调用的面试题，这个题正好是我大约十年前找工作时某公司问我的一个题，我觉得比较有趣，写篇文章与大家分享一下。这个题是这样的：</p>
+<p><strong>题目：请问下面的程序一共输出多少个“-”？</strong></p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+
+int main(void)
+{
+   int i;
+   for(i=0; i&lt;2; i++){
+      fork();
+      printf(&#34;-&#34;);
+   }
+
+   wait(NULL);
+   wait(NULL);
+
+   return 0;
+}
+</pre>
+<p>如果你对fork()的机制比较熟悉的话，这个题并不难，输出应该是6个“-”，但是，实际上这个程序会很tricky地输出8个“-”。</p>
+<p>要讲清这个题，我们首先需要知道fork()系统调用的特性，</p>
+<p><span id="more-7965"></span></p>
+<ul>
+<li>fork()系统调用是Unix下以自身进程创建子进程的系统调用，一次调用，两次返回，如果返回是0，则是子进程，如果返回值&gt;0，则是父进程（返回值是子进程的pid），这是众为周知的。</li>
+</ul>
+<ul>
+<li>还有一个很重要的东西是，在fork()的调用处，整个父进程空间会原模原样地复制到子进程中，包括指令，变量值，程序调用栈，环境变量，缓冲区，等等。</li>
+</ul>
+<p>所以，上面的那个程序为什么会输入8个“-”，这是因为printf(“-“);语句有buffer，所以，对于上述程序，printf(“-“);把“-”放到了缓存中，并没有真正的输出（参看《<a title="C语言的谜题" href="/articles/945.html" target="_blank">C语言的迷题</a>》中的第一题），<strong>在fork的时候，缓存被复制到了子进程空间</strong>，所以，就多了两个，就成了8个，而不是6个。</p>
+<p>另外，多说一下，我们知道，Unix下的设备有“<a href="https://en.wikipedia.org/wiki/Device_file#Block_devices" target="_blank">块设备</a>”和“<a href="https://en.wikipedia.org/wiki/Device_file#Character_devices" target="_blank">字符设备</a>”的概念，所谓块设备，就是以一块一块的数据存取的设备，字符设备是一次存取一个字符的设备。磁盘、内存都是块设备，字符设备如键盘和串口。<strong>块设备一般都有缓存，而字符设备一般都没有缓存</strong>。</p>
+<p>对于上面的问题，我们如果修改一下上面的printf的那条语句为：</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">printf(&#34;-\n&#34;);</code></p>
+<p>或是</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW"> printf(&#34;-&#34;);
+fflush(stdout);</pre>
+<p>就没有问题了（就是6个“-”了），因为程序遇到“\n”，或是EOF，或是缓中区满，或是文件描述符关闭，或是主动flush，或是程序退出，就会把数据刷出缓冲区。需要注意的是，标准输出是行缓冲，所以遇到“\n”的时候会刷出缓冲区，但对于磁盘这个块设备来说，“\n”并不会引起缓冲区刷出的动作，那是全缓冲，你可以使用setvbuf来设置缓冲区大小，或是用fflush刷缓存。</p>
+<p>我估计有些朋友可能对于fork()还不是很了解，那么我们把上面的程序改成下面这样：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">#include &lt;stdio.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;unistd.h&gt;
+int main(void)
+{
+   int i;
+   for(i=0; i&lt;2; i++){
+      fork();
+      //注意：下面的printf有“\n”
+      printf(&#34;ppid=%d, pid=%d, i=%d \n&#34;, getppid(), getpid(), i);
+   }
+   sleep(10); //让进程停留十秒，这样我们可以用pstree查看一下进程树
+   return 0;
+}
+</pre>
+<p>于是，上面这段程序会输出下面的结果，（注：编译出的可执行的程序名为fork）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">ppid=8858, pid=8518, i=0
+ppid=8858, pid=8518, i=1
+ppid=8518, pid=8519, i=0
+ppid=8518, pid=8519, i=1
+ppid=8518, pid=8520, i=1
+ppid=8519, pid=8521, i=1
+
+$ pstree -p | grep fork
+|-bash(8858)-+-fork(8518)-+-fork(8519)---fork(8521)
+|            |            `-fork(8520)</pre>
+<p>面对这样的图你可能还是看不懂，没事，我好事做到底，画个图给你看看：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-7968" title="fork 程序调用图" src="/uploads/2012/07/fork01jpg.jpg" alt="" width="620" height="407" srcset="" sizes="(max-width: 620px) 100vw, 620px"/></p>
+<p>注意：上图中的我用了几个色彩，相同颜色的是同一个进程。于是，我们的pstree的图示就可以成为下面这个样子：（下图中的颜色与上图对应）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7969" title="fork进程树" src="/uploads/2012/07/fork02.jpg" alt="" width="437" height="97" srcset="" sizes="(max-width: 437px) 100vw, 437px"/></p>
+<p>这样，对于printf(“-“);这个语句，我们就可以很清楚的知道，哪个子进程复制了父进程标准输出缓中区里的的内容，而导致了多次输出了。（如下图所示，就是我阴影并双边框了那两个子进程）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-7970" title="fork程序执行图" src="/uploads/2012/07/fork03.jpg" alt="" width="626" height="415" srcset="" sizes="(max-width: 626px) 100vw, 626px"/></p>
+<p>现在你明白了吧。（另，对于图中的我本人拙劣的配色，请见谅!）</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-7965-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a>, <a href="javascript:void(0)" rel="category tag">操作系统</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a>, <a href="javascript:void(0)" rel="category tag">趣味问题</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">fork</a>, <a href="javascript:void(0)" rel="tag">Puzzle</a>, <a href="javascript:void(0)" rel="tag">Unix</a>, <a href="javascript:void(0)" rel="tag">面试</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>一个fork的面试题</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1823757" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.chy520.com/shell/37.html" class="url" rel="ugc external nofollow">应该知道的Linux技巧-老邪博客</a> </div>
+</li>
+<li id="comment-1825085" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/vfork-%e6%8c%82%e6%8e%89%e7%9a%84%e4%b8%80%e4%b8%aa%e9%97%ae%e9%a2%98-codeba-cc.html" class="url" rel="ugc external nofollow">vfork 挂掉的一个问题 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1843788" class="comment even thread-even depth-1">
+<article id="div-comment-1843788" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/192072f3f8daf31f94c4cc3786c35c0f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/192072f3f8daf31f94c4cc3786c35c0f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xesam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7965.html/comment-page-5#comment-1843788"><time datetime="2016-06-06T15:56:34+08:00">2016年06月06日 15:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这篇文章不对了。。”\n” 并没有这样的作用。。 当然，可能与系统或者实现有关</p>
+</div>
+ </article>
+</li>
+<li id="comment-1913556" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.dtshuju.com/9224.html" class="url" rel="ugc external nofollow">linux下的fork和execve函数使用-DT数据-dtshuju.com - DT数据-业界资讯聚合，开源技术分享</a> </div>
+</li>
+<li id="comment-1913957" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codingblog.cn/blog/46419.html" class="url" rel="ugc external nofollow">进程创建system、exec、fork – CodingBlog</a> </div>
+</li>
+<li id="comment-1919065" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1919065" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d3b084822e647eaaf78e2e1b75954d2c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d3b084822e647eaaf78e2e1b75954d2c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">余洪禹</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7965.html/comment-page-5#comment-1919065"><time datetime="2017-10-15T15:09:52+08:00">2017年10月15日 15:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子哥，第一段代码和正文混在一起了啊，第三段代码也没了 code 样式</p>
+</div>
+ </article>
+</li>
+<li id="comment-1932296" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://photo.yuedy.com/archives/1829" class="url" rel="ugc external nofollow">一个很有趣的fork面试程序，和大家分享下经验 – x</a> </div>
+</li>
+<li id="comment-1941083" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://cstriker1407.info/blog/folk-questions/" class="url" rel="ugc external nofollow">[转]一个FORK的面试题 | cstriker1407的笔记本</a> </div>
+</li>
+<li id="comment-1941140" class="comment even thread-even depth-1">
+<article id="div-comment-1941140" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/27c72ff891573d059bc717d7354b777f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/27c72ff891573d059bc717d7354b777f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ln</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7965.html/comment-page-5#comment-1941140"><time datetime="2018-09-14T23:38:00+08:00">2018年09月14日 23:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>printf(“_”) 不加\n，属于挖坑</p>
+</div>
+ </article>
+</li>
+<li id="comment-1985692" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jqhtml.com/38499.html" class="url" rel="ugc external nofollow">一个很有趣的fork面试程序，和大家分享下经验 – 前端开发，JQUERY特效，全栈开发，vue开发</a> </div>
+</li>
+<li id="comment-2032732" class="comment even thread-even depth-1">
+<article id="div-comment-2032732" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3f353d1f7d50c4665836c9d69d170af3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3f353d1f7d50c4665836c9d69d170af3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">姜海涛</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/7965.html/comment-page-5#comment-2032732"><time datetime="2019-10-25T15:19:33+08:00">2019年10月25日 15:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从配色看，皓哥绝对不是色盲。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2088085" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/the-linux-tips-you-should-know.html" class="url" rel="ugc external nofollow">Coolshell:应该知道的Linux技巧 | 酷 壳 – CoolShell 3F</a> </div>
+</li>
+<li id="comment-2198047" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://coderxts.top/?p=472" class="url" rel="ugc external nofollow">操作系统 - 现实很近又很冷，梦想很远却很温暖</a> </div>
+</li>
+<li id="comment-2257599" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.weekdian.com/402.html" class="url" rel="ugc external nofollow">详解Bash代码注入安全漏洞 – 维客</a> </div>
+</li>
+<li id="comment-2301911" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1136468" class="url" rel="ugc external nofollow">九月十月百度人搜，阿里巴巴，腾讯华为笔试面试八十题(第331-410题) - 算法网</a> </div>
+</li>
+<li id="comment-2304305" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.iitter.com/other/55517.html" class="url" rel="ugc external nofollow">linux编程和C++笔记</a> </div>
+</li>
+<li id="comment-2310132" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1296833" class="url" rel="ugc external nofollow">2012 九月十月百度人搜，阿里巴巴，腾讯华为笔试面试八十题(第331-410题) - 算法网</a> </div>
+</li>
+<li id="comment-2310134" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1296835" class="url" rel="ugc external nofollow">九月十月百度人搜，阿里巴巴，腾讯华为小米搜狗笔试面试八十题 - 算法网</a> </div>
+</li>
+<li id="comment-2371064" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/65453.html" class="url" rel="ugc external nofollow">2012.09月面试五十题 - 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371093" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/146649" class="url" rel="ugc external nofollow">fork详解 | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371110" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/232960" class="url" rel="ugc external nofollow">fork &amp;vfork –陈皓 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/7965.html/comment-page-4#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/7965.html/comment-page-1#comments">1</a>
+<span class="page-numbers dots">…</span>
+<a class="page-numbers" href="/articles/7965.html/comment-page-3#comments">3</a>
+<a class="page-numbers" href="/articles/7965.html/comment-page-4#comments">4</a>
+<span aria-current="page" class="page-numbers current">5</span> <span id="cp_post_id">7965</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

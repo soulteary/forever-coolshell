@@ -1,0 +1,182 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Python处理中文的时候的一些小技巧 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-461 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-461" class="post-content post-461 post type-post status-publish format-standard hentry category-pythondev category-proglanguage tag-pythondev">
+<header class="entry-header">
+<span class="screen-reader-text">Python处理中文的时候的一些小技巧</span>
+<h1 class="entry-title">Python处理中文的时候的一些小技巧</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/461.html" title="18:19" rel="bookmark"><time class="entry-date" datetime="2009-04-12T18:19:04+08:00" pubdate="">2009年04月12日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/mailper" title="View all posts by mailper" rel="author">mailper</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/461.html#comments" class="comments-link">7 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 12,621 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>相信第一次处理中文的朋友们可能都会对中文的encoding 和程序的报错很头疼。</p>
+<p>如果你像我一样希望能够把事情尽快做好而不去深究，你可能会写一些异常处理的代码把 UnicodeEncodingError糊弄过去先，但当你开始怀疑有多少encoding出错的信息被你丢弃的时候，可能你会很惊奇。于是，你还是会想坐下来，（洗把脸）然后面对自己必须弄懂什么是utf-8，什么是 ‘gb2312’， 什么是 ‘gbk’ 和其中的猫腻。正如有时候猛撕小伤口上邦迪胶布的快感一样，有时候当你认真面对一些你平时一直回避的问题的时候（其实有时候需要的不是勇气）， 你反而会觉得“不过如此”，并且能够一劳永逸的解决问题。</p>
+<p>关于Python处理Unicode，我所能找到的最言简意赅的入门教程是：</p>
+<h3 class="r"><a class="l" onmousedown="if (!window.__cfRLUnblockHandlers) return false; return rwt(this,&#39;&#39;,&#39;&#39;,&#39;&#39;,&#39;1&#39;,&#39;AFQjCNG2KDSlBO51sqZvt1KQ8D2jgaNeSA&#39;,&#39;&amp;sig2=HRW3IVb7NrhpeTbrPLRDLg&#39;)" href="http://farmdev.com/talks/unicode/" data-cf-modified-0ca3ae4435456444223ab485-=""><em><em>Unicode</em> In <em>Python</em>, Completely Demystified </em>（揭秘Python Unicode）<p></p>
+</a><p><a class="l" onmousedown="if (!window.__cfRLUnblockHandlers) return false; return rwt(this,&#39;&#39;,&#39;&#39;,&#39;&#39;,&#39;1&#39;,&#39;AFQjCNG2KDSlBO51sqZvt1KQ8D2jgaNeSA&#39;,&#39;&amp;sig2=HRW3IVb7NrhpeTbrPLRDLg&#39;)" href="http://farmdev.com/talks/unicode/" data-cf-modified-0ca3ae4435456444223ab485-=""></a></p></h3>
+<p>简要罗列一下最重要最实用的点：</p>
+<p><span id="more-461"></span></p>
+<p>Solution</p>
+<ol>
+<li><strong>Decode early </strong>（尽早decode, 将文件中的内容转化成 unicode 再进行下一步处理)</li>
+<li><strong>Unicode everywhere </strong>(程序内部处理都用unicode)</li>
+<li><strong>Encode late </strong>(最后encode回所需的encoding, 例如把最终结果写进结果文件)</li>
+</ol>
+<p><strong>1. Decode early</strong></p>
+<blockquote><p>Decode to &lt;type ‘unicode’&gt; ASAP</p>
+<p>&gt;&gt;&gt; def to_unicode_or_bust(</p>
+<p>…         obj, encoding=’utf-8′):</p>
+<p>…     if isinstance(obj, basestring):</p>
+<p>…         if not isinstance(obj, unicode):</p>
+<p>…             obj = unicode(obj, encoding)</p>
+<p>…     return obj</p>
+<p>…</p>
+<p>&gt;&gt;&gt;</p>
+<p>detects if object is a string and if so converts to unicode, if not already.</p></blockquote>
+<p><strong>2. Unicode everywhere</strong></p>
+<blockquote><p>&gt;&gt;&gt; to_unicode_or_bust(ivan_uni)</p>
+<p>u’Ivan Krsti\u0107′</p>
+<p>&gt;&gt;&gt; to_unicode_or_bust(ivan_utf8)</p>
+<p>u’Ivan Krsti\u0107′</p>
+<p>&gt;&gt;&gt; to_unicode_or_bust(1234)</p>
+<p>1234</p></blockquote>
+<p><strong>3. Encode late</strong></p>
+<blockquote><p>Encode to &lt;type ‘str’&gt; when you write to disk or print</p>
+<p>&gt;&gt;&gt; f = open(‘/tmp/ivan_out.txt’,’w’)</p>
+<p>&gt;&gt;&gt; f.write(ivan_uni.encode(‘utf-8’))</p>
+<p>&gt;&gt;&gt; f.close()</p></blockquote>
+<p>我以前一直觉得unicode相关的处理都是很 dirty 的工作，一般都会一边尝试，一边用异常处理去补丁，看完以上这个教程以后豁然开朗。</p>
+<p>祝大家也能早日理清处理中文的时候的头绪，坦然直面“神秘”的unicode</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-461-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Python</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Python</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Python处理中文的时候的一些小技巧</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-313" class="comment even thread-even depth-1">
+<article id="div-comment-313" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d21c0ed1960b8ed93872856f9d2c3a32?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d21c0ed1960b8ed93872856f9d2c3a32?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">barney</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/461.html#comment-313"><time datetime="2009-07-02T21:13:17+08:00">2009年07月02日 21:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很简明扼要，谢谢</p>
+</div>
+ </article>
+</li>
+<li id="comment-477" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-477" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c698b106ff1ccc2833479a08c338de25?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c698b106ff1ccc2833479a08c338de25?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.kgblog.net" class="url" rel="ugc external nofollow">Keengle</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/461.html#comment-477"><time datetime="2009-07-22T19:30:37+08:00">2009年07月22日 19:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个，我还要慢慢消化一下。</p>
+</div>
+ </article>
+</li>
+<li id="comment-57586" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://202.120.40.124/xyf/?p=167" class="url" rel="ugc external nofollow">coolshell资源汇总 | 黑客的白板</a> </div>
+</li>
+<li id="comment-63195" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-63195" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9583b17049b31dba24f7ca1de96d946b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9583b17049b31dba24f7ca1de96d946b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">songtianyi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/461.html#comment-63195"><time datetime="2011-07-05T10:39:30+08:00">2011年07月05日 10:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>实用</p>
+</div>
+ </article>
+</li>
+<li id="comment-66916" class="comment even thread-even depth-1">
+<article id="div-comment-66916" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7bfb55f50e37bdb01eee736071896646?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7bfb55f50e37bdb01eee736071896646?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://pythoner.net" class="url" rel="ugc external nofollow">pythoner.net</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/461.html#comment-66916"><time datetime="2011-07-21T23:48:31+08:00">2011年07月21日 23:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>已推荐到http://pythoner.net/wiki/</p>
+</div>
+ </article>
+</li>
+<li id="comment-1213862" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://javablogs.org/?p=152" class="url" rel="ugc external nofollow">函数式编程 | java博客，java教程</a> </div>
+</li>
+<li id="comment-1482244" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://makaidong.com/10610.html" class="url" rel="ugc external nofollow">Python修饰器的函数式编程 - IT牛人博客聚合</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

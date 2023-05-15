@@ -1,0 +1,311 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>浏览器的渲染原理简介 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9666 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9666" class="post-content post-9666 post type-post status-publish format-standard hentry category-webdev category-progdesign tag-css tag-dom tag-html tag-javascript tag-web">
+<header class="entry-header">
+<span class="screen-reader-text">浏览器的渲染原理简介</span>
+<h1 class="entry-title">浏览器的渲染原理简介</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9666.html" title="08:17" rel="bookmark"><time class="entry-date" datetime="2013-05-22T08:17:47+08:00" pubdate="">2013年05月22日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9666.html#comments" class="comments-link">155 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 194,567 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>看到这个标题大家一定会想到这篇神文《<a href="http://taligarsiel.com/Projects/howbrowserswork1.htm" target="_blank">How Browsers Work</a>》，这篇文章把浏览器的很多细节讲得很细，而且也被<a href="http://ux.sohu.com/topics/50972d9ae7de3e752e0081ff" target="_blank">翻译成了中文</a>。为什么我还想写一篇呢？因为两个原因，</p>
+<p style="padding-left: 30px;">1）这篇文章太长了，阅读成本太大，不能一口气读完。</p>
+<p style="padding-left: 30px;">2）花了大力气读了这篇文章后可以了解很多，但似乎对工作没什么帮助。</p>
+<p>所以，我准备写下这篇文章来解决上述两个问题。希望你能在上班途中，或是坐马桶时就能读完，并能从中学会一些能用在工作上的东西。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E6%B5%8F%E8%A7%88%E5%99%A8%E5%B7%A5%E4%BD%9C%E5%A4%A7%E6%B5%81%E7%A8%8B" title="浏览器工作大流程">浏览器工作大流程</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#DOM%E8%A7%A3%E6%9E%90" title="DOM解析">DOM解析</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#CSS%E8%A7%A3%E6%9E%90" title="CSS解析">CSS解析</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%B8%B2%E6%9F%93" title="渲染">渲染</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%87%8F%E5%B0%91reflowrepaint" title="减少reflow/repaint">减少reflow/repaint</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%87%A0%E4%B8%AA%E5%B7%A5%E5%85%B7%E5%92%8C%E5%87%A0%E7%AF%87%E6%96%87%E7%AB%A0" title="几个工具和几篇文章">几个工具和几篇文章</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E5%8F%82%E8%80%83" title="参考">参考</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E6%B5%8F%E8%A7%88%E5%99%A8%E5%B7%A5%E4%BD%9C%E5%A4%A7%E6%B5%81%E7%A8%8B"></span>浏览器工作大流程<span class="ez-toc-section-end"></span></h4>
+<p>废话少说，先来看个图：</p>
+<p style="text-align: center;"><img decoding="async" class="aligncenter  wp-image-9667" alt="" src="/uploads/2013/05/Render-Process.jpg" width="712" height="231" srcset="" sizes="(max-width: 712px) 100vw, 712px"/></p>
+<p style="text-align: left;">从上面这个图中，我们可以看到那么几个事：</p>
+<p><span id="more-9666"></span></p>
+<p style="text-align: left;">1）浏览器会解析三个东西：</p>
+<ul>
+<li>一个是HTML/SVG/XHTML，事实上，Webkit有三个C++的类对应这三类文档。解析这三种文件会产生一个DOM Tree。</li>
+</ul>
+<ul>
+<li>CSS，解析CSS会产生CSS规则树。</li>
+</ul>
+<ul>
+<li>Javascript，脚本，主要是通过DOM API和CSSOM API来操作DOM Tree和CSS Rule Tree.</li>
+</ul>
+<p>2）解析完成后，浏览器引擎会通过DOM Tree 和 CSS Rule Tree 来构造 Rendering Tree。注意：</p>
+<ul>
+<li>Rendering Tree 渲染树并不等同于DOM树，因为一些像Header或display:none的东西就没必要放在渲染树中了。</li>
+</ul>
+<ul>
+<li>CSS 的 Rule Tree主要是为了完成匹配并把CSS Rule附加上Rendering Tree上的每个Element。也就是DOM结点。也就是所谓的Frame。</li>
+</ul>
+<ul>
+<li>然后，计算每个Frame（也就是每个Element）的位置，这又叫layout和reflow过程。</li>
+</ul>
+<p>3）最后通过调用操作系统Native GUI的API绘制。</p>
+<h4><span class="ez-toc-section" id="DOM%E8%A7%A3%E6%9E%90"></span>DOM解析<span class="ez-toc-section-end"></span></h4>
+<p>HTML的DOM Tree解析如下：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;html&gt;
+&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Web page parsing&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;div&gt;
+        &lt;h1&gt;Web page parsing&lt;/h1&gt;
+        &lt;p&gt;This is an example Web page.&lt;/p&gt;
+    &lt;/div&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+</pre>
+<p>上面这段HTML会解析成这样：</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-9669" alt="" src="/uploads/2013/05/DOM-Tree-01.jpg" width="456" height="300" srcset="" sizes="(max-width: 456px) 100vw, 456px"/></p>
+<p>下面是另一个有SVG标签的情况。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-9670" alt="" src="/uploads/2013/05/DOM-Tree-02.jpg" width="408" height="320" srcset="" sizes="(max-width: 408px) 100vw, 408px"/></p>
+<h4><span class="ez-toc-section" id="CSS%E8%A7%A3%E6%9E%90"></span>CSS解析<span class="ez-toc-section-end"></span></h4>
+<p>CSS的解析大概是下面这个样子（下面主要说的是Gecko也就是Firefox的玩法），假设我们有下面的HTML文档：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">&lt;doc&gt;
+&lt;title&gt;A few quotes&lt;/title&gt;
+&lt;para&gt;
+  Franklin said that &lt;quote&gt;&#34;A penny saved is a penny earned.&#34;&lt;/quote&gt;
+&lt;/para&gt;
+&lt;para&gt;
+  FDR said &lt;quote&gt;&#34;We have nothing to fear but &lt;span&gt;fear itself.&lt;/span&gt;&#34;&lt;/quote&gt;
+&lt;/para&gt;
+&lt;/doc&gt;
+</pre>
+<p>于是DOM Tree是这个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9672" alt="" src="/uploads/2013/05/DOM-Tree-Example.jpg" width="368" height="318" srcset="" sizes="(max-width: 368px) 100vw, 368px"/></p>
+<p>然后我们的CSS文档是这样的：</p>
+<pre data-enlighter-language="html" class="EnlighterJSRAW">  /* rule 1 */ doc { display: block; text-indent: 1em; }
+/* rule 2 */ title { display: block; font-size: 3em; }
+/* rule 3 */ para { display: block; }
+/* rule 4 */ [class=&#34;emph&#34;] { font-style: italic; }</pre>
+<p>于是我们的CSS Rule Tree会是这个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9673" alt="" src="/uploads/2013/05/CSS-Rule-Tree-Example.jpg" width="397" height="238" srcset="" sizes="(max-width: 397px) 100vw, 397px"/></p>
+<p>注意，图中的第4条规则出现了两次，一次是独立的，一次是在规则3的子结点。所以，我们可以知道，建立CSS Rule Tree是需要比照着DOM Tree来的。CSS匹配DOM Tree主要是从右到左解析CSS的Selector，好多人以为这个事会比较快，其实并不一定。关键还看我们的CSS的Selector怎么写了。</p>
+<p><strong>注意：CSS匹配HTML元素是一个相当复杂和有性能问题的事情。所以，你就会在N多地方看到很多人都告诉你，DOM树要小，CSS尽量用id和class，千万不要过渡层叠下去，……</strong></p>
+<p>通过这两个树，我们可以得到一个叫Style Context Tree，也就是下面这样（把CSS Rule结点Attach到DOM Tree上）：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-9674" alt="" src="/uploads/2013/05/CSS-Content-Tree-Example.jpg" width="405" height="318" srcset="" sizes="(max-width: 405px) 100vw, 405px"/></p>
+<p>所以，Firefox基本上来说是通过CSS 解析 生成 CSS Rule Tree，然后，通过比对DOM生成Style Context Tree，然后Firefox通过把Style Context Tree和其Render Tree（Frame Tree）关联上，就完成了。注意：Render Tree会把一些不可见的结点去除掉。而<strong>Firefox中所谓的Frame就是一个DOM结点，不要被其名字所迷惑了</strong>。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-9677" alt="" src="/uploads/2013/05/Firefox-style-context-tree.png" width="328" height="366" srcset="" sizes="(max-width: 328px) 100vw, 328px"/></p>
+<p>注：Webkit不像Firefox要用两个树来干这个，Webkit也有Style对象，它直接把这个Style对象存在了相应的DOM结点上了。</p>
+<h4><span class="ez-toc-section" id="%E6%B8%B2%E6%9F%93"></span>渲染<span class="ez-toc-section-end"></span></h4>
+<p>渲染的流程基本上如下（黄色的四个步骤）：</p>
+<ol>
+<li>计算CSS样式</li>
+<li>构建Render Tree</li>
+<li>Layout – 定位坐标和大小，是否换行，各种position, overflow, z-index属性 ……</li>
+<li>正式开画</li>
+</ol>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter  wp-image-9675" alt="" src="/uploads/2013/05/Render-Process-Skipping.jpg" width="712" height="196" srcset="" sizes="(max-width: 712px) 100vw, 712px"/></p>
+<p style="text-align: left;">注意：上图流程中有很多连接线，这表示了Javascript动态修改了DOM属性或是CSS属会导致重新Layout，有些改变不会，就是那些指到天上的箭头，比如，修改后的CSS rule没有被匹配到，等。</p>
+<p style="text-align: left;">这里重要要说两个概念，一个是Reflow，另一个是Repaint。这两个不是一回事。</p>
+<ul>
+<li>Repaint——屏幕的一部分要重画，比如某个CSS的背景色变了。但是元素的几何尺寸没有变。</li>
+</ul>
+<ul>
+<li>Reflow——意味着元件的几何尺寸变了，我们需要重新验证并计算Render Tree。是Render Tree的一部分或全部发生了变化。这就是Reflow，或是Layout。（<strong>HTML使用的是flow based layout，也就是流式布局，所以，如果某元件的几何尺寸发生了变化，需要重新布局，也就叫reflow</strong>）reflow 会从&lt;html&gt;这个root frame开始递归往下，依次计算所有的结点几何尺寸和位置，在reflow过程中，可能会增加一些frame，比如一个文本字符串必需被包装起来。</li>
+</ul>
+<p>下面是一个打开Wikipedia时的Layout/reflow的视频（注：HTML在初始化的时候也会做一次reflow，叫 <dfn>intial reflow</dfn>），你可以感受一下：</p>
+<p></p><center><object width="480" height="400" classid="clsid:d27cdb6e-ae6d-11cf-96b8-444553540000" codebase="http://download.macromedia.com/pub/shockwave/cabs/flash/swflash.cab#version=6,0,40,0" align="middle"><param name="src" value="http://player.youku.com/player.php/sid/XMzI5MDg0OTA0/v.swf"/><param name="allowfullscreen" value="true"/><param name="quality" value="high"/><param name="allowscriptaccess" value="always"/><embed width="480" height="400" type="application/x-shockwave-flash" src="http://player.youku.com/player.php/sid/XMzI5MDg0OTA0/v.swf" allowfullscreen="true" quality="high" allowscriptaccess="always" align="middle"/></object></center>Reflow的成本比Repaint的成本高得多的多。DOM Tree里的每个结点都会有reflow方法，一个结点的reflow很有可能导致子结点，甚至父点以及同级结点的reflow。<strong>在一些高性能的电脑上也许还没什么，但是如果reflow发生在手机上，那么这个过程是非常痛苦和耗电的</strong>。<p></p>
+<p>所以，下面这些动作有很大可能会是成本比较高的。</p>
+<ul>
+<li>当你增加、删除、修改DOM结点时，会导致Reflow或Repaint</li>
+<li>当你移动DOM的位置，或是搞个动画的时候。</li>
+<li>当你修改CSS样式的时候。</li>
+<li>当你Resize窗口的时候（移动端没有这个问题），或是滚动的时候。</li>
+<li>当你修改网页的默认字体时。</li>
+</ul>
+<p style="text-align: left;">注：display:none会触发reflow，而visibility:hidden只会触发repaint，因为没有发现位置变化。</p>
+<p style="text-align: left;">多说两句关于滚屏的事，通常来说，如果在滚屏的时候，我们的页面上的所有的像素都会跟着滚动，那么性能上没什么问题，因为我们的显卡对于这种把全屏像素往上往下移的算法是很快。但是如果你有一个fixed的背景图，或是有些Element不跟着滚动，有些Elment是动画，那么这个滚动的动作对于浏览器来说会是相当相当痛苦的一个过程。你可以看到很多这样的网页在滚动的时候性能有多差。因为滚屏也有可能会造成reflow。</p>
+<p style="text-align: left;">基本上来说，reflow有如下的几个原因：</p>
+<ul>
+<li>Initial。网页初始化的时候。</li>
+<li>Incremental。一些Javascript在操作DOM Tree时。</li>
+<li>Resize。其些元件的尺寸变了。</li>
+<li>StyleChange。如果CSS的属性发生变化了。</li>
+<li>Dirty。几个Incremental的reflow发生在同一个frame的子树上。</li>
+</ul>
+<p style="text-align: left;">好了，我们来看一个示例吧：</p>
+<p>[javascript]var bstyle = document.body.style; // cache</p>
+<p>bstyle.padding = &#34;20px&#34;; // reflow, repaint<br/>
+bstyle.border = &#34;10px solid red&#34;; //  再一次的 reflow 和 repaint</p>
+<p>bstyle.color = &#34;blue&#34;; // repaint<br/>
+bstyle.backgroundColor = &#34;#fad&#34;; // repaint</p>
+<p>bstyle.fontSize = &#34;2em&#34;; // reflow, repaint</p>
+<p>// new DOM element – reflow, repaint<br/>
+document.body.appendChild(document.createTextNode(‘dude!’));[/javascript]</p>
+<p style="text-align: left;">当然，我们的浏览器是聪明的，它不会像上面那样，你每改一次样式，它就reflow或repaint一次。<strong>一般来说，浏览器会把这样的操作积攒一批，然后做一次reflow，这又叫异步reflow或增量异步reflow</strong>。但是有些情况浏览器是不会这么做的，比如：resize窗口，改变了页面默认的字体，等。对于这些操作，浏览器会马上进行reflow。</p>
+<p style="text-align: left;">但是有些时候，我们的脚本会阻止浏览器这么干，比如：如果我们请求下面的一些DOM值：</p>
+<ol>
+<li>offsetTop, offsetLeft, offsetWidth, offsetHeight</li>
+<li>scrollTop/Left/Width/Height</li>
+<li>clientTop/Left/Width/Height</li>
+<li>IE中的 getComputedStyle(), 或 currentStyle</li>
+</ol>
+<p style="text-align: left;">因为，如果我们的程序需要这些值，那么浏览器需要返回最新的值，而这样一样会flush出去一些样式的改变，从而造成频繁的reflow/repaint。</p>
+<h4 style="text-align: left;"><span class="ez-toc-section" id="%E5%87%8F%E5%B0%91reflowrepaint"></span>减少reflow/repaint<span class="ez-toc-section-end"></span></h4>
+<p>下面是一些Best Practices：</p>
+<p><strong>1）不要一条一条地修改DOM的样式。与其这样，还不如预先定义好css的class，然后修改DOM的className。</strong></p>
+<p>[javascript]// bad<br/>
+var left = 10,<br/>
+top = 10;<br/>
+el.style.left = left + &#34;px&#34;;<br/>
+el.style.top  = top  + &#34;px&#34;;</p>
+<p>// Good<br/>
+el.className += &#34; theclassname&#34;;</p>
+<p>// Good<br/>
+el.style.cssText += &#34;; left: &#34; + left + &#34;px; top: &#34; + top + &#34;px;&#34;;[/javascript]</p>
+<p><strong>2）把DOM离线后修改。如：</strong></p>
+<ul>
+<li>使用documentFragment 对象在内存里操作DOM</li>
+<li>先把DOM给display:none(有一次reflow)，然后你想怎么改就怎么改。比如修改100次，然后再把他显示出来。</li>
+<li>clone一个DOM结点到内存里，然后想怎么改就怎么改，改完后，和在线的那个的交换一下。</li>
+</ul>
+<p>3）<strong>不要把DOM结点的属性值放在一个循环里当成循环里的变量。</strong>不然这会导致大量地读写这个结点的属性。</p>
+<p>4）<strong>尽可能的修改层级比较低的DOM</strong>。当然，改变层级比较底的DOM有可能会造成大面积的reflow，但是也可能影响范围很小。</p>
+<p>5）<strong>为动画的HTML元件使用fixed或absoult的position</strong>，那么修改他们的CSS是不会reflow的。</p>
+<p>6）<strong>千万不要使用table布局</strong>。因为可能很小的一个小改动会造成整个table的重新布局。</p>
+<blockquote><p>In this manner, the user agent can begin to lay out the table once the entire first row has been received. Cells in subsequent rows do not affect column widths. Any cell that has content that overflows uses the ‘overflow’ property to determine whether to clip the overflow content.</p>
+<p><cite><a href="http://www.w3.org/TR/CSS21/tables.html#fixed-table-layout">Fixed layout, CSS 2.1 Specification</a></cite></p></blockquote>
+<blockquote><p>This algorithm may be inefficient since it requires the user agent to have access to all the content in the table before determining the final layout and may demand more than one pass.</p>
+<p><cite><a href="http://www.w3.org/TR/CSS21/tables.html#auto-table-layout">Automatic layout, CSS 2.1 Specification</a></cite></p></blockquote>
+<h4><span class="ez-toc-section" id="%E5%87%A0%E4%B8%AA%E5%B7%A5%E5%85%B7%E5%92%8C%E5%87%A0%E7%AF%87%E6%96%87%E7%AB%A0"></span>几个工具和几篇文章<span class="ez-toc-section-end"></span></h4>
+<p>有时候，你会也许会发现在IE下，你不知道你修改了什么东西，结果CPU一下子就上去了到100%，然后过了好几秒钟repaint/reflow才完成，这种事情以IE的年代时经常发生。所以，我们需要一些工具帮我们看看我们的代码里有没有什么不合适的东西。</p>
+<ul>
+<li>Chrome下，Google的<a href="https://code.google.com/webtoolkit/speedtracer/">SpeedTracer</a>是个非常强悍的工作让你看看你的浏览渲染的成本有多大。其实Safari和Chrome都可以使用开发者工具里的一个Timeline的东东。</li>
+</ul>
+<ul>
+<li>Firefox下这个基于Firebug的叫<a href="https://addons.mozilla.org/en-US/firefox/addon/firebug-paint-events/" target="_blank">Firebug Paint Events</a>的插件也不错。</li>
+</ul>
+<ul>
+<li>IE下你可以用一个叫<a href="http://ajax.dynatrace.com/pages/">dynaTrace</a>的IE扩展。</li>
+</ul>
+<p>最后，别忘了下面这几篇提高浏览器性能的文章：</p>
+<ul>
+<li><a href="https://code.google.com/speed/page-speed/docs/rules_intro.html">Google – Web Performance Best Practices</a></li>
+<li><a href="http://developer.yahoo.com/performance/rules.html">Yahoo – Best Practices for Speeding Up Your Web Site</a></li>
+<li><a href="http://stevesouders.com/hpws/rules.php">Steve Souders – 14 Rules for Faster-Loading Web Sites</a></li>
+</ul>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83"></span>参考<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li>David Baron的演讲：Fast CSS: How Browsers Lay Out Web Pages：<a href="https://dbaron.org/talks/2012-03-11-sxsw/slide-1.xhtml" target="_blank">slideshow</a>, <a href="https://dbaron.org/talks/2012-03-11-sxsw/master.xhtml">all slides</a>, <a href="http://audio.sxsw.com/2012/podcasts/11-ACC-Fast_CSS_How_Browser_Layout.mp3">audio (MP3)</a>, <a href="http://schedule.sxsw.com/2012/events/event_IAP12909">Session page</a>, <a href="http://lanyrd.com/2012/sxsw-interactive/spmbt/">Lanyrd page</a></li>
+</ul>
+<ul>
+<li>How Browsers Work: <a href="http://taligarsiel.com/Projects/howbrowserswork1.htm" target="_blank">http://taligarsiel.com/Projects/howbrowserswork1.htm</a></li>
+</ul>
+<ul>
+<li>Mozilla 的 Style System Overview：<a href="https://developer.mozilla.org/en-US/docs/Style_System_Overview" target="_blank">https://developer.mozilla.org/en-US/docs/Style_System_Overview</a></li>
+</ul>
+<ul>
+<li>Mozilla 的 Note of reflow： <a href="http://www-archive.mozilla.org/newlayout/doc/reflow.html" target="_blank">http://www-archive.mozilla.org/newlayout/doc/reflow.html</a></li>
+</ul>
+<ul>
+<li>Rendering: repaint, reflow/relayout, restyle：<a href="http://www.phpied.com/rendering-repaint-reflowrelayout-restyle/" target="_blank">http://www.phpied.com/rendering-repaint-reflowrelayout-restyle/</a></li>
+</ul>
+<ul>
+<li>Effective Rendering CSS：<a href="https://css-tricks.com/efficiently-rendering-css/" target="_blank">http://css-tricks.com/efficiently-rendering-css/</a></li>
+</ul>
+<ul>
+<li><strong></strong>Webkit Rendering文档：<a href="http://trac.webkit.org/wiki/WebCoreRendering" target="_blank">http://trac.webkit.org/wiki/WebCoreRendering</a></li>
+</ul>
+<p></p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9666-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Web开发</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">CSS</a>, <a href="javascript:void(0)" rel="tag">DOM</a>, <a href="javascript:void(0)" rel="tag">HTML</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">Web</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>浏览器的渲染原理简介</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2370995" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://codeuuu.com/p/48757.html" class="url" rel="ugc external nofollow">注意看，她叫小美，在地址栏输入URL地址后发生了什么？ - CodeUUU</a> </div>
+</li>
+<li id="comment-2370996" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itfaba.com/jishufenxian/73199.html" class="url" rel="ugc external nofollow">注意看，她叫小美，在地址栏输入URL地址后发生了什么？ | 呱唧呱唧网</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9666.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9666.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/9666.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/9666.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">9666</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

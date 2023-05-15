@@ -1,0 +1,655 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>对象的消息模型 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-5202 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-5202" class="post-content post-5202 post type-post status-publish format-standard hentry category-proglanguage tag-c tag-javascript tag-oop tag-ruby">
+<header class="entry-header">
+<span class="screen-reader-text">对象的消息模型</span>
+<h1 class="entry-title">对象的消息模型</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/5202.html" title="10:37" rel="bookmark"><time class="entry-date" datetime="2011-08-15T10:37:13+08:00" pubdate="">2011年08月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/todd" title="View all posts by Todd" rel="author">Todd</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/5202.html#comments" class="comments-link">42 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 27,146 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong><span style="color: #cc0000;">[ ———— 感谢</span> <a href="http://www.cnblogs.com/weidagang2046/" target="_blank">Todd 同学</a> <span style="color: #cc0000;">投递本文，<a href="http://www.cnblogs.com/weidagang2046/archive/2011/08/14/2138059.html" target="_blank">原文链接</a> ———— ]</span></strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#C%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B" title="C++对象模型">C++对象模型</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E5%AF%B9%E8%B1%A1%E7%9A%84%E6%B6%88%E6%81%AF%E6%A8%A1%E5%9E%8B" title="对象的消息模型">对象的消息模型</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Method_Missing" title="Method Missing">Method Missing</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%8F%82%E8%80%83" title="参考">参考</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="C%E5%AF%B9%E8%B1%A1%E6%A8%A1%E5%9E%8B"></span><strong>C++对象模型</strong><span class="ez-toc-section-end"></span></h4>
+<p>话题从下面这段C++程序说起，你认为它可以顺利执行吗？</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">//C++
+class A {
+    public:
+        void Hello(const std::string&amp; name) {
+           std::cout &lt;&lt; &#34;hello &#34; &lt;&lt; name;
+         }
+};
+int main(int argc, char** argv)
+{
+    A* pa = NULL; //!!
+    pa-&gt;Hello(&#34;world&#34;);
+    return 0;
+}</pre>
+<p>试试的确可以顺利运行输出hello world，奇怪吗？其实并不奇怪，根据C++对象模型，类的非虚方法并不会存在于对象内存布局中，实际上编译器是把Hello方法转化成了类似这样的全局函数：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void A_Hello_xxx(A * const this, const std::string&amp; name) {
+    std::cout &lt;&lt; “hello “ &lt;&lt; name;
+}</pre>
+<p>对象指针其实是作为第一个参数被隐式传递的，pa-&gt;Hello(“world”)实际上是调用的A_Hello_xxx(pa, “world”)，而恰好A_Hello_xxx内部没有使用pa，所以这段代码得以顺利运行。</p>
+<h4><span class="ez-toc-section" id="%E5%AF%B9%E8%B1%A1%E7%9A%84%E6%B6%88%E6%81%AF%E6%A8%A1%E5%9E%8B"></span><strong>对象的消息模型</strong><span class="ez-toc-section-end"></span></h4>
+<p>如果是研究C++对象模型，上面的讨论可以到此为止，不过这里我想从另一个层面来继续探讨这个问题。OOP的先驱人物Alan Kay在总结Smalltalk的OO特征时强调：</p>
+<p><span id="more-5202"></span></p>
+<blockquote><p>Smalltalk is not only NOT its syntax or the class library, it is not even about classes. I’m sorry that I long ago coined the term “objects” for this topic because it gets many people to focus on the lesser idea. The big idea is “messaging”.</p></blockquote>
+<p>也就是说相比类和对象的概念来讲，他认为对象交互的消息模型是OOP更为本质的特征，因为消息关注的是对象间的接口和交互，在构建大的系统的时候重要的不是对象/模块的内部状态，而是它们的交互。根据消息模型，牛.吃(草) 的语义是发送一条消息给“牛”，消息的类型是“吃”，消息的内容是“草”。如果按照严格的消息模型，那么上面那段C++代码应解释为向一个NULL对象发送Hello消息，这显然是不应该顺利执行的。类似的代码如果是在Java或C#中则会抛出空引用异常，所以Java和C#的设计更符合消息模型。</p>
+<p>不过，Java和C#中也并非完全符合消息模型，来看一个经典的封装问题：</p>
+<pre data-enlighter-language="csharp" class="EnlighterJSRAW">//C#
+
+public class Account {
+    private int _amount;
+
+    public void Transfer(Account acc, int delta) {
+        acc._amount += delta;
+        this._amount -= delta;
+    }
+    …
+}</pre>
+<p>上面定义了一个Account类，问题在于为什么在这个类的Transfer方法中可以直接访问另一个对象acc的私有成员_amount呢？这是不是有破坏封装的嫌疑呢？这个问题经典的答案是：并不破坏封装，封装是划分了基于类的静态的代码边界，使得类的private代码修改不影响外界，而不是对于动态对象的保护。这个解释当然是合理的，不过正如上面C++代码的解释属于C++对象模型范畴，这个解释则属于基于类的静态类型OOP语言的范畴。消息模型强调了对象内部状态的保护，只能通过消息改变其状态，而对象内部是否真的具有_amout这样一个私有成员对其他任何对象（即使同类对象）都是未知的。</p>
+<p>如果要严格遵守消息模型实现对象内部状态的保护应该怎么做呢？我们来看一个例子，定义一个集合类，包括：1.集合对象的构造函数；2.In方法：判断元素是否存在；3.Join方法：对两个集合做交集；4.Union方法：对两个集合做并集。下面是一种Javascript实现：</p>
+<pre data-enlighter-language="js" class="EnlighterJSRAW">//Javascript
+
+//集合类Set的构造函数
+function Set() {
+    var _elements = arguments;
+    //In方法：判断元素e是否在集合中
+    this.In = function(e) {
+        for (var i = 0; i &lt; _elements.length; ++i) {
+            if (_elements[i] == e) return true;
+        }
+        return false;
+    };
+}
+
+//Join方法：对两个集合求交集
+Set.prototype.Join = function(s2) {
+    var s1 = this;
+    var s = new Set();
+    s.In = function(e) { return s1.In(e) &amp;&amp; s2.In(e); }
+    return s;
+};
+
+//Union方法：对两个集合求并集
+Set.prototype.Union = function(s2) {
+    var s1 = this;
+    var s = new Set();
+    s.In = function(e) { return s1.In(e) || s2.In(e); }
+    return s;
+};
+
+var s1 = new Set(1, 2, 3, 4, 5);
+var s2 = new Set(2, 3, 4, 5, 6);
+var s3 = new Set(3, 4, 5, 6, 7);
+assert(false == s1.Join(s2).Join(s3).In(2));
+assert(true == s1.Join(s2).Uion(s3).In(7));</pre>
+<p>如果是在静态类型OOP语言中，要实现集合类的Join或Union，我们多半会像上面Account的例子一样直接对s2内部的_elements进行操作，而上面这段Javascript定义的Set关于对象s2的访问完全是符合消息模型的基于接口的访问。要实现消息模型Javascript的prototype机制并非必须的，真正的关键在于函数式的高级函数和闭包特性。从这个例子我们也可以体会到函数式的优点不仅在于无副作用，函数的可组合性也是函数式编程强大的原因。</p>
+<h4><span class="ez-toc-section" id="Method_Missing"></span><strong>Method Missing</strong><span class="ez-toc-section-end"></span></h4>
+<p>接下来我们还要进行深度历险，让我们思考一下如果发送一条对象不能识别的消息会怎样？这种情况在C++、Java、C#等静态类型语言中会得到一个方法未定义的编译错误，如果是在Javascript中则会产生运行时异常。比如，s1.count()会产生一个运行时异常：Object #&lt;Set&gt; has no method ‘count’。</p>
+<p>在静态类型语言这个问题很少受到重视，但在动态类型语言中却大有文章，来看下面的例子：<br/>
+//Ruby</p>
+<pre data-enlighter-language="ruby" class="EnlighterJSRAW">builder = Builder::XmlMarkup.new
+xml = builder.books {|b|
+    b.book :isbn =&gt; &#34;14134&#34; do
+        b.title &#34;Revelation Space&#34;
+        b.author &#34;Alastair Reynolds&#34;
+    end
+    b.book :isbn =&gt; &#34;53534&#34; do
+        b.title &#34;Accelerando&#34;
+        b.author &#34;Charles Stross&#34;
+    end
+}</pre>
+<p>上面这段很DSL的Ruby代码创建了这样一个XML文件对象：</p>
+<pre data-enlighter-language="xml" class="EnlighterJSRAW">
+
+&lt;books&gt;
+    &lt;book isbn=&#34;14134&#34;&gt;
+        &lt;title&gt;Revelation Space&lt;/title&gt;
+        &lt;author&gt;Alastair Reynolds&lt;/author&gt;
+    &lt;/book&gt;
+    &lt;book isbn=&#34;53534&#34;&gt;
+        &lt;title&gt;Accelerando&lt;/title&gt;
+        &lt;author&gt;Charles Stross&lt;/author&gt;
+    &lt;/book&gt;
+&lt;/books&gt;
+
+</pre>
+<p>builder.books, b.book, b.title都是对象方法调用，由于XML的元素名是任意的，所以不可能事先定义这些方法，类似的代码如果是在Javascript中就是no method异常。那为什么上面的Ruby代码可以正确执行呢？其实只要理解了消息模型就很容易想明白，只需要定义一个通用的消息处理方法，所有未明确定义的消息都交给它来处理就行了，这就是所谓的Method Missing模式：</p>
+<pre data-enlighter-language="ruby" class="EnlighterJSRAW">class Foo
+    def method_missing(method, *args, &amp;block)
+        …
+    end
+end
+</pre>
+<p>Method Missing除了对实现DSL很重要外，还可用于产生更好地调试和错误信息，把参数嵌入到方法名中等场合。目前，Ruby、Python、Groovy几种语言对Method Missing都有很好的支持，甚至在C# 4.0中也可以利用动态特性实现。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<p>本文主要介绍了对象的消息模型的特征，并比较了C++对象模型，Java、C#等基于类的静态类型语言中的对象模型与严格消息模型的差异，最后探讨了Method Missing相关话题。</p>
+<h4><span class="ez-toc-section" id="%E5%8F%82%E8%80%83"></span>参考<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li><a href="http://book.douban.com/subject/1484262/" target="_blank">Inside the C++ Object Model</a></li>
+<li><a href="http://book.douban.com/subject/4031906/" target="_blank">冒号课堂 – 编程范式与OOP思想</a></li>
+<li><a href="http://c2.com/cgi/wiki?AlanKaysDefinitionOfObjectOriented" target="_blank">Alan Kays Definition Of Object Oriented</a></li>
+<li><a href="http://fitzgeraldnick.com/weblog/39/" target="_blank">OOP The Good Parts: Message Passing, Duck Typing, Object Composition, and not Inheritance</a></li>
+<li><a href="http://olabini.com/blog/2010/04/patterns-of-method-missing/">Patterns of Method Missing</a></li>
+<li><a href="http://haacked.com/archive/2009/08/26/method-missing-csharp-4.aspx">Fun With Method Missing and C# 4</a></li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-5202-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Javascript</a>, <a href="javascript:void(0)" rel="tag">OOP</a>, <a href="javascript:void(0)" rel="tag">Ruby</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>对象的消息模型</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-73765" class="comment even thread-even depth-1">
+<article id="div-comment-73765" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/96ebe2cbc5e2a21062204b8ce2153db2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/96ebe2cbc5e2a21062204b8ce2153db2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">farseerfc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73765"><time datetime="2011-08-15T10:57:13+08:00">2011年08月15日 10:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>DSL是动态语义的意思么？</p>
+<p>我觉得，虽然Ruby之类的动态性增加了语言的表达方式和能力，但是限制了语言的实现的效率。类似Method Missing这样的机制，如果语言提供了支持，那么其余运算的性能一定会受到影响。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73774" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73774" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b8df1859b62ed03b31b3abfc21c5f543?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b8df1859b62ed03b31b3abfc21c5f543?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vanxining</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73774"><time datetime="2011-08-15T11:30:28+08:00">2011年08月15日 11:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好无语~一篇文章用了4中语言。<br/>
+我感觉越是自由的语言，它的应用范围就越窄，越难构建大规模的程序</p>
+</div>
+ </article>
+</li>
+<li id="comment-73786" class="comment even thread-even depth-1">
+<article id="div-comment-73786" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yyquick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73786"><time datetime="2011-08-15T12:11:33+08:00">2011年08月15日 12:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73765" rel="nofollow">@farseerfc </a><br/>
+DSL的全称是Domain Specific Language。我觉得静态语言应该也是可以支持method missing的，而且不影响性能。不过目前静态语言的应用领域不太需要支持这种特性。不过如果要支持的话，语言可能会更加好用，再结合一些动态语言的优点来考虑，对于改进静态语言的语法，可能会有新的灵感。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73797" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73797" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b8df1859b62ed03b31b3abfc21c5f543?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b8df1859b62ed03b31b3abfc21c5f543?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vanxining</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73797"><time datetime="2011-08-15T12:53:27+08:00">2011年08月15日 12:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-73786"><p>
+<strong><a href="#comment-73786" rel="nofollow">yyquick</a> :</strong><br/>
+<a href="#comment-73765" rel="nofollow">@farseerfc </a><br/>
+DSL的全称是Domain Specific Language。我觉得静态语言应该也是可以支持method missing的，而且不影响性能。不过目前静态语言的应用领域不太需要支持这种特性。不过如果要支持的话，语言可能会更加好用，再结合一些动态语言的优点来考虑，对于改进静态语言的语法，可能会有新的灵感。
+</p></blockquote>
+<p>不可能吧，像C++这种静态语言在编译时就能发现method missing，根本到不了运行时。。。<br/>
+而且我不是很明白，引入method missing，岂不是什么调用都是合法的？那偶尔写错也太容易杯具了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73801" class="comment even thread-even depth-1">
+<article id="div-comment-73801" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3e3c1cb94b9ad3551cd9d43f2e52e105?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://lilydjwg.is-programmer.com/" class="url" rel="ugc external nofollow">依云</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73801"><time datetime="2011-08-15T13:17:57+08:00">2011年08月15日 13:17</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73774" rel="nofollow">@vanxining </a>“自由的语言”？你是在说 C 还是 Python/Ruby？或者是汇编？</p>
+</div>
+ </article>
+</li>
+<li id="comment-73802" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73802" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yyquick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73802"><time datetime="2011-08-15T13:18:00+08:00">2011年08月15日 13:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73797" rel="nofollow">@vanxining </a><br/>
+正是编译时发现了method missing，所以可以将这种错误的函数调用改成调用特定的一个函数，这样就实现了method mising的功能。偶尔写错可以报warning之类的，或者缺省的method missing的方法是抛出一个异常，如果你重载了缺省的method missing方法就可以执行你自己定义的操作。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73808" class="comment even thread-even depth-1">
+<article id="div-comment-73808" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/149532c1e19480810a7636aa240247e6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/149532c1e19480810a7636aa240247e6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ex</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73808"><time datetime="2011-08-15T13:43:26+08:00">2011年08月15日 13:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73802" rel="nofollow">@yyquick </a><br/>
+改成调用特定的函数？怎么做，让普通函数可以在编译期执行？还是引入编译期函数的概念？如果编译期函数抛出的异常，继续引入编译期异常？……以现有静态语言编译期和运行期的泾渭分明程度，要想享受DSL这种级别的动态特性，恐怕要把整个运行库在编译期再实现一遍了。C++的mpl其实何尝不是这种努力下的成果，其诘屈聱牙、曲高和寡不论，只看看它在编译期重新实现的大堆stl container就知道大致会是什么样子了——更不用说用mpl实现的dsl是什么样子。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73819" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73819" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yyquick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73819"><time datetime="2011-08-15T14:24:53+08:00">2011年08月15日 14:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73808" rel="nofollow">@ex </a><br/>
+因为静态语言没有动态指定函数名的函数调用，所以可以在编译的时候发现有没有被定义的函数被调用了，于是在生成机器执行代码的时候，就把这个调用直接指向method missing函数，其效果就是如果调用了没有被定义的函数，编译出来的代码就是调用了method missing函数。这么说应该可以理解了吧？C++是可以做DSL的，因为他继承了C的宏定义。有了宏定义，几乎就是无所不能了。只不过宏定义也有他的缺陷，一个是编译速度慢，还有使用的时候容易出错而且无论是编译时还是运行时的错误都比较难排查，再有就是写法太自由，可读性不好，令人难以理解。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73854" class="comment byuser comment-author-todd bypostauthor even thread-even depth-1">
+<article id="div-comment-73854" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ff3f136c340de6931974e710bf30f89?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.cnblogs.com/weidagang2046/" class="url" rel="ugc external nofollow">Todd</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73854"><time datetime="2011-08-15T16:46:25+08:00">2011年08月15日 16:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73819" rel="nofollow">@yyquick </a><br/>
+看看Ruby的def method_missing(method, *args, &amp;block)的定义就知道，静态类型语言的参数和返回值类型不好处理。如果是C++那就只能强制类型转换了，进来强转，出去也强转，这就失去DSL的特点了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73855" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73855" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e916040d2f4065a2b51dc907ab8c7d9d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://szhaitao.blog.hexun.com/" class="url" rel="ugc external nofollow">haitao</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73855"><time datetime="2011-08-15T16:47:06+08:00">2011年08月15日 16:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>【深度历险】让我想起了最初的介绍delphi技术的tw网站。。。。。。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73861" class="comment even thread-even depth-1">
+<article id="div-comment-73861" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b8df1859b62ed03b31b3abfc21c5f543?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b8df1859b62ed03b31b3abfc21c5f543?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vanxining</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73861"><time datetime="2011-08-15T17:11:59+08:00">2011年08月15日 17:11</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-73801"><p>
+<strong><a href="#comment-73801" rel="nofollow">依云</a> :</strong><br/>
+<a href="#comment-73774" rel="nofollow">@vanxining </a>“自由的语言”？你是在说 C 还是 Python/Ruby？或者是汇编？
+</p></blockquote>
+<p>哈哈，我所指的“自由”主要是什么都不用定义，直接用，例如变量什么的。感觉都是在写一些随用随抛的玩具。当然，这只是我个人的感觉，我还是挺佩服写出巨型JS程序的牛人的，他们用的技术不比C/C++/Java这些语言差。</p>
+</div>
+ </article>
+</li>
+<li id="comment-73945" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-73945" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/91c21fe6179de07a26fc3b8c14b0115d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/91c21fe6179de07a26fc3b8c14b0115d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xuby</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-73945"><time datetime="2011-08-16T00:36:36+08:00">2011年08月16日 00:36</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73774" rel="nofollow">@vanxining </a><br/>
+c也是非常自由的。但这个星球上最复杂的程序都是由他构建。</p>
+</div>
+ </article>
+</li>
+<li id="comment-74076" class="comment even thread-even depth-1">
+<article id="div-comment-74076" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c5811056f783287781ae4c6091682ab9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c5811056f783287781ae4c6091682ab9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">baibaichen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-74076"><time datetime="2011-08-16T09:45:48+08:00">2011年08月16日 09:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@Todd 如果我的理解没错，对象的消息模型 指的是对象的接口？<br/>
+如果是这样，确实可以说道说道</p>
+</div>
+ </article>
+</li>
+<li id="comment-74146" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-74146" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/76c575d5c4dfce7ded240ed003f9083b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/76c575d5c4dfce7ded240ed003f9083b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Meiosis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-74146"><time datetime="2011-08-16T12:42:40+08:00">2011年08月16日 12:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>c++本来就不是写给不尊崇规约写代码的程序员们。她是建立在充分信任程序员的素养的基础上的。至于她怎么实现oop中的消息对象机制，这是编译器的问题。</p>
+</div>
+ </article>
+</li>
+<li id="comment-74165" class="comment even thread-even depth-1">
+<article id="div-comment-74165" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ae8e51bf6bb4db9eb2cfff5271df870d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yyquick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-74165"><time datetime="2011-08-16T13:46:00+08:00">2011年08月16日 13:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73854" rel="nofollow">@Todd </a><br/>
+类型强转其实没什么大不了的。如果支持RTTI的话，估计也不用强转。输入参数可以从堆栈里面找到，总是有办法处理的。我的意思是，静态语言其实也可以搞一下method missing之类的支持。但是其意义到底有多大，还需要进一步的研究。</p>
+</div>
+ </article>
+</li>
+<li id="comment-74226" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-74226" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a686742bdbae22fc63d88191736b9f1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a686742bdbae22fc63d88191736b9f1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zz</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-74226"><time datetime="2011-08-16T17:31:17+08:00">2011年08月16日 17:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-74146"><p>
+<strong><a href="#comment-74146" rel="nofollow">Meiosis</a> :</strong><br/>
+c++本来就不是写给不尊崇规约写代码的程序员们。她是建立在充分信任程序员的素养的基础上的。至于她怎么实现oop中的消息对象机制，这是编译器的问题。
+</p></blockquote>
+<p>c++不是人用的 只有神一般的程序员才能驾驭它</p>
+</div>
+ </article>
+</li>
+<li id="comment-74795" class="comment even thread-even depth-1">
+<article id="div-comment-74795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2aecf26411e58c87df4625b7ff1ae5d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2aecf26411e58c87df4625b7ff1ae5d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.w-yong.com" class="url" rel="ugc external nofollow">skandhas</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-74795"><time datetime="2011-08-18T11:01:55+08:00">2011年08月18日 11:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73774" rel="nofollow">@vanxining </a><br/>
+这可不一定~。Ruby和Python构建的大规模程序难道还少吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-74798" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-74798" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2aecf26411e58c87df4625b7ff1ae5d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2aecf26411e58c87df4625b7ff1ae5d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.w-yong.com" class="url" rel="ugc external nofollow">skandhas</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-74798"><time datetime="2011-08-18T11:10:55+08:00">2011年08月18日 11:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>用动态语言来实现DSL是很方便的。<br/>
+拿Ruby来举例，有一个CStruct的gem (<a href="http://cstruct.rubyforge.org/" rel="nofollow ugc">http://cstruct.rubyforge.org/</a>),就是在Ruby中来描述C语言结构体的，可以说是个小型的DSL.<br/>
+比如说一个Win32的结构体：<br/>
+typedef struct _OSVERSIONINFOEXA {<br/>
+DWORD dwOSVersionInfoSize;<br/>
+DWORD dwMajorVersion;<br/>
+DWORD dwMinorVersion;<br/>
+DWORD dwBuildNumber;<br/>
+DWORD dwPlatformId;<br/>
+CHAR szCSDVersion[ 128 ];<br/>
+WORD wServicePackMajor;<br/>
+WORD wReserved[2];<br/>
+} OSVERSIONINFOEXA;</p>
+<p>用CStruct来描述就是这样:</p>
+<p>class OSVERSIONINFOEXA &lt; Win32Struct<br/>
+DWORD :dwOSVersionInfoSize<br/>
+DWORD :dwMajorVersion<br/>
+DWORD :dwMinorVersion<br/>
+DWORD :dwBuildNumber<br/>
+DWORD :dwPlatformId<br/>
+CHAR :szCSDVersion,[ 128 ]<br/>
+WORD :wServicePackMajor<br/>
+WORD :wServicePackMinor<br/>
+WORD :wReserved,[2]<br/>
+end</p>
+<p>这样的DSL给Ruby及其他动态语言带来了可以直接存储C结构体的能力，也能更方便的调用OS API。</p>
+</div>
+ </article>
+</li>
+<li id="comment-76122" class="comment even thread-even depth-1">
+<article id="div-comment-76122" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/412b67318056f23c772b79273d3ab15d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/412b67318056f23c772b79273d3ab15d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.setupeight.com" class="url" rel="ugc external nofollow">klvoek</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-76122"><time datetime="2011-08-22T23:01:11+08:00">2011年08月22日 23:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>#include<br/>
+#include<br/>
+class A {<br/>
+public:<br/>
+void Hello(const std::string&amp; name) {<br/>
+std::cout &lt;&lt; &#34;hello &#34; &lt;Hello(“world”);<br/>
+return 0;<br/>
+}<br/>
+在vc6.0中报异常：<br/>
+error C2679: binary ‘&lt;&lt;&#39; : no operator defined which takes a right-hand operand of type &#39;const class std::basic_string&lt;char,struct std::char_traits,class std::allocator &gt;’ (o</p>
+</div>
+ </article>
+</li>
+<li id="comment-76251" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-76251" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/aab47e115c9dfc4222a11437481e6261?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/aab47e115c9dfc4222a11437481e6261?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">yyc</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-76251"><time datetime="2011-08-23T10:40:34+08:00">2011年08月23日 10:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-76122" rel="nofollow">@klvoek </a><br/>
+void 函数返回0?<br/>
+然后 &lt;Hello(&#34;world&#34;) 又是啥用法?<br/>
+没有截止的递归加字符串与void比较? 还是说是某中神奇的方法.</p>
+<p>还有name参数没有用上吧.</p>
+</div>
+ </article>
+</li>
+<li id="comment-79496" class="comment even thread-even depth-1">
+<article id="div-comment-79496" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98dac0063211c0b1e8665b0a47536280?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98dac0063211c0b1e8665b0a47536280?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.roboby.com" class="url" rel="ugc external nofollow">roboby</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-79496"><time datetime="2011-09-05T14:10:24+08:00">2011年09月05日 14:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近在看Objective-C，发现C语言也可以演化出如此优美的结构，ObjC和C++都是从SmallTalk演化或者借鉴而来的，却走了不同的路线：一个是消息机制，一个是对象封装。我一直一来都不喜欢C++，我是觉得它在2003年左右的那些年里被很多不写程序的人神话了，“对象”被当做神器一般的东西。我只能说，C++是被人误导了，至少学C++的人被很多所谓的C++专家给忽悠了，同时反过来影响了C++的发展。<br/>
+相对于C++，Objective-C谦虚了很多，秉承C的简洁，拓展并巩固了设计者的初衷，并且以SmallTalk设计者之父所说的，“对象”是个衍生概念，“消息”才是本质！</p>
+</div>
+ </article>
+</li>
+<li id="comment-88672" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-88672" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/38f772242d0a786569f24bbaa7e05bca?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/38f772242d0a786569f24bbaa7e05bca?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://tonyseek.tumblr.com" class="url" rel="ugc external nofollow">TonySeek</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-88672"><time datetime="2011-10-23T22:28:25+08:00">2011年10月23日 22:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-73802" rel="nofollow">@yyquick </a><br/>
+实际上就是一种操作符重载，和 C++ 现支持的其他类型操作符重载一样。重载方法调用操作符。</p>
+</div>
+ </article>
+</li>
+<li id="comment-93045" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ec2-176-32-67-38.ap-northeast-1.compute.amazonaws.com/wordpress/?p=9" class="url" rel="ugc external nofollow">深入理解C语言 « 浮云落日</a> </div>
+</li>
+<li id="comment-123364" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/6441.html" class="url" rel="ugc">Javascript 面向对象编程 | 酷壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-123436" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://blog.jobbole.com/11691/" class="url" rel="ugc external nofollow">Javascript 面向对象编程 - 博客 - 伯乐在线</a> </div>
+</li>
+<li id="comment-123506" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://jaring.me/?p=667" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | Jaring&#39;s blog</a> </div>
+</li>
+<li id="comment-123658" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.iitime.com/i/9594.html" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | 艾艾时代</a> </div>
+</li>
+<li id="comment-124950" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://yangxiaolei.sinaapp.com/?p=41" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | yanglei的个人博客</a> </div>
+</li>
+<li id="comment-133487" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://sizzle.cc/blog/?p=1" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | SIZZLE</a> </div>
+</li>
+<li id="comment-143308" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.penghou.net/blog/2012/03/06/%e7%90%86%e8%a7%a3javascript%e7%9a%84%e9%97%ad%e5%8c%85/" class="url" rel="ugc external nofollow">理解Javascript的闭包 | 侯三儿</a> </div>
+</li>
+<li id="comment-192865" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.ppxu.net/archives/366" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | 最前端的寂寞</a> </div>
+</li>
+<li id="comment-195727" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://digest.definite.name/the-javascript-in-the-var.html" class="url" rel="ugc external nofollow">Definite Digest » Javascript 中的 var</a> </div>
+</li>
+<li id="comment-201328" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://xlinblog.sinaapp.com/?p=477" class="url" rel="ugc external nofollow">奇言妙事-文学奇谈小小说阅读xlinblog.sinaapp.com » Blog Archive » Javascript 中的 var</a> </div>
+</li>
+<li id="comment-242778" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://uuuuuu.duapp.com/?p=172" class="url" rel="ugc external nofollow">UUUUUU » Blog Archive » 如此理解面向对象编程</a> </div>
+</li>
+<li id="comment-263076" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://read.guoruei.net/archives/172" class="url" rel="ugc external nofollow">read.guoruEi » Blog Archive » 如此理解面向对象编程</a> </div>
+</li>
+<li id="comment-284536" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-284536" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a204b4d352034fc2f1a2a7d20434d653?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a204b4d352034fc2f1a2a7d20434d653?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://hsfnow.com" class="url" rel="ugc external nofollow">iphone kopen</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/5202.html#comment-284536"><time datetime="2013-02-02T03:24:01+08:00">2013年02月02日 03:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Really good blog. Thank you for writing.</p>
+</div>
+ </article>
+</li>
+<li id="comment-307105" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://liudongxiao.cn/?p=33" class="url" rel="ugc external nofollow">javascript面向对象 | 个人小站</a> </div>
+</li>
+<li id="comment-374482" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.520lily.com/html/878.html" class="url" rel="ugc external nofollow">如此理解面向对象编程 | 午后小憩</a> </div>
+</li>
+<li id="comment-555993" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.w3c.com.cn/javascript%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e7%bc%96%e7%a8%8b-2" class="url" rel="ugc external nofollow">Javascript面向对象编程 - 编程语言综合 - 开发者第1365140个问答</a> </div>
+</li>
+<li id="comment-708809" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://guanmian.net/?p=1757" class="url" rel="ugc external nofollow">Technology Heartbeat #13 | Steve Guan</a> </div>
+</li>
+<li id="comment-1270751" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.opcnz.com/qian-duan-kai-fa/4222.shtml" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | Web开源笔记-专注Web开发技术,分享Web开发技术与资源</a> </div>
+</li>
+<li id="comment-1829950" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/javascript-%e9%9d%a2%e5%90%91%e5%af%b9%e8%b1%a1%e7%bc%96%e7%a8%8b.html" class="url" rel="ugc external nofollow">Javascript 面向对象编程 | | Codeba</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

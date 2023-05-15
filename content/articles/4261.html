@@ -1,0 +1,299 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>JavaMail使用 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-4261 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-4261" class="post-content post-4261 post type-post status-publish format-standard hentry category-javadev category-webdev tag-java tag-javamail">
+<header class="entry-header">
+<span class="screen-reader-text">JavaMail使用</span>
+<h1 class="entry-title">JavaMail使用</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/4261.html" title="23:05" rel="bookmark"><time class="entry-date" datetime="2011-04-06T23:05:39+08:00" pubdate="">2011年04月06日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/jjzhx_1211" title="View all posts by jjzhx_1211" rel="author">jjzhx_1211</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/4261.html#comments" class="comments-link">6 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 14,268 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>（<strong>本文由网友jjzhx_1211投递，感谢!</strong>）</p>
+<p>使用JavaMail需要两个包：activation-1.1.jar和mail-1.4.2.jar（当然现在最新的版本已经不止了），也可以直接包含Java SE 6的j2ee.jar，自带了前面的两个包。我把邮件功能写成了一个服务，发送邮件的数据都通过Map&lt;String, String&gt;类型的参数封装了起来。<strong>代码见文章最后</strong>。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#Session" title="Session">Session</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Message" title="Message">Message</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#Address" title="Address">Address</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#Authenticator" title="Authenticator">Authenticator</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#Transport" title="Transport">Transport</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#Store_and_Folder" title="Store and Folder">Store and Folder</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E4%BB%A3%E7%A0%81" title="代码">代码</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="Session"></span>Session<span class="ez-toc-section-end"></span></h4>
+<p>Session 定义了一个基本的邮件会话，任何工作都是基于这个Session的。Session 对象需要一个 java.util.Properties 对象来得到类似 邮件服务器，用户名，密码这样的信息。Session 的构造函数是私有的，可以通过 getDefaultInstance() 方法来取得一个单一的可以被共享的默认session 如：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Properties props = new Properties();
+Session session = Session.getDefaultInstance(props,null);</pre>
+<p>或者，可以使用 getInstance() 方法来创建一个唯一的 session如：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Properties props = new Properties();
+Session session = Session.getInstance(props,null);</pre>
+<p>在这两种方法中 其中的 null 参数是一个 Authenticator 对象，在这里没有被使用的，所以就是null。在大多数案例中，使用一个共享session 已经做够了。</p>
+<p><span id="more-4261"></span></p>
+<h4><span class="ez-toc-section" id="Message"></span>Message<span class="ez-toc-section-end"></span></h4>
+<p>一旦你创建了Session对象，那么下面要做的就是创建message来发送。Message是一个抽象类，在大部分应用中你可以使用它的子类javax.mail.internet.MimeMessage 。MimeMessage 是一个理解在不同RFCs中定义的MIME类型以及headers的e-mail message。Message headers 必须使用 US-ASCII 字符集。可以用如下的方法创建一个Message</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">MimeMessage message = new MimeMessage(session);</code></p>
+<p>我们注意到，这里需要用session对象作为构造函数的参数。当然，还有其它的构造函数，比如从用RFC822格式化过的输入流来创建message。</p>
+<p>一旦你得到了 message ,你就可以来设置它的各个部分（parts）。设置内容（content）的基本的机制是使用setContent() 方法。</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">message.setContent(&#34;Email Content. &#34;,&#34;text/plain&#34;);</code></p>
+<p>如果，你能够明确你的使用MimeMessage来创建message 并且只是使用普通的文本（plain text） 那么你也可以使用 setText() 方法，setTest()方法只需要设置具体的内容，它默认的MIME类型是 text/plain</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">message.setText(&#34;Email Content. &#34;);</code></p>
+<p>对于普通文本类型的邮件，有一种机制是首选（ message.setText(“Email Content. “)）的设置内容的方法。如果要创建其它类型的message ，比如　HTML类型的message   那么还是需要使用前者　（　message.setContent(“Email Content. “,”text/html”);　）<br/>
+设置主题（subject ），使用setSubject() 方法</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">message.setSubject(&#34; Subject &#34;);</code></p>
+<h4><span class="ez-toc-section" id="Address"></span>Address<span class="ez-toc-section-end"></span></h4>
+<p>当你已经创建Session 以及 Message，并且已经为message 填充了内容，那么接下来要做的就是给你的邮件添加一个地址（Address）。　就像Message一样，Address也是一个抽象类，我们可以使用它的一个子</p>
+<p>javax.mail.internet.InternetAddress</p>
+<p>创建一个地址非常简单</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">Address address = new InternetAddress(&#34;&lt;a href=&#34;mailto:su<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a9c0d1c0c7e9c8dac0c8c0c7cfc687cac6c4">[email protected]</a>&#34;&gt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="c8bbbda1b0a1a688a9bba1a9a1a6aea7e6aba7a5">[email protected]</a>&lt;/a&gt;&#34;);</code></p>
+<p>如果，你希望在出现邮件地址的地方出现一个名称，那么你只需要再多传递一个参数。</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">Address address = new InternetAddress(&#34;&lt;a href=&#34;mailto:<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="95e6e0fcedfcfbd5f4e6fcf4fcfbf3fabbf6faf8">[email protected]</a>&amp;quot;,&amp;quot;Steve&#34;&gt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="8efdfbe7f6e7e0ceeffde7efe7e0e8e1a0ede1e3">[email protected]</a>&#34;,&#34;Steve&lt;/a&gt;&#34;);</code></p>
+<p>你需要为 message 的from以及 to 字段创建address对象。为了识别发送者，你需要使用setFrom() 和 setReplyTo() 方法。</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">messge.setFrom(address);</code></p>
+<p>如果你的message 需要显示多个 from 地址，可以使用 addFrom() 方法</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Address address[] = {....};
+message.addFrom(address);</pre>
+<p>为了辨识message 的收件人，你需要使用 setRecipient() 方法。这个方法除了address参数之外，还需要一</p>
+<p>Message.RecipientType 。<br/>
+message.addRecipient(type,address);<br/>
+Message.RecipientType有几个预先定义好的类型<br/>
+Message.RecipientType.TO　　收件人<br/>
+Message.RecipientType.CC　　抄送<br/>
+Message.RecipientType.BCC　 暗送</p>
+<p>如果你的一封邮件，需要发送给你的老师，并还要给你的几个同学，那么你可以这样</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Address toAddress = new InternetAddress(&#34;&lt;a href=&#34;mailto:<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="73071612101b1601334244414b4b5d101c1e">[email protected]</a>&#34;&gt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="dbafbebab8b3bea99beaece9e3e3f5b8b4b6">[email protected]</a>&lt;/a&gt;&#34;);
+Address[] ccAddress = {new InternetAddress(&#34;&lt;a href=&#34;mailto:<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="a3d0c0cbcccccfcec2d7c692e39294919b9b8dc0ccce">[email protected]</a>&amp;quot;),new&#34;&gt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e794848f88888b8a869382d6a7d6d0d5dfdfc984888a">[email protected]</a>&#34;),new&lt;/a&gt; InternetAddress(&#34;&lt;a href=&#34;mailto:<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="82f1e1eaededeeefe3f6e7b0c2b3b5b0babaace1edef">[email protected]</a>&#34;&gt;<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="493a2a2126262524283d2c7b09787e7b7171672a2624">[email protected]</a>&lt;/a&gt;&#34;)};
+message.addRecipient(Message.RecipientType.To, toAddress);
+message.addRecipient(Message.RecipientType.CC, ccAddress);</pre>
+<p>JavaMail 没有提供电子邮件地址有效性的检测。这些超越了JavaMail API的范围。</p>
+<h4><span class="ez-toc-section" id="Authenticator"></span>Authenticator<span class="ez-toc-section-end"></span></h4>
+<p>通过Authenticator设置用户名、密码，来访问受保护的资源，这里的资源一般指的是邮件服务器。</p>
+<p>Authenticator也是一个抽象类，你需要自己编写子类已备应用。你需要实现getPasswordAuthentication()方法，并返回一个PasswordAuthentication实例。你必须在 session被创建时， 注册你的 Authenticator。这样，当需要进行认证是，你的Authenticator就可以被得到。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Properties props = new Properties();
+//设置属性
+Authenticator auth = new YourAuthenticator();
+Session session = Session.getDefaultInstance(props, auth);</pre>
+<h4><span class="ez-toc-section" id="Transport"></span>Transport<span class="ez-toc-section-end"></span></h4>
+<p>发送消息最后的一步就是使用Transport类，你可以通过两种方法来进行发送。<br/>
+Transport 是一个抽象类，你可以调用它静态的send() 方法来发送</p>
+<p><code data-enlighter-language="java" class="EnlighterJSRAW">Transport.send(message);</code></p>
+<p>或者，你可以为你使用的协议从session中取得一个指定的实例，</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Transport transport = session.getTransport(&#34;smtp&#34;);
+transport.sendMessage(message, message.getAllRecipients());
+transport.close();</pre>
+<h4><span class="ez-toc-section" id="Store_and_Folder"></span>Store and Folder<span class="ez-toc-section-end"></span></h4>
+<p>这两个类重要用于取得信息。在创建了Session之后，需要连接到一个 Store ，你需要告诉Store你使用的是什么协议。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">// Store store = session.getStore(&#34;imap&#34;);
+Store store = session.getStore(&#34;pop3&#34;);
+store.connect(host, username, password);</pre>
+<p>在连接到一个 Store 后，你可以得到一个 Folder，当然，这个Floder必须是打开的。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">Folder folder = store.getFolder(&#34;INBOX&#34;);
+folder.open(Folder.READ_ONLY);
+Message message[] = folder.getMessages();</pre>
+<p>如果使用POP3那么，INDEX是唯一可用的文件夹。如果使用的是IMAP，你就可以使用其它的文件夹。</p>
+<h4><span class="ez-toc-section" id="%E4%BB%A3%E7%A0%81"></span>代码<span class="ez-toc-section-end"></span></h4>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public boolean sendEmail(Map&lt;String, String&gt; data) {
+    // 创建Properties 对象
+    Properties props = System.getProperties();
+    props.put(&#34;mail.smtp.host&#34;, Constants.HOST); // 全局变量
+    props.put(&#34;mail.smtp.auth&#34;, &#34;true&#34;);
+
+    // 创建邮件会话
+    Session session = Session.getDefaultInstance(props,
+    new Authenticator() { // 验账账户
+        @Override
+        public PasswordAuthentication getPasswordAuthentication() {
+            return new PasswordAuthentication(Constants.USERNAME,
+                                              Constants.PASSWORD);
+        }
+    });
+
+    try {
+        // 定义邮件信息
+        MimeMessage message = new MimeMessage(session);
+        message.setFrom(new InternetAddress(Constants.FROM));
+        message.addRecipient(
+            Message.RecipientType.TO,
+            new InternetAddress(
+                // 这里可以添加多个目的用户
+                data.get(Constants.EMAIL_TO)
+            )
+        );
+        // 添加邮件发送时间（不知道体现在哪儿）
+        message.setSentDate(new Date());
+        // 要编码，否则中文会出乱码，貌似这个方法是对数据进行了
+        //(&#34;=?GB2312?B?&#34;+enc.encode(subject.getBytes())+&#34;?=&#34;)形势的包装
+        message.setSubject(MimeUtility.encodeText(data.get(Constants.EMAIL_SUBJECT), &#34;gbk&#34;, &#34;B&#34;));
+
+        MimeMultipart mmp = new MimeMultipart();
+        MimeBodyPart mbp_text = new MimeBodyPart();
+        // &#34;text/plain&#34;是文本型，没有样式，
+        //&#34;text/html&#34;是html样式，可以解析html标签
+        mbp_text.setContent(data.get(Constants.EMAIL_TEXT),
+                            &#34;text/html;charset=gbk&#34;);
+        mmp.addBodyPart(mbp_text); // 加入邮件正文
+
+        // 处理附件，可以添加多个附件
+        if (data.get(Constants.EMAIL_ATTACHMENT) != null) {
+            String[] files = data.get(Constants.EMAIL_ATTACHMENT).split(&#34;,&#34;);
+            if (files.length != 0) {
+                for (String file : files) {
+                    MimeBodyPart mbp_file = new MimeBodyPart();
+                    FileDataSource fds = new FileDataSource(file);
+                    mbp_file.setDataHandler(new DataHandler(fds));
+                    mbp_file.setFileName(MimeUtility.encodeText(fds.getName(), &#34;gbk&#34;, &#34;B&#34;));
+                    mmp.addBodyPart(mbp_file);
+                }
+            }
+        }
+        message.setContent(mmp);
+        // message.setText(data.get(Constants.EMAIL_TEXT));
+
+        // 发送消息
+        // session.getTransport(&#34;smtp&#34;).send(message); //也可以这样创建Transport对象
+        Transport.send(message);
+        return true;
+    } catch (Exception e) {
+        e.printStackTrace();
+        return false;
+    }
+}
+</pre>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-4261-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">Web开发</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">JavaMail</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>JavaMail使用</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-43011" class="comment even thread-even depth-1">
+<article id="div-comment-43011" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7c22ae723ff96ebaf74a8dbf974c0f88?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7c22ae723ff96ebaf74a8dbf974c0f88?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">bookjohn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4261.html#comment-43011"><time datetime="2011-04-08T16:39:40+08:00">2011年04月08日 16:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>where to get the file j2ee.jar?</p>
+</div>
+ </article>
+</li>
+<li id="comment-45603" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-45603" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8cf295939bb66178a63e3bf7eee0afe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大家帮助大家</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4261.html#comment-45603"><time datetime="2011-04-19T14:33:17+08:00">2011年04月19日 14:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2002年的时候就用过这个类。在java web server上写了一个公司员工交换DVD的web程序。database是Oracle 8i，JDBC，JavaMail用于给用户发通知，如果有人想找你交换DVD。</p>
+</div>
+ </article>
+</li>
+<li id="comment-147719" class="comment even thread-even depth-1">
+<article id="div-comment-147719" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/79ca377bf4ddc05163c796ab04e0bf7f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/79ca377bf4ddc05163c796ab04e0bf7f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">supersheep</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4261.html#comment-147719"><time datetime="2012-03-21T09:35:09+08:00">2012年03月21日 09:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>可以用apache commons email 包，提供了很简洁的email接口，java mail直接用会感觉别扭</p>
+</div>
+ </article>
+</li>
+<li id="comment-193895" class="comment byuser comment-author-ssy341 odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-193895" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f44c2f3e08e229ce7c1e0b1ae49806b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f44c2f3e08e229ce7c1e0b1ae49806b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">千纸鹤</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4261.html#comment-193895"><time datetime="2012-05-21T10:10:16+08:00">2012年05月21日 10:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>近段时间正在做邮件发送功能，在其中遇到一个问题，就是怎么保证页面上的格式发送到邮箱之后不变？我页面上是用textarea来装邮件正文</p>
+</div>
+ </article>
+</li>
+<li id="comment-202140" class="comment even thread-even depth-1">
+<article id="div-comment-202140" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ce566dd959c5d20231f8290da9dbbb84?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ce566dd959c5d20231f8290da9dbbb84?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xy2401</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/4261.html#comment-202140"><time datetime="2012-08-28T11:15:28+08:00">2012年08月28日 11:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不错，注释很好</p>
+</div>
+ </article>
+</li>
+<li id="comment-345642" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ligang.liulianmv.com/index.php/archives/104" class="url" rel="ugc external nofollow">JavaMail使用 | 乂殘乂</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

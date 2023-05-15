@@ -1,0 +1,386 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Resin服务器getResource揭秘 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-6335 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-6335" class="post-content post-6335 post type-post status-publish format-standard hentry category-javadev category-proglanguage tag-classloader tag-getresource tag-getresourceasstream tag-java tag-resin">
+<header class="entry-header">
+<span class="screen-reader-text">Resin服务器getResource揭秘</span>
+<h1 class="entry-title">Resin服务器getResource揭秘</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/6335.html" title="08:28" rel="bookmark"><time class="entry-date" datetime="2012-01-05T08:28:59+08:00" pubdate="">2012年01月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/liuxiaori" title="View all posts by liuxiaori" rel="author">liuxiaori</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/6335.html#comments" class="comments-link">14 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 11,675 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>（<span style="color: #cc0000;">感谢网友 liuxiaori 继续分享其经历</span>）这样的详细的图文并茂的文章让我很佩服！</strong></p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%89%8D%E8%A8%80" title="前言">前言</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83" title="调试环境">调试环境</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%BC%80%E5%A7%8B" title="开始">开始</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-4" href="#1_thisgetClassgetResource%E2%80%9C%E2%80%9DgetPath" title="1) this.getClass().getResource(“/”).getPath()">1) this.getClass().getResource(“/”).getPath()</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#1_thisgetClassgetResourceAsStream%E2%80%9Catxt%E2%80%9D" title="1) this.getClass().getResourceAsStream(“/a.txt”)">1) this.getClass().getResourceAsStream(“/a.txt”)</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E6%80%BB%E7%BB%93" title="总结">总结</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%89%8D%E8%A8%80"></span>前言<span class="ez-toc-section-end"></span></h4>
+<p>接上文“<a title="由一个问题到 Resin ClassLoader 的学习" href="/articles/6112.html" target="_blank">由一个问题到Resin ClassLoader的学习</a>”，本文将以this.getClass().getResource(“/”).getPath()和this.getClass().getResourceAsStream(“/a.txt”)为例，一步步解析加载的过程。</p>
+<h4><span class="ez-toc-section" id="%E8%B0%83%E8%AF%95%E7%8E%AF%E5%A2%83"></span>调试环境<span class="ez-toc-section-end"></span></h4>
+<ol>
+<li>下载resin3.0.23的源码(<a href="http://www.caucho.com/download/resin-3.0.23-src.zip">http://www.caucho.com/download/resin-3.0.23-src.zip</a>)。</li>
+<li>部署到myeclipse中，有错误，本人忽略了。Resin可运行。</li>
+<li>将EhCacheTestAnnotation部署到resin3.0.23中。</li>
+<li>调试this.getClass().getResource(“/”).getPath()。</li>
+</ol>
+<p>问题来了，无论如何也模拟不出来&lt;compiling-loader&gt;所造成的影响，一直输出：/D:/work_other/project/resin-3.0.23/bin/ 。无奈之下，采用了这种方式：使用两个eclipse，一个使用发布版本的，部署EhCacheTestAnnotation进行调试；另外一个部署resin3.0.23源码，调试到哪里对照看源码。</p>
+<h4><span class="ez-toc-section" id="%E5%BC%80%E5%A7%8B"></span>开始<span class="ez-toc-section-end"></span></h4>
+<h5><span class="ez-toc-section" id="1_thisgetClassgetResource%E2%80%9C%E2%80%9DgetPath"></span>1) this.getClass().getResource(“/”).getPath()<span class="ez-toc-section-end"></span></h5>
+<p>本次调试涉及的所有类加载器为：</p>
+<blockquote><p>EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]</p>
+<p>EnvironmentClassLoader$7806641[host:http://localhost:8787]</p>
+<p>EnvironmentClassLoader$22459270[servlet-server:]</p>
+<p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="acdfd9c282c1c5dfcf82e0cdd9c2cfc4c9de88eddcdcefc0cddfdfe0c3cdc8c9deec9b9e9995c8cd">[email protected]</a></p>
+<p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="5427213a7a393d27377a1835213a373c312670112c201738352727183b353031261465626d67643166">[email protected]</a></p></blockquote>
+<p>首先进入Class的getResource(String name)方法，如下图：</p>
+<p><span id="more-6335"></span></p>
+<figure id="attachment_6390" aria-describedby="caption-attachment-6390" style="width: 553px" class="wp-caption aligncenter"><img decoding="async" class="size-full wp-image-6390" title="图片1" src="/uploads/2012/01/图片1.png" alt="图片1" width="553" height="182" srcset="" sizes="(max-width: 553px) 100vw, 553px"/><figcaption id="caption-attachment-6390" class="wp-caption-text">图1</figcaption></figure>
+<p>最后委托给ClassLoader的getResource方法。那么这个ClassLoader是哪个呢？一看下图便知：</p>
+<figure id="attachment_6391" aria-describedby="caption-attachment-6391" style="width: 553px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6391" title="图片2" src="/uploads/2012/01/图片2.png" alt="图片2" width="553" height="85" srcset="" sizes="(max-width: 553px) 100vw, 553px"/><figcaption id="caption-attachment-6391" class="wp-caption-text">图2</figcaption></figure>
+<p>是DynamicClassLoader的getResource方法，原理上文已述。</p>
+<p>最终会委托给sun.misc.<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="4804293d262b202d3a6c0d303c0b24293b3b0427292c2d3a08797e717b782d7a">[email protected]</a>类加载器的getResource方法，返回null，然后开始回溯。</p>
+<p>还记得吗？当java.net.URLClassLoader分支的ClassLoader的getResource方法返回值为null后，就要遍历嵌入DynamicClassLoader中的Resin的Loader(即_loaders集合)。</p>
+<p>当然回溯到EnvironmentClassLoader$22459270[servlet-server:]中，那么它中_loaders这个集合中的Loader又有哪些呢？</p>
+<p>以图为证，当天确实回溯到该ClassLoader，而且开始准备遍历_loaders集合。</p>
+<figure id="attachment_6392" aria-describedby="caption-attachment-6392" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6392" title="图3" src="/uploads/2012/01/图片3.png" alt="图3" width="554" height="74" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6392" class="wp-caption-text">图3</figcaption></figure>
+<p>DynamicClassLoader的1306行，没问题，resin3.0.23源码截图为证：</p>
+<figure id="attachment_6393" aria-describedby="caption-attachment-6393" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6393" title="图4" src="/uploads/2012/01/图片4.png" alt="图4" width="554" height="236" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6393" class="wp-caption-text">图4</figcaption></figure>
+<p>不做多余解释，那么“servlet-server”这个ClassLoader中的_loaders集合中都放了一些什么呢？</p>
+<figure id="attachment_6394" aria-describedby="caption-attachment-6394" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6394" title="图5" src="/uploads/2012/01/图片5.png" alt="图5" width="554" height="121" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6394" class="wp-caption-text">图5</figcaption></figure>
+<p>存放了两个TreeLoader(Loader的子类)，然未找到结果，返回null。继续回溯。</p>
+<p>这次轮到遍历EnvironmentClassLoader$7806641[host:http://localhost:8787]的_loaders。下图为证：</p>
+<figure id="attachment_6395" aria-describedby="caption-attachment-6395" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6395" title="图6" src="/uploads/2012/01/图片6.png" alt="图6" width="554" height="170" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6395" class="wp-caption-text">图6</figcaption></figure>
+<p>_loaders中的内容如下图：</p>
+<figure id="attachment_6396" aria-describedby="caption-attachment-6396" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6396" title="图7" src="/uploads/2012/01/图片7.png" alt="图7" width="554" height="193" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6396" class="wp-caption-text">图7</figcaption></figure>
+<p>比较长，我贴出来：</p>
+<blockquote><p>[CompilingLoader[src:/D:/work/resin-3.0.23/webapps/WEB-INF/classes], LibraryLoader[<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2e4d4143004d4f5b4d4641004d4140484749005a575e4b5d006847424b7d4b5a7a575e4b6e484c1819181d">[email protected]</a>], CompilingLoader[src:/D:/work/resin-3.0.23/webapps/WEB-INF/classes], LibraryLoader[<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="f99a9694d79a988c9a9196d79a96979f909ed78d80899c8ad7bf90959caa9c8dad80899cb9c8cdc99bc19f9d">[email protected]</a>], CompilingLoader[src:/D:/work/resin-3.0.23/webapps/WEB-INF/classes], LibraryLoader[<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="73101c1e5d101206101b1c5d101c1d151a145d070a0316005d351a1f16201607270a031633404315104215">[email protected]</a>]]</p></blockquote>
+<p>注意到了吧，主角来了。那仔细调试下把。爆料一下：CompilingLoader[src:/D:/work/resin-3.0.23/webapps/WEB-INF/classes]就是主角。</p>
+<figure id="attachment_6397" aria-describedby="caption-attachment-6397" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6397" title="图8" src="/uploads/2012/01/图片8.png" alt="图8" width="554" height="251" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6397" class="wp-caption-text">图8</figcaption></figure>
+<p>看到了吧，遍历时，当前的Loader为CompilingLoader[src:/D:/work/resin-3.0.23/webapps/WEB-INF/classes]，而且url可是不为null了哦。再贴一张，看看url的值到底是什么！</p>
+<figure id="attachment_6400" aria-describedby="caption-attachment-6400" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6400" title="图9" src="/uploads/2012/01/图片9.png" alt="图9" width="554" height="250" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6400" class="wp-caption-text">图9</figcaption></figure>
+<p>嗯，不用多做解释了吧。</p>
+<p>最后看看程序输出是否吻合，如下图：</p>
+<figure id="attachment_6401" aria-describedby="caption-attachment-6401" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6401" title="图10" src="/uploads/2012/01/图片10.png" alt="图10" width="554" height="81" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6401" class="wp-caption-text">图10</figcaption></figure>
+<p>然后修改resin.conf中的&lt;compiling-loader&gt;将其注释掉，看看程序结果会不会是我们期望的：/D:/work/resin-3.0.23/webapps/EhCacheTestAnnotation/WEB-INF/classes/。拭目以待。</p>
+<figure id="attachment_6402" aria-describedby="caption-attachment-6402" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6402" title="图11" src="/uploads/2012/01/图片11.png" alt="图11" width="554" height="106" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6402" class="wp-caption-text">图11</figcaption></figure>
+<p>为节省篇幅，一下只关注关键位置。</p>
+<p>首先调试到EnvironmentClassLoader$7806641[host:http://localhost:8787]，我们需要停下来一下。</p>
+<figure id="attachment_6403" aria-describedby="caption-attachment-6403" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6403" title="图12" src="/uploads/2012/01/图片12.png" alt="图12" width="554" height="154" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6403" class="wp-caption-text">图12</figcaption></figure>
+<p>再看一下_loaders的值。</p>
+<figure id="attachment_6404" aria-describedby="caption-attachment-6404" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6404" title="图13" src="/uploads/2012/01/图片13.png" alt="图13" width="554" height="157" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6404" class="wp-caption-text">图13</figcaption></figure>
+<p>贴一个详细的：</p>
+<blockquote><p>[LibraryLoader[<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="492a2624672a283c2a2126672a26272f202e673d30392c3a670f20252c1a2c3d1d30392c09787b70702f7e2c">[email protected]</a>], LibraryLoader[<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="abc8c4c685c8cadec8c3c485c8c4c5cdc2cc85dfd2dbced885edc2c7cef8cedfffd2dbceeb9aca9d989ac8c8">[email protected]</a>], LibraryLoader[<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="ea898587c4898b9f898285c48985848c838dc49e939a8f99c4ac83868fb98f9ebe939a8faa8cdcd9d3d2">[email protected]</a>]]</p></blockquote>
+<p>对比一下，在注释掉&lt;compiling-loader&gt;后，loaders中是没有CompilingClassLoader实例的。</p>
+<p>继续，下面就轮到EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]这个ClassLoader了，会是什么样子呢？</p>
+<figure id="attachment_6405" aria-describedby="caption-attachment-6405" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6405" title="图14" src="/uploads/2012/01/图片14.png" alt="图14" width="554" height="154" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6405" class="wp-caption-text">图14</figcaption></figure>
+<p>进入该ClassLoader时，url值依旧为null，那_loaders会有变化吗？如下图：</p>
+<figure id="attachment_6406" aria-describedby="caption-attachment-6406" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6406" title="图15" src="/uploads/2012/01/图片15.png" alt="图15" width="554" height="149" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6406" class="wp-caption-text">图15</figcaption></figure>
+<p>继续遍历_loaders。</p>
+<figure id="attachment_6407" aria-describedby="caption-attachment-6407" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6407" title="图16" src="/uploads/2012/01/图片16.png" alt="图16" width="554" height="211" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6407" class="wp-caption-text">图16</figcaption></figure>
+<p>到这里就结束了，url在EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]中被加载。</p>
+<h5><span class="ez-toc-section" id="1_thisgetClassgetResourceAsStream%E2%80%9Catxt%E2%80%9D"></span>1) this.getClass().getResourceAsStream(“/a.txt”)<span class="ez-toc-section-end"></span></h5>
+<p>getResourceAsStream(String name)方法也是采用双亲委派的方式。在前一篇文章中提出“getResourceAsStream可是将获取路径委托给getResource，&lt;compiling-loader&gt;却没有对getResourceAsStream产生影响”</p>
+<p>ClassLoader中getResourceAsStream源码也确实是委托为getResource了，可是为什么呢？</p>
+<p>getResourceAsStream(String name)方法。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW">public InputStream getResourceAsStream(String name) {
+    URL url = getResource(name);
+    try {
+        return url != null ? url.openStream() : null;
+    } catch (IOException e) {
+        return null;
+    }
+}
+</pre>
+<p>其实不难解释，JVM中ClassLoader的getResourceAsStream(“/a.txt”)返回了null，然后开始回溯，与getResource方法的原理一致，直到某个ClassLoader及其子类或者Loader及其子类找到了”/a.txt”，并以流的形式返回，当然谁都没找到就返回null。</p>
+<p>捡重点的说。</p>
+<p>调试到<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e291978ccc8f8b9181ccae83978c818a8790c6a39292a18e839191ae8d83868790a2d3da86d3d2d584">[email protected]</a>，即ClassLoader的子类，情形如下图：</p>
+<figure id="attachment_6408" aria-describedby="caption-attachment-6408" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6408" title="图17" src="/uploads/2012/01/图片17.png" alt="图17" width="554" height="249" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6408" class="wp-caption-text">图17</figcaption></figure>
+<p>看见getResource(name)喽，按F5进去看个究竟。如下图，其parent为：<a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="394a4c571754504a5a1775584c575a515c4b1d7c414d7a55584a4a7556585d5c4b790a0f095b5c09">[email protected]</a>，其返回null。</p>
+<figure id="attachment_6398" aria-describedby="caption-attachment-6398" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6398" title="图18" src="/uploads/2012/01/图片18.png" alt="图18" width="554" height="278" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6398" class="wp-caption-text">图18</figcaption></figure>
+<p>开始回溯到：EnvironmentClassLoader$1497769[servlet-server:]，与getResource方法一致，开始遍历_loaders集合。</p>
+<p>这样就可以解释为何&lt;compiling-loader&gt;没有影响到getResourceAsStream了。因为资源(这里是/a.txt)，就不是由AppClassLoader和ExtClassLoader加载的，而是由DynamicClassLoader或者其内部的_loaders集合完成的加载。或者更确切的说是由CompilingClassLoader获取到的URL，再转换成InputStream。</p>
+<p><span style="color: #ff0000;"><strong>&lt;comiling-loader&gt;其实对getResourceAsStream还是有点影响的，如果配置中配置了&lt;comiling-loader&gt;，并且&lt;comiling-loader&gt;配置的路径下，与实际项目的指定路径下，都放置了同名资源，则会先加载&lt;comiling-loader&gt;配置路径下的资源。</strong></span></p>
+<p>比如，下图所示：</p>
+<figure id="attachment_6399" aria-describedby="caption-attachment-6399" style="width: 554px" class="wp-caption aligncenter"><img decoding="async" loading="lazy" class="size-full wp-image-6399" title="图19" src="/uploads/2012/01/图片19.png" alt="图19" width="554" height="266" srcset="" sizes="(max-width: 554px) 100vw, 554px"/><figcaption id="caption-attachment-6399" class="wp-caption-text">图19</figcaption></figure>
+<p>&lt;compiling-loader&gt;配置的路径为：&lt;compiling-loader path=”webapps/WEB-INF/classes”/&gt;</p>
+<p>在加载”/a.txt”时，优先加载webapps/WEB-INF/classes/a.txt。</p>
+<h4><span class="ez-toc-section" id="%E6%80%BB%E7%BB%93"></span>总结<span class="ez-toc-section-end"></span></h4>
+<ol>
+<li>&lt;compiling-loader&gt;如被注释掉，则只会在EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]中的_loaders中被初始化，否则会在EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]和EnvironmentClassLoader$7806641[host:http://localhost:8787两个类加载器各自的_loaders集合中被初始化。(通过调试this.getClass().getResource(“/test”).getPath()验证)</li>
+<li>&lt;compiling-loader&gt;未注释掉，”/”(根路径)由EnvironmentClassLoader$7806641[host:http://localhost:8787]加载，注释掉后由EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]加载。</li>
+<li>EnvironmentClassLoader$7806641[host:http://localhost:8787]为Resin server的类加载器实例，EnvironmentClassLoader$24156236[web-app:http://localhost:8787/EhCacheTestAnnotation]为Web应用程序的类加载器实例。他们都属于java.net.URLClassLoader的实例。</li>
+<li>&lt;compiling-loader&gt;某种程度上对getResourceAsStream方法有影响。</li>
+</ol>
+<p>现在&lt;compiling-loader&gt;如何影响getResource(“/”)，以及getResourceAsStream“不”被影响全部真相大白。</p>
+<p><span style="color: #ff0000;">注：&lt;compiling-loader&gt;只对获取根路径产生影响，也就是参数为”/”。比如加载”/test/Path.class”不会产生影响。</span></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-6335-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">ClassLoader</a>, <a href="javascript:void(0)" rel="tag">getResource</a>, <a href="javascript:void(0)" rel="tag">getResourceAsStream</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">Resin</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Resin服务器getResource揭秘</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-121591" class="comment even thread-even depth-1">
+<article id="div-comment-121591" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/48d1308cf76624c21ef5f5a77d8ec7b9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/48d1308cf76624c21ef5f5a77d8ec7b9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zhaoyou</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-121591"><time datetime="2012-01-05T09:40:29+08:00">2012年01月05日 09:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>牛人！</p>
+</div>
+ </article>
+</li>
+<li id="comment-121597" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-121597" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f15ce7d0dc3b79808630b182396335e4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f15ce7d0dc3b79808630b182396335e4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Kobe</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-121597"><time datetime="2012-01-05T10:01:47+08:00">2012年01月05日 10:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我顶一下，这种钻研精神很感动我。<br/>
+看国内其他知名论坛，都是就事论事，似是而非，根本自己不做研究，东抄西拉来的文章。无聊而浪费时间！<br/>
+所以基本不看国内论坛或者Blog。<br/>
+但是楼主的文章我最近知晓后看了不少，很受启发。谢谢！</p>
+</div>
+ </article>
+</li>
+<li id="comment-121598" class="comment even thread-even depth-1 parent">
+<article id="div-comment-121598" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d70211505638c432d24bd8feeed2c5f6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d70211505638c432d24bd8feeed2c5f6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://fake.im" class="url" rel="ugc external nofollow">fakeuser</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-121598"><time datetime="2012-01-05T10:03:32+08:00">2012年01月05日 10:03</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>唉,咋会贴这种文章,而且是两篇,不像酷克的风格啊. 这种分析完全可以看java源码啊.而且getResource 跟resin有啥关系啊,它只是调用了getResource,这完全是java的实现啊.<br/>
+酷克发点好文吧</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-121608" class="comment byuser comment-author-haoel odd alt depth-2">
+<article id="div-comment-121608" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/af2fbb7372dd5826e44d87e6ceccea40?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://coolshell.cn" class="url" rel="ugc">陈皓</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-121608"><time datetime="2012-01-05T10:34:46+08:00">2012年01月05日 10:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>@fakeuser 你看到的只是技术细节，我看到的是一个程序员专研的精神。所以，我认为这种可以让大家了解他人是如何专研技术的文章就是好文。</p>
+<p>谢谢你关心酷壳的文章质量，也欢迎你能加入一起分享。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-121624" class="comment byuser comment-author-liuxiaori bypostauthor even thread-odd thread-alt depth-1">
+<article id="div-comment-121624" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-121624"><time datetime="2012-01-05T11:06:56+08:00">2012年01月05日 11:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-121598" rel="nofollow">@fakeuser </a><br/>
+首先很谢谢你的再次关注，再一个这就是看源码发现的问题，然后去解决的。不是单单jdk的源码就能解释。<br/>
+可能这个对你来说so easy，但是我很享受这个过程，因为对于现在的我，弄清楚它我很骄傲。望谅解。<br/>
+很多东西看似简单，当你真正投入进去会发现别有洞天。<br/>
+最后，很期待你的文章。<br/>
+真心感谢。</p>
+</div>
+ </article>
+</li>
+<li id="comment-121698" class="comment odd alt thread-even depth-1">
+<article id="div-comment-121698" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/702ba99a8dd45d75b1eb562dfdeef6b6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/702ba99a8dd45d75b1eb562dfdeef6b6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.pureage.info" class="url" rel="ugc external nofollow">strider</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-121698"><time datetime="2012-01-05T13:40:51+08:00">2012年01月05日 13:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看到这种文章总是会觉得很感动，一方面来自于感受到作者自己的心血，虽然不可能有他自己心情的十分之一，但多少能感觉到一些。另外一方面就是分享精神。</p>
+</div>
+ </article>
+</li>
+<li id="comment-122355" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-122355" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b3ade0935f28b41c5c3d0bd91a4092c6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b3ade0935f28b41c5c3d0bd91a4092c6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.uudianlan.com" class="url" rel="ugc external nofollow">特种电缆</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-122355"><time datetime="2012-01-06T23:12:57+08:00">2012年01月06日 23:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>技术强人啊。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-123394" class="comment odd alt thread-even depth-1">
+<article id="div-comment-123394" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/20bc8269421b6a2999ecf8f81c842229?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/20bc8269421b6a2999ecf8f81c842229?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">煲仔饭</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-123394"><time datetime="2012-01-09T09:42:39+08:00">2012年01月09日 09:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>老兄，还真是写了续篇，不得不顶啊</p>
+</div>
+ </article>
+</li>
+<li id="comment-123410" class="comment byuser comment-author-liuxiaori bypostauthor even thread-odd thread-alt depth-1">
+<article id="div-comment-123410" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/44d23a83359d26d7494f72b0f5a2ea62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liuxiaori</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-123410"><time datetime="2012-01-09T10:25:40+08:00">2012年01月09日 10:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-123394" rel="nofollow">@煲仔饭 </a><br/>
+哈哈，见笑了，已答应了，就要做到嘛！况且上一篇问题也未解决。<br/>
+有什么不合适的地方还希望能多多交流。</p>
+</div>
+ </article>
+</li>
+<li id="comment-125468" class="comment odd alt thread-even depth-1">
+<article id="div-comment-125468" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b5be32f198785a1d78f40d4902a40a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b5be32f198785a1d78f40d4902a40a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ken</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-125468"><time datetime="2012-01-13T15:47:42+08:00">2012年01月13日 15:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>程序员专研的精神!</p>
+</div>
+ </article>
+</li>
+<li id="comment-126872" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-126872" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a1f626ed4ef4e5ce8532e92833ed3fe6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a1f626ed4ef4e5ce8532e92833ed3fe6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">坏孩子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-126872"><time datetime="2012-01-16T22:18:38+08:00">2012年01月16日 22:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>每个应用服务器实现的方式都是不一样的，这个可能只适用于resin</p>
+</div>
+ </article>
+</li>
+<li id="comment-196050" class="comment odd alt thread-even depth-1">
+<article id="div-comment-196050" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/14df441ccf4ae21d76cafb60a41d6ee4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/14df441ccf4ae21d76cafb60a41d6ee4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://liupangzi.org" class="url" rel="ugc external nofollow">HolyGhost</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-196050"><time datetime="2012-06-05T18:20:40+08:00">2012年06月05日 18:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>很早之前就见到这篇文章了，今天终于用到了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-716052" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-716052" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/28ea2a29a7c7b97151619b7f86b27238?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/28ea2a29a7c7b97151619b7f86b27238?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">晨过_微语</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-716052"><time datetime="2013-09-04T23:10:56+08:00">2013年09月04日 23:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>被这种精神深深打动了，学习</p>
+</div>
+ </article>
+</li>
+<li id="comment-776740" class="comment odd alt thread-even depth-1">
+<article id="div-comment-776740" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/507d7b5de66194c95a83f427b0799776?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/507d7b5de66194c95a83f427b0799776?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.goo.ne.jp/mestjerkroraw" class="url" rel="ugc external nofollow">blog</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/6335.html#comment-776740"><time datetime="2013-10-01T08:40:33+08:00">2013年10月01日 08:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Can you message me with a few tips about how you made this blog look like this, Id be thankful!</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,986 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>C++ 对象的内存布局 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-12176 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-12176" class="post-content post-12176 post type-post status-publish format-standard hentry category-cplusplus category-proglanguage tag-c">
+<header class="entry-header">
+<span class="screen-reader-text">C++ 对象的内存布局</span>
+<h1 class="entry-title">C++ 对象的内存布局</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/12176.html" title="09:32" rel="bookmark"><time class="entry-date" datetime="2008-10-15T09:32:16+08:00" pubdate="">2008年10月15日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/12176.html#comments" class="comments-link">18 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 52,445 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>07年12月，我写了一篇《<a title="C++ 虚函数表解析" href="/articles/12165.html" target="_blank">C++虚函数表解析</a>》的文章，引起了大家的兴趣。有很多朋友对我的文章留了言，有鼓励我的，有批评我的，还有很多问问题的。我在这里一并对大家的留言表示感谢。这也是我为什么再写一篇续言的原因。因为，在上一篇文章中，我用了的示例都是非常简单的，主要是为了说明一些机理上的问题，也是为了图一些表达上方便和简单。不想，这篇文章成为了打开C++对象模型内存布局的一个引子，引发了大家对C++对象的更深层次的讨论。当然，我之前的文章还有很多方面没有涉及，从我个人感觉下来，在谈论虚函数表里，至少有以下这些内容没有涉及：</p>
+<p style="padding-left: 30px;">1）有成员变量的情况。</p>
+<p style="padding-left: 30px;">2）有重复继承的情况。</p>
+<p style="padding-left: 30px;">3）有虚拟继承的情况。</p>
+<p style="padding-left: 30px;">4）有钻石型虚拟继承的情况。</p>
+<p> 这些都是我本篇文章需要向大家说明的东西。所以，这篇文章将会是《<a href="/articles/12165.html" target="_blank">C++虚函数表解析</a>》的一个续篇，也是一篇高级进阶的文章。我希望大家在读这篇文章之前对C++有一定的基础和了解，并能先读我的上一篇文章。因为这篇文章的深度可能会比较深，而且会比较杂乱，我希望你在读本篇文章时不会有大脑思维紊乱导致大脑死机的情况。;-)</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%BD%B1%E5%93%8D%E5%9B%A0%E7%B4%A0" title="对象的影响因素">对象的影响因素</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%9F%A5%E8%AF%86%E5%A4%8D%E4%B9%A0" title="知识复习">知识复习</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E5%8D%95%E4%B8%80%E7%9A%84%E4%B8%80%E8%88%AC%E7%BB%A7%E6%89%BF" title="单一的一般继承">单一的一般继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF" title="多重继承">多重继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E9%87%8D%E5%A4%8D%E7%BB%A7%E6%89%BF" title="重复继承">重复继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E9%92%BB%E7%9F%B3%E5%9E%8B%E5%A4%9A%E9%87%8D%E8%99%9A%E6%8B%9F%E7%BB%A7%E6%89%BF" title="钻石型多重虚拟继承">钻石型多重虚拟继承</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%BB%93%E6%9D%9F%E8%AF%AD" title="结束语">结束语</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%AF%B9%E8%B1%A1%E7%9A%84%E5%BD%B1%E5%93%8D%E5%9B%A0%E7%B4%A0"></span>对象的影响因素<span class="ez-toc-section-end"></span></h4>
+<p>简而言之，我们一个类可能会有如下的影响因素：</p>
+<p style="padding-left: 30px;">1）成员变量</p>
+<p style="padding-left: 30px;">2）虚函数（产生虚函数表）</p>
+<p style="padding-left: 30px;">3）单一继承（只继承于一个类）</p>
+<p style="padding-left: 30px;">4）多重继承（继承多个类）</p>
+<p style="padding-left: 30px;">5）重复继承（继承的多个父类中其父类有相同的超类）</p>
+<p style="padding-left: 30px;">6）虚拟继承（使用virtual方式继承，为了保证继承后父类的内存布局只会存在一份）</p>
+<p>上述的东西通常是C++这门语言在语义方面对对象内部的影响因素，当然，还会有编译器的影响（比如优化），还有字节对齐的影响。在这里我们都不讨论，我们只讨论C++语言上的影响。</p>
+<p>本篇文章着重讨论下述几个情况下的C++对象的内存布局情况。</p>
+<p><span id="more-12176"></span></p>
+<p style="padding-left: 30px;">1）<strong>单一的一般继承</strong>（带成员变量、虚函数、虚函数覆盖）</p>
+<p style="padding-left: 30px;">2）<strong>单一的虚拟继承</strong>（带成员变量、虚函数、虚函数覆盖）</p>
+<p style="padding-left: 30px;">3）<strong>多重继承</strong>（带成员变量、虚函数、虚函数覆盖）</p>
+<p style="padding-left: 30px;">4）<strong>重复多重继承</strong>（带成员变量、虚函数、虚函数覆盖）</p>
+<p style="padding-left: 30px;">5）<strong>钻石型的虚拟多重继承</strong>（带成员变量、虚函数、虚函数覆盖）</p>
+<p>我们的目标就是，让事情越来越复杂。</p>
+<h4><span class="ez-toc-section" id="%E7%9F%A5%E8%AF%86%E5%A4%8D%E4%B9%A0"></span>知识复习<span class="ez-toc-section-end"></span></h4>
+<p>我们简单地复习一下，我们可以通过对象的地址来取得虚函数表的地址，如：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">typedef void(*Fun)(void);
+
+Base b;
+
+Fun pFun = NULL;
+
+cout &lt;&lt; &#34;虚函数表地址：&#34; &lt;&lt; (int*)(&amp;b) &lt;&lt; endl;
+cout &lt;&lt; &#34;虚函数表 — 第一个函数地址：&#34; &lt;&lt; (int*)*(int*)(&amp;b) &lt;&lt; endl;
+
+// Invoke the first virtual function
+pFun = (Fun)*((int*)*(int*)(&amp;b));
+pFun();</pre>
+<p>我们同样可以用这种方式来取得整个对象实例的内存布局。因为这些东西在内存中都是连续分布的，我们只需要使用适当的地址偏移量，我们就可以获得整个内存对象的布局。</p>
+<p>本篇文章中的例程或内存布局主要使用如下编译器和系统：</p>
+<p style="padding-left: 30px;"><strong>1）Windows XP 和 VC++ 2003</strong><br/>
+<strong> 2）Cygwin 和 G++ 3.4.4</strong></p>
+<h4><span class="ez-toc-section" id="%E5%8D%95%E4%B8%80%E7%9A%84%E4%B8%80%E8%88%AC%E7%BB%A7%E6%89%BF"></span>单一的一般继承<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们假设有如下所示的一个继承关系：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-12178" src="/uploads/2014/12/011.jpg" alt="01" width="177" height="366" srcset="" sizes="(max-width: 177px) 100vw, 177px"/></p>
+<p>请注意，在这个继承关系中，父类，子类，孙子类都有自己的一个成员变量。而了类覆盖了父类的f()方法，孙子类覆盖了子类的g_child()及其超类的f()。</p>
+<p>我们的源程序如下所示：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class Parent {
+public:
+    int iparent;
+    Parent ():iparent (10) {}
+    virtual void f() { cout &lt;&lt; &#34; Parent::f()&#34; &lt;&lt; endl; }
+    virtual void g() { cout &lt;&lt; &#34; Parent::g()&#34; &lt;&lt; endl; }
+    virtual void h() { cout &lt;&lt; &#34; Parent::h()&#34; &lt;&lt; endl; }
+
+};
+
+class Child : public Parent {
+public:
+    int ichild;
+    Child():ichild(100) {}
+    virtual void f() { cout &lt;&lt; &#34;Child::f()&#34; &lt;&lt; endl; }
+    virtual void g_child() { cout &lt;&lt; &#34;Child::g_child()&#34; &lt;&lt; endl; }
+    virtual void h_child() { cout &lt;&lt; &#34;Child::h_child()&#34; &lt;&lt; endl; }
+};
+
+class GrandChild : public Child{
+public:
+    int igrandchild;
+    GrandChild():igrandchild(1000) {}
+    virtual void f() { cout &lt;&lt; &#34;GrandChild::f()&#34; &lt;&lt; endl; }
+    virtual void g_child() { cout &lt;&lt; &#34;GrandChild::g_child()&#34; &lt;&lt; endl; }
+    virtual void h_grandchild() { cout &lt;&lt; &#34;GrandChild::h_grandchild()&#34; &lt;&lt; endl; }
+};</pre>
+<p>我们使用以下程序作为测试程序：（下面程序中，我使用了一个int** pVtab 来作为遍历对象内存布局的指针，这样，我就可以方便地像使用数组一样来遍历所有的成员包括其虚函数表了，在后面的程序中，我也是用这样的方法的，请不必感到奇怪，）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">typedef void(*Fun)(void);
+
+GrandChild gc;
+
+int** pVtab = (int**)&amp;gc;
+
+cout &lt;&lt; &#34;[0] GrandChild::_vptr-&gt;&#34; &lt;&lt; endl;
+for (int i=0; (Fun)pVtab[0][i]!=NULL; i++){
+    pFun = (Fun)pVtab[0][i];
+    cout &lt;&lt; &#34;    [&#34;&lt;&lt;i&lt;&lt;&#34;] &#34;;
+    pFun();
+}
+cout &lt;&lt; &#34;[1] Parent.iparent = &#34; &lt;&lt; (int)pVtab[1] &lt;&lt; endl;
+cout &lt;&lt; &#34;[2] Child.ichild = &#34; &lt;&lt; (int)pVtab[2] &lt;&lt; endl;
+cout &lt;&lt; &#34;[3] GrandChild.igrandchild = &#34; &lt;&lt; (int)pVtab[3] &lt;&lt; endl;</pre>
+<p>其运行结果如下所示：（在VC++ 2003和G++ 3.4.4下）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">[0] GrandChild::_vptr-&gt;
+&lt;pre&gt;    [0] GrandChild::f()
+    [1] Parent::g()
+    [2] Parent::h()
+    [3] GrandChild::g_child()
+    [4] Child::h1()
+    [5] GrandChild::h_grandchild()
+[1] Parent.iparent = 10
+[2] Child.ichild = 100
+[3] GrandChild.igrandchild = 1000</pre>
+<p>使用图片表示如下：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12180" src="/uploads/2014/12/021.jpg" alt="02" width="500" height="237" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>可见以下几个方面：</p>
+<p style="padding-left: 30px;">1）虚函数表在最前面的位置。</p>
+<p style="padding-left: 30px;">2）成员变量根据其继承和声明顺序依次放在后面。</p>
+<p style="padding-left: 30px;">3）在单一的继承中，被overwrite的虚函数在虚函数表中得到了更新。</p>
+<h4><span class="ez-toc-section" id="%E5%A4%9A%E9%87%8D%E7%BB%A7%E6%89%BF"></span>多重继承<span class="ez-toc-section-end"></span></h4>
+<p>下面，再让我们来看看多重继承中的情况，假设有下面这样一个类的继承关系。注意：子类只overwrite了父类的f()函数，而还有一个是自己的函数（我们这样做的目的是为了用g1()作为一个标记来标明子类的虚函数表）。而且每个类中都有一个自己的成员变量：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12181" src="/uploads/2014/12/031.jpg" alt="03" width="328" height="265" srcset="" sizes="(max-width: 328px) 100vw, 328px"/></p>
+<p>我们的类继承的源代码如下所示：父类的成员初始为10，20，30，子类的为100</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class Base1 {
+public:
+    int ibase1;
+    Base1():ibase1(10) {}
+    virtual void f() { cout &lt;&lt; &#34;Base1::f()&#34; &lt;&lt; endl; }
+    virtual void g() { cout &lt;&lt; &#34;Base1::g()&#34; &lt;&lt; endl; }
+    virtual void h() { cout &lt;&lt; &#34;Base1::h()&#34; &lt;&lt; endl; }
+
+};
+
+class Base2 {
+public:
+    int ibase2;
+    Base2():ibase2(20) {}
+    virtual void f() { cout &lt;&lt; &#34;Base2::f()&#34; &lt;&lt; endl; }
+    virtual void g() { cout &lt;&lt; &#34;Base2::g()&#34; &lt;&lt; endl; }
+    virtual void h() { cout &lt;&lt; &#34;Base2::h()&#34; &lt;&lt; endl; }
+};
+
+class Base3 {
+public:
+    int ibase3;
+    Base3():ibase3(30) {}
+    virtual void f() { cout &lt;&lt; &#34;Base3::f()&#34; &lt;&lt; endl; }
+    virtual void g() { cout &lt;&lt; &#34;Base3::g()&#34; &lt;&lt; endl; }
+    virtual void h() { cout &lt;&lt; &#34;Base3::h()&#34; &lt;&lt; endl; }
+};
+
+class Derive : public Base1, public Base2, public Base3 {
+public:
+    int iderive;
+    Derive():iderive(100) {}
+    virtual void f() { cout &lt;&lt; &#34;Derive::f()&#34; &lt;&lt; endl; }
+    virtual void g1() { cout &lt;&lt; &#34;Derive::g1()&#34; &lt;&lt; endl; }
+};</pre>
+<p>我们通过下面的程序来查看子类实例的内存布局：下面程序中，注意我使用了一个s变量，其中用到了sizof(Base)来找下一个类的偏移量。（因为我声明的是int成员，所以是4个字节，所以没有对齐问题。关于内存的对齐问题，大家可以自行试验，我在这里就不多说了）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="27,45">typedef void(*Fun)(void);
+
+Derive d;
+
+int** pVtab = (int**)&amp;d;
+
+cout &lt;&lt; &#34;[0] Base1::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[0][0];
+cout &lt;&lt; &#34;     [0] &#34;;
+pFun();
+
+pFun = (Fun)pVtab[0][1];
+cout &lt;&lt; &#34;     [1] &#34;;pFun();
+
+pFun = (Fun)pVtab[0][2];
+cout &lt;&lt; &#34;     [2] &#34;;pFun();
+
+pFun = (Fun)pVtab[0][3];
+cout &lt;&lt; &#34;     [3] &#34;; pFun();
+
+pFun = (Fun)pVtab[0][4];
+cout &lt;&lt; &#34;     [4] &#34;; cout&lt;&lt;pFun&lt;&lt;endl;
+
+cout &lt;&lt; &#34;[1] Base1.ibase1 = &#34; &lt;&lt; (int)pVtab[1] &lt;&lt; endl;
+
+int s = sizeof(Base1)/4;
+
+cout &lt;&lt; &#34;[&#34; &lt;&lt; s &lt;&lt; &#34;] Base2::_vptr-&gt;&#34;&lt;&lt;endl;
+pFun = (Fun)pVtab[s][0];
+cout &lt;&lt; &#34;     [0] &#34;; pFun();
+
+Fun = (Fun)pVtab[s][1];
+cout &lt;&lt; &#34;     [1] &#34;; pFun();
+
+pFun = (Fun)pVtab[s][2];
+cout &lt;&lt; &#34;     [2] &#34;; pFun();
+
+pFun = (Fun)pVtab[s][3];
+out &lt;&lt; &#34;     [3] &#34;;
+cout&lt;&lt;pFun&lt;&lt;endl;
+
+cout &lt;&lt; &#34;[&#34;&lt;&lt; s+1 &lt;&lt;&#34;] Base2.ibase2 = &#34; &lt;&lt; (int)pVtab[s+1] &lt;&lt; endl;
+
+s = s + sizeof(Base2)/4;
+
+cout &lt;&lt; &#34;[&#34; &lt;&lt; s &lt;&lt; &#34;] Base3::_vptr-&gt;&#34;&lt;&lt;endl;
+pFun = (Fun)pVtab[s][0];
+cout &lt;&lt; &#34;     [0] &#34;; pFun();
+
+pFun = (Fun)pVtab[s][1];
+cout &lt;&lt; &#34;     [1] &#34;; pFun();
+
+pFun = (Fun)pVtab[s][2];
+cout &lt;&lt; &#34;     [2] &#34;; pFun();
+
+pFun = (Fun)pVtab[s][3];
+cout &lt;&lt; &#34;     [3] &#34;;
+cout&lt;&lt;pFun&lt;&lt;endl;
+
+s++;
+cout &lt;&lt; &#34;[&#34;&lt;&lt; s &lt;&lt;&#34;] Base3.ibase3 = &#34; &lt;&lt; (int)pVtab[s] &lt;&lt; endl;
+s++;
+cout &lt;&lt; &#34;[&#34;&lt;&lt; s &lt;&lt;&#34;] Derive.iderive = &#34; &lt;&lt; (int)pVtab[s] &lt;&lt; endl;</pre>
+<p>其运行结果如下所示：（在VC++ 2003和G++ 3.4.4下）</p>
+<pre data-enlighter-language="shell" class="EnlighterJSRAW">[0] Base1::_vptr-&gt;
+     [0] Derive::f()
+     [1] Base1::g()
+     [2] Base1::h()
+     [3] Driver::g1()
+     [4] 00000000      &lt;== 注意：在GCC下，这里是1
+[1] Base1.ibase1 = 10
+[2] Base2::_vptr-&gt;
+     [0] Derive::f()
+     [1] Base2::g()
+     [2] Base2::h()
+     [3] 00000000      &lt;== 注意：在GCC下，这里是1
+[3] Base2.ibase2 = 20
+[4] Base3::_vptr-&gt;
+     [0] Derive::f()
+     [1] Base3::g()
+     [2] Base3::h()
+     [3] 00000000
+[5] Base3.ibase3 = 30
+[6] Derive.iderive = 100</pre>
+<p>使用图片表示是下面这个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12182" src="/uploads/2014/12/041.jpg" alt="04" width="500" height="287" srcset="" sizes="(max-width: 500px) 100vw, 500px"/></p>
+<p>我们可以看到：</p>
+<p style="padding-left: 30px;">1）  每个父类都有自己的虚表。</p>
+<p style="padding-left: 30px;">2）  子类的成员函数被放到了第一个父类的表中。</p>
+<p style="padding-left: 30px;">3）  内存布局中，其父类布局依次按声明顺序排列。</p>
+<p style="padding-left: 30px;">4）  每个父类的虚表中的f()函数都被overwrite成了子类的f()。这样做就是为了解决不同的父类类型的指针指向同一个子类实例，而能够调用到实际的函数。</p>
+<h4><span class="ez-toc-section" id="%E9%87%8D%E5%A4%8D%E7%BB%A7%E6%89%BF"></span>重复继承<span class="ez-toc-section-end"></span></h4>
+<p>下面我们再来看看，发生重复继承的情况。所谓重复继承，也就是某个基类被间接地重复继承了多次。</p>
+<p>下图是一个继承图，我们重载了父类的f()函数。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12188" src="/uploads/2014/12/051.jpg" alt="05" width="253" height="393" srcset="" sizes="(max-width: 253px) 100vw, 253px"/></p>
+<p>其类继承的源代码如下所示。其中，每个类都有两个变量，一个是整形（4字节），一个是字符（1字节），而且还有自己的虚函数，自己overwrite父类的虚函数。如子类D中，f()覆盖了超类的函数， f1() 和f2() 覆盖了其父类的虚函数，Df()为自己的虚函数。</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class B
+{
+    public:
+        int ib;
+        char cb;
+    public:
+        B():ib(0),cb(&#39;B&#39;) {}
+
+        virtual void f() { cout &lt;&lt; &#34;B::f()&#34; &lt;&lt; endl;}
+        virtual void Bf() { cout &lt;&lt; &#34;B::Bf()&#34; &lt;&lt; endl;}
+};
+class B1 :  public B
+{
+    public:
+        int ib1;
+        char cb1;
+    public:
+        B1():ib1(11),cb1(&#39;1&#39;) {}
+
+        virtual void f() { cout &lt;&lt; &#34;B1::f()&#34; &lt;&lt; endl;}
+        virtual void f1() { cout &lt;&lt; &#34;B1::f1()&#34; &lt;&lt; endl;}
+        virtual void Bf1() { cout &lt;&lt; &#34;B1::Bf1()&#34; &lt;&lt; endl;}
+
+};
+class B2:  public B
+{
+    public:
+        int ib2;
+        char cb2;
+    public:
+        B2():ib2(12),cb2(&#39;2&#39;) {}
+
+        virtual void f() { cout &lt;&lt; &#34;B2::f()&#34; &lt;&lt; endl;}
+        virtual void f2() { cout &lt;&lt; &#34;B2::f2()&#34; &lt;&lt; endl;}
+        virtual void Bf2() { cout &lt;&lt; &#34;B2::Bf2()&#34; &lt;&lt; endl;}
+
+};
+
+class D : public B1, public B2
+{
+    public:
+        int id;
+        char cd;
+    public:
+        D():id(100),cd(&#39;D&#39;) {}
+
+        virtual void f() { cout &lt;&lt; &#34;D::f()&#34; &lt;&lt; endl;}
+        virtual void f1() { cout &lt;&lt; &#34;D::f1()&#34; &lt;&lt; endl;}
+        virtual void f2() { cout &lt;&lt; &#34;D::f2()&#34; &lt;&lt; endl;}
+        virtual void Df() { cout &lt;&lt; &#34;D::Df()&#34; &lt;&lt; endl;}
+
+};</pre>
+<p>我们用来存取子类内存布局的代码如下所示：（在VC++ 2003和G++ 3.4.4下）</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">typedef void(*Fun)(void);
+int** pVtab = NULL;
+Fun pFun = NULL;
+
+D d;
+pVtab = (int**)&amp;d;
+cout &lt;&lt; &#34;[0] D::B1::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[0][0];
+cout &lt;&lt; &#34;     [0] &#34;;    pFun();
+pFun = (Fun)pVtab[0][1];
+cout &lt;&lt; &#34;     [1] &#34;;    pFun();
+pFun = (Fun)pVtab[0][2];
+cout &lt;&lt; &#34;     [2] &#34;;    pFun();
+pFun = (Fun)pVtab[0][3];
+cout &lt;&lt; &#34;     [3] &#34;;    pFun();
+pFun = (Fun)pVtab[0][4];
+cout &lt;&lt; &#34;     [4] &#34;;    pFun();
+pFun = (Fun)pVtab[0][5];
+cout &lt;&lt; &#34;     [5] 0x&#34; &lt;&lt; pFun &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[1] B::ib = &#34; &lt;&lt; (int)pVtab[1] &lt;&lt; endl;
+cout &lt;&lt; &#34;[2] B::cb = &#34; &lt;&lt; (char)pVtab[2] &lt;&lt; endl;
+cout &lt;&lt; &#34;[3] B1::ib1 = &#34; &lt;&lt; (int)pVtab[3] &lt;&lt; endl;
+cout &lt;&lt; &#34;[4] B1::cb1 = &#34; &lt;&lt; (char)pVtab[4] &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[5] D::B2::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[5][0];
+cout &lt;&lt; &#34;     [0] &#34;;    pFun();
+pFun = (Fun)pVtab[5][1];
+cout &lt;&lt; &#34;     [1] &#34;;    pFun();
+pFun = (Fun)pVtab[5][2];
+cout &lt;&lt; &#34;     [2] &#34;;    pFun();
+pFun = (Fun)pVtab[5][3];
+cout &lt;&lt; &#34;     [3] &#34;;    pFun();
+pFun = (Fun)pVtab[5][4];
+cout &lt;&lt; &#34;     [4] 0x&#34; &lt;&lt; pFun &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[6] B::ib = &#34; &lt;&lt; (int)pVtab[6] &lt;&lt; endl;
+cout &lt;&lt; &#34;[7] B::cb = &#34; &lt;&lt; (char)pVtab[7] &lt;&lt; endl;
+cout &lt;&lt; &#34;[8] B2::ib2 = &#34; &lt;&lt; (int)pVtab[8] &lt;&lt; endl;
+cout &lt;&lt; &#34;[9] B2::cb2 = &#34; &lt;&lt; (char)pVtab[9] &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[10] D::id = &#34; &lt;&lt; (int)pVtab[10] &lt;&lt; endl;
+cout &lt;&lt; &#34;[11] D::cd = &#34; &lt;&lt; (char)pVtab[11] &lt;&lt; endl;</pre>
+<p>程序运行结果如下：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12187" src="/uploads/2014/12/06.png" alt="06" width="573" height="499" srcset="" sizes="(max-width: 573px) 100vw, 573px"/></p>
+<p>下面是对于子类实例中的虚函数表的图：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12186" src="/uploads/2014/12/061.jpg" alt="06" width="400" height="305" srcset="" sizes="(max-width: 400px) 100vw, 400px"/></p>
+<p>我们可以看见，最顶端的父类B其成员变量存在于B1和B2中，并被D给继承下去了。而在D中，其有B1和B2的实例，于是B的成员在D的实例中存在两份，一份是B1继承而来的，另一份是B2继承而来的。所以，如果我们使用以下语句，则会产生二义性编译错误：</p>
+<p>D d;<br/>
+d.ib = 0; //二义性错误<br/>
+d.B1::ib = 1; //正确<br/>
+d.B2::ib = 2; //正确</p>
+<p>注意，上面例程中的最后两条语句存取的是两个变量。虽然我们消除了二义性的编译错误，但B类在D中还是有两个实例，这种继承造成了数据的重复，我们叫这种继承为重复继承。重复的基类数据成员可能并不是我们想要的。所以，C++引入了虚基类的概念。</p>
+<h4><span class="ez-toc-section" id="%E9%92%BB%E7%9F%B3%E5%9E%8B%E5%A4%9A%E9%87%8D%E8%99%9A%E6%8B%9F%E7%BB%A7%E6%89%BF"></span>钻石型多重虚拟继承<span class="ez-toc-section-end"></span></h4>
+<p>虚拟继承的出现就是为了解决重复继承中多个间接父类的问题的。钻石型的结构是其最经典的结构。也是我们在这里要讨论的结构：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12185" src="/uploads/2014/12/071.jpg" alt="07" width="253" height="404" srcset="" sizes="(max-width: 253px) 100vw, 253px"/></p>
+<p>上述的“重复继承”只需要把B1和B2继承B的语法中加上virtual 关键，就成了虚拟继承，其继承图如下所示：</p>
+<p>上图和前面的“重复继承”中的类的内部数据和接口都是完全一样的，只是我们采用了虚拟继承：其省略后的源码如下所示：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">class B {……};
+class B1 : virtual public B{……};
+class B2: virtual public B{……};
+class D : public B1, public B2{ …… };</pre>
+<p>在查看D之前，我们先看一看单一虚拟继承的情况。下面是一段在VC++2003下的测试程序：（因为VC++和GCC的内存而局上有一些细节上的不同，所以这里只给出VC++的程序，GCC下的程序大家可以根据我给出的程序自己仿照着写一个去试一试）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">int** pVtab = NULL;
+Fun pFun = NULL;
+
+B1 bb1;
+
+pVtab = (int**)&amp;bb1;
+cout &lt;&lt; &#34;[0] B1::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[0][0];
+cout &lt;&lt; &#34;     [0] &#34;;
+pFun(); //B1::f1();
+cout &lt;&lt; &#34;     [1] &#34;;
+pFun = (Fun)pVtab[0][1];
+pFun(); //B1::bf1();
+cout &lt;&lt; &#34;     [2] &#34;;
+cout &lt;&lt; pVtab[0][2] &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[1] = 0x&#34;;
+cout &lt;&lt; (int*)*((int*)(&amp;bb1)+1) &lt;&lt;endl; //B1::ib1
+cout &lt;&lt; &#34;[2] B1::ib1 = &#34;;
+cout &lt;&lt; (int)*((int*)(&amp;bb1)+2) &lt;&lt;endl; //B1::ib1
+cout &lt;&lt; &#34;[3] B1::cb1 = &#34;;
+cout &lt;&lt; (char)*((int*)(&amp;bb1)+3) &lt;&lt; endl; //B1::cb1
+
+cout &lt;&lt; &#34;[4] = 0x&#34;;
+cout &lt;&lt; (int*)*((int*)(&amp;bb1)+4) &lt;&lt; endl; //NULL
+
+cout &lt;&lt; &#34;[5] B::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[5][0];
+cout &lt;&lt; &#34;     [0] &#34;;
+pFun(); //B1::f();
+pFun = (Fun)pVtab[5][1];
+cout &lt;&lt; &#34;     [1] &#34;;
+pFun(); //B::Bf();
+cout &lt;&lt; &#34;     [2] &#34;;
+cout &lt;&lt; &#34;0x&#34; &lt;&lt; (Fun)pVtab[5][2] &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[6] B::ib = &#34;;
+cout &lt;&lt; (int)*((int*)(&amp;bb1)+6) &lt;&lt;endl; //B::ib
+cout &lt;&lt; &#34;[7] B::cb = &#34;;
+</pre>
+<p>其运行结果如下（我结出了GCC的和VC++2003的对比）：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12184" src="/uploads/2014/12/070.png" alt="070" width="627" height="308" srcset="" sizes="(max-width: 627px) 100vw, 627px"/></p>
+<p>这里，大家可以自己对比一下。关于细节上，我会在后面一并再说。</p>
+<p>下面的测试程序是看子类D的内存布局，同样是VC++ 2003的（因为VC++和GCC的内存布局上有一些细节上的不同，而VC++的相对要清楚很多，所以这里只给出VC++的程序，GCC下的程序大家可以根据我给出的程序自己仿照着写一个去试一试）：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">D d;
+
+pVtab = (int**)&amp;d;
+cout &lt;&lt; &#34;[0] D::B1::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[0][0];
+cout &lt;&lt; &#34;     [0] &#34;;    pFun(); //D::f1();
+pFun = (Fun)pVtab[0][1];
+cout &lt;&lt; &#34;     [1] &#34;;    pFun(); //B1::Bf1();
+pFun = (Fun)pVtab[0][2];
+cout &lt;&lt; &#34;     [2] &#34;;    pFun(); //D::Df();
+pFun = (Fun)pVtab[0][3];
+cout &lt;&lt; &#34;     [3] &#34;;
+cout &lt;&lt; pFun &lt;&lt; endl;
+
+//cout &lt;&lt; pVtab[4][2] &lt;&lt; endl;
+cout &lt;&lt; &#34;[1] = 0x&#34;;
+cout &lt;&lt;  (int*)((&amp;dd)+1) &lt;&lt;endl; //????
+
+cout &lt;&lt; &#34;[2] B1::ib1 = &#34;;
+cout &lt;&lt; *((int*)(&amp;dd)+2) &lt;&lt;endl; //B1::ib1
+cout &lt;&lt; &#34;[3] B1::cb1 = &#34;;
+cout &lt;&lt; (char)*((int*)(&amp;dd)+3) &lt;&lt; endl; //B1::cb1
+
+//---------------------
+cout &lt;&lt; &#34;[4] D::B2::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[4][0];
+cout &lt;&lt; &#34;     [0] &#34;;    pFun(); //D::f2();
+pFun = (Fun)pVtab[4][1];
+cout &lt;&lt; &#34;     [1] &#34;;    pFun(); //B2::Bf2();
+pFun = (Fun)pVtab[4][2];
+cout &lt;&lt; &#34;     [2] &#34;;
+cout &lt;&lt; pFun &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[5] = 0x&#34;;
+cout &lt;&lt; *((int*)(&amp;dd)+5) &lt;&lt; endl; // ???
+
+cout &lt;&lt; &#34;[6] B2::ib2 = &#34;;
+cout &lt;&lt; (int)*((int*)(&amp;dd)+6) &lt;&lt;endl; //B2::ib2
+cout &lt;&lt; &#34;[7] B2::cb2 = &#34;;
+cout &lt;&lt; (char)*((int*)(&amp;dd)+7) &lt;&lt; endl; //B2::cb2
+
+cout &lt;&lt; &#34;[8] D::id = &#34;;
+cout &lt;&lt; *((int*)(&amp;dd)+8) &lt;&lt; endl; //D::id
+cout &lt;&lt; &#34;[9] D::cd = &#34;;
+cout &lt;&lt; (char)*((int*)(&amp;dd)+9) &lt;&lt; endl;//D::cd
+
+cout &lt;&lt; &#34;[10]  = 0x&#34;;
+cout &lt;&lt; (int*)*((int*)(&amp;dd)+10) &lt;&lt; endl;
+//---------------------
+cout &lt;&lt; &#34;[11] D::B::_vptr-&gt;&#34; &lt;&lt; endl;
+pFun = (Fun)pVtab[11][0];
+cout &lt;&lt; &#34;     [0] &#34;;    pFun(); //D::f();
+pFun = (Fun)pVtab[11][1];
+cout &lt;&lt; &#34;     [1] &#34;;    pFun(); //B::Bf();
+pFun = (Fun)pVtab[11][2];
+cout &lt;&lt; &#34;     [2] &#34;;
+cout &lt;&lt; pFun &lt;&lt; endl;
+
+cout &lt;&lt; &#34;[12] B::ib = &#34;;
+cout &lt;&lt; *((int*)(&amp;dd)+12) &lt;&lt; endl; //B::ib
+cout &lt;&lt; &#34;[13] B::cb = &#34;;
+cout &lt;&lt; (char)*((int*)(&amp;dd)+13) &lt;&lt;endl;//B::cb</pre>
+<p>下面给出运行后的结果（分VC++和GCC两部份）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-12183" src="/uploads/2014/12/07.png" alt="07" width="630" height="530" srcset="" sizes="(max-width: 630px) 100vw, 630px"/></p>
+<p>关于虚拟继承的运行结果我就不画图了（前面的作图已经让我产生了很严重的厌倦感，所以就偷个懒了，大家见谅了）</p>
+<p>在上面的输出结果中，我用不同的颜色做了一些标明。我们可以看到如下的几点：</p>
+<p style="padding-left: 30px;">1）无论是GCC还是VC++，除了一些细节上的不同，其大体上的对象布局是一样的。也就是说，先是B1（黄色），然后是B2（绿色），接着是D（灰色），而B这个超类（青蓝色）的实例都放在最后的位置。</p>
+<p style="padding-left: 30px;">2）关于虚函数表，尤其是第一个虚表，GCC和VC++有很重大的不一样。但仔细看下来，还是VC++的虚表比较清晰和有逻辑性。</p>
+<p style="padding-left: 30px;">3）VC++和GCC都把B这个超类放到了最后，而VC++有一个NULL分隔符把B和B1和B2的布局分开。GCC则没有。</p>
+<p style="padding-left: 30px;">4）VC++中的内存布局有两个地址我有些不是很明白，在其中我用红色标出了。取其内容是-4。接道理来说，这个指针应该是指向B类实例的内存地址（这个做法就是为了保证重复的父类只有一个实例的技术）。但取值后却不是。这点我目前还并不太清楚，还向大家请教。</p>
+<p style="padding-left: 30px;">5）GCC的内存布局中在B1和B2中则没有指向B的指针。这点可以理解，编译器可以通过计算B1和B2的size而得出B的偏移量。</p>
+<h4><span class="ez-toc-section" id="%E7%BB%93%E6%9D%9F%E8%AF%AD"></span>结束语<span class="ez-toc-section-end"></span></h4>
+<p>C++这门语言是一门比较复杂的语言，对于程序员来说，我们似乎永远摸不清楚这门语言背着我们在干了什么。需要熟悉这门语言，我们就必需要了解C++里面的那些东西，需要我们去了解他后面的内存对象。这样我们才能真正的了解C++，从而能够更好的使用C++这门最难的编程语言。</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-12176-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>C++ 对象的内存布局</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1620786" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/7992.html" class="url" rel="ugc">C++的坑真的多吗？ | 酷 壳 - CoolShell.cn</a> </div>
+</li>
+<li id="comment-1637555" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.mkzhouqi.wang/?p=17" class="url" rel="ugc external nofollow">程序员练级 | One person One word</a> </div>
+</li>
+<li id="comment-1675368" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yunyour.com/2015/03/133.html" class="url" rel="ugc external nofollow">雲遊光影 | 程序员技术练级攻略</a> </div>
+</li>
+<li id="comment-1680265" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://youngershen.com/2015/03/25/%e7%a8%8b%e5%ba%8f%e5%91%98%e6%8a%80%e6%9c%af%e7%bb%83%e7%ba%a7%e6%94%bb%e7%95%a5-2.html" class="url" rel="ugc external nofollow">Coding in a deep » 程序员技术练级攻略</a> </div>
+</li>
+<li id="comment-1682551" class="comment even thread-even depth-1">
+<article id="div-comment-1682551" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9249be299085c1672b2c568d8b4cd64?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9249be299085c1672b2c568d8b4cd64?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-1682551"><time datetime="2015-03-29T08:45:10+08:00">2015年03月29日 08:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你好，我想问一个问题，<br/>
+pFun = (Fun) pVtab[0][4];<br/>
+cout &lt;&lt; &#34; [4] &#34;;<br/>
+cout &lt;&lt; pFun &lt;&lt; endl;<br/>
+你说 注意：在GCC下，这里是1。我想问的是，这里已经越过了vtable的最后一个函数指针，为什么这里还有内容，而且竟然gcc还会都选择1，是为了防止越界而产生内存访问出错提供的保护机制吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1682583" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1682583" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d9249be299085c1672b2c568d8b4cd64?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d9249be299085c1672b2c568d8b4cd64?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">tx</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-1682583"><time datetime="2015-03-29T10:43:02+08:00">2015年03月29日 10:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>/*</p>
+<p> * main.cpp<br/>
+*<br/>
+* Created on: Oct 5, 2014<br/>
+* Author: tx<br/>
+*/<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+#include<br/>
+using std::cout;<br/>
+using std::cin;<br/>
+using std::endl;<br/>
+class A {<br/>
+public:<br/>
+int a;<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34;A f()\n&#34;;</p>
+<p> }<br/>
+virtual ~A()<br/>
+{</p>
+<p> }<br/>
+};<br/>
+class B {<br/>
+public:<br/>
+int a;<br/>
+virtual void f()<br/>
+{</p>
+<p> }<br/>
+virtual ~B()<br/>
+{</p>
+<p> }<br/>
+};<br/>
+class C: public A, public B {<br/>
+public:<br/>
+int a;<br/>
+virtual void f()<br/>
+{</p>
+<p> }<br/>
+};<br/>
+class Parent {<br/>
+public:<br/>
+int iparent;<br/>
+Parent() :<br/>
+iparent(10)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34;Parent::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g()<br/>
+{<br/>
+cout &lt;&lt; &#34;Parent::g()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void h()<br/>
+{<br/>
+cout &lt;&lt; &#34;Parent::h()&#34; &lt;&lt; endl;<br/>
+}</p>
+<p>};</p>
+<p>class Child: public Parent {<br/>
+public:<br/>
+int ichild;<br/>
+Child() :<br/>
+ichild(100)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34; Child::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g_child()<br/>
+{<br/>
+cout &lt;&lt; &#34; Child::g_child()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void h_child()<br/>
+{<br/>
+cout &lt;&lt; &#34; Child::h_child()&#34; &lt;&lt; endl;<br/>
+}<br/>
+};</p>
+<p>class GrandChild: public Child {<br/>
+public:<br/>
+int igrandchild;<br/>
+GrandChild() :<br/>
+igrandchild(1000)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34; GrandChild::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g_child()<br/>
+{<br/>
+cout &lt;&lt; &#34; GrandChild::g_child()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void h_grandchild()<br/>
+{<br/>
+cout &lt;&lt; &#34; GrandChild::h_grandchild()&#34; &lt;&lt; endl;<br/>
+}<br/>
+};<br/>
+class Base1 {<br/>
+public:<br/>
+int ibase1;<br/>
+Base1() :<br/>
+ibase1(10)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base1::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base1::g()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void h()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base1::h()&#34; &lt;&lt; endl;<br/>
+}</p>
+<p>};</p>
+<p>class Base2 {<br/>
+public:<br/>
+int ibase2;<br/>
+Base2() :<br/>
+ibase2(20)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base2::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base2::g()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void h()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base2::h()&#34; &lt;&lt; endl;<br/>
+}<br/>
+};</p>
+<p>class Base3 {<br/>
+public:<br/>
+int ibase3;<br/>
+Base3() :<br/>
+ibase3(30)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base3::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base3::g()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void h()<br/>
+{<br/>
+cout &lt;&lt; &#34;Base3::h()&#34; &lt;&lt; endl;<br/>
+}<br/>
+};</p>
+<p>class Derive: public Base1, public Base2, public Base3 {<br/>
+public:<br/>
+int iderive;<br/>
+Derive() :<br/>
+iderive(100)<br/>
+{<br/>
+}<br/>
+virtual void f()<br/>
+{<br/>
+cout &lt;&lt; &#34;Derive::f()&#34; &lt;&lt; endl;<br/>
+}<br/>
+virtual void g1()<br/>
+{<br/>
+cout &lt;&lt; &#34;Derive::g1()&#34; &lt;&lt; endl;<br/>
+}<br/>
+};<br/>
+int main(int argc, char * argv[])<br/>
+{<br/>
+typedef void (*Fun)();<br/>
+void (*pFun)();</p>
+<p> Derive d;</p>
+<p> ptrdiff_t **pVtab = (ptrdiff_t**) &amp;d;</p>
+<p> cout &lt;” &lt;&lt; endl;<br/>
+pFun = (Fun) pVtab[0][0];<br/>
+cout &lt;&lt; &#34; [0] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[0][1];<br/>
+cout &lt;&lt; &#34; [1] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[0][2];<br/>
+cout &lt;&lt; &#34; [2] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[0][3];<br/>
+cout &lt;&lt; &#34; [3] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[0][4];<br/>
+cout &lt;&lt; &#34; [4] &#34;;<br/>
+cout &lt;&lt; pFun &lt;&lt; endl;</p>
+<p> cout &lt;&lt; &#34;[1] Base1.ibase1 = &#34; &lt;&lt; *(int*) (pVtab + 1) &lt;&lt; endl;</p>
+<p> int s = sizeof(Base1) / alignof(Base1);</p>
+<p> cout &lt;&lt; &#34;[&#34; &lt;&lt; s &lt;” &lt;&lt; endl;<br/>
+cout &lt;&lt; (void*) pVtab[0][0] &lt;&lt; endl;<br/>
+cout &lt;&lt; (void*) pVtab[4][0] &lt;&lt; endl;<br/>
+pFun = (Fun) pVtab[s][0];<br/>
+// pFun = (Fun) *(ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 16);<br/>
+cout &lt;&lt; &#34; [0] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[s][1];<br/>
+// pFun = (Fun) *((ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 16) + 1);<br/>
+cout &lt;&lt; &#34; [1] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[s][2];<br/>
+// pFun = (Fun) *((ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 16) + 2);<br/>
+cout &lt;&lt; &#34; [2] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[s][3];<br/>
+// pFun = (Fun) *((ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 16) + 3);<br/>
+cout &lt;&lt; &#34; [3] &#34;;<br/>
+cout &lt;&lt; pFun &lt;&lt; endl;</p>
+<p> cout &lt;&lt; &#34;[&#34; &lt;&lt; s + 1 &lt;&lt; &#34;] Base2.ibase2 = &#34;<br/>
+&lt;&lt; *(int*) ((ptrdiff_t) (ptrdiff_t*) pVtab + sizeof(Base1)<br/>
++ sizeof(ptrdiff_t)) &lt;&lt; endl;</p>
+<p> s = s + sizeof(Base2) / alignof(Base2);</p>
+<p> cout &lt;&lt; &#34;[&#34; &lt;&lt; s &lt;” &lt;&lt; endl;<br/>
+pFun = (Fun) pVtab[s][0];<br/>
+// pFun = (Fun) *(ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 32);<br/>
+cout &lt;&lt; &#34; [0] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[s][1];<br/>
+// pFun = (Fun) *((ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 32) + 1);<br/>
+cout &lt;&lt; &#34; [1] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[s][2];<br/>
+// pFun = (Fun) *((ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 32) + 2);<br/>
+cout &lt;&lt; &#34; [2] &#34;;<br/>
+pFun();</p>
+<p> pFun = (Fun) pVtab[s][3];<br/>
+// pFun = (Fun) *((ptrdiff_t*) *(ptrdiff_t*) ((ptrdiff_t) (ptrdiff_t*) pVtab<br/>
+// + 32) + 3);<br/>
+cout &lt;&lt; &#34; [3] &#34;;<br/>
+cout &lt;&lt; pFun &lt;&lt; endl;</p>
+<p>// s++;<br/>
+cout &lt;&lt; &#34;[&#34; &lt;&lt; s &lt;&lt; &#34;] Base3.ibase3 = &#34;<br/>
+&lt;&lt; *(int*) ((ptrdiff_t) (ptrdiff_t*) pVtab + sizeof(Base1)<br/>
++ sizeof(Base2) + sizeof(ptrdiff_t)) &lt;&lt; endl;<br/>
+// s++;<br/>
+cout &lt;&lt; &#34;[&#34; &lt;&lt; s &lt;&lt; &#34;] Derive.iderive = &#34;<br/>
+&lt;&lt; *(int*) ((ptrdiff_t) (ptrdiff_t*) pVtab + sizeof(Base1)<br/>
++ sizeof(Base2) + sizeof(Base3)) &lt;&lt; endl;</p>
+<p> return 0;<br/>
+}<br/>
+最后算Derive.iderive的表达式不对，算不出来不知道为什么</p>
+</div>
+ </article>
+</li>
+<li id="comment-1749706" class="comment even thread-even depth-1">
+<article id="div-comment-1749706" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5a3233fa9d5dffc36cd734b3055eca1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5a3233fa9d5dffc36cd734b3055eca1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Lionel</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-1749706"><time datetime="2015-08-24T16:40:38+08:00">2015年08月24日 16:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这里有解释虚继承内存布局http://blog.csdn.net/littlehedgehog/article/details/5442430</p>
+</div>
+ </article>
+</li>
+<li id="comment-1754302" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fcwalkers.info/201509/1435.html" class="url" rel="ugc external nofollow">程序员技术练级攻略 | 风尘♂每个人的心里都有一扇窗!</a> </div>
+</li>
+<li id="comment-1794336" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.holahola.club/?p=171" class="url" rel="ugc external nofollow">程序员技术练级攻略 | Zane&#39;s Blog</a> </div>
+</li>
+<li id="comment-1920695" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1920695" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87c22ba222f2d653cbd5b598fdb4c85b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87c22ba222f2d653cbd5b598fdb4c85b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">徐天渊</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-1920695"><time datetime="2017-11-12T19:35:46+08:00">2017年11月12日 19:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>父类、子类、超类是什么意思？是不是其他语言里引入的概念，分别对应C++的基类、派生类、虚基类，这样理解对吗？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1998848" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://pintouge.online/?p=1803" class="url" rel="ugc external nofollow">程序员技术练级攻略（皓哥） – 平头哥个人博客</a> </div>
+</li>
+<li id="comment-2075838" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2075838" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a5225d8d68820a12a07f0929885bd85e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a5225d8d68820a12a07f0929885bd85e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Ter</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-2075838"><time datetime="2020-03-10T11:56:57+08:00">2020年03月10日 11:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>关于 “4）VC++中的内存布局有两个地址我有些不是很明白，在其中我用红色标出了。取其内容是-4。接道理来说，这个指针应该是指向B类实例的内存地址（这个做法就是为了保证重复的父类只有一个实例的技术）。但取值后却不是。这点我目前还并不太清楚，还向大家请教。”<br/>
+我在这里找到了答案：<br/>
+<a href="https://www.cnblogs.com/qg-whz/p/4909359.html#_label6_0" rel="nofollow ugc">https://www.cnblogs.com/qg-whz/p/4909359.html#_label6_0</a><br/>
+“虚基类表的第二、第三…个条目依次为该类的最左虚继承父类、次左虚继承父类…的内存地址相对于虚基类表指针的偏移值，这点我们在下面会验证。”<br/>
+原文中有详细解释</p>
+</div>
+ </article>
+</li>
+<li id="comment-2088607" class="comment even thread-even depth-1">
+<article id="div-comment-2088607" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1c3c4a71837fb5a217648dc8052265da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1c3c4a71837fb5a217648dc8052265da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jwj</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-2088607"><time datetime="2020-04-10T10:20:12+08:00">2020年04月10日 10:20</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>博主6啊！有个地方发现博主手误了：[4] Child::h_child()。</p>
+<p>[0] GrandChild::_vptr-&gt;<br/>
+[0] GrandChild::f()<br/>
+[1] Parent::g()<br/>
+[2] Parent::h()<br/>
+[3] GrandChild::g_child()<br/>
+[4] Child::h_child()<br/>
+[5] GrandChild::h_grandchild()<br/>
+[1] Parent.iparent = 10<br/>
+[2] Child.ichild = 100<br/>
+[3] GrandChild.igrandchild = 1000</p>
+</div>
+ </article>
+</li>
+<li id="comment-2092110" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2092110" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2e780718a53bf940c9ec026f2542e1a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2e780718a53bf940c9ec026f2542e1a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nkhuluobo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/12176.html#comment-2092110"><time datetime="2020-04-18T16:41:38+08:00">2020年04月18日 16:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>忘记了 就过来看一编</p>
+</div>
+ </article>
+</li>
+<li id="comment-2278414" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.yalaba.com/160674.html" class="url" rel="ugc external nofollow">C++之多态的示例分析</a> </div>
+</li>
+<li id="comment-2370202" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://developpaper.com/polymorphism-of-c-good-content/" class="url" rel="ugc external nofollow">Polymorphism of C + + (good content) | Develop Paper</a> </div>
+</li>
+<li id="comment-2370741" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/358003.html" class="url" rel="ugc external nofollow">程序员修炼之路 – 源码巴士</a> </div>
+</li>
+<li id="comment-2371115" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://haodro.com/archives/255124" class="url" rel="ugc external nofollow">C++之多态(内容不错) – haodro.com</a> </div>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>疫苗：Java HashMap的死循环 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9606 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9606" class="post-content post-9606 post type-post status-publish format-standard hentry category-javadev category-progdesign tag-hash tag-hashmap tag-java tag-671 tag-672">
+<header class="entry-header">
+<span class="screen-reader-text">疫苗：Java HashMap的死循环</span>
+<h1 class="entry-title">疫苗：Java HashMap的死循环</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9606.html" title="08:12" rel="bookmark"><time class="entry-date" datetime="2013-05-10T08:12:12+08:00" pubdate="">2013年05月10日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9606.html#comments" class="comments-link">181 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 305,204 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="size-medium wp-image-9618 alignright" alt="" src="/uploads/2013/05/race_condition-300x190.jpg" width="300" height="190" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>在淘宝内网里看到同事发了贴说了一个CPU被100%的线上故障，并且这个事发生了很多次，原因是在Java语言在并发情况下使用HashMap造成Race Condition，从而导致死循环。这个事情我4、5年前也经历过，本来觉得没什么好写的，因为Java的HashMap是非线程安全的，所以在并发下必然出现问题。但是，我发现近几年，很多人都经历过这个事（在网上查“HashMap Infinite Loop”可以看到很多人都在说这个事）所以，觉得这个是个普遍问题，需要写篇疫苗文章说一下这个事，并且给大家看看一个完美的“Race Condition”是怎么形成的。</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E9%97%AE%E9%A2%98%E7%9A%84%E7%97%87%E7%8A%B6" title="问题的症状">问题的症状</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#Hash%E8%A1%A8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84" title="Hash表数据结构">Hash表数据结构</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#HashMap%E7%9A%84rehash%E6%BA%90%E4%BB%A3%E7%A0%81" title="HashMap的rehash源代码">HashMap的rehash源代码</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E6%AD%A3%E5%B8%B8%E7%9A%84ReHash%E7%9A%84%E8%BF%87%E7%A8%8B" title="正常的ReHash的过程">正常的ReHash的过程</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-5" href="#%E5%B9%B6%E5%8F%91%E4%B8%8B%E7%9A%84Rehash" title="并发下的Rehash">并发下的Rehash</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-6" href="#%E5%85%B6%E5%AE%83" title="其它">其它</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E9%97%AE%E9%A2%98%E7%9A%84%E7%97%87%E7%8A%B6"></span>问题的症状<span class="ez-toc-section-end"></span></h4>
+<p>从前我们的Java代码因为一些原因使用了HashMap这个东西，但是当时的程序是单线程的，一切都没有问题。后来，我们的程序性能有问题，所以需要变成多线程的，于是，变成多线程后到了线上，发现程序经常占了100%的CPU，查看堆栈，你会发现程序都Hang在了HashMap.get()这个方法上了，重启程序后问题消失。但是过段时间又会来。而且，这个问题在测试环境里可能很难重现。</p>
+<p>我们简单的看一下我们自己的代码，我们就知道HashMap被多个线程操作。而Java的文档说HashMap是非线程安全的，应该用ConcurrentHashMap。</p>
+<p>但是在这里我们可以来研究一下原因。</p>
+<p><span id="more-9606"></span></p>
+<h4><span class="ez-toc-section" id="Hash%E8%A1%A8%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84"></span>Hash表数据结构<span class="ez-toc-section-end"></span></h4>
+<p>我需要简单地说一下HashMap这个经典的数据结构。</p>
+<p>HashMap通常会用一个指针数组（假设为table[]）来做分散所有的key，当一个key被加入时，会通过Hash算法通过key算出这个数组的下标i，然后就把这个&lt;key, value&gt;插到table[i]中，如果有两个不同的key被算在了同一个i，那么就叫冲突，又叫碰撞，这样会在table[i]上形成一个链表。</p>
+<p>我们知道，如果table[]的尺寸很小，比如只有2个，如果要放进10个keys的话，那么碰撞非常频繁，于是一个O(1)的查找算法，就变成了链表遍历，性能变成了O(n)，这是Hash表的缺陷（可参看《<a title="Hash Collision DoS 问题" href="/articles/6424.html" target="_blank" rel="bookmark">Hash Collision DoS 问题</a>》）。</p>
+<p>所以，Hash表的尺寸和容量非常的重要。一般来说，Hash表这个容器当有数据要插入时，都会检查容量有没有超过设定的thredhold，如果超过，需要增大Hash表的尺寸，但是这样一来，整个Hash表里的无素都需要被重算一遍。这叫rehash，这个成本相当的大。</p>
+<p>相信大家对这个基础知识已经很熟悉了。</p>
+<h4><span class="ez-toc-section" id="HashMap%E7%9A%84rehash%E6%BA%90%E4%BB%A3%E7%A0%81"></span>HashMap的rehash源代码<span class="ez-toc-section-end"></span></h4>
+<p>下面，我们来看一下Java的HashMap的源代码。</p>
+<p>Put一个Key,Value对到Hash表中：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="19">public V put(K key, V value)
+{
+    ......
+    //算Hash值
+    int hash = hash(key.hashCode());
+    int i = indexFor(hash, table.length);
+    //如果该key已被插入，则替换掉旧的value （链接操作）
+    for (Entry&lt;K,V&gt; e = table[i]; e != null; e = e.next) {
+        Object k;
+        if (e.hash == hash &amp;&amp; ((k = e.key) == key || key.equals(k))) {
+            V oldValue = e.value;
+            e.value = value;
+            e.recordAccess(this);
+            return oldValue;
+        }
+    }
+    modCount++;
+    //该key不存在，需要增加一个结点
+    addEntry(hash, key, value, i);
+    return null;
+}</pre>
+<p>检查容量是否超标</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="7">void addEntry(int hash, K key, V value, int bucketIndex)
+{
+    Entry&lt;K,V&gt; e = table[bucketIndex];
+    table[bucketIndex] = new Entry&lt;K,V&gt;(hash, key, value, e);
+    //查看当前的size是否超过了我们设定的阈值threshold，如果超过，需要resize
+    if (size++ &gt;= threshold)
+        resize(2 * table.length);
+} </pre>
+<p>新建一个更大尺寸的hash表，然后把数据从老的Hash表中迁移到新的Hash表中。</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="9">void resize(int newCapacity)
+{
+    Entry[] oldTable = table;
+    int oldCapacity = oldTable.length;
+    ......
+    //创建一个新的Hash Table
+    Entry[] newTable = new Entry[newCapacity];
+    //将Old Hash Table上的数据迁移到New Hash Table上
+    transfer(newTable);
+    table = newTable;
+    threshold = (int)(newCapacity * loadFactor);
+}</pre>
+<p>迁移的源代码，注意高亮处：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="12,14,15,16">void transfer(Entry[] newTable)
+{
+    Entry[] src = table;
+    int newCapacity = newTable.length;
+    //下面这段代码的意思是：
+    //  从OldTable里摘一个元素出来，然后放到NewTable中
+    for (int j = 0; j &lt; src.length; j++) {
+        Entry&lt;K,V&gt; e = src[j];
+        if (e != null) {
+            src[j] = null;
+            do {
+                Entry&lt;K,V&gt; next = e.next;
+                int i = indexFor(e.hash, newCapacity);
+                e.next = newTable[i];
+                newTable[i] = e;
+                e = next;
+            } while (e != null);
+        }
+    }
+} </pre>
+<p>好了，这个代码算是比较正常的。而且没有什么问题。</p>
+<h4><span class="ez-toc-section" id="%E6%AD%A3%E5%B8%B8%E7%9A%84ReHash%E7%9A%84%E8%BF%87%E7%A8%8B"></span>正常的ReHash的过程<span class="ez-toc-section-end"></span></h4>
+<p>画了个图做了个演示。</p>
+<ul>
+<li>我假设了我们的hash算法就是简单的用key mod 一下表的大小（也就是数组的长度）。</li>
+</ul>
+<ul>
+<li>最上面的是old hash 表，其中的Hash表的size=2, 所以key = 3, 7, 5，在mod 2以后都冲突在table[1]这里了。</li>
+</ul>
+<ul>
+<li>接下来的三个步骤是Hash表 resize成4，然后所有的&lt;key,value&gt; 重新rehash的过程</li>
+</ul>
+<p style="text-align: center;"><img decoding="async" class="aligncenter  wp-image-9607" alt="" src="/uploads/2013/05/HashMap01.jpg" srcset=""/></p>
+<h4><span class="ez-toc-section" id="%E5%B9%B6%E5%8F%91%E4%B8%8B%E7%9A%84Rehash"></span>并发下的Rehash<span class="ez-toc-section-end"></span></h4>
+<p><strong>1）假设我们有两个线程。</strong>我用红色和浅蓝色标注了一下。</p>
+<p>我们再回头看一下我们的 transfer代码中的这个细节：</p>
+<pre data-enlighter-language="java" class="EnlighterJSRAW" data-enlighter-highlight="2">do {
+    Entry&lt;K,V&gt; next = e.next; // &lt;--假设线程一执行到这里就被调度挂起了
+    int i = indexFor(e.hash, newCapacity);
+    e.next = newTable[i];
+    newTable[i] = e;
+    e = next;
+} while (e != null);</pre>
+<p>而我们的线程二执行完成了。于是我们有下面的这个样子。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/05/HashMap02.jpg" width="616" height="434" srcset=""/></p>
+<p>注意，<strong>因为Thread1的 e 指向了key(3)，而next指向了key(7)，其在线程二rehash后，指向了线程二重组后的链表</strong>。我们可以看到链表的顺序被反转后。</p>
+<p><strong>2）线程一被调度回来执行。</strong></p>
+<ul>
+<li><strong>先是执行 newTalbe[i] = e;</strong></li>
+<li><strong>然后是e = next，导致了e指向了key(7)，</strong></li>
+<li><strong>而下一次循环的next = e.next导致了next指向了key(3)</strong></li>
+</ul>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/05/HashMap03.jpg" width="591" height="376" srcset=""/></p>
+<p><strong>3）一切安好。</strong></p>
+<p>线程一接着工作。<strong>把key(7)摘下来，放到newTable[i]的第一个，然后把e和next往下移</strong>。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/05/HashMap04.jpg" width="627" height="411" srcset=""/></p>
+<p><strong>4）环形链接出现。</strong></p>
+<p><strong>e.next = newTable[i] 导致  key(3).next 指向了 key(7)</strong></p>
+<p><strong>注意：此时的key(7).next 已经指向了key(3)， 环形链表就这样出现了。</strong></p>
+<p style="text-align: left;"><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/05/HashMap05.jpg" width="623" height="395" srcset=""/></p>
+<p style="text-align: left;"><strong>于是，当我们的线程一调用到，HashTable.get(11)时，悲剧就出现了——Infinite Loop。</strong></p>
+<h4 style="text-align: left;"><span class="ez-toc-section" id="%E5%85%B6%E5%AE%83"></span>其它<span class="ez-toc-section-end"></span></h4>
+<p>有人把这个问题报给了Sun，不过Sun不认为这个是一个问题。因为HashMap本来就不支持并发。要并发就用ConcurrentHashmap</p>
+<p><a href="http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6423457" target="_blank">http://bugs.sun.com/bugdatabase/view_bug.do?bug_id=6423457</a></p>
+<p>我在这里把这个事情记录下来，只是为了让大家了解并体会一下并发环境下的危险。</p>
+<p>参考：<a href="https://mailinator.blogspot.com/2009/06/beautiful-race-condition.html" rel="nofollow">http://mailinator.blogspot.com/2009/06/beautiful-race-condition.html</a></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9606-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">Java语言</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Hash</a>, <a href="javascript:void(0)" rel="tag">HashMap</a>, <a href="javascript:void(0)" rel="tag">Java</a>, <a href="javascript:void(0)" rel="tag">多线程</a>, <a href="javascript:void(0)" rel="tag">并发</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>疫苗：Java HashMap的死循环</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2334081" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1726846" class="url" rel="ugc external nofollow">【原创】记一次线上Tomcat故障排查-struts2 “bug”导致tomcat阻塞 - 算法网</a> </div>
+</li>
+<li id="comment-2339243" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.wandersky.org/program/java/2021/11/24/2168/" class="url" rel="ugc external nofollow">2.10 HashMap 多线程操作导致死循环问题 -</a> </div>
+</li>
+<li id="comment-2341309" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dbc655.top/archives/3572" class="url" rel="ugc external nofollow">剖析面试最常见问题之Java集合框架超级大汇总——DBC的博客超级大汇总——DBC的博客</a> </div>
+</li>
+<li id="comment-2342041" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://javaforall.cn/114629.html" class="url" rel="ugc external nofollow">Java集合篇：HashMap原理详解（JDK1.8） - 全栈程序员社区</a> </div>
+</li>
+<li id="comment-2343700" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.dbc655.top/archives/3761" class="url" rel="ugc external nofollow">Java集合框架基础知识&amp;面试题总结超级大汇总——DBC的博客</a> </div>
+</li>
+<li id="comment-2350231" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2018677" class="url" rel="ugc external nofollow">第二弹！「Java面试题精华集」1w字的Java集合框架篇（2020最新版）！ - 算法网</a> </div>
+</li>
+<li id="comment-2370212" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://qbzzz.top/2022/03/02/29%e5%a4%9a%e7%ba%bf%e7%a8%8b%e5%88%9d%e6%ad%a5/" class="url" rel="ugc external nofollow">29多线程初步 - Bing</a> </div>
+</li>
+<li id="comment-2370257" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2333057" class="url" rel="ugc external nofollow">备战2022年春季面试Java基础面试题库《收藏》 - 算法网</a> </div>
+</li>
+<li id="comment-2370353" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://new-bie.xyz/p/126376/" class="url" rel="ugc external nofollow">【Java】HashMap源码（1.7） | newbie</a> </div>
+</li>
+<li id="comment-2370408" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2435192" class="url" rel="ugc external nofollow">HashMap在并发下可能出现的问题分析 - 算法网</a> </div>
+</li>
+<li id="comment-2370527" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.mianshi.online/java-collection-hashmap-infinite-loop.html" class="url" rel="ugc external nofollow">28.HashMap多线程导致死循环问题 - 菜鸟面试手册</a> </div>
+</li>
+<li id="comment-2370538" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2444273" class="url" rel="ugc external nofollow">HashMap 中的死循环 - 算法网</a> </div>
+</li>
+<li id="comment-2370541" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://ddrv.cn/a/667240" class="url" rel="ugc external nofollow">【Map】——HashMap死循环 - 内存网</a> </div>
+</li>
+<li id="comment-2370562" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2450012" class="url" rel="ugc external nofollow">一文精通HashMap灵魂七问，你学还是不学 - 算法网</a> </div>
+</li>
+<li id="comment-2370563" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.itfaba.com/jishufenxian/22997.html" class="url" rel="ugc external nofollow">一文精通HashMap灵魂七问，你学还是不学 | 呱唧呱唧网</a> </div>
+</li>
+<li id="comment-2370640" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://onewuqi.com/?p=406" class="url" rel="ugc external nofollow">并发容器 | 美食与梦想</a> </div>
+</li>
+<li id="comment-2370695" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.jikeyouzi.com/experience/220125.html" class="url" rel="ugc external nofollow">Java中的集合类(List,Set.Map)- - 极客柚子</a> </div>
+</li>
+<li id="comment-2370743" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/379997.html" class="url" rel="ugc external nofollow">JDK1.8 HashMap详解 – 源码巴士</a> </div>
+</li>
+<li id="comment-2370905" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/82030.html" class="url" rel="ugc external nofollow">Java源码解析|HashMap的前世今生 - SEOOS技术门户</a> </div>
+</li>
+<li id="comment-2370917" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.seoos.net/149064.html" class="url" rel="ugc external nofollow">你是否听说过 HashMap 在多线程环境下操作可能会导致程序死循环? - SEOOS技术门户</a> </div>
+</li>
+<li id="comment-2370926" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/278558" class="url" rel="ugc external nofollow">疫苗：JAVA HASHMAP的死循环 - Java天堂</a> </div>
+</li>
+<li id="comment-2370932" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.javatt.com/p/279463" class="url" rel="ugc external nofollow">程序员笔记|编写高性能的Java代码需要注意的4个问题 - Java天堂</a> </div>
+</li>
+<li id="comment-2371133" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.neverstep.cn/?p=102" class="url" rel="ugc external nofollow">Java集合框架常见面试题 – neverstep</a> </div>
+</li>
+<li id="comment-2371206" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://blog.odliken.cn/2023/04/26/concurrenthashmap%e7%ad%89%e5%b9%b6%e9%9b%86%e5%90%88/" class="url" rel="ugc external nofollow">ConcurrentHashMap等并集合 Clay</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9606.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9606.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/9606.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/9606.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">9606</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

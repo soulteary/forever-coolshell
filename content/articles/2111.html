@@ -1,0 +1,137 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>erlang打包独立环境 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-2111 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-2111" class="post-content post-2111 post type-post status-publish format-standard hentry category-proglanguage tag-erlang">
+<header class="entry-header">
+<span class="screen-reader-text">erlang打包独立环境</span>
+<h1 class="entry-title">erlang打包独立环境</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/2111.html" title="02:55" rel="bookmark"><time class="entry-date" datetime="2010-03-04T02:55:13+08:00" pubdate="">2010年03月04日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/free-wang" title="View all posts by free.wang" rel="author">free.wang</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/2111.html#comments" class="comments-link">2 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 6,483 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p>最近公司代码需要在非erlang的系统上执行，需要能在独立的环境里运行erlang。研究甚久，于是写下这篇博文。国内用erlang的朋友不多，希望这篇blog能对有需要的朋友起到参考作用。</p>
+<blockquote><p>Application-Vsn/ebin<br/>
+/include<br/>
+/priv<br/>
+/src<br/>
+/Application-Vsn.rel</p></blockquote>
+<p>以上是代码的目录表.</p>
+<blockquote><p>{release, {“nextim”, “2.0”},<br/>
+{erts, “5.7.5”},<br/>
+[{kernel, “2.12.3”},<br/>
+{stdlib, “1.15.3”},<br/>
+{sasl, “2.1.5.3”}]<br/>
+}.</p></blockquote>
+<p>以上是Application-Vsn.rel的内容,[]中是代码本身需要的lib。</p>
+<p><span id="more-2111"></span></p>
+<p>1.执行erl -pa ./ebin . 这一步会生成nextim-2.boot文件</p>
+<blockquote><p>1&gt; systools:make_script(nextim-2″, [local]).<br/>
+ok</p></blockquote>
+<p>2.erl -boot nextim-2 . 这一步会生成nextim-2.tar.gz</p>
+<blockquote><p>systools:make_tar(“nextim-2”).</p></blockquote>
+<p>3.现在建议把tar.gz文件放到独立的路径里 这样不会影响Application-Vsn文件夹 ，然后解压 并进入目录， 复制erlang系统目录里的 erts-5.7.5 到当前目录</p>
+<p>4.建立bin文件夹 复制  <span style="color: #ff0000;"><code>erts-5.7.5/bin/start</code> </span>到 <code><span style="color: #ff0000;">bin/</span> 编辑 <span style="color: #ff0000;">bin/start</span> 改 <span style="color: #ff9900;">ROOTDIR</span>为当前目录的路径</code></p>
+<p>5.复制<span style="color: #ff0000;"><code>erts-5.7.5/bin/run_erl</code></span> <code>和 </code><span style="color: #ff0000;"><code>erts-5.7.2/bin/erl</code></span><code> 到 <span style="color: #ff0000;">bin</span> 并且如同上一步一样修改ROOTDIR.</code></p>
+<p>6.复制 <span style="color: #ff0000;"><code>$ERLDIR/bin/start_sasl.boot</code></span> 到  <span style="color: #ff0000;"><code>bin/start.boot</code></span>.</p>
+<p>7. <span style="color: #ff9900;"><code>echo</code> <code>&#34;5.7.5</code> <code>2.0&#34;</code> <code>&gt;</code> <code>releases/start_erl.data</code>.</span></p>
+<p>6.执行bin文件里的erl</p>
+<blockquote><p>release_handler:create_RELEASES(“$ROOTDIR”, “$ROOTDIR/releases/”, “$ROOTDIR/releases/nextim-2.rel”, []).</p></blockquote>
+<p>7.再把自己的项目文件复制到lib中  然后启动时 -pa参数是 lib文件夹. 完成这一步，就能独立出erlang环境了。</p>
+<p>以上内容 参考自</p>
+<p>http://spawnlink.com/articles/an-introduction-to-releases-with-erlybank/</p>
+<p>http://streamhacker.com/2009/07/02/how-to-create-an-erlang-first-target-system/</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-2111-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Erlang</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>erlang打包独立环境</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-5319" class="comment even thread-even depth-1">
+<article id="div-comment-5319" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2f3b92251d56989e1fdbe07eb6299160?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2f3b92251d56989e1fdbe07eb6299160?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.yufeng.info" class="url" rel="ugc external nofollow">mryufeng</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2111.html#comment-5319"><time datetime="2010-03-04T16:50:06+08:00">2010年03月04日 16:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这种方法已经过时了. otp提供了新工具reltool来解决这个问题, 简单高效无毒!</p>
+</div>
+ </article>
+</li>
+<li id="comment-1820865" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1820865" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6ec27d616a6f0f45dd79c471eab28181?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6ec27d616a6f0f45dd79c471eab28181?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://pqiqskew.com" class="url" rel="ugc external nofollow">Martha</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/2111.html#comment-1820865"><time datetime="2016-04-26T13:13:03+08:00">2016年04月26日 13:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>Good to find an expert who knows what he’s taklnig about!</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,251 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>IoC/DIP其实是一种管理思想 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-9949 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-9949" class="post-content post-9949 post type-post status-publish format-standard hentry category-550 category-progdesign category-602 tag-design tag-design-pattern tag-dip tag-ioc tag-object-oriented tag-programmer tag-58">
+<header class="entry-header">
+<span class="screen-reader-text">IoC/DIP其实是一种管理思想</span>
+<h1 class="entry-title">IoC/DIP其实是一种管理思想</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/9949.html" title="08:44" rel="bookmark"><time class="entry-date" datetime="2013-07-05T08:44:03+08:00" pubdate="">2013年07月05日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/9949.html#comments" class="comments-link">66 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 65,190 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-9957" alt="" src="/uploads/2013/07/inverted-bookshelf_thumb-300x200.jpg" width="300" height="200" srcset=""/> 关于IoC的的概念提出来已经很多年了，其被用于一种面象对像的设计。我在这里再简单的回顾一下这个概念。我先谈技术，再说管理。</p>
+<p>话说，我们有一个开关要控制一个灯的开和关这两个动作，最常见也是最没有技术含量的实现会是这个样子：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/07/IoC1.jpg" width="240" height="82" srcset=""/></p>
+<p>然后，有一天，我们发现需要对灯泡扩展一下，于是我们做了个抽象类：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter" alt="" src="/uploads/2013/07/IoC2.jpg" width="290" height="183" srcset=""/></p>
+<p>但是，如果有一天，我们发现这个开关可能还要控制别的不单单是灯泡的东西，我们就发现这个开关耦合了灯泡这种类别，非常不利于我们的扩展，于是反转控制出现了。</p>
+<p>就像现实世界一样，造开关的工厂根本不关心要控制的东西是什么，它只做一个开关应该做好的事，就是把电接通，把电断开（不管是手动的，还是声控的，还是光控，还是遥控的），而我们的造各种各样的灯泡（不管是日关灯，白炽灯）的工厂也不关心你用什么样的开关，反正我只管把灯的电源接口给做出来，然后，开关厂和电灯厂依赖于一个标准的通电和断电的接口。于是产生了IoC控制反转，如下图：</p>
+<p><span id="more-9949"></span></p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="size-full wp-image-9952 aligncenter" alt="" src="/uploads/2013/07/IoC3.jpg" width="504" height="309" srcset="" sizes="(max-width: 504px) 100vw, 504px"/></p>
+<p style="text-align: left;"><strong>所谓控制反转的意思是，开关从以前的设备的专用开关，转变到了控制电源的开关，而以前的设备要反过来依赖于开关厂声明的电源连接接口。只要符合开关厂定义的电源连接的接口，这个开关可以控制所有符合这个电源连接接口的设备</strong>。<span style="color: #ff0000;"><strong>也就是说，开关从依赖设备这种情况，变成了，设备反过来依赖于开关所定义的接口</strong></span>。</p>
+<p>只要你看过我的那篇《<a title="从面向对象的设计模式看软件设计" href="/articles/8961.html" target="_blank">面向对象设计其实和面象对象一点关系也没有</a>》，你就知道这样的例子在生活中太多见了。比如说：</p>
+<p style="padding-left: 30px;">1）在交易的过程中，卖家向买家卖东西，一手交钱一手交货，所以，基本上来说卖家和买家必需强耦合（必需见面）。这个时候，银行出来做担保，买家把钱先垫到银行，银行让卖家发货，买家验货后，银行再把钱打给卖家。这就是反转控制。买卖双方把对对方的直接控制，反转到了让对方来依赖一个标准的交易模型的接口。股票交易也是一样的，证交所就是买卖双方的标准交易模型接口。</p>
+<p style="padding-left: 30px;">2）上面这个例子，可能还不明显，再举一个例子。海尔公司作为一个电器制商需要把自己的商品分销到全国各地，但是发现，不同的分销渠道有不同的玩法，于是派出了各种销售代表玩不同的玩法，随着渠道越来越多，发现，每增加一个渠道就要新增一批人和一个新的流程，严重耦合并依赖各渠道商的玩法。实在受不了了，于是制定业务标准，开发分销信息化系统，只有符合这个标准的渠道商才能成为海尔的分销商。让各个渠道商反过来依赖自己标准。反转了控制，倒置了依赖。</p>
+<p><strong>可见，控制反转和依赖倒置不单单的一种设计模式，反而更是一种管理模式。</strong></p>
+<p>在大公司中，有很多很多的团队，这些团队开发的软件有很多依赖，跨团队合作是一件挺麻烦的事情，下面是一些比较真实的示例：</p>
+<p style="padding-left: 30px;">1）一个网页会有很多频道，于是，我们的前端工程师进入到各个页面为各种频道开发他们的页面，随着频道越来越多，前端开发工程师的人数也越来越多，每增加一个频道，就要增加一个为这个频道服务的前端团队，于是，人数越来越多，干成了劳动密集型。为什么不反转控制，倒置依赖呢？前端的同学完全可以开发出各种页面的标准组件，布局，模板，以前与后端交互框架，然后，让后端的同学反过来依赖于前端的标准，使用前端的框架，前端的布局，模板，和组件，以向前端接入后端的模块。</p>
+<p style="padding-left: 30px;">2）一个平台需要接入各种各样的业务系统，这些垂直业务系统都有自己的账号体系，于是这个平台为了要兼这些垂直系统的账号体系以做到权限控制，需要做各个系统和自己系统中的账号映射，并为账号和分配出来的资源设置各垂直系统的标识，还要在自己的代码中要写很多很多的依赖于各种账号体系的代码。其实，一个依赖倒置和反转控制就很简单。开发一个权限体系标准，让接入方的账号系统反过来依赖并控制这个标准的权限系统，从而做出一个干净的系统。</p>
+<p style="padding-left: 30px;">3）还有一个云平台中的管理模式，一些底层服务的开发团队只管开发底层的技术，然后什么也不管了，就交给上层的开发人员，在底层团队的开发出来的产品上面开发各种管理这个底层资源的东西，比如：生产底层资源的业务，底层资源的控制台，底层资源的监控系统。这个让底层团队只干纯技术，不干与底层技术无关的东西，看似很科学，其实是做错了。因为，上层为各个云资源控制生产，开发控制台和监控的团队，随着接入的资源的越来越多，完全干不过来了，苦逼得一塌糊涂，因为底层的资源千差百怪，每接一个就要开发一堆这个产品的代码。这个时候依赖倒置和反转控制又可以解决问题了。很简单，上层为各个云资源控制生产，开发控制台，和监控的团队应该制定一个标准，让底层的IaaS云资源开发团队反过来依赖这个标准，统一接入方式，如果开发的云资源不符我的生产控制模型，没有控制台，不把监控数据喂入我的监控系统，对不起，请不要接入我这个PaaS平台。</p>
+<p style="padding-left: 30px;">4）一个集中式的处理电子商务中的订单的流程。各个垂直业务线都需要通过这个平台来处理自己的交易业务，但是垂直业务线上的个性化需求太多。于是，这个技术平台开始出现了黑魔法——“为了害怕改变数据库表结构，不得不在数据库中预留一些字段，里面存把业务方的个性化字段存成如JSON这样的东西”，并为之自豪认为可以快速解决业务问题（WTF）。然而，恶梦并没就此结束，管理这个技术平台的小组开始发现，对来自各个业务方的需求应接不暇，各种变态需求严重干扰系统，各种技术决定越来越不好做，导致需求排期排不过来。于是，不单单得到了各个业务方的各种抱怨，最可怕的是还有高层老大们压过来的Deadline，加班加点，苦逼之极，最后业务方自己要去一个自己的平台。为什么不用依赖倒置和反转控制的思想呢？开发一个插件模型、工作流引擎和Pub/Sub系统，让业务方的个性化需求可以以插件的方式插入我的订单流程中，业务方自的数据存在自己的库中，业务逻辑也不要侵入我的系统，并可以使用工作流引擎或Pub/Sub的协义标准来自己定义工作流的各个步骤（甚至把工作流引擎的各个步骤的Decider交给各个业务方自行处理）。让各个业务方来依赖于我的标准插件和工作流接口，反转迭控制，让他们来控制我的系统，依赖倒置，让他们来依赖我的标准。（这个团队想过把自己的系统内部开源出去让别的团队也进来参与，可以是可以，但一定要用Linux/Git这种方式，允许出现多个分支，多个发行版。但多个版本又造成了多个业务平台，这会上上层垂直业务不知所措）</p>
+<p style="padding-left: 30px;">5）看过《<a title="SteveY对Amazon和Google平台的吐槽 - 67,710 人阅读" href="/articles/5701.html" target="_blank">SteveY对Amazon和Google平台的吐槽</a>》的人都知道，Amazon内部系统的SOA架构（这个SOA架构离IBM定义的那个非常变态的SOA还有一定距离），但是这基本上都是依赖倒置和控制反转的思路了—— <strong>与其让我来帮你实现你的业务逻辑，不如把我的业务逻辑开放成服务的方式让你来控制</strong>。</p>
+<p style="padding-left: 30px;">6）再说一个我在Amazon经历的例子。有一个项目是在给Amazon的各个商区（Marketplace）做国际出口的业务，我们先把Media类的产品（书，DVD之类的）做国际出口开放，项目不难，就是让商家同意一个法律协议（上传自己的签名），然后后台小改一下。美国的，欧洲的做的都没有问题，物流团队在出口报关单上打的都是Amazon仓库的地址和商家的签名（本来这就是错的，打的应该是商家的地址和商家的签名），但是到了日本，就出了问题，因为日本海关即要日文信息，也要商家的英文名和英文地址，而我们的系统里面只有商家的日文信息。本来，这是一个挺简单的事——数据库里加两个字段，在那个同意条款的网页上收集一下商家的英文名和地址，然后把这些信息传给后面的物流团队。物流团队一看这个，发现搞不了，因为他还要传给仓库，N多的地方都要加这两个字段，还要写下各种if (site == JP)这样的判断。物流团队不蛮干，重新设计自己的系统。做一个Document Template的东西，这个就是那个那个要贴在物流盒子上的单子。再也不让各个业务团队把那些信息传过来，而是把这个Document Template的东西传给上面的业务方，他们想怎么写就怎么写， 写完后，把这个东西传回来。于是，大家依赖了一个标准的协议，而不是一其字段。（当然，这个改动过多，为此改了半年多，不过非常值）</p>
+<p>所以说啊，在跨团队的工作中，</p>
+<ul>
+<li>如果依赖和控制的东西过多了，就需要制定标准，倒置依赖，反转控制。</li>
+</ul>
+<ul>
+<li>控制欲望最好不要太强，不要想着能干所有的事情，要学会控制反转和依赖倒置原则。否则只会引火烧身。</li>
+</ul>
+<ul>
+<li>反转控制和依赖倒置是一种智慧。</li>
+</ul>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-9949-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">技术管理</a>, <a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">Design</a>, <a href="javascript:void(0)" rel="tag">design pattern</a>, <a href="javascript:void(0)" rel="tag">DIP</a>, <a href="javascript:void(0)" rel="tag">IoC</a>, <a href="javascript:void(0)" rel="tag">Object-Oriented</a>, <a href="javascript:void(0)" rel="tag">Programmer</a>, <a href="javascript:void(0)" rel="tag">程序员</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>IoC/DIP其实是一种管理思想</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1497465" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.puzhibaike.com/?p=29" class="url" rel="ugc external nofollow">开发团队的效率普知百科</a> </div>
+</li>
+<li id="comment-1547872" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1547872" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cf1d2d429b000f1a4519d0bb9d187bb0?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Martin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9949.html/comment-page-2#comment-1547872"><time datetime="2014-09-24T09:58:04+08:00">2014年09月24日 09:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>依赖倒置与否，会不会也是根据当时的形势不同而进行改变？<br/>
+修改频繁，修改需求大的一方面，需要为其统一制定接口<br/>
+但是需求大小的两方面的角色是会相互转变的<br/>
+比如云服务，在开始搭建的时候，服务端应该是修改调整频繁的部分，也是工作的重点。<br/>
+随着基础建设完成，上层应用层次不穷的提出，这时候就有必要考虑依赖反转？<br/>
+也可以理解成弥补开始设计不足的一种补救方法吧</p>
+</div>
+ </article>
+</li>
+<li id="comment-1678600" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeceo.com/article/java-abstract-interface.html" class="url" rel="ugc external nofollow">我是如何理解Java抽象类和接口的 – 码农网</a> </div>
+</li>
+<li id="comment-1678728" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.jkeabc.com/p/638073.html" class="url" rel="ugc external nofollow">我是如何理解Java抽象类和接口的 – 剑客|关注科技互联网</a> </div>
+</li>
+<li id="comment-1679191" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.arecoders.cn/?p=774" class="url" rel="ugc external nofollow">我是如何理解Java抽象类和接口的 - Java/JS - AreCoders为序网</a> </div>
+</li>
+<li id="comment-1718599" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.bigfire100.com/archives/144" class="url" rel="ugc external nofollow">我如何理解Java中抽象类和接口 | Make It Possible | Thank you for your visiting</a> </div>
+</li>
+<li id="comment-1778570" class="comment even thread-even depth-1">
+<article id="div-comment-1778570" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/56020c1a388d12d388c786a0ec12c3d7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/56020c1a388d12d388c786a0ec12c3d7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://blog.csdn.net/dlf123321" class="url" rel="ugc external nofollow">程序员小董</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9949.html/comment-page-2#comment-1778570"><time datetime="2015-10-21T15:50:33+08:00">2015年10月21日 15:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>于是产生了IoC控制反转，如下图：</p>
+<p>哥们这图是不是有问题呀 light和tv也是接口 他俩应该extends了ISwitchable吧?</p>
+</div>
+ </article>
+</li>
+<li id="comment-1804993" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.fewcoo.com/2015/12/13/%e8%ae%a9%e6%88%91%e4%bb%ac%e6%9d%a5%e8%b0%88%e8%b0%88%e5%88%86%e5%b7%a5/" class="url" rel="ugc external nofollow">让我们来谈谈分工 – 大耳门</a> </div>
+</li>
+<li id="comment-1819996" class="comment even thread-even depth-1">
+<article id="div-comment-1819996" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d1ff2ab77cb2eb331553b2ecff2fe7d8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d1ff2ab77cb2eb331553b2ecff2fe7d8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">goodyboy6</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9949.html/comment-page-2#comment-1819996"><time datetime="2016-04-18T17:48:39+08:00">2016年04月18日 17:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>受益良多</p>
+</div>
+ </article>
+</li>
+<li id="comment-1912345" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1170" class="url" rel="ugc external nofollow">从Gitlab误删除数据库想到的 | 星达红</a> </div>
+</li>
+<li id="comment-1916118" class="comment even thread-even depth-1">
+<article id="div-comment-1916118" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c841991be9691482bed58c7343345cb1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c841991be9691482bed58c7343345cb1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">miketam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9949.html/comment-page-2#comment-1916118"><time datetime="2017-08-11T15:24:40+08:00">2017年08月11日 15:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看完豁然开朗，自己之前好多不清楚的地方渐渐清晰了。非常好。<br/>
+很值得创业团队在业务扩展过程中思考。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1920093" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://it.211cn.ca/2017/10/31/%e6%8e%a7%e5%88%b6%e5%8f%8d%e8%bd%acioc%e4%b8%8e%e4%be%9d%e8%b5%96%e6%b3%a8%e5%85%a5di/" class="url" rel="ugc external nofollow">控制反转(IoC)与依赖注入(DI) – IT</a> </div>
+</li>
+<li id="comment-1921032" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.omgwd.com/2016/08/%e5%85%b3%e4%ba%8e%e9%ab%98%e5%8f%af%e7%94%a8%e7%9a%84%e7%b3%bb%e7%bb%9f/" class="url" rel="ugc external nofollow">关于高可用的系统 - 知乎精选</a> </div>
+</li>
+<li id="comment-2187514" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="/articles/21214.html" class="url" rel="ugc">Go编程模式：委托和反转控制 | 酷 壳 - CoolShell</a> </div>
+</li>
+<li id="comment-2226057" class="comment even thread-even depth-1">
+<article id="div-comment-2226057" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2c9246b61c4c9866b448f548fbf9228e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2c9246b61c4c9866b448f548fbf9228e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://blog.schwarzeni.com" class="url" rel="ugc external nofollow">schwarzeni</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9949.html/comment-page-2#comment-2226057"><time datetime="2021-04-01T11:09:40+08:00">2021年04月01日 11:09</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢，收益良多</p>
+</div>
+ </article>
+</li>
+<li id="comment-2289837" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2289837" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/408647f151a704be9ff147dc899456da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/408647f151a704be9ff147dc899456da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://imjmj.com/" class="url" rel="ugc external nofollow">iMJMJ</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/9949.html/comment-page-2#comment-2289837"><time datetime="2021-08-20T03:49:00+08:00">2021年08月20日 03:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>支持一下。。。</p>
+</div>
+ </article>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/9949.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/9949.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">9949</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

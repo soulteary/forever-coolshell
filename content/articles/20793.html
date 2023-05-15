@@ -1,0 +1,739 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>与程序员相关的CPU缓存知识 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-20793 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-20793" class="post-content post-20793 post type-post status-publish format-standard hentry category-progdesign category-proglanguage tag-cache tag-cpu tag-664">
+<header class="entry-header">
+<span class="screen-reader-text">与程序员相关的CPU缓存知识</span>
+<h1 class="entry-title">与程序员相关的CPU缓存知识</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/20793.html" title="19:43" rel="bookmark"><time class="entry-date" datetime="2020-03-01T19:43:41+08:00" pubdate="">2020年03月01日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/20793.html#comments" class="comments-link">107 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 145,059 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-20817" src="/uploads/2020/03/cpu_512x512-300x300.png" alt="" width="300" height="300" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>好久没有写一些微观方面的文章了，今天写一篇关于CPU Cache相关的文章，这篇文章比较长，主要分成这么几个部分：基础知识、缓存的命中、缓存的一致性、相关的代码示例和延伸阅读。其中会讲述一些多核 CPU 的系统架构以及其原理，包括对程序性能上的影响，以及在进行并发编程的时候需要注意到的一些问题。这篇文章我会尽量地写简单和通俗易懂一些，主要是讲清楚相关的原理和问题，而对于一些细节和延伸阅读我会在文章最后会给出相关的资源。</p>
+<p>因为无论你写什么样的代码都会交给CPU来执行，所以，如果你想写出性能比较高的代码，这篇文章中提到的技术还是值得认真学习的。另外，千万别觉得这些东西没用，这些东西非常有用，十多年前就是这些知识在性能调优上帮了我的很多大忙，从而跟很多人拉开了差距……</p>
+<div id="ez-toc-container" class="ez-toc-v2_0_48 counter-hierarchy ez-toc-counter ez-toc-grey ez-toc-container-direction">
+<div class="ez-toc-title-container">
+<p class="ez-toc-title">目录</p>
+<span class="ez-toc-title-toggle"></span></div>
+<nav><ul class="ez-toc-list ez-toc-list-level-1 "><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-1" href="#%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86" title="基础知识">基础知识</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-2" href="#%E7%BC%93%E5%AD%98%E7%9A%84%E5%91%BD%E4%B8%AD" title="缓存的命中">缓存的命中</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-3" href="#%E7%BC%93%E5%AD%98%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7" title="缓存的一致性">缓存的一致性</a></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-4" href="#%E7%A8%8B%E5%BA%8F%E6%80%A7%E8%83%BD" title="程序性能">程序性能</a><ul class="ez-toc-list-level-5"><li class="ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-5" href="#%E7%A4%BA%E4%BE%8B%E4%B8%80" title="示例一">示例一</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-6" href="#%E7%A4%BA%E4%BE%8B%E4%BA%8C" title="示例二">示例二</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-7" href="#%E7%A4%BA%E4%BE%8B%E4%B8%89" title="示例三">示例三</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-8" href="#%E7%A4%BA%E4%BE%8B%E5%9B%9B" title="示例四">示例四</a></li><li class="ez-toc-page-1 ez-toc-heading-level-5"><a class="ez-toc-link ez-toc-heading-9" href="#%E7%A4%BA%E4%BE%8B%E4%BA%94" title="示例五">示例五</a></li></ul></li><li class="ez-toc-page-1 ez-toc-heading-level-4"><a class="ez-toc-link ez-toc-heading-10" href="#%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB" title="延伸阅读">延伸阅读</a></li></ul></nav></div>
+<h4><span class="ez-toc-section" id="%E5%9F%BA%E7%A1%80%E7%9F%A5%E8%AF%86"></span>基础知识<span class="ez-toc-section-end"></span></h4>
+<p>首先，我们都知道现在的CPU多核技术，都会有几级缓存，老的CPU会有两级内存（L1和L2），新的CPU会有三级内存（L1，L2，L3 ），如下图所示：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-20794" src="/uploads/2020/02/cache.architecture.png" alt="" width="729" height="371" srcset="" sizes="(max-width: 729px) 100vw, 729px"/><span id="more-20793"></span></p>
+<p>其中：</p>
+<ul>
+<li>L1缓存分成两种，一种是指令缓存，一种是数据缓存。L2缓存和L3缓存不分指令和数据。</li>
+<li>L1和L2缓存在每一个CPU核中，L3则是所有CPU核心共享的内存。</li>
+<li>L1、L2、L3的越离CPU近就越小，速度也越快，越离CPU远，速度也越慢。</li>
+</ul>
+<p>再往后面就是内存，内存的后面就是硬盘。我们来看一些他们的速度：</p>
+<ul class="">
+<li>L1 的存取速度：<strong class="hd jp">4 个CPU时钟周期</strong></li>
+<li>L2 的存取速度： <strong class="hd jp">11 个CPU时钟周期</strong></li>
+<li>L3 的存取速度：<strong class="hd jp">39 个CPU时钟周期</strong></li>
+<li>RAM内存的存取速度<strong class="hd jp">：107 个CPU时钟周期</strong></li>
+</ul>
+<p>我们可以看到，L1的速度是RAM的27倍，但是L1/L2的大小基本上也就是KB级别的，L3会是MB级别的。例如：<a href="https://en.wikichip.org/wiki/intel/core_i7/i7-8700k" target="_blank" rel="noopener noreferrer">Intel Core i7-8700K</a> ，是一个6核的CPU，每核上的L1是64KB（数据和指令各32KB），L2 是 256K，L3有2MB（我的苹果电脑是<a href="https://en.wikichip.org/wiki/intel/core_i9/i9-8950hk" target="_blank" rel="noopener noreferrer"> Intel Core i9-8950HK</a>，和Core i7-8700K的Cache大小一样）。</p>
+<p>我们的数据就从内存向上，先到L3，再到L2，再到L1，最后到寄存器进行CPU计算。为什么会设计成三层？这里有下面几个方面的考虑：</p>
+<ul>
+<li>一个方面是物理速度，如果要更大的容量就需要更多的晶体管，除了芯片的体积会变大，更重要的是大量的晶体管会导致速度下降，因为访问速度和要访问的晶体管所在的位置成反比，也就是当信号路径变长时，通信速度会变慢。这部分是物理问题。</li>
+<li>另外一个问题是，多核技术中，数据的状态需要在多个CPU中进行同步，并且，我们可以看到，cache和RAM的速度差距太大，所以，多级不同尺寸的缓存有利于提高整体的性能。</li>
+</ul>
+<p>这个世界永远是平衡的，一面变得有多光鲜，另一面也会变得有多黑暗。建立这么多级的缓存，一定就会引入其它的问题，这里有两个比较重要的问题，</p>
+<ul>
+<li>一个是比较简单的缓存的命中率的问题。</li>
+<li>另一个是比较复杂的缓存更新的一致性问题。</li>
+</ul>
+<p>尤其是第二个问题，在多核技术下，这就很像分布式的系统了，要对多个地方进行更新。</p>
+<h4><span class="ez-toc-section" id="%E7%BC%93%E5%AD%98%E7%9A%84%E5%91%BD%E4%B8%AD"></span>缓存的命中<span class="ez-toc-section-end"></span></h4>
+<p>在说明这两个问题之前。我们需要要解一个术语 Cache Line。缓存基本上来说就是把后面的数据加载到离自己近的地方，对于CPU来说，它是不会一个字节一个字节的加载的，因为这非常没有效率，一般来说都是要一块一块的加载的，对于这样的一块一块的数据单位，术语叫“Cache Line”，一般来说，一个主流的CPU的Cache Line 是 64 Bytes（也有的CPU用32Bytes和128Bytes），64Bytes也就是16个32位的整型，这就是CPU从内存中捞数据上来的最小数据单位。</p>
+<p>比如：Cache Line是最小单位（64Bytes），所以先把Cache分布多个Cache Line，比如：L1有32KB，那么，32KB/64B = 512 个 Cache Line。</p>
+<p>一方面，缓存需要把内存里的数据放到放进来，英文叫 CPU Associativity。Cache的数据放置的策略决定了内存中的数据块会拷贝到CPU Cache中的哪个位置上，因为Cache的大小远远小于内存，所以，需要有一种地址关联的算法，能够让内存中的数据可以被映射到Cache中来。这个有点像内存地址从逻辑地址向物理地址映射的方法，但不完全一样。</p>
+<p>基本上来说，我们会有如下的一些方法。</p>
+<ul>
+<li>一种方法是，任何一个内存地址的数据可以被缓存在任何一个Cache Line里，这种方法是最灵活的，但是，如果我们要知道一个内存是否存在于Cache中，我们就需要进行O(n)复杂度的Cache遍历，这是很没有效率的。</li>
+<li>另一种方法，为了降低缓存搜索算法，我们需要使用像Hash Table这样的数据结构，最简单的hash table就是做“求模运算”，比如：我们的L1 Cache有512个Cache Line，那么，公式：<code>（内存地址 mod 512）* 64</code> 就可以直接找到所在的Cache地址的偏移了。但是，这样的方式需要我们的程序对内存地址的访问要非常地平均，不然冲突就会非常严重。这成了一种非常理想的情况了。</li>
+<li>为了避免上述的两种方案的问题，于是就要容忍一定的hash冲突，也就出现了 N-Way 关联。也就是把连续的N个Cache Line绑成一组，然后，先把找到相关的组，然后再在这个组内找到相关的Cache Line。这叫 Set Associativity。如下图所示。</li>
+</ul>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-20806" src="/uploads/2020/02/cache-associative-fill-both.png" alt="" width="546" height="271" srcset="" sizes="(max-width: 546px) 100vw, 546px"/></p>
+<p>对于 N-Way 组关联，可能有点不好理解，这里个例子，并多说一些细节（不然后面的代码你会不能理解），Intel 大多数处理器的L1 Cache都是32KB，8-Way 组相联，Cache Line 是64 Bytes。这意味着，</p>
+<ul>
+<li>32KB的可以分成，32KB / 64 = 512 条 Cache Line。</li>
+<li>因为有8 Way，于是会每一Way 有 512 / 8 = 64 条 Cache Line。</li>
+<li>于是每一路就有 64 x 64 = 4096 Byts 的内存。</li>
+</ul>
+<p>为了方便索引内存地址，</p>
+<ul>
+<li><strong>Tag</strong>：每条 Cache Line 前都会有一个独立分配的 24 bits来存的 tag，其就是内存地址的前24bits</li>
+<li><strong>Index</strong>：内存地址后续的6个bits则是在这一Way的是Cache Line 索引，2^6 = 64 刚好可以索引64条Cache Line</li>
+<li><strong>Offset</strong>：再往后的6bits用于表示在Cache Line 里的偏移量</li>
+</ul>
+<p>如下图所示：（图片来自《<a href="https://manybutfinite.com/post/intel-cpu-caches/" target="_blank" rel="noopener noreferrer">Cache: a place for concealment and safekeeping</a>》）</p>
+<p>当拿到一个内存地址的时候，先拿出中间的 6bits 来，找到是哪组。</p>
+<p style="text-align: center;"><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-20809" src="/uploads/2020/03/L1CacheExample.png" alt="" width="687" height="461" srcset="" sizes="(max-width: 687px) 100vw, 687px"/></p>
+<p>然后，在这一个8组的cache line中，再进行O(n) n=8 的遍历，主是要匹配前24bits的tag。如果匹配中了，就算命中，如果没有匹配到，那就是cache miss，如果是读操作，就需要进向后面的缓存进行访问了。L2/L3同样是这样的算法。而淘汰算法有两种，一种是随机一种是LRU。现在一般都是以LRU的算法（通过增加一个访问计数器来实现）</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-20840" src="/uploads/2020/03/selectingCacheLine.png" alt="" width="681" height="283" srcset="" sizes="(max-width: 681px) 100vw, 681px"/></p>
+<p>这也意味着：</p>
+<ul>
+<li>L1 Cache 可映射 36bits 的内存地址，一共 2^36 = 64GB的内存</li>
+<li>当CPU要访问一个内存的时候，通过这个内存中间的6bits 定位是哪个set，通过前 24bits 定位相应的Cache Line。</li>
+<li>就像一个hash Table的数据结构一样，先是O(1)的索引，然后进入冲突搜索。</li>
+<li>因为中间的 6bits 决定了一个同一个set，所以，对于一段连续的内存来说，每隔4096的内存会被放在同一个组内，导致缓存冲突。</li>
+</ul>
+<p>此外，当有数据没有命中缓存的时候，CPU就会以最小为Cache Line的单元向内存更新数据。当然，CPU并不一定只是更新64Bytes，因为访问主存实在是太慢了，所以，一般都会多更新一些。好的CPU会有一些预测的技术，如果找到一种pattern的话，就会预先加载更多的内存，包括指令也可以预加载。这叫 Prefetching 技术 （参看，Wikipedia 的 <a href="https://en.wikipedia.org/wiki/Cache_prefetching" target="_blank" rel="noopener noreferrer">Cache Prefetching</a> 和 <a href="http://compas.cs.stonybrook.edu/~nhonarmand/courses/sp16/cse502/slides/13-prefetch.pdf" target="_blank" rel="noopener noreferrer">纽约州立大学的 Memory Prefetching</a>）。比如，你在for-loop访问一个连续的数组，你的步长是一个固定的数，内存就可以做到prefetching。（注：指令也是以预加载的方式执行，参看本站的《<a href="/articles/7886.html" target="_blank" rel="noopener noreferrer">代码执行的效率</a>》中的第三个示例）</p>
+<p>了解这些细节，会有利于我们知道在什么情况下有可以导致缓存的失效。</p>
+<h4><span class="ez-toc-section" id="%E7%BC%93%E5%AD%98%E7%9A%84%E4%B8%80%E8%87%B4%E6%80%A7"></span>缓存的一致性<span class="ez-toc-section-end"></span></h4>
+<p>对于主流的CPU来说，缓存的写操作基本上是两种策略（参看本站《<a href="/articles/17416.html" target="_blank" rel="noopener noreferrer">缓存更新的套路</a>》），</p>
+<ul>
+<li>一种是Write Back，写操作只要在cache上，然后再flush到内存上。</li>
+<li>一种是Write Through，写操作同时写到cache和内存上。</li>
+</ul>
+<p>为了提高写的性能，一般来说，主流的CPU（如：Intel Core i7/i9）采用的是Write Back的策略，因为直接写内存实在是太慢了。</p>
+<p>好了，现在问题来了，如果有一个数据 x 在 CPU 第0核的缓存上被更新了，那么其它CPU核上对于这个数据 x 的值也要被更新，这就是缓存一致性的问题。（当然，对于我们上层的程序我们不用关心CPU多个核的缓存是怎么同步的，这对上层的代码来说都是透明的）</p>
+<p>一般来说，在CPU硬件上，会有两种方法来解决这个问题。</p>
+<ul>
+<li><strong>Directory 协议</strong>。这种方法的典型实现是要设计一个集中式控制器，它是主存储器控制器的一部分。其中有一个目录存储在主存储器中，其中包含有关各种本地缓存内容的全局状态信息。当单个CPU Cache 发出读写请求时，这个集中式控制器会检查并发出必要的命令，以在主存和CPU Cache之间或在CPU Cache自身之间进行数据同步和传输。</li>
+<li><strong>Snoopy 协议</strong>。这种协议更像是一种数据通知的总线型的技术。CPU Cache通过这个协议可以识别其它Cache上的数据状态。如果有数据共享的话，可以通过广播机制将共享数据的状态通知给其它CPU Cache。这个协议要求每个CPU Cache 都可以<strong class="hu je"><em class="io">“</em>窥探<em class="io">”</em></strong>数据事件的通知并做出相应的反应。如下图所示，有一个Snoopy Bus的总线。</li>
+</ul>
+<p><strong><img decoding="async" loading="lazy" class="aligncenter wp-image-20797" style="font-weight: 400;" src="/uploads/2020/02/The-cache-coherence-problem-Initially-processors-0-and-1-both-read-location-x.png" alt="" width="400" height="217" srcset="" sizes="(max-width: 400px) 100vw, 400px"/></strong></p>
+<p>因为Directory协议是一个中心式的，会有性能瓶颈，而且会增加整体设计的复杂度。而Snoopy协议更像是微服务+消息通讯，所以，现在基本都是使用Snoopy的总线的设计。</p>
+<p>这里，我想多写一些细节，因为这种微观的东西，让人不自然地就会跟分布式系统关联起来，在分布式系统中我们一般用Paxos/Raft这样的分布式一致性的算法。而在CPU的微观世界里，则不必使用这样的算法，原因是因为CPU的多个核的硬件不必考虑网络会断会延迟的问题。所以，CPU的多核心缓存间的同步的核心就是要管理好数据的状态就好了。</p>
+<p>这里介绍几个状态协议，先从最简单的开始，MESI协议，这个协议跟那个著名的足球运动员梅西没什么关系，其主要表示缓存数据有四个状态：Modified（已修改）, Exclusive（独占的）,Shared（共享的），Invalid（无效的）。</p>
+<p>这些状态的状态机如下所示（有点复杂，你可以先不看，这个图就是想告诉你状态控制有多复杂）：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-full wp-image-20804" src="/uploads/2020/02/MESI.png" alt="" width="420" height="406" srcset="" sizes="(max-width: 420px) 100vw, 420px"/></p>
+<p>下面是个示例（如果你想看一下动画演示的话，这里有一个网页（<a href="https://www.scss.tcd.ie/Jeremy.Jones/VivioJS/caches/MESIHelp.htm" target="_blank" rel="noopener noreferrer">MESI Interactive Animations</a>），你可以进行交互操作，这个动画演示中使用的Write Through算法）：</p>
+<table>
+<thead>
+<tr>
+<th>当前操作</th>
+<th>CPU0</th>
+<th>CPU1</th>
+<th>Memory</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1) CPU0 read(x)</td>
+<td> x=1 (E)</td>
+<td></td>
+<td>x=1</td>
+<td>只有一个CPU有 x 变量，<br/>
+所以，状态是 Exclusive</td>
+</tr>
+<tr>
+<td>2) CPU1 read(x)</td>
+<td> x=1 (S)</td>
+<td>x=1(S)</td>
+<td>x=1</td>
+<td>有两个CPU都读取 x 变量，<br/>
+所以状态变成 Shared</td>
+</tr>
+<tr>
+<td>3) CPU0 write(x,9)</td>
+<td> x=<span style="color: #ff0000;">9</span> (M)</td>
+<td>x=1(I)</td>
+<td>x=1</td>
+<td>变量改变，在CPU0中状态<br/>
+变成 Modified，在CPU1中<br/>
+状态变成 Invalid</td>
+</tr>
+<tr>
+<td>4) 变量 x 写回内存</td>
+<td> x=9 (M)</td>
+<td>X=1(I)</td>
+<td>x=9</td>
+<td>目前的状态不变</td>
+</tr>
+<tr>
+<td>5) CPU1  read(x)</td>
+<td> x=9 (S)</td>
+<td>x=9(S)</td>
+<td>x=9</td>
+<td>变量同步到所有的Cache中，<br/>
+状态回到Shared</td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<p>MESI 这种协议在数据更新后，会标记其它共享的CPU缓存的数据拷贝为Invalid状态，然后当其它CPU再次read的时候，就会出现 cache miss 的问题，此时再从内存中更新数据。从内存中更新数据意味着20倍速度的降低。我们能不能直接从我隔壁的CPU缓存中更新？是的，这就可以增加很多速度了，但是状态控制也就变麻烦了。还需要多来一个状态：Owner(宿主)，用于标记，我是更新数据的源。于是，出现了 <a href="https://en.wikipedia.org/wiki/MOESI_protocol" target="_blank" rel="noopener noreferrer">MOESI 协议</a></p>
+<p>MOESI协议的状态机和演示示例我就不贴了（有兴趣可以上<a href="https://inst.eecs.berkeley.edu/~cs61c/su18/disc/11/Disc11Sol.pdf" target="_blank" rel="noopener">Berkeley上看看相关的课件</a>），<strong>我们只需要理解MOESI协议允许 CPU Cache 间同步数据，于是也降低了对内存的操作</strong>，性能是非常大的提升，但是控制逻辑也非常复杂。</p>
+<p>顺便说一下，与 MOESI 协议类似的一个协议是 <a href="https://en.wikipedia.org/wiki/MESIF_protocol" target="_blank" rel="noopener noreferrer">MESIF</a>，其中的 F 是 Forward，同样是把更新过的数据转发给别的 CPU Cache 但是，MOESI 中的 Owner 状态 和MESIF 中的 Forward 状态有一个非常大的不一样—— <strong>Owner状态下的数据是dirty的，还没有写回内存，Forward状态下的数据是clean的，可以丢弃而不用另行通知</strong>。</p>
+<p>需要说明的是，AMD用MOESI，Intel用MESIF。所以，F 状态主要是针对 CPU L3 Cache 设计的（前面我们说过，L3是所有CPU核心共享的）。（相关的比较可以参看<a href="https://stackoverflow.com/a/49989985" target="_blank" rel="noopener noreferrer">StackOverlow上这个问题的答案</a>）</p>
+<h4><span class="ez-toc-section" id="%E7%A8%8B%E5%BA%8F%E6%80%A7%E8%83%BD"></span>程序性能<span class="ez-toc-section-end"></span></h4>
+<p>了解了我们上面的这些东西后，我们来看一下对于程序的影响。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%B8%80"></span>示例一<span class="ez-toc-section-end"></span></h5>
+<p>首先，假设我们有一个64M长的数组，设想一下下面的两个循环：</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">const int LEN = 64*1024*1024;
+int *arr = new int[LEN];
+
+for (int i = 0; i &lt; LEN; i += 2) arr[i] *= i;
+
+for (int i = 0; i &lt; LEN; i += 8) arr[i] *= i;</pre>
+<p>按我们的想法来看，第二个循环要比第一个循环少4倍的计算量，其应该也是要快4倍的。但实际跑下来并不是，<strong>在我的机器上，第一个循环需要127毫秒，第二个循环则需要121毫秒，相差无几</strong>。这里最主要的原因就是 Cache Line，因为CPU会以一个Cache Line 64Bytes最小时单位加载，也就是16个32bits的整型，所以，无论你步长是2还是8，都差不多。而后面的乘法其实是不耗CPU时间的。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%BA%8C"></span>示例二<span class="ez-toc-section-end"></span></h5>
+<p>我们再来看一个与缓存命中率有关的代码，我们以一定的步长<code>increment</code> 来访问一个连续的数组。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">for (int i = 0; i &lt; 10000000; i++) {
+    for (int j = 0; j &lt; size; j += increment) {
+        memory[j] += j;
+    }
+}</pre>
+<p>我们测试一下，在下表中， 表头是步长，也就是每次跳多少个整数，而纵向是这个数组可以跳几次（你可以理解为要几条Cache Line），于是表中的任何一项代表了这个数组有多少，而且步长是多少。比如：横轴是 512，纵轴是4，意思是，这个数组有 <code>4*512 = 2048</code> 个长度，访问时按512步长访问，也就是访问其中的这几项：<code>[0, 512, 1024, 1536]</code> 这四项。</p>
+<p>表中同的项是，是循环1000万次的时间，单位是“微秒”（除以1000后是毫秒）</p>
+<pre>| count |   1    |   16  |  512  | 1024  |
+------------------------------------------
+|     1 |  17539 | 16726 | 15143 | 14477 |
+|     2 |  15420 | 14648 | 13552 | 13343 |
+|     3 |  14716 | 14463 | 15086 | 17509 |
+|     4 |  18976 | 18829 | 18961 | 21645 |
+|     5 |  23693 | 23436 | 74349 | 29796 |
+|     6 |  23264 | 23707 | 27005 | 44103 |
+|     7 |  28574 | 28979 | 33169 | 58759 |
+|     8 |  33155 | 34405 | 39339 | 65182 |
+|     9 |  37088 | 37788 | 49863 |<span style="color: #cc0000;"><strong>156745</strong></span> |
+|    10 |  41543 | 42103 | 58533 |<span style="color: #cc0000;"><strong>215278</strong></span> |
+|    11 |  47638 | 50329 | 66620 |<span style="color: #cc0000;"><strong>335603</strong></span> |
+|    12 |  49759 | 51228 | 75087 |<span style="color: #cc0000;"><strong>305075</strong></span> |
+|    13 |  53938 | 53924 | 77790 |<span style="color: #cc0000;"><strong>366879</strong></span> |
+|    14 |  58422 | 59565 | 90501 |<span style="color: #cc0000;"><strong>466368</strong></span> |
+|    15 |  62161 | 64129 | 90814 |<span style="color: #cc0000;"><strong>525780</strong></span> |
+|    16 |  67061 | 66663 | 98734 |<span style="color: #cc0000;"><strong>440558</strong></span> |
+|    17 |  71132 | 69753 |<span style="color: #cc0000;"><strong>171203</strong></span> |<span style="color: #cc0000;"><strong>506631</strong></span> |
+|    18 |  74102 | 73130 |<span style="color: #cc0000;"><strong>293947</strong></span> |<span style="color: #cc0000;"><strong>550920</strong></span> |
+</pre>
+<p>我们可以看到，从 <code>[9，1024]</code> 以后，时间显著上升。包括 <code>[17，512]</code> 和 <code>[18,512]</code> 也显著上升。这是因为，我机器的 L1 Cache 是 32KB, 8 Way 的，前面说过，8 Way的有64组，每组8个Cache Line，当for-loop步长超过1024个整型，也就是正好 4096 Bytes时，也就是导致内存地址的变化是变化在高位的24bits上，而低位的12bits变化不大，尤其是中间6bits没有变化，导致全部命中同一组set，导致大量的cache 冲突，导致性能下降，时间上升。而 [16, 512]也是一样的，其中的几步开始导致L1 Cache开始冲突失效。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%B8%89"></span>示例三<span class="ez-toc-section-end"></span></h5>
+<p>接下来，我们再来看个示例。下面是一个二维数组的两种遍历方式，一个逐行遍历，一个是逐列遍历，这两种方式在理论上来说，寻址和计算量都是一样的，执行时间应该也是一样的。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">const int row = 1024;
+const int col = 512
+int matrix[row][col];
+
+//逐行遍历
+int sum_row=0;
+for(int _r=0; _r&lt;row; _r++) {
+    for(int _c=0; _c&lt;col; _c++){
+        sum_row += matrix[_r][_c];
+    }
+}
+
+//逐列遍历
+int sum_col=0;
+for(int _c=0; _c&lt;col; _c++) {
+    for(int _r=0; _r&lt;row; _r++){
+        sum_col += matrix[_r][_c];
+    }
+}</pre>
+<p>然而，并不是，在我的机器上，得到下面的结果。</p>
+<ul>
+<li>逐行遍历：0.081ms</li>
+<li>逐列遍历：1.069ms</li>
+</ul>
+<p>执行时间有十几倍的差距。其中的原因，就是逐列遍历对于CPU Cache 的运作方式并不友好，所以，付出巨大的代价。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E5%9B%9B"></span>示例四<span class="ez-toc-section-end"></span></h5>
+<p>接下来，我们来看一下多核下的性能问题，参看如下的代码。两个线程在操作一个数组的两个不同的元素（无需加锁），线程循环1000万次，做加法操作。在下面的代码中，我高亮了一行，就是<code>p2</code>指针，要么是<code>p[1]</code>，或是 <code>p[30]</code>，理论上来说，无论访问哪两个数组元素，都应该是一样的执行时间。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp" data-enlighter-highlight="9">void fn (int* data) {
+    for(int i = 0; i &lt; 10*1024*1024; ++i)
+        *data += rand();
+}
+
+int p[32];
+
+int *p1 = &amp;p[0];
+int *p2 = &amp;p[1]; // int *p2 = &amp;p[30];
+
+thread t1(fn, p1);
+thread t2(fn, p2);</pre>
+<p>然而，并不是，在我的机器上执行下来的结果是：</p>
+<ul>
+<li>对于 <code>p[0]</code> 和 <code>p[1]</code> ：560ms</li>
+<li>对于 <code>p[0]</code> 和 <code>p[30]</code>：104ms</li>
+</ul>
+<p>这是因为 <code>p[0]</code> 和 <code>p[1]</code> 在同一条 Cache Line 上，而 <code>p[0]</code> 和 <code>p[30]</code> 则不可能在同一条Cache Line 上 ，CPU的缓存最小的更新单位是Cache Line，所以，<strong>这导致虽然两个线程在写不同的数据，但是因为这两个数据在同一条Cache Line上，就会导致缓存需要不断进在两个CPU的L1/L2中进行同步，从而导致了5倍的时间差异</strong>。</p>
+<h5><span class="ez-toc-section" id="%E7%A4%BA%E4%BE%8B%E4%BA%94"></span>示例五<span class="ez-toc-section-end"></span></h5>
+<p>接下来，我们再来看一下另外一段代码：我们想统计一下一个数组中的奇数个数，但是这个数组太大了，我们希望可以用多线程来完成这个统计。下面的代码中，<strong>我们为每一个线程传入一个 id ，然后通过这个 id 来完成对应数组段的统计任务。这样可以加快整个处理速度</strong>。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">int total_size = 16 * 1024 * 1024; //数组长度
+int* test_data = new test_data[total_size]; //数组
+int nthread = 6; //线程数（因为我的机器是6核的）
+int result[nthread]; //收集结果的数组
+
+void thread_func (int id) {
+    result[id] = 0;
+    int chunk_size = total_size / nthread + 1;
+    int start = id * chunk_size;
+    int end = min(start + chunk_size, total_size);
+
+    for ( int i = start; i &lt; end; ++i ) {
+        if (test_data[i] % 2 != 0 ) ++result[id];
+    }
+}</pre>
+<p>然而，在执行过程中，<strong>你会发现，6个线程居然跑不过1个线程</strong>。因为根据上面的例子你知道 <code>result[]</code> 这个数组中的数据在一个Cache Line中，所以，所有的线程都会对这个 Cache Line 进行写操作，导致所有的线程都在不断地重新同步 <code>result[]</code> 所在的 Cache Line，所以，导致 6 个线程还跑不过一个线程的结果。这叫 <strong>False Sharing</strong>。</p>
+<p>优化也很简单，使用一个线程内的变量。</p>
+<pre class="EnlighterJSRAW" data-enlighter-language="cpp">void thread_func (int id) {
+    result[id] = 0;
+    int chunk_size = total_size / nthread + 1;
+    int start = id * chunk_size;
+    int end = min(start + chunk_size, total_size);
+
+    int c = 0; //使用临时变量，没有cache line的同步了
+    for ( int i = start; i &lt; end; ++i ) {
+        if (test_data[i] % 2 != 0 ) ++c;
+    }
+    result[id] = c;
+}</pre>
+<p>我们把两个程序分别在 1 到 32 个线程上跑一下，得出的结果画一张图如下所示（横轴是线程数，纵轴是完成统的时间，单位是微秒）：</p>
+<p><img decoding="async" loading="lazy" class="aligncenter size-large wp-image-20813" src="/uploads/2020/03/false.sharing-1024x643.png" alt="" width="640" height="402" srcset="" sizes="(max-width: 640px) 100vw, 640px"/></p>
+<p>上图中，我们可以看到，灰色的曲线就是第一种方法，橙色的就是第二种（用局部变量的）方法。当只有一个线程的时候，两个方法相当，基本没有什么差别，但是在线程数增加的时候的时候，你会发现，第二种方法的性能提高的非常快。直到到达6个线程的时候，开始变得稳定（前面说过，我的CPU是6核的）。而第一种方法无论加多少线程也没有办法超过第二种方法。因为第一种方法不是CPU Cache 友好的。也就是说，第二种方法，<strong>只要我的CPU核数足够多，就可以做到线性的性能扩展，让每一个CPU核都跑起来，而第一种则不能</strong>。</p>
+<p>篇幅问题，示例就写到这里，相关的代码参看<a href="https://github.com/haoel/cpu-cache" target="_blank" rel="noopener noreferrer">我的Github相关仓库</a>。</p>
+<h4><span class="ez-toc-section" id="%E5%BB%B6%E4%BC%B8%E9%98%85%E8%AF%BB"></span>延伸阅读<span class="ez-toc-section-end"></span></h4>
+<ul>
+<li>Wikipedia : <a href="https://en.wikipedia.org/wiki/CPU_cache" target="_blank" rel="noopener noreferrer">CPU Cache </a></li>
+<li>经典文章：<a href="http://igoro.com/archive/gallery-of-processor-cache-effects/" target="_blank" rel="noopener noreferrer">Gallery of Processor Cache Effects</a> （这篇文章中的测试已经有点过时了，但是这篇文章中所说的那些东西还是非常适用的）</li>
+<li>Effective C++作者 Scott Meyers 的演讲 CPU Caches and Why You Care （<a href="https://www.youtube.com/watch?v=WDIkqP4JbkE" target="_blank" rel="noopener noreferrer">Youtube</a>，<a href="https://www.aristeia.com/TalkNotes/codedive-CPUCachesHandouts.pdf" target="_blank" rel="noopener noreferrer">PPT</a>）</li>
+<li>美国私立大学Swarthmore的教材 <a href="https://www.cs.swarthmore.edu/~kwebb/cs31/f18/memhierarchy/caching.html" target="_blank" rel="noopener noreferrer">Cache Architecture and Design</a></li>
+<li>经典文章：<a href="https://people.freebsd.org/~lstewart/articles/cpumemory.pdf" target="_blank" rel="noopener noreferrer">What Every Programmer Should Know About Memory</a> （这篇文章非常经典，但是开篇太晦涩了，居然告诉你晶体管内的构造，第三章和第六章是重点）</li>
+<li>Nonblocking Algorithms and Scalable Multicore Programming （<a href="https://queue.acm.org/detail.cfm?id=2492433" target="_blank" rel="noopener noreferrer">英文版</a>，<a href="https://www.oschina.net/translate/nonblocking-algorithms-and-scalable-multicore-programming" target="_blank" rel="noopener noreferrer">中文版</a>）</li>
+<li>Github上的一个代码库 <a href="https://github.com/Kobzol/hardware-effects" target="_blank" rel="noopener noreferrer">hardware-effects</a> 里面有受CPU影响的程序的演示</li>
+<li>Optimizing for instruction caches （<a href="https://www.eetimes.com/optimizing-for-instruction-caches-part-1/" target="_blank" rel="noopener noreferrer">Part 1</a>，<a href="https://www.eetimes.com/optimizing-for-instruction-caches-part-2/" target="_blank" rel="noopener noreferrer">Part 2</a>， <a href="https://www.eetimes.com/optimizing-for-instruction-caches-part-3/">Part 3</a>）</li>
+<li>经典数据：<a href="https://gist.github.com/jboner/2841832" target="_blank" rel="noopener noreferrer">Latency Numbers Every Programmer Should Know</a></li>
+<li>关于Java的可以看一下这篇<a href="https://dzone.com/articles/optimizing-memory-access-with-cpu-cache" target="_blank" rel="noopener noreferrer">Optimizing Memory Access With CPU Cache</a> 或是 <a href="https://www.stardog.com/blog/writing-cache-friendly-code/" target="_blank" rel="noopener noreferrer">Writing cache-friendly code</a></li>
+</ul>
+<p>总之，这个CPU Cache的调优技术不是什么新鲜的东西，只要Google就能找到有很多很多文章……</p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-20793-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">程序设计</a>, <a href="javascript:void(0)" rel="category tag">编程语言</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">cache</a>, <a href="javascript:void(0)" rel="tag">CPU</a>, <a href="javascript:void(0)" rel="tag">性能调优</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>与程序员相关的CPU缓存知识</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2153438" class="comment even thread-even depth-1">
+<article id="div-comment-2153438" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/589ffb5a7bac13c6126aea150cc6f66c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/589ffb5a7bac13c6126aea150cc6f66c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.kunzejiaoyu.net/" class="url" rel="ugc external nofollow">深圳坤泽教育</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2153438"><time datetime="2020-09-14T18:49:00+08:00">2020年09月14日 18:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我静悄悄的来啦，博主大大</p>
+</div>
+ </article>
+</li>
+<li id="comment-2153844" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2153844" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4eec2f477962b2a1015a97dddcdccdec?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4eec2f477962b2a1015a97dddcdccdec?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://selfboot.cn" class="url" rel="ugc external nofollow">selfboot</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2153844"><time datetime="2020-09-16T19:31:54+08:00">2020年09月16日 19:31</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>2) Cache Line Race 这个测试例子不太好，里面有用到 rand这个函数，rand 耗时相对于cache冲突来说太大了。</p>
+<p>Intel 下这个测试用例，如果用 rand ，确实是作者说的差5倍，但是把rand 去掉，改为</p>
+<p><code>auto proc = [](volatile int* data) {<br/>
+for(int i = 0; i &lt; COUNT; ++i)<br/>
+*data += 1; // `+= 1` won&#39;t be optimized.<br/>
+};<br/>
+</code></p>
+<p>耗时其实没那么大差别。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2156795" class="comment even thread-even depth-1 parent">
+<article id="div-comment-2156795" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ff0f0ec857b718e08519a80201c0ac1a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ff0f0ec857b718e08519a80201c0ac1a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">saber</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2156795"><time datetime="2020-09-27T06:59:49+08:00">2020年09月27日 06:59</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>那段讲8 Way是怎么算的有点不清楚。<br/>
+是不是　32KB的L1 Cache, 分成了64组 (set), 每个组里面有8个Way (代表 8个 Cache line).<br/>
+这样是 64 组 * 8 (Way) * 64 (Cache line size) = 32 KB.</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2172477" class="comment odd alt depth-2">
+<article id="div-comment-2172477" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e5ecfea63892514388a6a2f78c2d02a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e5ecfea63892514388a6a2f78c2d02a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李文旭</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2172477"><time datetime="2020-11-12T13:26:17+08:00">2020年11月12日 13:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>怎么不清楚了？你不都算出来了么？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2172478" class="comment even depth-2">
+<article id="div-comment-2172478" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1e5ecfea63892514388a6a2f78c2d02a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1e5ecfea63892514388a6a2f78c2d02a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李文旭</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2172478"><time datetime="2020-11-12T13:28:37+08:00">2020年11月12日 13:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>就一点way就是way；不是代表8个cache line<br/>
+我也是小白；我是这么理解的；<br/>
+如有不对，也请多赐教。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2157208" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.0373job.com/index.php/11033/" class="url" rel="ugc external nofollow">【摩登4娱乐线路】如何利用CPU Cache写出高性能代码？看这些图就够了！ - 摩登4平台注册|摩登4登录|摩登4代理【官方指定站】</a> </div>
+</li>
+<li id="comment-2169070" class="comment even thread-even depth-1">
+<article id="div-comment-2169070" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/617429dee53f95b5e737412d0e8a358d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/617429dee53f95b5e737412d0e8a358d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kischn</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2169070"><time datetime="2020-11-02T10:01:42+08:00">2020年11月02日 10:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>&lt;&lt;&lt;&lt;</p>
+<p>也就出现了 N-Way 关联。也就是把连续的N个Cache Line绑成一组</p>
+<p>也就出现了 N-Way 关联。也就是把连续的M个Cache Line绑成一组，共N组。</p>
+<blockquote>
+<blockquote>
+<blockquote><p>
+&gt;
+</p></blockquote>
+</blockquote>
+</blockquote>
+<p>从下方的计算过程来看，N-Way不是1 way有N个，而是把已有的存储划成N块？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2169080" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2169080" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/45d60e8f442febb8794307cae66c386f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/45d60e8f442febb8794307cae66c386f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">anker Jam</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2169080"><time datetime="2020-11-02T11:32:16+08:00">2020年11月02日 11:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>因为有8 Way，于是会每一Way 有 512 / 8 = 64 条 Cache Line。</p>
+<p>这一句错了，应该是有64路</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2177755" class="comment even depth-2">
+<article id="div-comment-2177755" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d5ba8dbab4298d0d735bfe77a6d3c62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d5ba8dbab4298d0d735bfe77a6d3c62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2177755"><time datetime="2020-12-01T04:18:09+08:00">2020年12月01日 04:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没错的，它的物理本质就是cache lines</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2177754" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2177754" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1d5ba8dbab4298d0d735bfe77a6d3c62?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1d5ba8dbab4298d0d735bfe77a6d3c62?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2177754"><time datetime="2020-12-01T04:10:35+08:00">2020年12月01日 04:10</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这文章太好啦！！ 让正在学计算机架构课的我茅塞顿开！！先follow崇拜一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-2189540" class="comment even thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2189540" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/faeed46bc4fc9ab903ce5334086f9f79?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/faeed46bc4fc9ab903ce5334086f9f79?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">陈涵</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2189540"><time datetime="2020-12-31T15:54:22+08:00">2020年12月31日 15:54</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>耗子叔：<br/>
+关于cacheline的描述我有一点疑问，我们把L1缓存的所有内存，分为 set 每个 set 内部有划分为 cacheline, 每个cacheline 的前24 bits是tag的值 还有一个 valid flag 标志位 ，而每个 cacheline 的值是 64 bytes 如果把这25 bits 的值算到cacheline 内部的话，那么cacheline的大小就要大于64bytes，如果不算到cacheline内部，那么L1 cache 的总的大小就要大于 32KB，是不是我哪里没有理解正确呢？ 希望能给予点提示</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2228525" class="comment odd alt depth-2 parent">
+<article id="div-comment-2228525" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4a799272cbc7c7a62b2cab56bc5e7781?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4a799272cbc7c7a62b2cab56bc5e7781?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">功过哦</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2228525"><time datetime="2021-04-06T11:55:46+08:00">2021年04月06日 11:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>同问，cache line是否包含tag、set index以及offset</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2273780" class="comment even depth-3">
+<article id="div-comment-2273780" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a87c7449fc907c67226ff076126ec89a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a87c7449fc907c67226ff076126ec89a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fawang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2273780"><time datetime="2021-07-05T18:35:20+08:00">2021年07月05日 18:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不含，cache line就是指数据有64B。set index和offset在设计cache时就已经定好，使用的是VA的固定bits。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2273781" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2273781" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a87c7449fc907c67226ff076126ec89a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a87c7449fc907c67226ff076126ec89a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fawang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2273781"><time datetime="2021-07-05T18:41:42+08:00">2021年07月05日 18:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote><p>
+一方面，缓存需要把内存里的数据放到放进来，英文叫 CPU Associativity。<br/>
+是Cache Associativity
+</p></blockquote>
+</div>
+ </article>
+</li>
+<li id="comment-2301504" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://afonddream.com/2021/09/11/%e7%ac%94%e8%ae%b0_cpu%e7%bc%93%e5%ad%98%e7%9f%a5%e8%af%86/" class="url" rel="ugc external nofollow">笔记_CPU缓存知识 – EPHUIZI HOME</a> </div>
+</li>
+<li id="comment-2329852" class="comment odd alt thread-even depth-1 parent">
+<article id="div-comment-2329852" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大山</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2329852"><time datetime="2021-11-05T11:23:07+08:00">2021年11月05日 11:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>请问一下陈老师，你示例一测量时间用的是什么方法？我在Linux上面用getitimeofday来测量，发现 1.加不加 arr[i] *= i 影响时间一半<br/>
+2.发现+2 和+8 确实时间有较大差别。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2329853" class="comment even depth-2">
+<article id="div-comment-2329853" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大山</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2329853"><time datetime="2021-11-05T11:24:03+08:00">2021年11月05日 11:24</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>另外我都把进程绑定一个CPU核了。（我发现如果不绑定CPU核，时间也会多一倍左右）</p>
+</div>
+ </article>
+</li>
+<li id="comment-2330583" class="comment odd alt depth-2 parent">
+<article id="div-comment-2330583" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大山</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2330583"><time datetime="2021-11-06T19:39:31+08:00">2021年11月06日 19:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看了git上面的代码 知道是如何测量的了。有个小小的疑惑，就是示例1中。用2和8递增确实应该时间相差不大，但是如果我用32,64递增，那么理论上时间应减少为原来的2分之1，4分之1才对哈。感觉还是相差不是很大。</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2330599" class="comment even depth-3">
+<article id="div-comment-2330599" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43b5354f6a14a84b83c75389ef5bfe00?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">大山</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2330599"><time datetime="2021-11-06T20:12:02+08:00">2021年11月06日 20:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>另外示例一中，我测试下来发现，如果在提供的代码中仅仅去掉arr[i] *= i，则用的时间会小很多很多，因此是否不能说“而后面的乘法其实是不耗CPU时间的。”</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+</ol>
+</li>
+<li id="comment-2342407" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1925996" class="url" rel="ugc external nofollow">操作系统中的主存储器&amp;高速缓存 - 算法网</a> </div>
+</li>
+<li id="comment-2342681" class="comment even thread-even depth-1">
+<article id="div-comment-2342681" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d0cb7118708b2710ab7df15ef45e31b1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d0cb7118708b2710ab7df15ef45e31b1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">csbo</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2342681"><time datetime="2021-12-02T00:56:10+08:00">2021年12月02日 00:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>陈老师，我认为您对way的理解有错误。8-way指的是每一个set里面有8个cache line；而不是每个set有64个cache line。其实n -way指的是每个内存位置在cache中有n个可以放的位置，直接映射以理解为1 -way组相联，全相联可以认为是m- way组相联（m是cache中 cache line的数量）</p>
+</div>
+ </article>
+</li>
+<li id="comment-2343207" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://it.newban.cn/archives/86791" class="url" rel="ugc external nofollow">Golang中的内存模型 – IT汇</a> </div>
+</li>
+<li id="comment-2358499" class="comment even thread-even depth-1">
+<article id="div-comment-2358499" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9c346dac3621b047aacb0f65ed66bbb5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9c346dac3621b047aacb0f65ed66bbb5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Fanley</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2358499"><time datetime="2022-01-11T11:26:09+08:00">2022年01月11日 11:26</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>好文，学习了！</p>
+</div>
+ </article>
+</li>
+<li id="comment-2362983" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://aivgg.com/hierarchy-and-cpu-high-speed-cache-of-the-repository-professional-notes/" class="url" rel="ugc external nofollow">Hierarchy and CPU high-speed cache of the Repository [Professional Notes] - Technology Blog</a> </div>
+</li>
+<li id="comment-2366076" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/2151100" class="url" rel="ugc external nofollow">【专业课笔记】存储器的层次结构与CPU高速缓存 - 算法网</a> </div>
+</li>
+<li id="comment-2370305" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370305" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/95ce58677c0a17fbf8c00c7a17cc73cf?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/95ce58677c0a17fbf8c00c7a17cc73cf?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://mightcoder.com" class="url" rel="ugc external nofollow">might</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2370305"><time datetime="2022-03-31T15:18:30+08:00">2022年03月31日 15:18</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>thank you</p>
+</div>
+ </article>
+</li>
+<li id="comment-2370773" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://code84.com/574177.html" class="url" rel="ugc external nofollow">Java并发之volatile详解 – 源码巴士</a> </div>
+</li>
+<li id="comment-2370948" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2370948" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9ad6e4f30af10c2bcc4424d2eee44c1c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9ad6e4f30af10c2bcc4424d2eee44c1c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">澪羽酱</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/20793.html/comment-page-2#comment-2370948"><time datetime="2022-12-03T16:23:39+08:00">2022年12月03日 16:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看网课被老师推荐过来的，收藏一下</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371142" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/374699" class="url" rel="ugc external nofollow">CPU缓存 | 高性能架构探索</a> </div>
+</li>
+<li id="comment-2371214" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.johngo689.com/468333/" class="url" rel="ugc external nofollow">顺序表和链表的区别_Johngo学长</a> </div>
+</li>
+<li id="comment-2371215" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.johngo689.com/468774/" class="url" rel="ugc external nofollow">1.栈的压栈（入栈、进栈）及出栈 2.顺序表及链表的缓存命中_Johngo学长</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/20793.html/comment-page-1#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/20793.html/comment-page-1#comments">1</a>
+<span aria-current="page" class="page-numbers current">2</span> <span id="cp_post_id">20793</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

@@ -1,0 +1,793 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>是微服务架构不香还是云不香？ | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-22422 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-22422" class="post-content post-22422 post type-post status-publish format-standard hentry category-itnews category-misc category-602 tag-aws tag-lambda tag-microservice tag-serverless tag-step-function">
+<header class="entry-header">
+<span class="screen-reader-text">是微服务架构不香还是云不香？</span>
+<h1 class="entry-title">是微服务架构不香还是云不香？</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/22422.html" title="17:52" rel="bookmark"><time class="entry-date" datetime="2023-05-08T17:52:06+08:00" pubdate="">2023年05月08日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/haoel" title="View all posts by 陈皓" rel="author">陈皓</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/22422.html#comments" class="comments-link">49 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 14,349 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><img decoding="async" class="alignright size-medium wp-image-22424" src="/uploads/2023/05/monolith.microservices-300x200.png" alt="" width="300" height="200" srcset="" sizes="(max-width: 300px) 100vw, 300px"/>这两天技术圈里热议的一件事就是Amazon的流媒体平台Prime Video在2023年3月22日发布了一篇技术博客《<a title="Scaling up the Prime Video audio/video monitoring service and reducing costs by 90%" href="https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90" target="_blank" rel="noopener">规模化Prime Video的音视频监控服务，成本降低90%</a>》，副标题：“<strong>从分布式微服务架构到单体应用程序的转变有助于实现更高的规模、弹性和降低成本</strong>”，有人把这篇文章在五一期间转到了<a href="https://www.reddit.com/r/programming/comments/137alxn/prime_video_switched_from_serverless_to_ec2_and/" target="_blank" rel="noopener">reddit</a> 和 <a href="https://news.ycombinator.com/item?id=35811741" target="_blank" rel="noopener">hacker news</a> 上，在Reddit上热议。这种话题与业内推崇的微服务架构形成了鲜明的对比。从“微服务架构”转“单体架构”，还是Amazon干的，这个话题足够劲爆。然后DHH在刚<a href="https://twitter.com/dhh/status/1655076668787097607" target="_blank" rel="noopener">喷完Typescript</a>后继续发文《<a href="https://world.hey.com/dhh/even-amazon-can-t-make-sense-of-serverless-or-microservices-59625580" target="_blank" rel="noopener">即便是亚马逊也无法理解Servless或微服务</a>》，继续抨击微服务架构，于是，瞬间引爆技术圈，登上技术圈热搜。</p>
+<p>今天上午有好几个朋友在微信里转了三篇文章给我，如下所示：</p>
+<ul>
+<li>《<a href="https://mp.weixin.qq.com/s/mEmz8pviahEAWy1-SA8vcg" target="_blank" rel="noopener">微服务是不是个蠢主意？</a>》</li>
+<li>《<a href="https://mp.weixin.qq.com/s/7zm5YyeZhQ2mu2TJvOK5tQ" target="_blank" rel="noopener">单体回归？亚马逊放弃用于视频监控的微服务</a> 》</li>
+<li>《<a href="https://mp.weixin.qq.com/s/fQtAMf4BfJxdBPWDE5ygwg" target="_blank" rel="noopener">从微服务转为单体架构、成本降低 90%，亚马逊内部案例引发轰动</a>》</li>
+</ul>
+<p>看看这些标题就知道这些文章要的是流量而不是好好写篇文章。看到第二篇，你还真当 Prime Video 就是 Amazon 的全部么？然后，再看看这些文章后面的跟风评论，我觉得有 80%的人只看标题，而且是连原文都不看的。所以，我想我得写篇文章了……</p>
+<p><span id="more-22422"></span></p>
+<h4>原文解读</h4>
+<p>要认清这个问题首先是要认认真真读一读原文，Amazon Prime Video 技术团队的这篇文章并不难读，也没有太多的技术细节，但核心意思如下：</p>
+<p>1）<strong>这个系统是一个监控系统，用于监控数据千条用户的点播视频流</strong>。主要是监控整个视频流运作的质量和效果（比如：视频损坏或是音频不同步等问题），这个监控主要是处理视频帧，所以，他们有一个微服务主要是用来把视频拆分成帧，并临时存在 S3 上，就是下图中的 Media Conversion 服务。</p>
+<p>2）<strong>为了快速搭建系统，Prime Video团队使用了Serverless 架构，也就是著名的 AWS Lambda 和 AWS Step Functions</strong>。前置 Lambda 用来做用户请求的网关，Step Function 用来做监控（探测器），有问题后，就发 SNS 上，Step Function 从 S3 获取 Media Conversion 的数据，然后把运行结果再汇总给一个后置的 Lambda ，并存在 S3 上。</p>
+<p><img decoding="async" loading="lazy" class="aligncenter wp-image-22423 " src="/uploads/2023/05/prime.01.webp" alt="" width="624" height="496" srcset="" sizes="(max-width: 624px) 100vw, 624px"/></p>
+<p>整个架构看上去非常简单 ，一点也不复杂，而且使用了 Serverless 的架构，一点服务器的影子都看不见。<strong>实话实说，这样的开发不香吗？我觉得很香啊，方便快捷，完全不理那些无聊的基础设施，直接把代码转成服务，然后用 AWS 的 Lamda + Step Function + SNS + S3 分分钟就搭出一个有模有样的监控系统了，哪里不好了？！</strong></p>
+<p>但是他们遇到了一个比较大的问题，就是 AWS Step Function 的伸缩问题，从文章中我看到了两个问题（注意前方高能）：</p>
+<ol>
+<li>需要很多很多的并发的 AWS Step Function ，于是达到了帐户的 hard limit。</li>
+<li>AWS Step Function 按状态转换收费，所以，贵得受不了了。</li>
+</ol>
+<p>注意，这里有两个关键点：1）<strong>帐户对 Step Function 有限制</strong>，2）<strong>Step Function 太贵了用不起</strong>。</p>
+<p>然后，Prime Video 的团队开始解决问题，下面是解决的手段：</p>
+<p>1） 把 Media Conversion  和 Step Function 全部写在一个程序里，Media Conversion 跟 Step Function 里的东西通过内存通信，不再走S3了。结果汇总到一个线程中，然后写到 S3.</p>
+<p>2）把上面这个单体架构进行分布式部署，还是用之前的 AWS Lambda 来做入门调度。</p>
+<p>EC2 的水平扩展没有限制，而且你想买多少 CPU/MEM 的机器由你说了算，而这些视频转码，监控分析的功能感觉就不复杂，本来就应该写在一起，这么做不更香吗？当然更香，比前面的 Serverless 的确更香，因为如下的几个原因：</p>
+<ol>
+<li>不再受 Step Function 的限制了，技术在自己手里，有更大的自由度。</li>
+<li>没有昂贵的 Step Function 云成本的确变得更低了，如果你把 Lambda 换成 Nginx 或 Spring Gateway 或是我司的 <a href="https://github.com/megaease/easegress" target="_blank" rel="noopener">Easegress</a>，你把 S3 换成 MinIO，你把 SNS 换成 Kafka，你的成本 还能再低。</li>
+</ol>
+<h4>独立思考</h4>
+<p>好了，原文解读完了，你有自己的独立思考了吗？下面是我的独立思考，供你参考：</p>
+<p>1）<strong>AWS 的 Serverless 也好， 微服务也好，单体也好，在合适的场景也都很香</strong>。这就跟汽车一样，跑车，货车，越野车各有各的场景，你用跑车拉货，还是用货车泡妞都不是一个很好的决定。</p>
+<p>2）<strong>这篇文章中的这个例子中的业务太过简单了，本来就是一两个服务就可以干完的事。</strong>就是一个转码加分析的事，要分开的话，就两个微服务就好了（一个转码一个分析），做成流式的。如果不想分，合在一起也没问题了，这个粒度是微服务没毛病。微服务的划分有好些原则，我这里只罗列几个比较重要的原则：</p>
+<ul>
+<li><strong>边界上下文</strong>。微服务的粒度不能大于领域驱动里的 Bounded Context（具体是什么 大家自行 Google），也就是一个业务域。</li>
+<li><strong>单一职责，高内聚，低耦合</strong>。把因为相同原因变化的合在一起（内聚），把不同原因变化的分开（解耦）</li>
+<li><strong>事务和一致性</strong>。对于两个重度依赖的功能，需要完成一个事务和要保证强一致性的，最好不要拆开，要放在一起。</li>
+<li><strong>跟组织架构匹配</strong>。把同一个团队的东西放在一起，不同团队的分开。</li>
+</ul>
+<p>3）<strong>Prime Video 遇到的问题不是技术问题，而是 AWS  Step Function 处理能力不足，而且收费还很贵的问题</strong>。这个是 AWS 的产品问题，不是技术问题。或者说，这个是Prime Video滥用了Step Function的问题（本来这种大量的数据分析处理就不适合Step Function）。所以，大家不要用一个产品问题来得到微服务架构有问题的结论，这个没有因果关系。<strong>试问，如果 Step Funciton 可以无限扩展，性能也很好，而且白菜价，那么 Prime Video 团队还会有动力改成单体吗？他们不会反过来吹爆 Serverless 吗？</strong></p>
+<p>4）Prime Video 跟 AWS 是两个独立核算的公司，就像 Amazon 的电商和 AWS 一样，也是两个公司。Amazon 的电商和 AWS 对服务化或是微服务架构的理解和运维，我个人认为这个世界上再也找不到另外一家公司了，包括 Google 或 Microsoft。你有空可以看看本站以前的这篇文章《<a title="SteveY对Amazon和Google平台的吐槽" href="/articles/5701.html">Steve Yegg对Amazon和Google平台的吐槽</a>》你会了解的更多。</p>
+<p>5）<strong>Prime Video 这个案例本质上是“下云”，下了 AWS Serverless 的云</strong>。云上的成本就是高，一个是费用问题，另一个是被锁定的问题。Prime Video 团队应该很庆幸这个监控系统并不复杂，重写起来也很快，所以，可以很快使用一个更传统的“服务化”+“云计算”的分布式架构，不然，就得像 DHH 那样咬牙下云——《<a href="https://world.hey.com/dhh/why-we-re-leaving-the-cloud-654b47e0" target="_blank" rel="noopener">Why We’re Leaving the Cloud</a>》（他们的 SRE 的这篇博文 <a href="https://dev.37signals.com/our-cloud-spend-in-2022/" target="_blank" rel="noopener">Our Cloud Spend in 2022</a>说明了下云的困难和节约了多少成本）</p>
+<h4>后记</h4>
+<p>最后让我做个我自己的广告。我在过去几年的创业中，帮助了很多公司解决了这些 分布式，微服务，云原生以及云计算成本的问题，如果你也有类似问题。欢迎，跟我联系：<a href="/cdn-cgi/l/email-protection#87efe6e8e2ebc7efe8f3eae6eeeba9e4e8ea"><span class="__cf_email__" data-cfemail="7c141d1319103c141308111d1510521f1311">[email protected]</span></a></p>
+<p>另外，我们今年发布了一个平台 MegaEase Cloud，<strong> 就是想让用户在不失去云计算体验的同时，通过自建高可用基础架构的方式来获得更低的成本（至少降 50%的云计算成本）。</strong>目前可以降低成本的方式：</p>
+<ol>
+<li>基础软件：通过开源软件自建，</li>
+<li>内容分发：MinIO + Cloudflare 的免费 CDN，</li>
+<li>马上准备发布的直接与底层IDC合作的廉价GPU计算资源…</li>
+</ol>
+<p><strong>欢迎大家试用。</strong></p>
+<p><strong>如何访问</strong></p>
+<ul>
+<li>中国区:   <a href="https://cloud.megaease.cn" target="_blank" rel="noopener">https://cloud.megaease.cn </a></li>
+<li>国际区：<a href="https://cloud.megaease.com" target="_blank" rel="noopener">https://cloud.megaease.com</a></li>
+</ul>
+<p><strong>注：这两个区完全独立，帐号不互通。因为网络的不可抗力，千万不要跨区使用。</strong></p>
+<p><strong>产品演示</strong></p>
+<ul>
+<li><a href="https://www.bilibili.com/video/BV17v4y1R7mA/" target="_blank" rel="noopener">https://www.bilibili.com/video/BV17v4y1R7mA/</a></li>
+</ul>
+<p><strong>介绍文章</strong></p>
+<ul>
+<li><a href="https://megaease.cn/zh/blog/2023/02/15/welcome-to-megaease-cloud/" target="_blank" rel="noopener">欢迎使用 MegaEase Cloud </a></li>
+<li><a href="https://megaease.cn/zh/blog/2023/04/06/megaease-cloud-2023.03-significant-update/" target="_blank" rel="noopener">2023 年 03 月重大更新</a></li>
+</ul>
+<p> </p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-22422-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">业界新闻</a>, <a href="javascript:void(0)" rel="category tag">杂项资源</a>, <a href="javascript:void(0)" rel="category tag">系统架构</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">AWS</a>, <a href="javascript:void(0)" rel="tag">Lambda</a>, <a href="javascript:void(0)" rel="tag">Microservice</a>, <a href="javascript:void(0)" rel="tag">Serverless</a>, <a href="javascript:void(0)" rel="tag">Step Function</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>是微服务架构不香还是云不香？</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-2371224" class="comment even thread-even depth-1">
+<article id="div-comment-2371224" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/64f2aff021ad2833a7b98920f51df7da?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://www.catscarlet.com" class="url" rel="ugc external nofollow">石樱灯笼</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371224"><time datetime="2023-05-09T13:06:01+08:00">2023年05月09日 13:06</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>一个亚马逊子业务赚另一个亚马逊子业务的钱，最后赚到掏不起这个钱。<br/>
+再说这个单体只不过是把几个微服务绑到一起了而已，其本质和微服务一样还是在动态化利用弹性云的硬件性能，只不过这回的弹性云是自主维护的EC2，而不是被AWS已经限制手脚的微服务业务。<br/>
+成本有限时如果 EC2 更有价格优势那肯定 EC2 啊，自己搭的服务环境才是最香的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371229" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-2371229" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5e93481bb93b449d245275aab32989a1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5e93481bb93b449d245275aab32989a1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Addf</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371229"><time datetime="2023-05-11T14:49:08+08:00">2023年05月11日 14:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>“用于监控数据千条用户的点播视频流”，这里的“千条用户”我没看懂，是typo还是什么特别的概念？</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371230" class="comment even thread-even depth-1">
+<article id="div-comment-2371230" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b53952923b906ef206bf6064678e5a60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b53952923b906ef206bf6064678e5a60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://7tec.cn" class="url" rel="ugc external nofollow">贷款保险信用卡</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371230"><time datetime="2023-05-12T23:40:02+08:00">2023年05月12日 23:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>成本高就自己搭建</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371236" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-2371236" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9fa0d13e389b0a8203e79af87011cdbb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9fa0d13e389b0a8203e79af87011cdbb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://github.com/shengzhi" class="url" rel="ugc external nofollow">Shengzhi</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371236"><time datetime="2023-05-15T11:40:24+08:00">2023年05月15日 11:40</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>突闻噩耗，我希望不是真的，希望皓哥能回复我消息</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2371243" class="comment even depth-2">
+<article id="div-comment-2371243" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8d507a83d4d5ce65a4216a684ead5f4f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8d507a83d4d5ce65a4216a684ead5f4f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Panos Zhu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371243"><time datetime="2023-05-15T11:49:44+08:00">2023年05月15日 11:49</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>是真的，好突然，耗子哥还很年轻，好遗憾</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-2371240" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371240" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e9c34fa9c59ffb27d5509c9b62c83706?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e9c34fa9c59ffb27d5509c9b62c83706?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">davising</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371240"><time datetime="2023-05-15T11:45:40+08:00">2023年05月15日 11:45</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>皓哥，关注你很久了，从你的博客里学到了很多知识，太突然了。R.I.P.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371241" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371241" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2215b8d4896c83973fb3596fd63644c1?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2215b8d4896c83973fb3596fd63644c1?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">rip</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371241"><time datetime="2023-05-15T11:47:12+08:00">2023年05月15日 11:47</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>你是一位非常优秀且乐于分享的技术达人，愿天堂没有病痛，RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371242" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371242" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/51b5e713d6b3dac1e2c98b15e4c8855b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/51b5e713d6b3dac1e2c98b15e4c8855b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">一位读者</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371242"><time datetime="2023-05-15T11:48:09+08:00">2023年05月15日 11:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371245" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371245" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a914ef48964a50213b8464cb1c715188?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a914ef48964a50213b8464cb1c715188?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">null</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371245"><time datetime="2023-05-15T11:50:26+08:00">2023年05月15日 11:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371246" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371246" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/40492ed8d69961b4be783ae4da54febd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/40492ed8d69961b4be783ae4da54febd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">冰糕不冰</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371246"><time datetime="2023-05-15T11:50:33+08:00">2023年05月15日 11:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>突闻噩耗，希望不是真的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371249" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371249" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d92eb488ab0e4579e8941b260e04e47f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d92eb488ab0e4579e8941b260e04e47f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">doslin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371249"><time datetime="2023-05-15T11:53:44+08:00">2023年05月15日 11:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371251" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371251" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4cdd6b6807b7ae082892b66770357e9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4cdd6b6807b7ae082892b66770357e9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">WANG GUIYANG</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371251"><time datetime="2023-05-15T11:53:57+08:00">2023年05月15日 11:53</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371256" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371256" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8fd1ae04856fefc91d90f64cec3a6eb6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8fd1ae04856fefc91d90f64cec3a6eb6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">李四贼菜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371256"><time datetime="2023-05-15T11:58:32+08:00">2023年05月15日 11:58</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>希望推特是假的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371257" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371257" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/fa43550aca1cd6bac2729b7b761c3d0b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/fa43550aca1cd6bac2729b7b761c3d0b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">vincentfon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371257"><time datetime="2023-05-15T12:01:29+08:00">2023年05月15日 12:01</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371258" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371258" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/5156457e91bfbf69acf4d470ffe823d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/5156457e91bfbf69acf4d470ffe823d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">鹧鸪菜</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371258"><time datetime="2023-05-15T12:02:29+08:00">2023年05月15日 12:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>突闻噩耗，在皓哥这学到很多，感谢。R.I.P.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371259" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371259" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/12f195f2507605f58b3d5081e850560e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/12f195f2507605f58b3d5081e850560e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hh</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371259"><time datetime="2023-05-15T12:02:48+08:00">2023年05月15日 12:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371262" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371262" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f4c3d801d2b9b06501576a24cac56976?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f4c3d801d2b9b06501576a24cac56976?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">AaronSteve</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371262"><time datetime="2023-05-15T12:07:04+08:00">2023年05月15日 12:07</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>突闻噩耗，希望不是真的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371266" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371266" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2857392908705b0434d561b7b3e7ca3d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2857392908705b0434d561b7b3e7ca3d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">xiaoningyb</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371266"><time datetime="2023-05-15T12:12:14+08:00">2023年05月15日 12:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371268" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371268" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b53b26bcc58f20afda45f8938886b56f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b53b26bcc58f20afda45f8938886b56f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">chengdujin</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371268"><time datetime="2023-05-15T12:13:10+08:00">2023年05月15日 12:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP 文章还没读 。。。。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371272" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371272" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b33ffc7c00b5411e027f947d86d92eb?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b33ffc7c00b5411e027f947d86d92eb?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">西柚</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371272"><time datetime="2023-05-15T12:22:33+08:00">2023年05月15日 12:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>期望消息是假的</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371273" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371273" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2172e97d281a233c963100a51f7d99ab?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2172e97d281a233c963100a51f7d99ab?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">goosman.lei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371273"><time datetime="2023-05-15T12:22:44+08:00">2023年05月15日 12:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371276" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371276" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/799141e67871a55d6a5952a459eb64c7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/799141e67871a55d6a5952a459eb64c7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">jarvis</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371276"><time datetime="2023-05-15T12:25:57+08:00">2023年05月15日 12:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP…………………………………..</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371282" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371282" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2a1fecec8e79ab41a5cbce81b5407dee?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2a1fecec8e79ab41a5cbce81b5407dee?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sunnysab</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371282"><time datetime="2023-05-15T12:32:32+08:00">2023年05月15日 12:32</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>希望不是真的。。愿您安好</p>
+<p>谢谢您这些年来的分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371285" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371285" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f1647ca0aa56cc67155d711ef269bdd6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f1647ca0aa56cc67155d711ef269bdd6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://www.iluo12.com" class="url" rel="ugc external nofollow">王旭</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371285"><time datetime="2023-05-15T12:34:21+08:00">2023年05月15日 12:34</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>难以置信，难以相信愿您安息。R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371287" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371287" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d52ef45a4612cd5b9e8ebd05ea47eb02?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d52ef45a4612cd5b9e8ebd05ea47eb02?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Desmond</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371287"><time datetime="2023-05-15T12:37:33+08:00">2023年05月15日 12:37</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371289" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371289" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/846e05fb5fd97bcb6a3d514cca58e9c9?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/846e05fb5fd97bcb6a3d514cca58e9c9?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="https://shgopher.github.io" class="url" rel="ugc external nofollow">科科人神</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371289"><time datetime="2023-05-15T12:39:17+08:00">2023年05月15日 12:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P 耗子叔，一路走好</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371293" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371293" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4727cd4fcb5408c9bfbc6b852e12ad7b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4727cd4fcb5408c9bfbc6b852e12ad7b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">四水</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371293"><time datetime="2023-05-15T12:46:08+08:00">2023年05月15日 12:46</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371294" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371294" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e75943b6ee1dbcac3549b584119b1c9b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e75943b6ee1dbcac3549b584119b1c9b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Alain</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371294"><time datetime="2023-05-15T12:48:23+08:00">2023年05月15日 12:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371297" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371297" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/a26d1f77e1661f83a2647d5a36a4c16c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/a26d1f77e1661f83a2647d5a36a4c16c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Mu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371297"><time datetime="2023-05-15T12:50:43+08:00">2023年05月15日 12:50</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371298" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371298" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/87a2fb6c36d453ada10c870417e82218?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/87a2fb6c36d453ada10c870417e82218?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">风间雨</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371298"><time datetime="2023-05-15T12:52:23+08:00">2023年05月15日 12:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P 前几天还刚从feedly上看了更新的文章……</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371299" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371299" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/bea534291e039984e1177764cfee5901?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/bea534291e039984e1177764cfee5901?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">typercode</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371299"><time datetime="2023-05-15T12:52:31+08:00">2023年05月15日 12:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371302" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371302" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7b28b2355c3972b7a4bb926aa0519875?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7b28b2355c3972b7a4bb926aa0519875?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Carbon Silicon</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371302"><time datetime="2023-05-15T12:57:32+08:00">2023年05月15日 12:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371308" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371308" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e974c76531699abf40fe2e8ffebb8b13?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e974c76531699abf40fe2e8ffebb8b13?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">假码农一枚</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371308"><time datetime="2023-05-15T13:14:54+08:00">2023年05月15日 13:14</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>r.i.p.从15还是16年开始看您的文章<br/>
+突然看见消息，真的是噩耗</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371309" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371309" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c81922a457a7a139b4ae9b2212e56d9a?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c81922a457a7a139b4ae9b2212e56d9a?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">张小柒</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371309"><time datetime="2023-05-15T13:15:08+08:00">2023年05月15日 13:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.T.P.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371310" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371310" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dcb0ae356b7d2a031309f36c63f640fd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dcb0ae356b7d2a031309f36c63f640fd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://1" class="url" rel="ugc external nofollow">Yun</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371310"><time datetime="2023-05-15T13:15:15+08:00">2023年05月15日 13:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371311" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371311" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/df566c6a0bf1d837e9e331f93931dc1d?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/df566c6a0bf1d837e9e331f93931dc1d?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">gyxian9</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371311"><time datetime="2023-05-15T13:16:22+08:00">2023年05月15日 13:16</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371312" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371312" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/f661b79bf3be9a583c47751cf0acbdb3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/f661b79bf3be9a583c47751cf0acbdb3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">深巷里花</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371312"><time datetime="2023-05-15T13:21:37+08:00">2023年05月15日 13:21</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>没想到刚准备来看你的文章就得知了这个消息…RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371314" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371314" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ac65eb32898babed527de2b0d96a6a71?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ac65eb32898babed527de2b0d96a6a71?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">kevinzhu</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371314"><time datetime="2023-05-15T13:25:27+08:00">2023年05月15日 13:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>RIP</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371315" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371315" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b7c1a012f857092dc51929af9c7cfa76?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b7c1a012f857092dc51929af9c7cfa76?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Yuxiang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371315"><time datetime="2023-05-15T13:25:50+08:00">2023年05月15日 13:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>感谢你的所有分享！你如灯塔般指引大家走向强大！～R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371317" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371317" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/ed358d89183652aa978fd4939842acbd?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/ed358d89183652aa978fd4939842acbd?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">梦影</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371317"><time datetime="2023-05-15T13:27:21+08:00">2023年05月15日 13:27</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>最近都没看大佬的文章，太突然了 R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371319" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371319" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/98e7add54294bb0be8b46b7749746274?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/98e7add54294bb0be8b46b7749746274?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">deathearth</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371319"><time datetime="2023-05-15T13:28:52+08:00">2023年05月15日 13:28</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.T.P.</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371322" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371322" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e0235881e778a3fdda25b8d79d72fbd4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e0235881e778a3fdda25b8d79d72fbd4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Loading</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371322"><time datetime="2023-05-15T13:30:44+08:00">2023年05月15日 13:30</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>从大学的时候就看你的博客，感谢你的内容给了我很多帮助，R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371326" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371326" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/50a7feb5782c80b5efb0818dffb3e413?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/50a7feb5782c80b5efb0818dffb3e413?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zer0fire</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371326"><time datetime="2023-05-15T13:38:47+08:00">2023年05月15日 13:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371328" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371328" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7734d6d46f88d6a2e238f53990b813d5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7734d6d46f88d6a2e238f53990b813d5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">daniel</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371328"><time datetime="2023-05-15T13:39:53+08:00">2023年05月15日 13:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371332" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371332" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/66e1c8b14e59c64ac7051804f4dcf208?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/66e1c8b14e59c64ac7051804f4dcf208?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">杏十二</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371332"><time datetime="2023-05-15T13:42:52+08:00">2023年05月15日 13:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R·I·P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371336" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371336" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/8910ea8809ef3e62eb434aec67525da5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/8910ea8809ef3e62eb434aec67525da5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">obiwang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371336"><time datetime="2023-05-15T13:48:23+08:00">2023年05月15日 13:48</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371338" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371338" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c123e6d039a36cdf46e8558b90f5a87b?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c123e6d039a36cdf46e8558b90f5a87b?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Lyang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371338"><time datetime="2023-05-15T13:56:31+08:00">2023年05月15日 13:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+<p>谢谢耗子叔这么多年的分享</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371339" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2371339" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6b19990bf1afcfe53938d58d1721812e?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6b19990bf1afcfe53938d58d1721812e?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Raymond</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371339"><time datetime="2023-05-15T13:56:43+08:00">2023年05月15日 13:56</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371342" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-2371342" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9a2ef2976e1224c7638c5060e556d96c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9a2ef2976e1224c7638c5060e556d96c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jack Pan</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/22422.html#comment-2371342"><time datetime="2023-05-15T14:02:47+08:00">2023年05月15日 14:02</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>R.I.P 我会继承酷壳精神的！！！</p>
+</div>
+ </article>
+</li>
+</ol>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>

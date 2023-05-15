@@ -1,0 +1,736 @@
+<!DOCTYPE html><!--[if IE 8]>
+<html id="ie8" dir="ltr" lang="zh-CN"
+	prefix="og: https://ogp.me/ns#" >
+<![endif]--><!--[if !(IE 8) ]><!--><html dir="ltr" lang="zh-CN" prefix="og: https://ogp.me/ns#"><!--<![endif]--><head><meta charset="UTF-8"/><title>Linus：利用二级指针删除单向链表 | 酷 壳 - CoolShell</title><link rel="stylesheet" type="text/css" href="/assets/all.min.css"/><link rel="shortcut icon" href="/assets/favicon.png"/></head>
+<body class="post-template-default single single-post postid-8990 single-format-standard group-blog">
+
+<div id="page" class="hfeed site">
+
+<div class="container">
+<div class="row">
+
+</div>
+</div>
+<div id="content" class="site-content">
+<div class="container">
+<div class="row">
+<div id="primary" class="content-area  col-md-12" style="margin-top: 40px;">
+<main id="main" role="main">
+<article id="post-8990" class="post-content post-8990 post type-post status-publish format-standard hentry category-cplusplus category-unixlinux tag-c tag-coding tag-kernel tag-linus-torvalds tag-linux">
+<header class="entry-header">
+<span class="screen-reader-text">Linus：利用二级指针删除单向链表</span>
+<h1 class="entry-title">Linus：利用二级指针删除单向链表</h1>
+<div class="entry-meta">
+<h5 class="entry-date"><i class="fa fa-calendar-o"></i> <a href="/articles/8990.html" title="08:33" rel="bookmark"><time class="entry-date" datetime="2013-02-04T08:33:20+08:00" pubdate="">2013年02月04日 </time></a><span class="byline"><span class="sep"></span><i class="fa fa-user"></i>
+<span class="author vcard"><a class="url fn n" href="/articles/author/full_of_bull" title="View all posts by Leo" rel="author">Leo</a></span></span> <i class="fa fa-comments-o"></i><span class="screen-reader-text">评论 </span> <a href="/articles/8990.html#comments" class="comments-link">194 条评论</a> <i class="fa fa-users" style="margin-left:10px;"></i> 114,037 人阅读</h5>
+</div>
+</header>
+<div class="entry-content">
+<p><strong>感谢网友full_of_bull投递此文</strong>（注：此文最初发表在这个<a href="http://www.oldlinux.org/oldlinux/viewthread.php?tid=14575&amp;extra=page%3D1" target="_blank">这里</a>，我对原文后半段修改了许多，并加入了插图）</p>
+<p>Linus大婶在<a href="http://meta.slashdot.org/story/12/10/11/0030249/linus-torvalds-answers-your-questions" target="_blank">slashdot</a>上回答一些编程爱好者的提问，其中一个人问他什么样的代码是他所喜好的，大婶表述了自己一些观点之后，举了一个指针的例子，解释了什么才是<strong>core low-level coding</strong>。</p>
+<p>下面是Linus的教学原文及翻译——</p>
+<p style="padding-left: 30px;">“At the opposite end of the spectrum, I actually wish more people understood the really core low-level kind of coding. Not big, complex stuff like the lockless name lookup, but simply good use of pointers-to-pointers etc. For example, I’ve seen too many people who delete a singly-linked list entry by keeping track of the “prev” entry, and then to delete the entry, doing something like。（在这段话的最后，我实际上希望更多的人了解什么是真正的核心底层代码。这并不像无锁文件名查询（注：可能是git源码里的设计）那样庞大、复杂，只是仅仅像诸如使用二级指针那样简单的技术。例如，我见过很多人在删除一个单项链表的时候，维护了一个”prev”表项指针，然后删除当前表项，就像这样）”</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">if (prev)
+    prev-&gt;next = entry-&gt;next;
+else
+    list_head = entry-&gt;next;</pre>
+<p style="padding-left: 30px;">and whenever I see code like that, I just go “This person doesn’t understand pointers”. And it’s sadly quite common.（当我看到这样的代码时，我就会想“这个人不了解指针”。令人难过的是这太常见了。）</p>
+<p><span id="more-8990"></span></p>
+<p style="padding-left: 30px;">People who understand pointers just use a “pointer to the entry pointer”, and initialize that with the address of the list_head. And then as they traverse the list, they can remove the entry without using any conditionals, by just doing a “*pp = entry-&gt;next”. （了解指针的人会使用链表头的地址来初始化一个“指向节点指针的指针”。当遍历链表的时候，可以不用任何条件判断（注：指prev是否为链表头）就能移除某个节点，只要写)</p>
+<p><code data-enlighter-language="c" class="EnlighterJSRAW">*pp = entry-&gt;next</code></p>
+<p style="padding-left: 30px;">So there’s lots of pride in doing the small details right. It may not be big and important code, but I do like seeing code where people really thought about the details, and clearly also were thinking about the compiler being able to generate efficient code (rather than hoping that the compiler is so smart that it can make efficient code *despite* the state of the original source code). （纠正细节是令人自豪的事。也许这段代码并非庞大和重要，<strong>但我喜欢看那些注重代码细节的人写的代码，也就是清楚地了解如何才能编译出有效代码</strong>（而不是寄望于聪明的编译器来产生有效代码，即使是那些原始的汇编代码））。</p>
+<p>Linus举了一个单向链表的例子，但给出的代码太短了，一般的人很难搞明白这两个代码后面的含义。正好，有个编程爱好者阅读了这段话，并给出了一个<a href="http://wordaligned.org/articles/two-star-programming" target="_blank">比较完整的代码</a>。他的话我就不翻译了，下面给出代码说明。</p>
+<p>如果我们需要写一个remove_if(link*, rm_cond_func*)的函数，也就是传入一个单向链表，和一个自定义的是否删除的函数，然后返回处理后的链接。</p>
+<p>这个代码不难，基本上所有的教科书都会提供下面的代码示例，而这种写法也是大公司的面试题<strong>标准</strong>模板：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">typedef struct node
+{
+    struct node * next;
+    ....
+} node;
+
+typedef bool (* remove_fn)(node const * v);
+
+// Remove all nodes from the supplied list for which the
+// supplied remove function returns true.
+// Returns the new head of the list.
+node * remove_if(node * head, remove_fn rm)
+{
+    for (node * prev = NULL, * curr = head; curr != NULL; )
+    {
+        node * const next = curr-&gt;next;
+        if (rm(curr))
+        {
+            if (prev)
+                prev-&gt;next = next;
+            else
+                head = next;
+            free(curr);
+        }
+        else
+            prev = curr;
+        curr = next;
+    }
+    return head;
+}</pre>
+<p>这里remove_fn由调用查提供的一个是否删除当前实体结点的函数指针，其会判断删除条件是否成立。这段代码维护了两个节点指针prev和curr，<strong>标准的教科书写法——删除当前结点时，需要一个previous的指针，并且还要这里还需要做一个边界条件的判断——curr是否为链表头</strong>。于是，要删除一个节点（不是表头），只要将前一个节点的next指向当前节点的next指向的对象，即下一个节点（即：prev-&gt;next = curr-&gt;next），然后释放当前节点。</p>
+<p>但在Linus看来，这是不懂指针的人的做法。那么，什么是core low-level coding呢？那就是<strong>有效地利用二级指针，将其作为管理和操作链表的首要选项。</strong>代码如下：</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW" data-enlighter-highlight="5,8,12">void remove_if(node ** head, remove_fn rm)
+{
+    for (node** curr = head; *curr; )
+    {
+        node * entry = *curr;
+        if (rm(entry))
+        {
+            *curr = entry-&gt;next;
+            free(entry);
+        }
+        else
+            curr = &amp;entry-&gt;next;
+    }
+}</pre>
+<p>同上一段代码有何改进呢？我们看到：<strong>不需要prev指针了，也不需要再去判断是否为链表头了，但是，<span style="color: #cc0000;">curr变成了一个指向指针的指针</span></strong>。这正是这段程序的精妙之处。（注意，我所highlight的那三行代码）</p>
+<p>让我们来人肉跑一下这个代码，对于——</p>
+<ul>
+<li><strong>删除节点是表头</strong>的情况，输入参数中传入head的二级指针，在for循环里将其初始化curr，然后entry就是*head(*curr)，我们马上删除它，那么第8行就等效于*head = (*head)-&gt;next，就是删除表头的实现。</li>
+</ul>
+<ul>
+<li><strong>删除节点不是表头</strong>的情况，对于上面的代码，我们可以看到——</li>
+</ul>
+<p style="padding-left: 30px;"><strong>1）<strong>（第12行）</strong>如果不删除当前结点 —— curr保存的是当前结点next指针的地址</strong>。</p>
+<p style="padding-left: 30px;"><strong>2）（第5行） entry 保存了 *curr <strong>—— </strong>这意味着在下一次循环：entry就是prev-&gt;next指针所指向的内存。</strong></p>
+<p style="padding-left: 30px;"><strong></strong><strong>3）（第8行）删除结点：*curr = entry-&gt;next; —— 于是：prev-&gt;next 指向了 entry -&gt; next;</strong></p>
+<p>是不是很巧妙？我们可以只用一个二级指针来操作链表，对所有节点都一样。</p>
+<p>如果你对上面的代码和描述理解上有困难的话，你可以看看下图的示意：</p>
+<p><img decoding="async" class="aligncenter size-full wp-image-9018" alt="" src="/uploads/2013/02/linus_pointer_to_pointer.jpg" width="479" height="470" srcset="" sizes="(max-width: 479px) 100vw, 479px"/></p>
+<p>（全文完）</p>
+<div style="margin-top: 15px; font-size: 16px;color: #cc0000;">
+<p align="center"><strong>（转载本站文章请注明作者和出处 <a href="/">酷 壳 – CoolShell</a> ，请勿用于任何商业用途）</strong></p>
+</div>
+
+<div id="post-ratings-8990-loading" class="post-ratings-loading"><img src="https://coolshell.cn/wp-content/plugins/wp-postratings/images/loading.gif" width="16" height="16" class="post-ratings-image"/>Loading...</div>
+</div>
+<footer class="entry-footer">
+<hr/><div class="row"><div class="col-md-6 cattegories"><span class="cat-links"><i class="fa fa-folder-open"></i>
+<a href="javascript:void(0)" rel="category tag">C/C++语言</a>, <a href="javascript:void(0)" rel="category tag">Unix/Linux</a></span></div><div class="col-md-6 tags"><span class="tags-links"><i class="fa fa-tags"></i> <a href="javascript:void(0)" rel="tag">C++</a>, <a href="javascript:void(0)" rel="tag">Coding</a>, <a href="javascript:void(0)" rel="tag">Kernel</a>, <a href="javascript:void(0)" rel="tag">Linus Torvalds</a>, <a href="javascript:void(0)" rel="tag">Linux</a></span></div></div> </footer>
+</article>
+
+<div class="fixed"></div> 
+</main>
+
+<div class="post-comments">
+<div id="comments" class="comments-area">
+<h2 class="comments-title">
+《<span>Linus：利用二级指针删除单向链表</span>》的相关评论 </h2>
+<ol class="comment-list">
+<li id="comment-1087943" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://myitlife.net/%e4%bd%bf%e7%94%a8%e4%ba%8c%e7%ba%a7%e6%8c%87%e9%92%88%e6%93%8d%e4%bd%9c%e5%8d%95%e9%93%be%e8%a1%a8/" class="url" rel="ugc external nofollow">使用二级指针操作单链表</a> </div>
+</li>
+<li id="comment-1104218" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1104218" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/394d9842ac8c117346cb61e073104ac8?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/394d9842ac8c117346cb61e073104ac8?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1104218"><time datetime="2013-12-25T12:35:55+08:00">2013年12月25日 12:35</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>curr = &amp;entry-&gt;next; 要是写成 &amp;(*curr)-&gt;next; 可能更加合理直观一点。<br/>
+最后的图片，如果补充强调一下蓝色的内存区域可能是节点内next 字段也不错。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1108582" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://hedengcheng.com/?p=828" class="url" rel="ugc external nofollow">2013年个人微博推荐技术资料汇总 | 何登成的技术博客</a> </div>
+</li>
+<li id="comment-1108667" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1108667" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4171bebffeea2fba5a6f4e7b16bc917c?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4171bebffeea2fba5a6f4e7b16bc917c?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://oceanbase.org.cn" class="url" rel="ugc external nofollow">郁白</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1108667"><time datetime="2013-12-26T17:19:59+08:00">2013年12月26日 17:19</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这代码可读性不好，使用一个匿名head结点不是更好吗</p>
+</div>
+ </article>
+</li>
+<li id="comment-1140676" class="comment even thread-even depth-1">
+<article id="div-comment-1140676" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/35c2e2c9d27bc49e9b0fc28c15675fb4?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/35c2e2c9d27bc49e9b0fc28c15675fb4?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://saigut.com/" class="url" rel="ugc external nofollow">Saigut</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1140676"><time datetime="2014-01-04T13:23:22+08:00">2014年01月04日 13:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>删除节点时的格式：<br/>
+前一个节点的next指针 = 下一个节点的地址<br/>
+“前一个节点的next指针”该如何表示？人们很习惯的想到：<br/>
+PrePtr-＞next<br/>
+不过当被删除的节点是第一个的时候，就不能这样用了，因为没有前一个节点，只能这样：<br/>
+head<br/>
+所以要判断一下应该用哪个。</p>
+<p>但是 PrePtr-＞next和head的作用几乎一样啊，都是指向下一个节点，有什么办法统一表示吗？<br/>
+可以，它们的类型是一样的，可以用一个变量比如pp保存它们的地址。<br/>
+当pp保存的是 PrePtr-＞next 的地址的时候，它就可以代表 PrePtr-＞next，当pp保存的是head的地址的时候它就可以代表head。<br/>
+怎么代表？当然就是*pp。<br/>
+这样用*pp就可以统一代表“ 前一个节点的next指针 ” ，而且改变*pp所代表的指针也是很容易的（只要改pp所保存的地址就可以了）。</p>
+<p>另外一楼 @Leo 所举的例子是不对的。实际上从“第三次解”那里就没有意义了。如果dummy的值是头指针的地址的话，那么*dummy代表头指针，它的值也就是第一个节点的地址。而**dummy代表的是第一个节点，它的类型不是一个指针。因而*(*(*dummy))就没有意义了。多级（大于三级）的指针在c语言中用处应该是不大的。<br/>
+除非有一个返回值是地址的节点类型才有可能满足你所说的，不过这种类型太复杂吧，c看起来不适合做这个。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1177672" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1177672" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/6cbbe4b4509425fc60c5331c10707754?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/6cbbe4b4509425fc60c5331c10707754?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">MuteCoder</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1177672"><time datetime="2014-01-14T10:22:32+08:00">2014年01月14日 10:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-326334"><p>
+<strong><a href="#comment-326334" rel="nofollow">Leo</a> :</strong><br/>
+换言之，如果一个单向链表，next是第一个字段，我们可以用一个二级指针dummy引用一条链表上的所有节点。<br/>
+struct node **dummy = &amp;head-&gt;next;<br/>
+一次解引用*dummy指向头结点head<br/>
+二次解引用**dummy指向head下一个节点<br/>
+三次解引用*(*(*dummy))指向第三个节点<br/>
+以此类推……<br/>
+如果我们需要找到从head开始的第N个节点，那么对dummy进行N次解引用即可，当然现实工程中一般不会用到这么tricky的语法糖，但使用一个变量同时引用相邻三个节点是很有用的;-)。
+</p></blockquote>
+<p>只是钻了内存的空而已</p>
+</div>
+ </article>
+</li>
+<li id="comment-1267897" class="comment byuser comment-author-jkand1 even thread-even depth-1">
+<article id="div-comment-1267897" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/7320a186d326c60aceb19d51bb4f2628?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">shady</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1267897"><time datetime="2014-02-12T11:22:49+08:00">2014年02月12日 11:22</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这么经典的好文在酷壳上又温习一遍，最后的图解很到位，谢谢 Leo~</p>
+</div>
+ </article>
+</li>
+<li id="comment-1275089" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1275089" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/3ccde690c8ab65ca98bcd6573037d765?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/3ccde690c8ab65ca98bcd6573037d765?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">andrew_show</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1275089"><time datetime="2014-02-14T13:39:03+08:00">2014年02月14日 13:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>linux中的list_head和windows中的LIST_ENTRY都是双向链表的实现，两者的实现基本是等同的，和这里的单链表一样，也使用了一个dummy的头来指示链表的头尾。当dummy的头的prev/next指向dummy自身的时候，链表为空。利用dummy的头，可以避免一些不必要的判断，使代码变得精简。<br/>
+使用container_of/CONTAINING_RECORD宏可以从list_head/LIST_ENTRY指针反推包含节点的数据结构。<br/>
+这种实现方式简洁，高效，个人认为这种实现方式可以说是双向链表的极致了。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1433170" class="comment even thread-even depth-1">
+<article id="div-comment-1433170" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/22fcdbd191d02ac912253a685f4fe0f5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/22fcdbd191d02ac912253a685f4fe0f5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">骚人墨客</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1433170"><time datetime="2014-04-18T19:43:17+08:00">2014年04月18日 19:43</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>看个这段代码，明白了，多谢！<a href="#comment-327003" rel="nofollow">@fox的爱智慧 </a></p>
+</div>
+ </article>
+</li>
+<li id="comment-1481196" class="pingback odd alt thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://tomsawyer.me/?p=6" class="url" rel="ugc external nofollow">次级指针的灵活使用 | tomsawyer</a> </div>
+</li>
+<li id="comment-1484572" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.kryptosx.info/archives/286.html" class="url" rel="ugc external nofollow">利用二级指针删除单向链表——笔记 | KryptosX 实验室</a> </div>
+</li>
+<li id="comment-1507763" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1507763" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/e90f07ee91dc815f2c3bf0550c0ae1e5?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/e90f07ee91dc815f2c3bf0550c0ae1e5?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">hong1991</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1507763"><time datetime="2014-08-05T13:29:27+08:00">2014年08月05日 13:29</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-285864" rel="nofollow">@Neuron Teckid </a> 他们还可能会因为看不懂你的代码要求你写得和他们一样。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1569877" class="comment even thread-even depth-1">
+<article id="div-comment-1569877" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d1c183de721e8f2cadbb924f36d84d38?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d1c183de721e8f2cadbb924f36d84d38?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nano</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1569877"><time datetime="2014-10-13T01:12:39+08:00">2014年10月13日 01:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>图画错了，curr是node的二重指针，所以通过两个“箭头”指向以后就应该指向一个node实体，蓝色方块是多余的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1569892" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1569892" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/d1c183de721e8f2cadbb924f36d84d38?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/d1c183de721e8f2cadbb924f36d84d38?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nano</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1569892"><time datetime="2014-10-13T01:33:18+08:00">2014年10月13日 01:33</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1569877"><p>
+<strong><a href="#comment-1569877" rel="nofollow">nano</a> :</strong><br/>
+图画错了，curr是node的二重指针，所以通过两个“箭头”指向以后就应该指向一个node实体，蓝色方块是多余的。
+</p></blockquote>
+<p>就是这个错误让我看了半天看不懂，我都要怀疑自己懂不懂指针了T_T</p>
+</div>
+ </article>
+</li>
+<li id="comment-1638307" class="pingback even thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.xdhcn.com/?p=1034" class="url" rel="ugc external nofollow">Linus：为何对象引用计数必须是原子的 | 星达红</a> </div>
+</li>
+<li id="comment-1640337" class="comment odd alt thread-odd thread-alt depth-1">
+<article id="div-comment-1640337" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/43d2fa69c79aabad523c813fb3b0c559?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/43d2fa69c79aabad523c813fb3b0c559?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zxcbryanfury</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1640337"><time datetime="2015-01-04T23:15:11+08:00">2015年01月04日 23:15</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>我觉得理解的关键在于，在C++中，变量名的意义是拷贝一个值。之前的常见做法，cur = head-&gt;next，仅仅是把指针head-&gt;next的值copy给了指针cur，使得cur可以访问链表的下一个节点；而声明为二级指针的cur，*cur不是head-&gt;next的copy值，它“就是”head-&gt;next这个变量名的别名，它获得的是head-&gt;next这个变量的读写权</p>
+</div>
+ </article>
+</li>
+<li id="comment-1659449" class="comment even thread-even depth-1">
+<article id="div-comment-1659449" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4f59ac3d1f3d02f4c148dc1d957e9b60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4f59ac3d1f3d02f4c148dc1d957e9b60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">liaogang</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1659449"><time datetime="2015-02-11T14:39:26+08:00">2015年02月11日 14:39</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>分段处理:</p>
+<p>ListNode *removeIf(ListNode *head,remove_fn rm)<br/>
+{<br/>
+/// find new head.<br/>
+for ( ;head &amp;&amp; rm (head); head=head-&gt;next)<br/>
+{}</p>
+<p> /// others.<br/>
+for ( ListNode *prev = head , *curr = head-&gt;next ; curr ; curr = curr-&gt;next )<br/>
+{<br/>
+if ( rm(curr))<br/>
+prev-&gt;next = curr-&gt;next;<br/>
+}</p>
+<p> return head;<br/>
+}</p>
+</div>
+ </article>
+</li>
+<li id="comment-1674252" class="comment odd alt thread-odd thread-alt depth-1 parent">
+<article id="div-comment-1674252" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/78334b6caafc7dda4561fbe10f1aad2f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/78334b6caafc7dda4561fbe10f1aad2f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">ming</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1674252"><time datetime="2015-03-13T12:42:14+08:00">2015年03月13日 12:42</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>node** curr = head 是必须的吗? 可不可以直接用 head?</p>
+<p>void remove_if(node ** head, remove_fn rm)<br/>
+{<br/>
+while(*head)<br/>
+{<br/>
+node * entry = *head;<br/>
+if (rm(entry))<br/>
+{<br/>
+*head = entry-&gt;next;<br/>
+free(entry);<br/>
+}<br/>
+else<br/>
+head = &amp;entry-&gt;next;<br/>
+}<br/>
+}</p>
+</div>
+ </article>
+<ol class="children">
+<li id="comment-2370259" class="comment even depth-2">
+<article id="div-comment-2370259" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb407680be0ced223c6af433f49b00f7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb407680be0ced223c6af433f49b00f7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">owen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-2370259"><time datetime="2022-03-14T13:12:49+08:00">2022年03月14日 13:12</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>不行。这样会破坏原来的头结点。</p>
+</div>
+ </article>
+</li>
+</ol>
+</li>
+<li id="comment-1690814" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="http://nearchen.com/blog/%e4%ba%8c%e7%ba%a7%e6%8c%87%e9%92%88%e5%9c%a8%e5%8d%95%e5%90%91%e9%93%be%e8%a1%a8%e4%b8%ad%e7%9a%84%e5%ba%94%e7%94%a8/" class="url" rel="ugc external nofollow">二级指针在单向链表中的应用 | Coding and Thinking</a> </div>
+</li>
+<li id="comment-1691426" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1691426" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/9cb9489b2f418884dbbf8fc34faf1fa2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/9cb9489b2f418884dbbf8fc34faf1fa2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">nnkken</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1691426"><time datetime="2015-04-16T21:25:32+08:00">2015年04月16日 21:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>其實完全可以這樣想：<br/>
+因為remove_if有可能把head刪掉，所以必須1. 返回新的head，然後調用方自行更改head，或2. 傳進&amp;head。<br/>
+把後一種情況做成遞歸實現：<br/>
+typedef struct _Node {<br/>
+struct _Node* next;<br/>
+int value;<br/>
+} Node;</p>
+<p>void remove_if_greater_than(Node** p_head, int limit) {<br/>
+if (p_head == NULL || *p_head == NULL) {<br/>
+return;<br/>
+}<br/>
+Node* head = *p_head;<br/>
+if (head-&gt;value &gt; limit) {<br/>
+*p_head = head-&gt;next;<br/>
+free(head);<br/>
+remove_if_greater_than(p_head, limit);<br/>
+} else {<br/>
+remove_if_greater_than(&amp;(head-&gt;next), limit);<br/>
+}<br/>
+}</p>
+<p>然後做個尾遞歸優化：</p>
+<p>void remove_if_greater_than_tail_opt(Node** p_curr, int limit) {<br/>
+while (p_curr != NULL &amp;&amp; *p_curr != NULL) {<br/>
+Node* curr = *p_curr;<br/>
+if (curr-&gt;value &gt; limit) {<br/>
+*p_curr = curr-&gt;next;<br/>
+free(curr);<br/>
+} else {<br/>
+p_curr = &amp;(curr-&gt;next);<br/>
+}<br/>
+}<br/>
+}</p>
+<p>就能得到Linus的解法，而且相當直觀。<br/>
+關鍵在於，我們完全可以把head-&gt;next想像成為另一個鏈表的head。<br/>
+所以你瞧，函數式語言多棒啊，讓你可以理解類型的本質，雖說我還沒真正用過函數式語言……</p>
+</div>
+ </article>
+</li>
+<li id="comment-1710404" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1710404" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1ffdc37a69a6b28c8f8dad03cc396de6?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1ffdc37a69a6b28c8f8dad03cc396de6?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">fei</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1710404"><time datetime="2015-05-21T02:55:11+08:00">2015年05月21日 02:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>个人认为，简洁不能以难懂作为代价。也许对于内核开发人员来说，像Linus那样是容易懂的写法。<br/>
+我会坚持啰嗦的写法。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1725174" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1725174" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/2cd9d7aaf171fad1b494ad140a56c2c3?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/2cd9d7aaf171fad1b494ad140a56c2c3?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">feimi</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1725174"><time datetime="2015-06-21T18:38:10+08:00">2015年06月21日 18:38</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-286072"><p>
+<strong><a href="#comment-286072" rel="nofollow">card323</a> :</strong><br/>
+<a href="#comment-286005" rel="nofollow">@viho_he </a><br/>
+Linus的这个程序和你说的那个特性貌似没什么关系吧<br/>
+你写的node == &amp;node-&gt;next应该是想说&amp;node == &amp;node-&gt;next的意思吧<br/>
+无论next指针在结构体中的定义位置 linux的程序都是没问题的吧
+</p></blockquote>
+<p>把“吧”去掉，已经验证过，跟结构体书写没关系。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1741431" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1741431" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/b2d7d2d13aed54c2ed7feb538b382b42?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/b2d7d2d13aed54c2ed7feb538b382b42?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">0xFFFFFFFF</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1741431"><time datetime="2015-07-29T05:13:12+08:00">2015年07月29日 05:13</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这段代码，乍一看很牛其实仔细一琢磨，唯一的作用是用来炫耀。首先 取地址 运算符 只能作用于lvalue，所以创建的时候 还是需要一个临时变量指向 链表节点。 如果这样 真不如 只用一级指针然后<br/>
+void remove_if(node* head, remove_fn rm) {<br/>
+node H;<br/>
+H.next = head;<br/>
+….<br/>
+return H.next;<br/>
+}</p>
+<p>还有 linus 进场喷 C++ 其实 在C++中 node*&amp; head 更优雅</p>
+</div>
+ </article>
+</li>
+<li id="comment-1743918" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1743918" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/dc6ea23c91523a8121f78fda5cb045c2?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/dc6ea23c91523a8121f78fda5cb045c2?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">cscareer</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1743918"><time datetime="2015-08-06T09:41:33+08:00">2015年08月06日 09:41</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1741431" rel="nofollow">@0xFFFFFFFF </a><br/>
+如果构造dummy head H很费呢？</p>
+</div>
+ </article>
+</li>
+<li id="comment-1748321" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1748321" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/07aa78fa85daf9d0b4b8e56741228d1f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/07aa78fa85daf9d0b4b8e56741228d1f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jackdrogon.github.io/blog" class="url" rel="ugc external nofollow">Drogon</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1748321"><time datetime="2015-08-19T18:55:13+08:00">2015年08月19日 18:55</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个实际上非常简单，主要是两种删除节点的对比。怎么会被解释得这么复杂了呢？<br/>
+第一种： prev-&gt;next = next, 由于head的没有直接的prev的缘故， 所以使用NULL，NULL没有prev所以需要特别处理，同时更新head的值。<br/>
+这样理解的话就算函数不是返回node ＊，而是和下面一样使用node ＊＊， 返回值为void 也没有<br/>
+代码：<br/>
+node * remove_if(node * ＊head, remove_fn rm)<br/>
+{<br/>
+for (node * prev = NULL, * curr = ＊head; curr != NULL; )<br/>
+{<br/>
+node * const next = curr-&gt;next;<br/>
+if (rm(curr))<br/>
+{<br/>
+if (prev)<br/>
+prev-&gt;next = next;<br/>
+else<br/>
+＊head = next;<br/>
+free(curr);<br/>
+}<br/>
+else<br/>
+prev = curr;<br/>
+curr = next;<br/>
+}<br/>
+}<br/>
+这样head的值也被修改了，无需返回node ＊。</p>
+<p>第二种： curr ＝ curr-&gt;next, curr的值可以为head，所以不需要特殊判断，但是这样不能更新head的值，因为head就是指针，所以这儿直接使用了二维指针来修改head的值，直接改为*curr = (*curr)-&gt;next, 而此处的curr为entry。entry这个是用来free的，要小心。</p>
+<p>综上： 这个实际上是两种删除节点方法的比较，和二维指针真心关系不是特别大。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1748440" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1748440" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/07aa78fa85daf9d0b4b8e56741228d1f?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/07aa78fa85daf9d0b4b8e56741228d1f?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn"><a href="http://jackdrogon.github.io/blog" class="url" rel="ugc external nofollow">Drogon</a></b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1748440"><time datetime="2015-08-19T23:51:55+08:00">2015年08月19日 23:51</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-1748321" rel="nofollow">@Drogon </a><br/>
+同时第二种 还是current 这点确实是使用二维指针 使得curr指向的prev-&gt;next的值被修改了。整个思路按照 *curr ＝ (*curr) －&gt; next, 而curr又是prev-&gt;next来理解却是简单了很多。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1799031" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1799031" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/99a5b2149c91a134b06679e394799eac?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/99a5b2149c91a134b06679e394799eac?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">sidgwick</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1799031"><time datetime="2015-12-05T20:25:41+08:00">2015年12月05日 20:25</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>memcached里面的哈希表好像就是这么用的, 当时就觉得好牛逼.</p>
+</div>
+ </article>
+</li>
+<li id="comment-1825146" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codeba.cc/alan-cox%ef%bc%9a%e5%8d%95%e5%90%91%e9%93%be%e8%a1%a8%e4%b8%adprev%e6%8c%87%e9%92%88%e7%9a%84%e5%a6%99%e7%94%a8-codeba-cc.html" class="url" rel="ugc external nofollow">Alan Cox：单向链表中prev指针的妙用 | Codeba.cc | Codeba</a> </div>
+</li>
+<li id="comment-1850981" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1850981" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/c83017deeea4f1e36b395f8f5fbf0370?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/c83017deeea4f1e36b395f8f5fbf0370?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">西北疯</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1850981"><time datetime="2016-06-22T22:57:21+08:00">2016年06月22日 22:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<blockquote cite="#commentbody-1640337"><p>
+<strong><a href="#comment-1640337" rel="nofollow">zxcbryanfury</a> :</strong><br/>
+我觉得理解的关键在于，在C++中，变量名的意义是拷贝一个值。之前的常见做法，cur = head-&gt;next，仅仅是把指针head-&gt;next的值copy给了指针cur，使得cur可以访问链表的下一个节点；而声明为二级指针的cur，*cur不是head-&gt;next的copy值，它“就是”head-&gt;next这个变量名的别名，它获得的是head-&gt;next这个变量的读写权
+</p></blockquote>
+<p>我觉得你这个回答，是这里最精辟的。我用自己的语言描述一遍：因为“链表操作”的对象都是指针，所以用二级指针来操作“指针”这种特殊的变量，就像一般情况下传递一个指针给函数，来操作普通变量一样。可以获得变量的读写权，由于头指针又同时作为函数的参数，所以这里用二级指针，同时获得了改变外部变量（不用返回新的头指针）和内部的权限，省却一个临时内部变量。<br/>
+其实，那个所谓的“教科书标准示例代码”，也是可以简化的，不用定义prev指针，也是可以的。但是新的头指针必须返回。没有二级指针，是无法改变函数外“指针”类型的实参的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-1857197" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.178linux.com/2161" class="url" rel="ugc external nofollow">Linus：利用二级指针删除单向链表 – linux运维部落</a> </div>
+</li>
+<li id="comment-1896105" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1896105" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/1fa986fbe86fe143dde9f53be61f1b86?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/1fa986fbe86fe143dde9f53be61f1b86?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">Jason</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1896105"><time datetime="2016-11-03T16:52:40+08:00">2016年11月03日 16:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>原来 cur 存的是每个节点里next变量的地址， *cur 是当前节点的下一个节点的地址， *cur = （*cur）-&gt;next 是把当前节点的next 修改为下一个节点的下一个节点的地址， cur = &amp;(*curr)-&gt;next 是让cur存下一个节点的next变量的地址； 这么写简单 但是是不是太绕了</p>
+</div>
+ </article>
+</li>
+<li id="comment-1907714" class="comment even thread-odd thread-alt depth-1">
+<article id="div-comment-1907714" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/4f59ac3d1f3d02f4c148dc1d957e9b60?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/4f59ac3d1f3d02f4c148dc1d957e9b60?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">刚子</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1907714"><time datetime="2016-12-19T17:57:10+08:00">2016年12月19日 17:57</time></a> </div>
+</footer>
+<div class="comment-content">
+<p><a href="#comment-293161" rel="nofollow">@test </a><br/>
+*curr = entry -&gt; next;<br/>
+等价于<br/>
+prev-&gt;next = entry -&gt; next;</p>
+</div>
+ </article>
+</li>
+<li id="comment-1908716" class="comment odd alt thread-even depth-1">
+<article id="div-comment-1908716" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/08fde63d6e4df2328bd998ca23959855?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/08fde63d6e4df2328bd998ca23959855?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">zddav</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-1908716"><time datetime="2016-12-25T18:23:18+08:00">2016年12月25日 18:23</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这不需要返回链表吗？如果删掉表头，表头应该需要传出去的</p>
+<pre data-enlighter-language="c" class="EnlighterJSRAW">void remove_if(node ** head, remove_fn rm)
+{
+    for (node** curr = head; *curr; )
+    {
+        node * entry = *curr;
+        if (rm(entry))
+        {
+            *curr = entry-&amp;gt;next;
+            free(entry);
+        }
+        else
+            curr = &amp;amp;entry-&amp;gt;next;
+    }
+}</pre>
+</div>
+ </article>
+</li>
+<li id="comment-1914003" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="http://www.codingblog.cn/blog/50414.html" class="url" rel="ugc external nofollow">二级指针实现单链表的插入、删除及 linux内核源码双向链表之奇技 – CodingBlog</a> </div>
+</li>
+<li id="comment-2061090" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/399.html" class="url" rel="ugc external nofollow">2013年个人微博推荐技术资料汇总 | 3F Blog 2020</a> </div>
+</li>
+<li id="comment-2061998" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/390.html" class="url" rel="ugc external nofollow">LINUS：利用二级指针删除单向链表 | 3F Blog 2020</a> </div>
+</li>
+<li id="comment-2064646" class="pingback odd alt thread-even depth-1">
+<div class="comment-body">
+Pingback： <a href="https://coolshell.me/articles/yearly-tech-materials-summary.html" class="url" rel="ugc external nofollow">2013年个人微博推荐技术资料汇总 | 3F Coolshell Blog</a> </div>
+</li>
+<li id="comment-2333258" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://itpcb.com/a/1680725" class="url" rel="ugc external nofollow">二级指针实现单链表的插入、删除及 linux内核源码双向链表之奇技 - 算法网</a> </div>
+</li>
+<li id="comment-2370260" class="comment odd alt thread-even depth-1">
+<article id="div-comment-2370260" class="comment-body">
+<footer class="comment-meta">
+<div class="comment-author vcard">
+<img alt="" src="https://secure.gravatar.com/avatar/cb407680be0ced223c6af433f49b00f7?s=50&amp;d=mm&amp;r=g" srcset="https://secure.gravatar.com/avatar/cb407680be0ced223c6af433f49b00f7?s=100&amp;d=mm&amp;r=g 2x" class="avatar avatar-50 photo" height="50" width="50" loading="lazy" decoding="async"/> <b class="fn">owen</b><span class="says">说道：</span> </div>
+<div class="comment-metadata">
+<a href="/articles/8990.html/comment-page-4#comment-2370260"><time datetime="2022-03-14T13:52:31+08:00">2022年03月14日 13:52</time></a> </div>
+</footer>
+<div class="comment-content">
+<p>这个二级指针 不就是一个 哑结点么，这有啥的。</p>
+</div>
+ </article>
+</li>
+<li id="comment-2371072" class="pingback even thread-odd thread-alt depth-1">
+<div class="comment-body">
+Pingback： <a href="https://www.ccppcoding.com/archives/107275" class="url" rel="ugc external nofollow">在不带头结点的单链表中删除特定元素 | 高性能架构探索</a> </div>
+</li>
+</ol>
+<nav class="navigation comment-navigation" role="navigation">
+<h2 class="screen-reader-text">Comment navigation</h2>
+<div class="nav-links">
+<div id="commentnavi">
+<span class="pages"><i class="fa fa-comments"></i> 评论分页</span>
+<div id="commentpager">
+<a class="prev page-numbers" href="/articles/8990.html/comment-page-3#comments">« 上一页</a>
+<a class="page-numbers" href="/articles/8990.html/comment-page-1#comments">1</a>
+<a class="page-numbers" href="/articles/8990.html/comment-page-2#comments">2</a>
+<a class="page-numbers" href="/articles/8990.html/comment-page-3#comments">3</a>
+<span aria-current="page" class="page-numbers current">4</span> <span id="cp_post_id">8990</span>
+</div>
+<div class="fixed"></div>
+</div>
+</div>
+</nav>
+
+</div>
+</div>
+</div>
+
+</div> 
+</div>
+
+</div>
+
+</div>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body></html>
