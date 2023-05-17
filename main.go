@@ -34,7 +34,7 @@ func main() {
 	r.Use(gzip.Gzip(gzip.DefaultCompression))
 
 	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusFound, "/page/1.html")
+		c.Redirect(http.StatusFound, "/page/featured.html")
 	})
 
 	assets, _ := fs.Sub(Assets, "assets")
