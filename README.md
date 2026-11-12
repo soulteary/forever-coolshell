@@ -39,3 +39,17 @@ docker run --rm -it -e PORT=10240 -p 10240:10240 soulteary/forever-coolshell:v1.
 你的博客内容会一直留存下去的。
 
 --EOF 晓白
+
+## 导出 Markdown
+
+批量提取 `content/articles/*.html` 的文章标题和正文，排除导航、评论和评分控件，保留代码块、表格、图片及链接。
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install -r scripts/requirements-markdown.txt
+.venv/bin/python scripts/html_to_markdown.py
+```
+
+默认输出到 `markdown/articles/<文章ID>.md`，不会修改原始 HTML。已有文件默认跳过，添加 `--overwrite` 可重新生成；也可用 `--input`、`--output` 指定目录。
+
+站内文章链接会改为同目录的 `.md` 链接；图片等资源使用原站绝对地址，需联网访问（脚本不下载资源）。
